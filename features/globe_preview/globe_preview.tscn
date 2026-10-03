@@ -1,0 +1,197 @@
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://features/globe_preview/globe_preview.gd" id="1_preview"]
+[ext_resource type="Shader" path="res://features/globe_preview/globe_surface.gdshader" id="2_surface"]
+[ext_resource type="Shader" path="res://features/globe_preview/backdrop.gdshader" id="3_backdrop"]
+[ext_resource type="Script" path="res://features/globe_preview/globe_shadow.gd" id="4_shadow"]
+[ext_resource type="Texture2D" path="res://assets/globe_preview/monster_cutout.png" id="5_monster_art"]
+
+[sub_resource type="SystemFont" id="SystemFont_ui"]
+font_names = PackedStringArray("Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC")
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_panel"]
+bg_color = Color(0.0745, 0.1176, 0.098, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.38, 0.48, 0.41, 0.28)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+content_margin_left = 22.0
+content_margin_top = 10.0
+content_margin_right = 22.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_button"]
+bg_color = Color(0.19, 0.28, 0.22, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+content_margin_left = 17.0
+content_margin_top = 8.0
+content_margin_right = 17.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_hover"]
+bg_color = Color(0.28, 0.38, 0.30, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+content_margin_left = 17.0
+content_margin_top = 8.0
+content_margin_right = 17.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_pressed"]
+bg_color = Color(0.12, 0.19, 0.15, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+content_margin_left = 17.0
+content_margin_top = 8.0
+content_margin_right = 17.0
+content_margin_bottom = 8.0
+
+[sub_resource type="Theme" id="Theme_ui"]
+default_font = SubResource("SystemFont_ui")
+default_font_size = 16
+Button/colors/font_color = Color(0.89, 0.91, 0.84, 1)
+Button/colors/font_hover_color = Color(1, 0.96, 0.84, 1)
+Button/colors/font_pressed_color = Color(0.89, 0.91, 0.84, 1)
+Button/styles/normal = SubResource("StyleBox_button")
+Button/styles/hover = SubResource("StyleBox_hover")
+Button/styles/pressed = SubResource("StyleBox_pressed")
+Label/colors/font_color = Color(0.78, 0.83, 0.75, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_surface"]
+shader = ExtResource("2_surface")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_backdrop"]
+shader = ExtResource("3_backdrop")
+
+[node name="GlobePreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = SubResource("Theme_ui")
+script = ExtResource("1_preview")
+monster_texture = ExtResource("5_monster_art")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_backdrop")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlanetShadow" type="Node2D" parent="."]
+script = ExtResource("4_shadow")
+
+[node name="Surface" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_surface")
+layout_mode = 0
+offset_right = 560.0
+offset_bottom = 560.0
+mouse_filter = 2
+
+[node name="Monsters" type="Node2D" parent="."]
+
+[node name="Hint" type="Label" parent="."]
+z_index = 4090
+layout_mode = 1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -134.0
+offset_bottom = -112.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.63, 0.71, 0.64, 1)
+theme_override_colors/font_outline_color = Color(0.04, 0.06, 0.05, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 14
+text = "拖动旋转 · 滚轮缩放 · 点击怪物"
+horizontal_alignment = 1
+
+[node name="Status" type="Label" parent="."]
+z_index = 4090
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -169.0
+offset_bottom = -141.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.62, 0.70, 0.62, 1)
+theme_override_colors/font_outline_color = Color(0.04, 0.06, 0.05, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 14
+text = ""
+horizontal_alignment = 1
+
+[node name="Controls" type="PanelContainer" parent="."]
+z_index = 4090
+layout_mode = 1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 44.0
+offset_top = -96.0
+offset_right = -44.0
+offset_bottom = -30.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBox_panel")
+
+[node name="Row" type="HBoxContainer" parent="Controls"]
+layout_mode = 2
+theme_override_constants/separation = 22
+
+[node name="CountLabel" type="Label" parent="Controls/Row"]
+layout_mode = 2
+text = "怪物 36"
+
+[node name="CountSlider" type="HSlider" parent="Controls/Row"]
+modulate = Color(0.67, 0.77, 0.65, 1)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+min_value = 12.0
+max_value = 120.0
+value = 36.0
+step = 1.0
+
+[node name="ImportButton" type="Button" parent="Controls/Row"]
+layout_mode = 2
+text = "导入怪物"
+
+[node name="ResetButton" type="Button" parent="Controls/Row"]
+layout_mode = 2
+text = "复位"
+
+[node name="ImportDialog" type="FileDialog" parent="."]
+title = "选择透明怪物图片"
+size = Vector2i(850, 540)
+ok_button_text = "导入"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.png,*.webp ; 透明怪物图片")
+use_native_dialog = true

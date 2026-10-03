@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://features/slime_suction_preview/pink_slime_view.gd" id="1_view"]
+[ext_resource type="Texture2D" path="res://assets/globe_preview/monster_cutout.png" id="2_monster"]
+
+[node name="PinkSlime" type="Node2D"]
+script = ExtResource("1_view")
+monster_texture = ExtResource("2_monster")
+
+[node name="Shadow" type="Polygon2D" parent="."]
+color = Color(0.20, 0.22, 0.19, 0.12)
+
+[node name="Deformation" type="Node2D" parent="."]
+
+[node name="Artwork" type="Sprite2D" parent="Deformation"]
+texture_filter = 2
+texture = ExtResource("2_monster")

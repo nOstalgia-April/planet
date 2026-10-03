@@ -1,0 +1,392 @@
+[gd_scene load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://scripts/disk_demo.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/prototype_run.gd" id="2_run"]
+[ext_resource type="Resource" path="res://resources/prototype_settings.tres" id="3_settings"]
+[ext_resource type="PackedScene" path="res://scenes/world/planet_surface.tscn" id="4_surface"]
+[ext_resource type="PackedScene" path="res://scenes/world/slime.tscn" id="5_slime"]
+[ext_resource type="PackedScene" path="res://scenes/world/nest.tscn" id="6_nest"]
+[ext_resource type="PackedScene" path="res://scenes/effects/collection_effect.tscn" id="7_collection"]
+[ext_resource type="PackedScene" path="res://scenes/world/pipe_cursor.tscn" id="8_pipe"]
+[ext_resource type="Theme" path="res://resources/prototype_theme.tres" id="9_theme"]
+[ext_resource type="AudioStream" path="res://assets/audio/collect.wav" id="10_collect_sound"]
+[ext_resource type="AudioStream" path="res://assets/audio/upgrade.wav" id="11_upgrade_sound"]
+[ext_resource type="AudioStream" path="res://assets/audio/tame.wav" id="12_tame_sound"]
+[ext_resource type="AudioStream" path="res://assets/audio/finish.wav" id="13_finish_sound"]
+
+[ext_resource type="Script" path="res://scripts/disk_layout.gd" id="14_layout"]
+[ext_resource type="PackedScene" path="res://scenes/world/capture_net.tscn" id="15_net"]
+
+[node name="DiskDemo" type="Node2D"]
+script = ExtResource("1_main")
+slime_scene = ExtResource("5_slime")
+nest_scene = ExtResource("6_nest")
+collection_scene = ExtResource("7_collection")
+
+[node name="Run" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("2_run")
+settings = ExtResource("3_settings")
+
+[node name="World" type="Node2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(510, 400)
+
+[node name="PlanetSurface" parent="World" instance=ExtResource("4_surface")]
+unique_name_in_owner = true
+radius = 240.0
+
+[node name="Nests" type="Node2D" parent="World"]
+unique_name_in_owner = true
+
+[node name="Slimes" type="Node2D" parent="World"]
+unique_name_in_owner = true
+z_index = 5
+
+[node name="Effects" type="Node2D" parent="World"]
+unique_name_in_owner = true
+z_index = 10
+
+[node name="Pipe" parent="World" instance=ExtResource("8_pipe")]
+unique_name_in_owner = true
+position = Vector2(0, 0)
+z_index = 20
+
+[node name="CaptureNet" parent="World" instance=ExtResource("15_net")]
+unique_name_in_owner = true
+position = Vector2(0, 0)
+z_index = 21
+
+[node name="Audio" type="Node" parent="."]
+
+[node name="CollectSound" type="AudioStreamPlayer" parent="Audio"]
+unique_name_in_owner = true
+stream = ExtResource("10_collect_sound")
+volume_db = -15.0
+
+[node name="UpgradeSound" type="AudioStreamPlayer" parent="Audio"]
+unique_name_in_owner = true
+stream = ExtResource("11_upgrade_sound")
+volume_db = -14.0
+
+[node name="TameSound" type="AudioStreamPlayer" parent="Audio"]
+unique_name_in_owner = true
+stream = ExtResource("12_tame_sound")
+volume_db = -12.0
+
+[node name="FinishSound" type="AudioStreamPlayer" parent="Audio"]
+unique_name_in_owner = true
+stream = ExtResource("13_finish_sound")
+volume_db = -12.0
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="Interface" type="Control" parent="HUD"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 1280.0
+offset_bottom = 800.0
+mouse_filter = 2
+theme = ExtResource("9_theme")
+script = ExtResource("14_layout")
+
+[node name="GameName" type="Label" parent="HUD/Interface"]
+layout_mode = 0
+offset_left = 48.0
+offset_top = 28.0
+offset_right = 390.0
+offset_bottom = 52.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.39, 0.44, 0.36, 1)
+theme_override_font_sizes/font_size = 17
+text = "星球退烧计划"
+
+[node name="Economy" type="HBoxContainer" parent="HUD/Interface"]
+layout_mode = 0
+offset_left = 48.0
+offset_top = 55.0
+offset_right = 540.0
+offset_bottom = 100.0
+mouse_filter = 2
+theme_override_constants/separation = 24
+
+[node name="CandyLabel" type="Label" parent="HUD/Interface/Economy"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.71, 0.40, 0.21, 1)
+theme_override_font_sizes/font_size = 32
+text = "0 糖果"
+
+[node name="PassiveLabel" type="Label" parent="HUD/Interface/Economy"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.39, 0.44, 0.36, 1)
+theme_override_font_sizes/font_size = 18
+text = "自动 +0 / 秒"
+vertical_alignment = 1
+
+[node name="Goal" type="VBoxContainer" parent="HUD/Interface"]
+layout_mode = 0
+offset_left = 625.0
+offset_top = 40.0
+offset_right = 845.0
+offset_bottom = 95.0
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="GoalRow" type="HBoxContainer" parent="HUD/Interface/Goal"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="GoalName" type="Label" parent="HUD/Interface/Goal/GoalRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 17
+text = "恢复绿色"
+
+[node name="ProgressLabel" type="Label" parent="HUD/Interface/Goal/GoalRow"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+text = "0 / 5"
+
+[node name="ProgressBar" type="ProgressBar" parent="HUD/Interface/Goal"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+mouse_filter = 2
+max_value = 5.0
+show_percentage = false
+
+[node name="ToolCard" type="PanelContainer" parent="HUD/Interface"]
+layout_mode = 0
+offset_left = 920.0
+offset_top = 143.0
+offset_right = 1240.0
+offset_bottom = 399.0
+mouse_filter = 2
+
+[node name="Content" type="VBoxContainer" parent="HUD/Interface/ToolCard"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="Tools" type="HBoxContainer" parent="HUD/Interface/ToolCard/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="PipeToolButton" type="Button" parent="HUD/Interface/ToolCard/Content/Tools"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 0
+toggle_mode = true
+button_pressed = true
+theme_type_variation = &"QuietButton"
+theme_override_font_sizes/font_size = 16
+text = "管子"
+
+[node name="NetToolButton" type="Button" parent="HUD/Interface/ToolCard/Content/Tools"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 0
+toggle_mode = true
+theme_type_variation = &"QuietButton"
+theme_override_font_sizes/font_size = 16
+text = "捕网"
+
+[node name="ToolLevelLabel" type="Label" parent="HUD/Interface/ToolCard/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.41, 0.47, 0.38, 1)
+theme_override_font_sizes/font_size = 16
+text = "等级 1 / 4"
+
+[node name="ToolStatsLabel" type="Label" parent="HUD/Interface/ToolCard/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 66)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 17
+text = "处理 0.60 秒 / 只\n本趟 +0 糖果"
+autowrap_mode = 3
+
+[node name="ToolButton" type="Button" parent="HUD/Interface/ToolCard/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+mouse_filter = 0
+text = "速度升级 · 10 糖果"
+
+[node name="NestCard" type="PanelContainer" parent="HUD/Interface"]
+layout_mode = 0
+offset_left = 920.0
+offset_top = 423.0
+offset_right = 1240.0
+offset_bottom = 700.0
+mouse_filter = 2
+
+[node name="Content" type="VBoxContainer" parent="HUD/Interface/NestCard"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="NestTitleLabel" type="Label" parent="HUD/Interface/NestCard/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 23
+text = "巢穴"
+
+[node name="NestLevelLabel" type="Label" parent="HUD/Interface/NestCard/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.41, 0.47, 0.38, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="NestBenefitLabel" type="Label" parent="HUD/Interface/NestCard/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 17
+text = "点选一个巢穴"
+autowrap_mode = 3
+
+[node name="NestButton" type="Button" parent="HUD/Interface/NestCard/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+mouse_filter = 0
+disabled = true
+text = "驯化"
+
+[node name="StatusLabel" type="Label" parent="HUD/Interface"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 48.0
+offset_top = 703.0
+offset_right = 847.0
+offset_bottom = 733.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.31, 0.45, 0.33, 1)
+theme_override_font_sizes/font_size = 17
+autowrap_mode = 3
+
+[node name="InputHint" type="Label" parent="HUD/Interface"]
+layout_mode = 0
+offset_left = 48.0
+offset_top = 744.0
+offset_right = 847.0
+offset_bottom = 774.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.44, 0.49, 0.41, 1)
+theme_override_font_sizes/font_size = 16
+text = "1 管子 · 2 捕网 · 管子按住收集，松手结算 · 捕网点击施放"
+
+[node name="RestartButton" type="Button" parent="HUD/Interface"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 0
+offset_left = 1073.0
+offset_top = 730.0
+offset_right = 1240.0
+offset_bottom = 778.0
+mouse_filter = 0
+theme_type_variation = &"QuietButton"
+theme_override_font_sizes/font_size = 16
+text = "重新开始"
+
+[node name="Completion" type="Control" parent="HUD/Interface"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Shade" type="ColorRect" parent="HUD/Interface/Completion"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.13, 0.19, 0.14, 0.50)
+
+[node name="Center" type="CenterContainer" parent="HUD/Interface/Completion"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="HUD/Interface/Completion/Center"]
+custom_minimum_size = Vector2(540, 292)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Content" type="VBoxContainer" parent="HUD/Interface/Completion/Center/Panel"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 22
+
+[node name="CompletionTitle" type="Label" parent="HUD/Interface/Completion/Center/Panel/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.27, 0.44, 0.32, 1)
+theme_override_font_sizes/font_size = 34
+text = "绿色回来了"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="CompletionDetail" type="Label" parent="HUD/Interface/Completion/Center/Panel/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 76)
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+text = "五个巢穴都开出了花。"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="Actions" type="HBoxContainer" parent="HUD/Interface/Completion/Center/Panel/Content"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ReplayButton" type="Button" parent="HUD/Interface/Completion/Center/Panel/Content/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 0
+text = "再玩一次"
+
+[node name="CloseVictoryButton" type="Button" parent="HUD/Interface/Completion/Center/Panel/Content/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 0
+theme_type_variation = &"QuietButton"
+text = "看看星球"

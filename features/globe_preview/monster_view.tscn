@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://features/globe_preview/monster_view.gd" id="1_monster"]
+
+[node name="MonsterView" type="Node2D"]
+script = ExtResource("1_monster")
+
+[node name="Artwork" type="Sprite2D" parent="."]
+texture_filter = 2

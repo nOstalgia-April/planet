@@ -1,0 +1,67 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/pipe_cursor.gd" id="1_pipe"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_count"]
+content_margin_left = 3.0
+content_margin_top = 1.0
+content_margin_right = 3.0
+content_margin_bottom = 1.0
+bg_color = Color(0.945, 0.933, 0.859, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.27, 0.29, 0.27, 0.55)
+
+[node name="Pipe" type="Node2D"]
+position = Vector2(480, 400)
+script = ExtResource("1_pipe")
+
+[node name="PipeOutline" type="Line2D" parent="."]
+show_behind_parent = true
+points = PackedVector2Array(-58, 14, -40, 14, -24, 3, -10, 0)
+width = 12.0
+default_color = Color(0.27, 0.29, 0.27, 1)
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true
+
+[node name="PipeFill" type="Line2D" parent="."]
+show_behind_parent = true
+points = PackedVector2Array(-58, 14, -40, 14, -24, 3, -10, 0)
+width = 8.0
+default_color = Color(0.725, 0.773, 0.714, 1)
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true
+
+[node name="Mouth" type="Node2D" parent="."]
+
+[node name="Collar" type="Polygon2D" parent="Mouth"]
+polygon = PackedVector2Array(-12, -7, 1, -11, 8, -7, 8, 7, 1, 11, -12, 7)
+color = Color(0.945, 0.933, 0.859, 1)
+
+[node name="Outline" type="Line2D" parent="Mouth"]
+points = PackedVector2Array(-12, -7, 1, -11, 8, -7, 8, 7, 1, 11, -12, 7, -12, -7)
+width = 2.0
+default_color = Color(0.27, 0.29, 0.27, 1)
+antialiased = true
+
+[node name="Opening" type="Polygon2D" parent="Mouth"]
+polygon = PackedVector2Array(-1, -6, 5, -6, 5, 6, -1, 6)
+color = Color(0.298, 0.514, 0.486, 1)
+
+[node name="Count" type="Label" parent="."]
+visible = false
+offset_left = -60.0
+offset_top = 22.0
+offset_right = -36.0
+offset_bottom = 42.0
+pivot_offset = Vector2(12, 10)
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.27, 0.29, 0.27, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBox_count")
+text = "0"
+horizontal_alignment = 1

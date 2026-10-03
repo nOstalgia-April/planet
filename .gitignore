@@ -1,0 +1,31 @@
+# Godot generated files
+/.godot/
+/android/
+
+# Captures, temporary reports, and exported games
+/artifacts/*
+!/artifacts/.gitkeep
+/output/
+
+# Local reference originals; runtime artwork remains tracked
+/assets/globe_preview/source/*
+!/assets/globe_preview/source/.gdignore
+
+# FMOD Windows build intermediates
+/addons/fmod/libs/windows/*.lib
+/addons/fmod/libs/windows/*.exp
+/addons/fmod/libs/windows/*.pdb
+/addons/fmod/libs/windows/*.obj
+/addons/fmod/**/*.dSYM/
+
+# Local credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.pfx
+*.p12
+
+# Operating system metadata
+.DS_Store
+Thumbs.db

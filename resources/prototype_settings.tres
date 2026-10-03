@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="PrototypeSettings" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/prototype_settings.gd" id="1_settings"]
+
+[resource]
+script = ExtResource("1_settings")
+initial_nests = 3
+nest_budget = 5
+active_nest_limit = 3
+nest_upgrade_costs = PackedInt32Array(20, 60, 180)
+spawn_intervals = PackedFloat32Array(0.5, 0.3, 0.18)
+passive_income_per_second = 3.0
+slime_reward = 2
+nest_population_limits = PackedInt32Array(10, 40, 100)
+pipe_upgrade_costs = PackedInt32Array(10, 30, 70)
+pipe_capture_seconds = PackedFloat32Array(0.6, 0.45, 0.32, 0.22)
+pipe_radius = 24.0
+pipe_attraction_radius = 70.0
+net_upgrade_costs = PackedInt32Array(10, 30, 70)
+net_capacities = PackedInt32Array(10, 20, 30, 40)
+net_radius = 84.0
+net_cooldown_seconds = 6.0

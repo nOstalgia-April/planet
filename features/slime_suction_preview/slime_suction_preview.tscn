@@ -1,0 +1,85 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://features/slime_suction_preview/slime_suction_preview.gd" id="1_preview"]
+[ext_resource type="PackedScene" path="res://features/slime_suction_preview/pink_slime_view.tscn" id="2_slime"]
+[ext_resource type="PackedScene" path="res://scenes/world/pipe_cursor.tscn" id="3_pipe"]
+[ext_resource type="Theme" path="res://resources/prototype_theme.tres" id="4_theme"]
+
+[node name="SlimeSuctionPreview" type="Node2D"]
+script = ExtResource("1_preview")
+
+[node name="Background" type="CanvasLayer" parent="."]
+layer = -1
+
+[node name="Paper" type="ColorRect" parent="Background"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.91, 0.90, 0.86, 1)
+
+[node name="World" type="Node2D" parent="."]
+position = Vector2(960, 518.4)
+scale = Vector2(6.75, 6.75)
+
+[node name="Ground" type="Line2D" parent="World"]
+points = PackedVector2Array(-88, 21, 88, 21)
+width = 0.5
+default_color = Color(0.40, 0.44, 0.37, 0.24)
+antialiased = true
+
+[node name="PinkSlime" parent="World" instance=ExtResource("2_slime")]
+position = Vector2(0, 19.8)
+
+[node name="Pipe" parent="World" instance=ExtResource("3_pipe")]
+position = Vector2(32, -14)
+z_index = -1
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Controls" type="HBoxContainer" parent="UI"]
+anchors_preset = 12
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -293.0
+offset_top = -96.0
+offset_right = 293.0
+offset_bottom = -38.0
+grow_horizontal = 2
+grow_vertical = 0
+theme = ExtResource("4_theme")
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="AttractionButton" type="Button" parent="UI/Controls"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+toggle_mode = true
+text = "吸力预览"
+tooltip_text = "查看附近小怪的轻微偏移、倾斜和拉伸"
+
+[node name="CaptureButton" type="Button" parent="UI/Controls"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "吸取一次"
+tooltip_text = "播放完整吸取；也可在小怪附近按住鼠标左键"
+
+[node name="SlowMotion" type="CheckButton" parent="UI/Controls"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+button_pressed = true
+text = "慢放"
+
+[node name="ResetButton" type="Button" parent="UI/Controls"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "复位"
+tooltip_text = "R"
