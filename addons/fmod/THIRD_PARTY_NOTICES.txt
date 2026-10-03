@@ -1,0 +1,7 @@
+FMOD GDExtension 6.1.0 (release tag: 6.1.0-4.5.0)
+Upstream: https://github.com/utopia-rise/fmod-gdextension
+
+The extension source code uses the MIT license. See LICENSE in this directory.
+The bundled FMOD native libraries are subject to Firelight Technologies' FMOD license:
+https://www.fmod.com/legal
+Attribution requirements: https://www.fmod.com/attribution

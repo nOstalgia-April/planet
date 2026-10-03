@@ -17,6 +17,7 @@
 /addons/fmod/libs/windows/*.pdb
 /addons/fmod/libs/windows/*.obj
 /addons/fmod/**/*.dSYM/
+/addons/fmod/libs/**/~*
 
 # Local credentials
 .env

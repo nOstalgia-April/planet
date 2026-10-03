@@ -1,0 +1,185 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://features/fmod_audio_test/fmod_audio_test.gd" id="1_test"]
+
+[node name="FmodAudioTest" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 24
+script = ExtResource("1_test")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.065, 0.08, 0.10, 1)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 36
+theme_override_constants/margin_top = 30
+theme_override_constants/margin_right = 36
+theme_override_constants/margin_bottom = 30
+
+[node name="Scroll" type="ScrollContainer" parent="Margin"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Content" type="VBoxContainer" parent="Margin/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 18
+
+[node name="Title" type="Label" parent="Margin/Scroll/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "FMOD 音效试听"
+
+[node name="Intro" type="Label" parent="Margin/Scroll/Content"]
+layout_mode = 2
+text = "将 FMOD Studio 构建的音频包放入 assets/fmod/banks，然后重新加载。"
+autowrap_mode = 3
+
+[node name="LoadBanksButton" type="Button" parent="Margin/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "加载 / 重新加载音频包"
+
+[node name="BankStatus" type="Label" parent="Margin/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "正在检查音频包…"
+autowrap_mode = 3
+
+[node name="ContractStatus" type="Label" parent="Margin/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "事件尚未检查。"
+autowrap_mode = 3
+
+[node name="OutputTestButton" type="Button" parent="Margin/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "测试音频输出"
+tooltip_text = "用 FMOD 播放项目自带的测试音，无需音频包。"
+
+[node name="OutputNote" type="Label" parent="Margin/Scroll/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "输出测试无需 Bank，仅检查 FMOD 能否发声；事件仍需下方单独试听。"
+autowrap_mode = 3
+
+[node name="FirstSeparator" type="HSeparator" parent="Margin/Scroll/Content"]
+layout_mode = 2
+
+[node name="CollectButton" type="Button" parent="Margin/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "播放收集音"
+disabled = true
+
+[node name="SuctionButtons" type="HBoxContainer" parent="Margin/Scroll/Content"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="SuctionStartButton" type="Button" parent="Margin/Scroll/Content/SuctionButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "开始吸取"
+disabled = true
+
+[node name="SuctionStopButton" type="Button" parent="Margin/Scroll/Content/SuctionButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "停止吸取"
+disabled = true
+
+[node name="ProgressRow" type="HBoxContainer" parent="Margin/Scroll/Content"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="ProgressLabel" type="Label" parent="Margin/Scroll/Content/ProgressRow"]
+layout_mode = 2
+text = "Progress"
+
+[node name="ProgressSlider" type="HSlider" parent="Margin/Scroll/Content/ProgressRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.01
+editable = false
+
+[node name="ProgressValue" type="Label" parent="Margin/Scroll/Content/ProgressRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0.00"
+
+[node name="SecondSeparator" type="HSeparator" parent="Margin/Scroll/Content"]
+layout_mode = 2
+
+[node name="CustomTitle" type="Label" parent="Margin/Scroll/Content"]
+layout_mode = 2
+text = "试听其他事件"
+
+[node name="CustomPath" type="LineEdit" parent="Margin/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "event:/Slime/Collect"
+placeholder_text = "event:/事件路径"
+tooltip_text = "事件必须分配到当前加载的 SFX.bank，并设为非空间声音。"
+
+[node name="CustomButtons" type="HBoxContainer" parent="Margin/Scroll/Content"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="CustomPlayButton" type="Button" parent="Margin/Scroll/Content/CustomButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "播放事件"
+disabled = true
+
+[node name="CustomStopButton" type="Button" parent="Margin/Scroll/Content/CustomButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "停止事件"
+disabled = true
+
+[node name="ActionStatus" type="Label" parent="Margin/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.88, 0.93, 1)
+text = "尚未试听。"
+autowrap_mode = 3
+
+[node name="BankHost" type="Node" parent="."]
+
+[node name="CollectEmitter" type="FmodEventEmitter2D" parent="."]
+attached = false
+preload_event = false
+
+[node name="SuctionEmitter" type="FmodEventEmitter2D" parent="."]
+attached = false
+preload_event = false
+
+[node name="CustomEmitter" type="FmodEventEmitter2D" parent="."]
+attached = false
+preload_event = false
