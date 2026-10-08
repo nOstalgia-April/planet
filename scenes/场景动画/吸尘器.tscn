@@ -1,0 +1,54 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/场景动画/帧动画.gd" id="r001"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/001.png" id="r002"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/002.png" id="r003"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/003.png" id="r004"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/004.png" id="r005"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/005.png" id="r006"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/006.png" id="r007"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/007.png" id="r008"]
+
+[sub_resource type="Animation" id="r009"]
+resource_name = "工作"
+length = 1.0
+loop_mode = 1
+step = 0.14285714285714285
+tracks/0/type = "value"
+tracks/0/path = NodePath("贴图:texture")
+tracks/0/interp = 0
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0.0, 0.14285714285714285, 0.2857142857142857, 0.42857142857142855, 0.5714285714285714, 0.7142857142857143, 0.8571428571428571),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("r002"), ExtResource("r003"), ExtResource("r004"), ExtResource("r005"), ExtResource("r006"), ExtResource("r007"), ExtResource("r008")]
+}
+
+[sub_resource type="AnimationLibrary" id="r010"]
+_data = {
+&"工作": SubResource("r009")
+}
+
+[node name="吸尘器" type="Node2D" node_paths=PackedStringArray("animation_player")]
+script = ExtResource("r001")
+animation_player = NodePath("动画播放器")
+clip = &"工作"
+frames_per_second = 7.0
+frame_count = 7
+
+[node name="贴图" type="Sprite2D" parent="."]
+texture = ExtResource("r002")
+centered = true
+
+[node name="动画播放器" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("r010")
+}

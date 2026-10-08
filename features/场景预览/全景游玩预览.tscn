@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://features/场景预览/近景游玩预览.tscn" id="r001"]
+
+[node name="全景游玩预览" instance=ExtResource("r001")]
+start_in_overview = true

@@ -1,5 +1,6 @@
 extends SceneTree
 
+const PageScript = preload("res://scripts/ui/technology_page.gd")
 const DemoScript = preload("res://scripts/disk_demo.gd")
 const MucusField = preload("res://scripts/mucus_field.gd")
 const DemoScene: PackedScene = preload("res://scenes/disk_demo.tscn")
@@ -42,7 +43,8 @@ func _run_checks() -> void:
 		"mucus monsters and the net remain locked at the opening"
 	)
 	_check_ledger(demo)
-	demo.run.candy = demo.run.settings.net_unlock_cost
+	demo.run.candy = demo.run.settings.net_unlock_cost + demo.run.settings.pipe_upgrade_costs[0]
+	_check(demo.run.upgrade_pipe(), "speed level two opens the net branch")
 	_check(demo.run.purchase_technology("net"), "purchasing the net unlocks its first mucus nest")
 	demo.run.advance(demo.run.settings.spawn_intervals[0])
 	_freeze_actors(demo)
@@ -100,13 +102,16 @@ func _check_research_and_future_spawns(demo: DemoScript) -> void:
 		"technology modal blocks background tools and camera"
 	)
 	_branch_purchase(demo, "Combo").pressed.emit()
-	_check(demo.run.combo_level == 1, "technology row purchases combo unlock")
+	_check(demo.run.combo_level == 1, "technology page purchases combo unlock")
 	_branch_purchase(demo, "Governance").pressed.emit()
 	_branch_purchase(demo, "Governance").pressed.emit()
-	_check(demo.run.governance_level == 2, "technology row unlocks partial governance")
+	_check(
+		demo.run.governance_level == 3,
+		"technology page goes directly from cultivation to automation"
+	)
 	var original_actors: Array[PrototypeSlime] = demo._slimes.duplicate()
-	var valuable_branch: Control = demo.get_node("%ToolCard/Content/Branches/Valuable") as Control
-	valuable_branch.get_node("Content/Progress/Scope/Next").pressed.emit()
+	demo._layout._technology.select_node("valuable")
+	demo._layout._technology._select_scope(1)
 	_check(
 		demo._layout.selected_technology_nest_id == 2, "region selector changes the research target"
 	)
@@ -162,7 +167,7 @@ func _check_quick_upgrade(demo: DemoScript) -> void:
 	_check(not purchase.disabled, "quick upgrade exposes an affordable purchase")
 	purchase.pressed.emit()
 	_check(
-		demo.run.pipe_level == 1 and demo.run.net_level == 0,
+		demo.run.pipe_level == 2 and demo.run.net_level == 0,
 		"quick upgrade buys only the hovered tool"
 	)
 	demo._layout._update_quick_hover(0.2, Vector2.ZERO)
@@ -171,9 +176,10 @@ func _check_quick_upgrade(demo: DemoScript) -> void:
 
 
 func _branch_purchase(demo: DemoScript, branch: String) -> Button:
-	return (
-		demo.get_node("%ToolCard/Content/Branches/" + branch + "/Content/Action/Purchase") as Button
-	)
+	var id: String = branch.to_lower()
+	var page: PageScript = demo._layout._technology
+	page.select_node(demo.run._resolve_technology_action(id))
+	return page.purchase
 
 
 func _check_manual_collection(demo: DemoScript) -> void:
@@ -305,11 +311,7 @@ func _check_automation_and_completion(demo: DemoScript) -> void:
 		),
 		"automatic reward is paid once without advancing combo"
 	)
-	_check(demo.run.upgrade_pipe(), "stronger pipe permits stable governance research")
-	_check(
-		demo.run.purchase_technology("governance"),
-		"stable governance research unlocks the final construction step"
-	)
+	_check(demo.run.get_technology_level("automation") == 1, "automation research remains unlocked")
 	_check(demo.run.upgrade_nest(1), "the first region becomes fully governed")
 	_check(
 		demo.run.get_nest(1).is_tamed and demo._regions.size() == demo.run.generated_nests,
@@ -325,7 +327,7 @@ func _check_automation_and_completion(demo: DemoScript) -> void:
 		)
 	_check(
 		demo.run.pipe_level == 6 and is_equal_approx(demo.run.get_pipe_capture_seconds(), 0.11),
-		"the technology row reaches the seventh pipe speed tier"
+		"the technology page reaches the seventh pipe speed tier"
 	)
 	_check_stable_valuable_collection(demo)
 	var spawn_count: int = int(demo._spawn_directions.get(1, 0))
@@ -431,7 +433,7 @@ func _capture_layouts(demo: DemoScript) -> void:
 		demo._layout.close_panels()
 		demo.get_node("%TechnologyButton").pressed.emit()
 		await _settle_layout()
-		var tree_card: Control = demo.get_node("%ToolCard") as Control
+		var tree_card: Control = demo._layout._technology
 		_check(screen.encloses(tree_card.get_global_rect()), "technology tree fits the viewport")
 		for branch: String in ["Pipe", "Net", "Governance", "Combo", "Valuable"]:
 			_check(

@@ -1,7 +1,8 @@
 extends Control
 
-@export_range(0, 4) var symbol: int = 0
+@export_range(0, 8) var symbol: int = 0
 @export var ink: Color = Color("31594e")
+@export var inset: Color = Color("fbf7e9")
 
 
 func _draw() -> void:
@@ -18,7 +19,7 @@ func _draw() -> void:
 			)
 			draw_polyline(
 				PackedVector2Array([Vector2(-13, 12), Vector2(-13, -7), Vector2(10, -7)]),
-				Color("fbf7e9"),
+				inset,
 				5.0,
 				true
 			)
@@ -92,3 +93,46 @@ func _draw() -> void:
 				1.5,
 				true
 			)
+		5:
+			draw_arc(Vector2.ZERO, 17.0, 0, TAU, 40, ink, 3.0, true)
+			draw_polyline(
+				PackedVector2Array([Vector2(0, -11), Vector2.ZERO, Vector2(9, 5)]), ink, 3.0, true
+			)
+			draw_line(Vector2(-5, -22), Vector2(5, -22), ink, 3.0, true)
+		6:
+			draw_circle(Vector2(-5, 3), 12.0, ink, false, 3.0, true)
+			draw_circle(Vector2(-5, 3), 6.0, ink, false, 2.0, true)
+			draw_line(Vector2(11, -13), Vector2(21, -13), ink, 3.0, true)
+			draw_line(Vector2(16, -18), Vector2(16, -8), ink, 3.0, true)
+		7:
+			draw_arc(Vector2.ZERO, 12.0, 0, TAU, 32, ink, 4.0, true)
+			for tooth: int in range(8):
+				var direction: Vector2 = Vector2.from_angle(float(tooth) * PI / 4.0)
+				draw_line(direction * 13.0, direction * 19.0, ink, 5.0, true)
+			draw_polyline(
+				PackedVector2Array([Vector2(-6, 0), Vector2(-1, 5), Vector2(7, -5)]),
+				inset,
+				3.0,
+				true
+			)
+		8:
+			draw_rect(Rect2(-13, -13, 26, 26), ink, false, 2.0)
+			for offset: int in [-5, 4]:
+				draw_line(Vector2(-13, offset), Vector2(13, offset), ink, 1.0, true)
+				draw_line(Vector2(offset, -13), Vector2(offset, 13), ink, 1.0, true)
+			for direction: Vector2 in [Vector2.ONE, Vector2(-1, 1), Vector2(-1, -1), Vector2(1, -1)]:
+				draw_line(direction * 13.0, direction * 20.0, ink, 2.0, true)
+				draw_line(
+					direction * 20.0,
+					Vector2(direction.x * 14.0, direction.y * 20.0),
+					ink,
+					2.0,
+					true
+				)
+				draw_line(
+					direction * 20.0,
+					Vector2(direction.x * 20.0, direction.y * 14.0),
+					ink,
+					2.0,
+					true
+				)

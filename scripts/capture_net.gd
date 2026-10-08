@@ -1,8 +1,8 @@
-@tool
 class_name CaptureNet
 extends Node2D
 
 const SurfaceProjection = preload("res://scripts/surface_projection.gd")
+const FrameArt = preload("res://scripts/场景动画/帧动画.gd")
 
 enum Presentation { PREVIEW, CAST, OPEN, CARRIED, RESULT, COOLDOWN }
 
@@ -21,9 +21,8 @@ var _result_age: float = 0.0
 var _result_count: int = 0
 
 @onready var _rim: Line2D = $Rim
-@onready var _sack: Polygon2D = $Sack
-@onready var _sack_outline: Line2D = $SackOutline
-@onready var _handle: Line2D = $Handle
+@onready var _art_root: Node2D = $ArtRoot
+@onready var _art: FrameArt = $ArtRoot/捕网
 @onready var _label_compensation: Node2D = $LabelCompensation
 @onready var _collected_label: Label = %CollectedLabel
 @onready var _result_ring: Line2D = $ResultRing
@@ -45,10 +44,9 @@ func _process(delta: float) -> void:
 
 func _update_visual_compensation() -> void:
 	var compensation: Transform2D = SurfaceProjection.get_visual_compensation(self)
-	_sack.transform = compensation
-	_sack_outline.transform = compensation
-	_handle.transform = compensation
 	var screen_transform: Transform2D = get_global_transform_with_canvas() * compensation
+	# The net lies on the ground, so it shares the projected capture footprint.
+	_art_root.transform = Transform2D.IDENTITY
 	_label_compensation.transform = (
 		compensation * Transform2D(-screen_transform.get_rotation(), Vector2.ZERO)
 	)
@@ -97,15 +95,12 @@ func _present(mode: Presentation, pointer: Vector2, radius: float, progress: flo
 	_radius = radius
 	_progress = clampf(progress, 0.0, 1.0)
 	visible = true
-	var bag_visible: bool = mode == Presentation.CARRIED
-	_sack.visible = bag_visible
-	_sack_outline.visible = bag_visible
-	_handle.visible = bag_visible or mode in [Presentation.PREVIEW, Presentation.COOLDOWN]
 	_collected_label.visible = false
 	_result_ring.visible = mode == Presentation.RESULT
 	_result_label.visible = false
 	_cooldown_label.visible = false
-	_rim.visible = not bag_visible and mode != Presentation.RESULT
+	_rim.visible = mode in [Presentation.PREVIEW, Presentation.COOLDOWN]
+	_sync_art()
 	var display_radius: float = _display_radius()
 	var rim_points: PackedVector2Array = PackedVector2Array()
 	for point_index: int in range(65):
@@ -114,11 +109,7 @@ func _present(mode: Presentation, pointer: Vector2, radius: float, progress: flo
 	_rim.default_color = Color(
 		ink, 0.25 if mode in [Presentation.PREVIEW, Presentation.COOLDOWN] else 0.85
 	)
-	_handle.points = (
-		PackedVector2Array([Vector2(-21.0, 25.0), Vector2(-5.0, 6.0)])
-		if mode in [Presentation.PREVIEW, Presentation.COOLDOWN]
-		else PackedVector2Array([Vector2(0.0, -42.0), Vector2(0.0, -4.0)])
-	)
+
 	queue_redraw()
 
 
@@ -134,29 +125,37 @@ func _display_radius() -> float:
 			return 12.0
 
 
+func _sync_art() -> void:
+	_art_root.visible = _presentation != Presentation.RESULT
+	var frame: int = 4
+	var size_ratio: float = 1.0
+	var opacity: float = 1.0
+	match _presentation:
+		Presentation.PREVIEW:
+			opacity = 0.55
+		Presentation.COOLDOWN:
+			opacity = 0.20
+		Presentation.CAST:
+			frame = mini(2, floori(_progress * 3.0))
+		Presentation.OPEN:
+			frame = 3 if _progress < 0.35 else 4
+			size_ratio = lerpf(1.0, 0.14, ease(_progress, 2.0))
+		Presentation.CARRIED:
+			size_ratio = 0.25
+	# Phase-driven frames stay synchronized with the existing cast/collection clock.
+	_art.seek_frame(frame)
+	var factor: float = 2.0 * _radius / 380.0 * size_ratio
+	_art.scale = Vector2.ONE * factor
+	_art.position = Vector2(3.0, 3.5) * factor
+	_art.modulate.a = opacity
+
+
 func _draw() -> void:
-	if _presentation == Presentation.CARRIED:
-		draw_set_transform_matrix(SurfaceProjection.get_visual_compensation(self))
-		_draw_bag_mesh()
-		return
 	if _presentation == Presentation.RESULT:
 		_draw_result_sparks()
 		return
-	var display_radius: float = _display_radius()
-	var cooling: bool = _presentation == Presentation.COOLDOWN
-	var preview: bool = _presentation in [Presentation.PREVIEW, Presentation.COOLDOWN]
-	var mesh_color: Color = (
-		Color(ink, 0.08) if cooling else Color(accent, 0.12 if preview else 0.65)
-	)
-	if not preview:
-		draw_circle(Vector2.ZERO, display_radius, Color(accent, 0.12))
-	for line_index: int in range(-4, 5):
-		var cross: float = display_radius * float(line_index) / 5.0
-		var half_length: float = sqrt(maxf(0.0, display_radius * display_radius - cross * cross))
-		draw_line(Vector2(cross, -half_length), Vector2(cross, half_length), mesh_color, 1.1, true)
-		draw_line(Vector2(-half_length, cross), Vector2(half_length, cross), mesh_color, 1.1, true)
-	draw_set_transform_matrix(SurfaceProjection.get_visual_compensation(self))
-	if cooling:
+	if _presentation == Presentation.COOLDOWN:
+		draw_set_transform_matrix(SurfaceProjection.get_visual_compensation(self))
 		draw_arc(Vector2.ZERO, 13.0, 0.0, TAU, 48, Color(ink, 0.2), 2.5, true)
 		draw_arc(
 			Vector2.ZERO,
@@ -168,13 +167,6 @@ func _draw() -> void:
 			2.5,
 			true
 		)
-	elif preview:
-		draw_circle(Vector2.ZERO, 10.0, Color("ecebd6"))
-		draw_arc(Vector2.ZERO, 10.0, 0.0, TAU, 32, ink, 2.0, true)
-		draw_line(Vector2(-7.0, -3.0), Vector2(7.0, -3.0), accent, 1.0, true)
-		draw_line(Vector2(-7.0, 3.0), Vector2(7.0, 3.0), accent, 1.0, true)
-		draw_line(Vector2(-3.0, -7.0), Vector2(-3.0, 7.0), accent, 1.0, true)
-		draw_line(Vector2(3.0, -7.0), Vector2(3.0, 7.0), accent, 1.0, true)
 
 
 func _update_result_ring() -> void:
@@ -199,16 +191,4 @@ func _draw_result_sparks() -> void:
 			Color(accent, 1.0 - progress),
 			2.4,
 			true
-		)
-
-
-func _draw_bag_mesh() -> void:
-	for line_index: int in range(4):
-		var cross: float = -15.0 + float(line_index) * 10.0
-		draw_line(Vector2(cross, 0.0), Vector2(cross * 0.6, 36.0), Color(accent, 0.8), 1.0, true)
-	for line_index: int in range(4):
-		var height: float = 4.0 + float(line_index) * 9.0
-		var half_width: float = 23.0 - float(line_index) * 2.5
-		draw_line(
-			Vector2(-half_width, height), Vector2(half_width, height), Color(accent, 0.8), 1.0, true
 		)

@@ -1,7 +1,8 @@
 extends SceneTree
 
+const PageScript = preload("res://scripts/ui/technology_page.gd")
 const DemoScript = preload("res://scripts/disk_demo.gd")
-const BranchScript = preload("res://scripts/ui/technology_branch.gd")
+const NodeScript = preload("res://scripts/ui/technology_node.gd")
 const DemoScene: PackedScene = preload("res://scenes/disk_demo.tscn")
 
 var _failures: Array[String] = []
@@ -34,7 +35,7 @@ func _run_checks() -> void:
 		push_error("FAIL: " + failure)
 	if _failures.is_empty():
 		print(
-			"PASS: five technology rows, compact pipe feedback, capture radius and quick-tool mapping"
+			"PASS: nine technology items, compact pipe feedback, capture radius and quick-tool mapping"
 		)
 	quit(0 if _failures.is_empty() else 1)
 
@@ -46,21 +47,22 @@ func _check_tree(demo: DemoScript, resolution: Vector2i) -> void:
 	demo._drive_tool(0.0, Vector2.ZERO, false)
 	await _settle()
 	_check(
-		demo._layout._branches.get_child_count() == 5,
-		"the tree contains the five retained technologies"
+		demo._layout._technology.TECHNOLOGIES.size() == 9,
+		"the tree contains nine distinct technology items"
 	)
 	_check(
-		not demo._layout._branches.has_node("Attraction"), "the attraction technology row is absent"
+		not demo._layout._technology._nodes.has("attraction"),
+		"the attraction technology row is absent"
 	)
 	_check(
 		DiskDemoLayout.BRANCH_IDS[0] == "pipe" and DiskDemoLayout.BRANCH_IDS[1] == "net",
 		"quick tool IDs preserve pipe and net ordering"
 	)
-	for index: int in range(DiskDemoLayout.BRANCH_IDS.size()):
-		var branch: BranchScript = demo._layout._branches.get_child(index) as BranchScript
+	for id: String in DiskDemoLayout.BRANCH_IDS:
+		var action: String = demo.run._resolve_technology_action(id)
 		_check(
-			branch.technology_id == DiskDemoLayout.BRANCH_IDS[index],
-			"retained branch rows match their purchase IDs"
+			demo._layout._technology._nodes[action].technology_id == action,
+			"graph nodes match their purchase IDs"
 		)
 	var pipe_level: int = demo.run.pipe_level
 	var capture_radius: float = demo.run.get_pipe_radius()
@@ -107,21 +109,22 @@ func _check_tree(demo: DemoScript, resolution: Vector2i) -> void:
 
 
 func _check_layout(demo: DemoScript) -> void:
-	var card: Rect2 = demo._layout._tool_card.get_global_rect()
+	var page: PageScript = demo._layout._technology
+	var card: Rect2 = page.get_global_rect()
 	_check(
 		Rect2(Vector2.ZERO, root.get_visible_rect().size).encloses(card),
-		"the full technology card fits the viewport"
+		"technology page fits the viewport"
 	)
-	for row: BranchScript in demo._layout._branches.get_children():
-		_check(card.encloses(row.get_global_rect()), "every technology row stays inside the card")
-		var description: Rect2 = row.get_node("Content/Progress/Description").get_global_rect()
-		var action: Rect2 = row.get_node("Content/Action").get_global_rect()
-		_check(not description.intersects(action), "description and purchase button do not overlap")
-		for stage: PanelContainer in row._stage_panels:
-			_check(
-				row.get_global_rect().encloses(stage.get_global_rect()),
-				"all stage nodes fit their own row"
-			)
+	for node: NodeScript in page._nodes.values():
+		_check(
+			page._canvas.get_global_rect().encloses(node.get_global_rect()),
+			"all nodes fit the canvas"
+		)
+	for node: NodeScript in page._nodes.values():
+		_check(
+			not node.get_global_rect().intersects(page.purchase.get_global_rect()),
+			"graph nodes and purchase action do not overlap"
+		)
 
 
 func _settle() -> void:

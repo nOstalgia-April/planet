@@ -1,0 +1,58 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/场景动画/帧动画.gd" id="r001"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/黏液怪移动/001.png" id="r002"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/黏液怪移动/002.png" id="r003"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/黏液怪移动/003.png" id="r004"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/黏液怪移动/004.png" id="r005"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/黏液怪移动/005.png" id="r006"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/黏液怪移动/006.png" id="r007"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/黏液怪移动/007.png" id="r008"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/黏液怪移动/008.png" id="r009"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/黏液怪移动/009.png" id="r010"]
+
+[sub_resource type="Animation" id="r011"]
+resource_name = "移动"
+length = 1.8
+loop_mode = 1
+step = 0.2
+tracks/0/type = "value"
+tracks/0/path = NodePath("贴图:texture")
+tracks/0/interp = 0
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("r002"), ExtResource("r003"), ExtResource("r004"), ExtResource("r005"), ExtResource("r006"), ExtResource("r007"), ExtResource("r008"), ExtResource("r009"), ExtResource("r010")]
+}
+
+[sub_resource type="AnimationLibrary" id="r012"]
+_data = {
+&"移动": SubResource("r011")
+}
+
+[node name="黏液怪移动" type="Node2D" node_paths=PackedStringArray("animation_player")]
+script = ExtResource("r001")
+animation_player = NodePath("动画播放器")
+clip = &"移动"
+frames_per_second = 5.0
+frame_count = 9
+
+[node name="贴图" type="Sprite2D" parent="."]
+texture = ExtResource("r002")
+centered = true
+
+[node name="动画播放器" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("r012")
+}

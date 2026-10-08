@@ -1,0 +1,145 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scenes/主菜单/主菜单.gd" id="r001"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/主菜单/封面.png" id="r002"]
+
+[ext_resource type="Theme" path="res://resources/场景预览主题.tres" id="r003"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/主菜单/左侧底板.png" id="r004"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/主菜单/选中底板.png" id="r007"]
+
+[sub_resource type="AtlasTexture" id="r005"]
+atlas = ExtResource("r004")
+region = Rect2(32, 12, 313, 100)
+
+[sub_resource type="StyleBoxTexture" id="r006"]
+texture = SubResource("r005")
+
+[sub_resource type="AtlasTexture" id="r008"]
+atlas = ExtResource("r007")
+region = Rect2(33, 26, 311, 100)
+
+[sub_resource type="StyleBoxTexture" id="r009"]
+texture = SubResource("r008")
+
+[node name="主菜单" type="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("r001")
+theme = ExtResource("r003")
+
+[node name="黑底" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+mouse_filter = 2
+
+[node name="画布" type="Control" parent="."]
+offset_right = 1920.0
+offset_bottom = 1080.0
+
+[node name="封面" type="TextureRect" parent="画布"]
+offset_right = 1920.0
+offset_bottom = 1080.0
+texture = ExtResource("r002")
+mouse_filter = 2
+expand_mode = 1
+
+[node name="中文名" type="Label" parent="画布"]
+offset_left = 720.0
+offset_top = 616.0
+offset_right = 1220.0
+offset_bottom = 674.0
+text = "星 球 清 扫 计 划"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+mouse_filter = 2
+
+[node name="开始" type="Button" parent="画布"]
+offset_left = 92.0
+offset_top = 640.0
+offset_right = 402.0
+offset_bottom = 736.0
+text = "start"
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("r009")
+theme_override_styles/hover = SubResource("r009")
+theme_override_styles/pressed = SubResource("r009")
+
+[node name="预览" type="Button" parent="画布"]
+offset_left = 92.0
+offset_top = 770.0
+offset_right = 402.0
+offset_bottom = 866.0
+text = "预览"
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("r006")
+theme_override_styles/hover = SubResource("r009")
+theme_override_styles/pressed = SubResource("r009")
+
+[node name="退出" type="Button" parent="画布"]
+offset_left = 92.0
+offset_top = 900.0
+offset_right = 402.0
+offset_bottom = 996.0
+text = "退出"
+theme_override_font_sizes/font_size = 32
+theme_override_styles/normal = SubResource("r006")
+theme_override_styles/hover = SubResource("r009")
+theme_override_styles/pressed = SubResource("r009")
+
+[node name="预览选择" type="PanelContainer" parent="画布"]
+visible = false
+offset_left = 444.0
+offset_top = 642.0
+offset_right = 820.0
+offset_bottom = 1022.0
+
+[node name="列表" type="VBoxContainer" parent="画布/预览选择"]
+layout_mode = 2
+
+[node name="近景游玩" type="Button" parent="画布/预览选择/列表"]
+layout_mode = 2
+text = "近景游玩"
+
+[node name="全景游玩" type="Button" parent="画布/预览选择/列表"]
+layout_mode = 2
+text = "全景游玩"
+
+[node name="吸尘器" type="Button" parent="画布/预览选择/列表"]
+layout_mode = 2
+text = "吸尘器"
+
+[node name="捕网" type="Button" parent="画布/预览选择/列表"]
+layout_mode = 2
+text = "捕网"
+
+[node name="黏液怪移动" type="Button" parent="画布/预览选择/列表"]
+layout_mode = 2
+text = "黏液怪移动"
+
+[connection signal="pressed" from="画布/开始" to="." method="_start"]
+
+[connection signal="pressed" from="画布/预览" to="." method="_toggle_previews"]
+
+[connection signal="pressed" from="画布/退出" to="." method="_quit"]
+
+[connection signal="pressed" from="画布/预览选择/列表/近景游玩" to="." method="_open_scene" binds=["res://features/场景预览/近景游玩预览.tscn"]]
+
+[connection signal="pressed" from="画布/预览选择/列表/全景游玩" to="." method="_open_scene" binds=["res://features/场景预览/全景游玩预览.tscn"]]
+
+[connection signal="pressed" from="画布/预览选择/列表/吸尘器" to="." method="_open_scene" binds=["res://features/场景预览/吸尘器预览.tscn"]]
+
+[connection signal="pressed" from="画布/预览选择/列表/捕网" to="." method="_open_scene" binds=["res://features/场景预览/捕网预览.tscn"]]
+
+[connection signal="pressed" from="画布/预览选择/列表/黏液怪移动" to="." method="_open_scene" binds=["res://features/场景预览/黏液怪移动预览.tscn"]]

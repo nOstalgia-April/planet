@@ -170,7 +170,7 @@ func _check_release_positions(demo: DemoScript) -> void:
 			demo.get_node("%TechnologyButton").pressed.emit()
 			await process_frame
 			await process_frame
-			var shop: Control = demo.get_node("%ToolCard") as Control
+			var shop: Control = demo._layout._technology
 			var shop_screen: Vector2 = shop.get_global_rect().get_center()
 			_check(
 				demo._layout.is_over_ui(shop_screen),

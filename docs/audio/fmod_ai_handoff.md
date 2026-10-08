@@ -41,11 +41,13 @@ git rev-parse --short HEAD
 | 用途 | 入口 | 操作 / 范围 |
 | --- | --- | --- |
 | 验证 FMOD 插件与音频包 | `features/fmod_audio_test/fmod_audio_test.tscn` | 打开后 F6；本轮主要验收入口 |
-| 体验最新游戏 Demo | `scenes/disk_demo.tscn` | F5；目前使用原生 WAV |
+| 体验最新游戏 Demo | `scenes/主菜单/主菜单.tscn` | F5 后点击 **start**；目前使用原生 WAV。基础玩法场景 `scenes/disk_demo.tscn` 可按 F6 |
+| 看场景和工具美术预览 | 主菜单「预览」或 `features/场景预览/` | 近景、全景、吸尘器、捕网与黏液怪移动；[预览说明](../../features/场景预览/README.md) |
+| 看科技树页面 | 主游戏底部「科技树」或 `features/technology_tree_preview/technology_tree_preview.tscn` | 独立场景按 F6；[页面说明](../../features/technology_tree_preview/README.md) |
 | 看物件动作和巢穴升级过程 | `features/物品动画预览/物品动画总览.tscn` | F6；可选物件、动作、循环与逐帧进度；[预览说明](../../features/物品动画预览/README.md) |
 | 比较四种喷溅表现 | `features/splash_preview/splash_preview.tscn` | F6；说明见[喷溅预览手册](../../features/splash_preview/README.md) |
 
-物品动画和喷溅是独立预览，不代表这些资源或对应音效已经接入主游戏。
+巢穴升级、自动产出与吸尘器、捕网动画已接入主游戏；物品动画总览仍可独立查看。黏液怪移动原画与喷溅仍为独立预览，对应新音效尚未接入。
 
 ### 给声音制作的 Demo 上下文
 
@@ -78,7 +80,7 @@ git rev-parse --short HEAD
 | 吸取事件 | `event:/Tools/Suction`：非空间、持续循环、可停止 |
 | 吸取参数 | `Progress`：事件内、可写、连续、范围 0–1；不是全局、离散或标签参数 |
 | 自定义事件 | 也分配到 `SFX`，使用完整 `event:/...` 路径；现有入口拒绝 3D 事件 |
-| 默认启动场景 | `scenes/disk_demo.tscn`；F5 不会进入 FMOD 试听 |
+| 默认启动场景 | `scenes/主菜单/主菜单.tscn`；F5 后点击 **start** 进入 Demo，FMOD 试听使用独立场景 F6 |
 
 先读上述两份操作手册；需要排查实现时按以下顺序定位：
 
@@ -106,7 +108,13 @@ git rev-parse --short HEAD
 
 交回同次 Build 的三个 Bank、可继续编辑的完整 Studio 源工程及依赖素材、素材来源说明，并附实际提交号、工具版本、操作结果和错误原文。源工程可另交压缩包，账号、安装包和无关素材不放入仓库。完整反馈模板在[测试通路末尾](fmod_test_route.md#10-给开发同事的反馈模板)。
 
-## 2026-10-08 发布前核验记录
+## 2026-10-08 本次 Demo 增量同步核验
+
+本次将待提交文件导出为不含本机 `.godot` 缓存的完整副本，使用 Windows x64 / Godot 4.7.2 完成资源导入及重开。主菜单无界面启动通过，五项检查通过：`technology_page_check.gd`、`runtime_art_integration_check.gd`、`场景预览检查.gd`、`progressive_rules_check.gd`、`demo_playthrough_check.gd`，覆盖科技前置与购买、巢穴和工具动画、六个场景入口、同局视图切换、规则及零糖果自动通关。运行检查未出现脚本或资源加载错误；本次未重新进行画面或声音验收。
+
+全新导入时仍出现既有 `FmodServer` 临时接口报错，重开后消失；无界面编辑器退出的纹理 / 对象 / 资源释放提示、Live Update `9264` 端口占用警告及 Bank 缺失仍按原有范围记录。本机旧版 `gdformat --check` 不支持强类型循环等现有语法，本次以目标 Godot 的实际解析与功能检查为依据。
+
+## 2026-10-08 前一批协作同步的发布前核验记录
 
 以本次待上传文件导出一个不含本机 `.godot` 缓存的完整副本，使用 Windows x64 / Godot 4.7.2 检查：
 
@@ -116,7 +124,7 @@ git rev-parse --short HEAD
 - 部分运行日志出现 Live Update 的 `9264` 端口占用警告。若 Fred 遇到同样情况，先保留日志、确认自己是否同时运行其他 FMOD 工程；本轮没有验证 Studio Live Update 连接。
 - 本轮没有 Bank，未完成 Bank 事件、参数听感或真实耳听的 Core WAV 验收；也未验证导出成品与其他操作系统。这些仍待 Fred 的实际制作和试听结果。
 
-本轮只同步已有实现并更新交接文档，没有改动插件版本或 FMOD 试听逻辑。
+上述核验记录对应上一批同步；本次后续更新加入科技树、主菜单、场景美术预览及巢穴与工具动画接入，未改动插件版本或 FMOD 试听逻辑。
 
 ## 可直接发给 Fred 的 AI
 

@@ -1,0 +1,96 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://features/场景预览/动作预览.gd" id="r001"]
+
+[ext_resource type="Theme" path="res://resources/场景预览主题.tres" id="r002"]
+
+[node name="动作预览" type="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("r001")
+theme = ExtResource("r002")
+
+[node name="背景" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.08, 0.09, 0.12, 1)
+
+[node name="返回主菜单" type="Button" parent="."]
+offset_left = 32.0
+offset_top = 28.0
+offset_right = 168.0
+offset_bottom = 80.0
+text = "主菜单"
+focus_mode = 0
+
+[node name="工具栏" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 40.0
+offset_top = -156.0
+offset_right = -40.0
+offset_bottom = -32.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="按钮" type="HBoxContainer" parent="工具栏"]
+layout_mode = 2
+alignment = 1
+
+[node name="播放" type="Button" parent="工具栏/按钮"]
+layout_mode = 2
+text = "暂停"
+focus_mode = 0
+
+[node name="重播" type="Button" parent="工具栏/按钮"]
+layout_mode = 2
+text = "重播"
+focus_mode = 0
+
+[node name="上一帧" type="Button" parent="工具栏/按钮"]
+layout_mode = 2
+text = "上一帧"
+focus_mode = 0
+
+[node name="下一帧" type="Button" parent="工具栏/按钮"]
+layout_mode = 2
+text = "下一帧"
+focus_mode = 0
+
+[node name="进度" type="HBoxContainer" parent="工具栏"]
+layout_mode = 2
+
+[node name="滑条" type="HSlider" parent="工具栏/进度"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+step = 1.0
+focus_mode = 0
+
+[node name="帧数" type="Label" parent="工具栏/进度"]
+layout_mode = 2
+custom_minimum_size = Vector2(250, 0)
+horizontal_alignment = 2
+
+[connection signal="pressed" from="返回主菜单" to="." method="_return_to_menu"]
+
+[connection signal="pressed" from="工具栏/按钮/播放" to="." method="_toggle_play"]
+
+[connection signal="pressed" from="工具栏/按钮/重播" to="." method="_replay"]
+
+[connection signal="pressed" from="工具栏/按钮/上一帧" to="." method="_previous"]
+
+[connection signal="pressed" from="工具栏/按钮/下一帧" to="." method="_next"]
+
+[connection signal="value_changed" from="工具栏/进度/滑条" to="." method="_seek"]

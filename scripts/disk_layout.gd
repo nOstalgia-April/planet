@@ -8,7 +8,7 @@ signal nest_technology_upgrade_requested(nest_id: int, id: String)
 
 const DESIGN_SIZE: Vector2 = Vector2(1280.0, 800.0)
 const BRANCH_IDS: PackedStringArray = ["pipe", "net", "governance", "combo"]
-const BranchScript = preload("res://scripts/ui/technology_branch.gd")
+const PageScript = preload("res://scripts/ui/technology_page.gd")
 
 var selected_technology_nest_id: int = 1
 var _shop_layout_queued: bool = false
@@ -18,9 +18,8 @@ var _run: PrototypeRun
 var _hovered_tool: int = -1
 var _hover_close_remaining: float = 0.0
 
-@onready var _tool_card: Control = %ToolCard
 @onready var _nest_card: Control = $NestCard
-@onready var _technology: Control = %Technology
+@onready var _technology: PageScript = %Technology
 @onready var _technology_button: Button = %TechnologyButton
 @onready var _tool_dock: Control = $ToolDock
 @onready var _quick_tools: HBoxContainer = $ToolDock/Content/QuickTools
@@ -28,7 +27,6 @@ var _hover_close_remaining: float = 0.0
 @onready var _completion: Control = %Completion
 @onready var _quick_buttons: Array[Button] = [%QuickPipeButton, %QuickNetButton]
 @onready var _upgrade_panels: Array[PanelContainer] = [$PipeUpgrade, $NetUpgrade]
-@onready var _branches: VBoxContainer = %ToolCard.get_node("Content/Branches")
 @onready var _combo_label: Label = %ComboLabel
 @onready var _combo_timer: ProgressBar = %ComboTimerBar
 @onready var _net_timer_label: Label = %QuickNetButton.get_node("Visual/Text/Detail")
@@ -38,10 +36,11 @@ func _ready() -> void:
 	_technology.hide()
 	_nest_card.hide()
 	_technology_button.pressed.connect(_show_technology)
-	%CloseTechnologyButton.pressed.connect(close_panels)
+	_technology.close_requested.connect(close_panels)
+	_technology.technology_upgrade_requested.connect(technology_upgrade_requested.emit)
+	_technology.nest_technology_upgrade_requested.connect(nest_technology_upgrade_requested.emit)
+	_technology.nest_selected.connect(_set_technology_nest)
 	%CloseNestButton.pressed.connect(close_panels)
-	_technology.gui_input.connect(_on_technology_input)
-	_tool_card.minimum_size_changed.connect(_queue_shop_layout)
 	_nest_card.minimum_size_changed.connect(_queue_shop_layout)
 	for index: int in range(2):
 		_upgrade_panels[index].minimum_size_changed.connect(_queue_quick_layout)
@@ -49,10 +48,6 @@ func _ready() -> void:
 		_quick_buttons[index].focus_entered.connect(_show_quick_upgrade.bind(index))
 		var purchase: Button = _upgrade_panels[index].get_node("Content/Purchase") as Button
 		purchase.pressed.connect(_request_quick_upgrade.bind(index))
-	for branch: BranchScript in _branches.get_children():
-		branch.upgrade_requested.connect(_request_technology_upgrade.bind(branch.technology_id))
-		if branch.technology_id == "valuable":
-			branch.scope_step_requested.connect(_cycle_technology_nest)
 
 
 func _process(delta: float) -> void:
@@ -100,7 +95,7 @@ func apply_layout(viewport_size: Vector2) -> Rect2:
 
 func refresh_progression(run: PrototypeRun) -> void:
 	_run = run
-	(%ToolCard.get_node("Content/Header/Wallet") as Label).text = "%d 糖果" % run.candy
+	_technology.refresh(run, selected_technology_nest_id)
 	var active_count: int = 0
 	var partial_count: int = 0
 	var managed_count: int = 0
@@ -116,37 +111,9 @@ func refresh_progression(run: PrototypeRun) -> void:
 	)
 	var combo_hint: String = (
 		"连续吸入 %d 只后，每只额外获得糖果；每次吸入刷新 %.0f 秒。捕网和自动采集不刷新。"
-		% [run.settings.combo_target, run.settings.combo_window_seconds]
+		% [run.settings.combo_target, run.get_combo_window_seconds()]
 	)
 	$ComboChip.tooltip_text = combo_hint
-	_branches.get_node("Combo").tooltip_text = combo_hint
-	for index: int in range(BRANCH_IDS.size()):
-		var id: String = BRANCH_IDS[index]
-		var branch: BranchScript = _branches.get_child(index) as BranchScript
-		var displayed_level: int = run.get_technology_level(id)
-		if id == "pipe":
-			var names: PackedStringArray = PackedStringArray()
-			for stage: int in range(1, run.settings.pipe_capture_seconds.size()):
-				names.append("%s 秒" % String.num(run.settings.pipe_capture_seconds[stage], 3))
-			branch.configure_stages(names)
-		elif id == "net":
-			var names: PackedStringArray = PackedStringArray(["解锁捕网"])
-			for stage: int in range(1, run.settings.net_capacities.size()):
-				names.append("%d 只" % run.settings.net_capacities[stage])
-			branch.configure_stages(names)
-			displayed_level = run.net_level + 1 if run.net_unlocked else 0
-		branch.refresh(
-			displayed_level,
-			run.get_technology_cost(id),
-			run.get_technology_description(id),
-			run.get_technology_requirement(id),
-			run.candy
-		)
-		if id == "net" and not run.net_unlocked:
-			(branch.get_node("Content/Action/Purchase") as Button).text = (
-				"解锁 · %d 糖果" % run.get_technology_cost("net")
-			)
-	_refresh_valuable_branch()
 	for index: int in range(2):
 		_refresh_quick_tool(index)
 	refresh_timers(run)
@@ -164,7 +131,7 @@ func refresh_timers(run: PrototypeRun) -> void:
 		)
 	else:
 		_combo_label.text = "连吸 0 / %d" % run.settings.combo_target
-	_combo_timer.max_value = run.settings.combo_window_seconds
+	_combo_timer.max_value = run.get_combo_window_seconds()
 	_combo_timer.value = run.combo_remaining
 	if not run.net_unlocked:
 		_net_timer_label.text = "尚未解锁"
@@ -172,32 +139,6 @@ func refresh_timers(run: PrototypeRun) -> void:
 		_net_timer_label.text = "冷却 %.1f 秒" % run.net_cooldown_remaining
 	else:
 		_net_timer_label.text = "就绪 · %d 只" % run.get_net_capacity()
-
-
-func _refresh_valuable_branch() -> void:
-	var branch: BranchScript = _branches.get_node("Valuable") as BranchScript
-	if _run.nests.is_empty():
-		branch.set_nest_scope("等待发现新巢穴", false)
-		branch.refresh(0, 0, "为此区域引入高价值新生个体", "尚未发现巢穴", _run.candy)
-		return
-	selected_technology_nest_id = clampi(selected_technology_nest_id, 1, _run.nests.size())
-	var nest: NestState = _run.get_nest(selected_technology_nest_id)
-	branch.set_nest_scope(
-		"巢穴 %02d · %s" % [nest.nest_id, "已研究" if nest.valuable_level > 0 else "未研究"],
-		_run.nests.size() > 1
-	)
-	var cost: int = _run.get_nest_technology_cost(nest.nest_id, "valuable")
-	var description: String = (
-		"此后每 %d 只新生个体出现 1 只黄金变体 · 糖果 ×%d"
-		% [_run.settings.valuable_spawn_every, _run.settings.valuable_reward_multiplier]
-	)
-	branch.refresh(
-		nest.valuable_level,
-		cost,
-		description,
-		_run.get_nest_technology_requirement(nest.nest_id, "valuable"),
-		_run.candy
-	)
 
 
 func _refresh_quick_tool(index: int) -> void:
@@ -228,13 +169,17 @@ func _refresh_quick_tool(index: int) -> void:
 	(popup.get_node("Content/Effect") as Label).text = _run.get_technology_description(id)
 	var purchase: Button = popup.get_node("Content/Purchase") as Button
 	var cost: int = _run.get_technology_cost(id)
-	purchase.disabled = cost < 0 or _run.candy < cost
+	var requirement: String = _run.get_technology_requirement(id)
+	purchase.disabled = cost < 0 or _run.candy < cost or not requirement.is_empty()
 	purchase.text = "已升至最高级" if cost < 0 else "升级 · %d 糖果" % cost
 	if index == 1 and not _run.net_unlocked:
 		purchase.text = "解锁 · %d 糖果" % cost
 	purchase.tooltip_text = ""
 	if cost >= 0 and _run.candy < cost:
 		purchase.tooltip_text = "还需 %d 糖果" % (cost - _run.candy)
+	if not requirement.is_empty():
+		purchase.text = requirement
+		purchase.tooltip_text = requirement
 
 
 func _request_quick_upgrade(tool: int) -> void:
@@ -242,20 +187,8 @@ func _request_quick_upgrade(tool: int) -> void:
 	_hover_close_remaining = 0.16
 
 
-func _request_technology_upgrade(id: String) -> void:
-	if id == "valuable":
-		nest_technology_upgrade_requested.emit(selected_technology_nest_id, id)
-	else:
-		technology_upgrade_requested.emit(id)
-
-
-func _cycle_technology_nest(direction: int) -> void:
-	if _run.nests.is_empty():
-		return
-	selected_technology_nest_id = (
-		wrapi(selected_technology_nest_id - 1 + direction, 0, _run.nests.size()) + 1
-	)
-	_refresh_valuable_branch()
+func _set_technology_nest(nest_id: int) -> void:
+	selected_technology_nest_id = nest_id
 
 
 func _show_quick_upgrade(tool: int) -> void:
@@ -372,21 +305,6 @@ func _show_technology() -> void:
 	interaction_panel_changed.emit()
 
 
-func _on_technology_input(event: InputEvent) -> void:
-	if not event is InputEventMouseButton:
-		return
-	var button_event: InputEventMouseButton = event as InputEventMouseButton
-	if button_event.button_index != MOUSE_BUTTON_LEFT or not button_event.pressed:
-		return
-	var viewport_position: Vector2 = (
-		_technology.get_global_transform_with_canvas() * button_event.position
-	)
-	if _tool_card.get_global_rect().has_point(viewport_position):
-		return
-	close_panels()
-	_technology.accept_event()
-
-
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey:
 		return
@@ -411,7 +329,6 @@ func _settle_shop_layout() -> void:
 
 
 func _place_shops() -> void:
-	_place(_tool_card, Rect2(size * 0.5 - Vector2(550.0, 355.0), Vector2(1100.0, 710.0)))
 	if not _nest_anchor.has_area():
 		_place(_nest_card, Rect2(size.x - 368.0, size.y * 0.5 - 150.0, 320.0, 300.0))
 		return

@@ -1,0 +1,77 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/disk_demo.tscn" id="r001"]
+
+[ext_resource type="Script" path="res://features/场景预览/游玩预览.gd" id="r002"]
+
+[ext_resource type="Script" path="res://features/场景预览/星球地表.gd" id="r003"]
+
+[ext_resource type="PackedScene" path="res://scenes/场景动画/近景星球.tscn" id="r004"]
+
+[ext_resource type="PackedScene" path="res://scenes/场景动画/全景星球.tscn" id="r005"]
+
+[ext_resource type="PackedScene" path="res://scenes/场景动画/近景背景.tscn" id="r006"]
+
+[ext_resource type="PackedScene" path="res://scenes/场景动画/全景背景.tscn" id="r007"]
+
+[ext_resource type="Theme" path="res://resources/场景预览主题.tres" id="r008"]
+
+[node name="近景游玩预览" instance=ExtResource("r001")]
+script = ExtResource("r002")
+
+[node name="PlanetSurface" parent="World" index="0" node_paths=PackedStringArray("near_art", "overview_art")]
+script = ExtResource("r003")
+near_art = NodePath("近景画面")
+overview_art = NodePath("全景画面")
+
+[node name="近景画面" parent="World/PlanetSurface" instance=ExtResource("r004")]
+
+
+[node name="动画播放器" parent="World/PlanetSurface/近景画面" index="1"]
+autoplay = "待机"
+
+[node name="全景画面" parent="World/PlanetSurface" instance=ExtResource("r005")]
+visible = false
+
+[node name="动画播放器" parent="World/PlanetSurface/全景画面" index="1"]
+autoplay = "待机"
+
+[node name="美术背景" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="画布" type="Node2D" parent="美术背景"]
+
+
+[node name="近景背景" parent="美术背景/画布" instance=ExtResource("r006")]
+
+
+[node name="全景背景" parent="美术背景/画布" instance=ExtResource("r007")]
+visible = false
+
+[node name="动画播放器" parent="美术背景/画布/全景背景" index="1"]
+autoplay = "待机"
+
+[node name="预览导航" type="CanvasLayer" parent="."]
+layer = 0
+
+[node name="返回主菜单" type="Button" parent="预览导航"]
+offset_left = 28.0
+offset_top = 138.0
+offset_right = 160.0
+offset_bottom = 188.0
+theme = ExtResource("r008")
+text = "主菜单"
+focus_mode = 0
+
+[node name="切换视角" type="Button" parent="预览导航"]
+offset_left = 174.0
+offset_top = 138.0
+offset_right = 306.0
+offset_bottom = 188.0
+theme = ExtResource("r008")
+text = "全景"
+focus_mode = 0
+
+[connection signal="pressed" from="预览导航/返回主菜单" to="." method="_return_to_menu"]
+
+[connection signal="pressed" from="预览导航/切换视角" to="." method="_switch_view"]

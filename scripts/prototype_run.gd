@@ -18,6 +18,7 @@ var net_level: int = 0
 var net_unlocked: bool = false
 var governance_level: int = 0
 var combo_level: int = 0
+var combo_interval_level: int = 0
 var combo_count: int = 0
 var combo_remaining: float = 0.0
 var net_cooldown_remaining: float = 0.0
@@ -60,9 +61,15 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	assert(settings.net_capacities.size() == settings.net_upgrade_costs.size() + 1)
 	assert(settings.pipe_radius > 0.0)
 	assert(settings.net_radius > 0.0 and settings.net_cooldown_seconds > 0.0)
-	assert(settings.governance_upgrade_costs.size() == settings.nest_upgrade_costs.size())
+	assert(settings.governance_upgrade_costs.size() == 2)
 	assert(settings.automatic_capture_intervals.size() == settings.nest_upgrade_costs.size() + 1)
 	assert(settings.combo_target > 0 and settings.combo_window_seconds > 0.0)
+	assert(
+		(
+			settings.combo_interval_bonus_seconds.size()
+			== settings.combo_interval_upgrade_costs.size() + 1
+		)
+	)
 	assert(settings.spawn_burst_ratio_min > 0.0)
 	assert(settings.spawn_burst_ratio_max >= settings.spawn_burst_ratio_min)
 	assert(settings.spawn_burst_ratio_max <= 1.0)
@@ -84,6 +91,7 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	net_unlocked = false
 	governance_level = 0
 	combo_level = 0
+	combo_interval_level = 0
 	combo_count = 0
 	combo_remaining = 0.0
 	net_cooldown_remaining = 0.0
@@ -165,6 +173,7 @@ func collect_automatic(nest_id: int, reward: int = 2) -> bool:
 
 
 func purchase_technology(id: String) -> bool:
+	id = _resolve_technology_action(id)
 	var cost: int = get_technology_cost(id)
 	if cost < 0 or candy < cost or not get_technology_requirement(id).is_empty():
 		return false
@@ -172,18 +181,21 @@ func purchase_technology(id: String) -> bool:
 	match id:
 		"pipe":
 			pipe_level += 1
-		"net":
-			if net_unlocked:
-				net_level += 1
-			else:
-				net_unlocked = true
-				generation_stage = 1
-				if not is_complete:
-					_add_nest(NestState.Species.MUCUS, _spawn_positions[settings.initial_nests])
-		"governance":
-			governance_level += 1
-		"combo":
+		"net_unlock":
+			net_unlocked = true
+			generation_stage = 1
+			if not is_complete:
+				_add_nest(NestState.Species.MUCUS, _spawn_positions[settings.initial_nests])
+		"net_capacity":
+			net_level += 1
+		"cultivation":
+			governance_level = 1
+		"automation":
+			governance_level = 3
+		"combo_unlock", "combo_reward":
 			combo_level += 1
+		"combo_interval":
+			combo_interval_level += 1
 	economy_changed.emit()
 	return true
 
@@ -254,37 +266,95 @@ func get_technology_level(id: String) -> int:
 			return governance_level
 		"combo":
 			return combo_level
+		"net_unlock":
+			return 1 if net_unlocked else 0
+		"net_capacity":
+			return net_level
+		"cultivation":
+			return 1 if governance_level >= 1 else 0
+		"automation":
+			return 1 if governance_level >= 3 else 0
+		"combo_unlock":
+			return 1 if combo_level > 0 else 0
+		"combo_reward":
+			return combo_level
+		"combo_interval":
+			return combo_interval_level
 	return -1
 
 
 func get_technology_cost(id: String) -> int:
-	if id == "net" and not net_unlocked:
-		return settings.net_unlock_cost
+	id = _resolve_technology_action(id)
+	match id:
+		"net_unlock":
+			return -1 if net_unlocked else settings.net_unlock_cost
+		"cultivation":
+			return -1 if governance_level >= 1 else settings.governance_upgrade_costs[0]
+		"automation":
+			return -1 if governance_level >= 3 else settings.governance_upgrade_costs[1]
+		"combo_unlock":
+			return -1 if combo_level > 0 else settings.combo_upgrade_costs[0]
 	var costs: PackedInt32Array = _get_technology_costs(id)
 	var level: int = get_technology_level(id)
+	if id == "combo_reward":
+		level = maxi(1, level)
 	if level < 0 or level >= costs.size():
 		return -1
 	return costs[level]
 
 
 func get_technology_requirement(id: String) -> String:
+	id = _resolve_technology_action(id)
+	if id == "valuable":
+		return "选择一个生态区"
+	if get_technology_level(id) < 0:
+		return "未知科技"
+	var prerequisites: Dictionary[String, int] = get_technology_prerequisites(id)
+	for prerequisite: String in prerequisites:
+		if get_technology_level(prerequisite) < prerequisites[prerequisite]:
+			match prerequisite:
+				"pipe":
+					return "需要吸取速率 %d 级" % (prerequisites[prerequisite] + 1)
+				"net_unlock":
+					return "需要解锁捕网"
+				"combo_unlock":
+					return "需要解锁连击"
+				"cultivation":
+					return "需要巢穴培育"
+	return ""
+
+
+# Cross-branch prerequisites are shared by purchase validation and the tree view.
+# Earlier levels within each branch are already enforced by sequential purchasing.
+func get_technology_prerequisites(id: String) -> Dictionary[String, int]:
+	id = _resolve_technology_action(id)
+	var prerequisites: Dictionary[String, int] = {}
 	match id:
-		"pipe", "net":
-			return ""
+		"net_unlock", "combo_unlock":
+			prerequisites["pipe"] = 1
+		"net_capacity":
+			prerequisites["net_unlock"] = 1
+		"combo_reward", "combo_interval":
+			prerequisites["combo_unlock"] = 1
+		"automation", "valuable":
+			prerequisites["cultivation"] = 1
+	return prerequisites
+
+
+# Existing tool shortcuts keep choosing the next action in their own branch.
+func _resolve_technology_action(id: String) -> String:
+	match id:
+		"net":
+			return "net_capacity" if net_unlocked else "net_unlock"
 		"governance":
-			if governance_level == 1 and pipe_level < 1:
-				return "需要吸管强化 1 级"
-			if governance_level == 2 and pipe_level < 2:
-				return "需要吸管强化 2 级"
-			return ""
+			return "automation" if governance_level > 0 else "cultivation"
 		"combo":
-			return "需要吸管强化 1 级" if pipe_level < 1 else ""
-		"valuable":
-			return "选择一个生态区"
-	return "未知科技"
+			return "combo_reward" if combo_level > 0 else "combo_unlock"
+	return id
 
 
 func get_technology_description(id: String) -> String:
+	id = _resolve_technology_action(id)
 	match id:
 		"pipe":
 			var next_level: int = mini(pipe_level + 1, settings.pipe_capture_seconds.size() - 1)
@@ -295,18 +365,40 @@ func get_technology_description(id: String) -> String:
 					String.num(settings.pipe_capture_seconds[next_level], 3)
 				]
 			)
-		"net":
-			if not net_unlocked:
-				return "解锁捕网 · 每次 %d 只 · 发现黏液巢穴" % settings.net_capacities[0]
+		"net_unlock":
+			return "解锁捕网 · 每次 %d 只 · 发现黏液巢穴" % settings.net_capacities[0]
+		"net_capacity":
 			var next_level: int = mini(net_level + 1, settings.net_capacities.size() - 1)
-			return "一次 %d 只 → %d 只" % [get_net_capacity(), settings.net_capacities[next_level]]
-		"governance":
-			var stages: Array[String] = ["野生", "引导", "半治理", "稳定"]
-			var next_level: int = mini(governance_level + 1, stages.size() - 1)
-			return "%s → %s · 解锁各区建设" % [stages[governance_level], stages[next_level]]
-		"combo":
+			return (
+				"一次 %d 只 → %d 只"
+				% [settings.net_capacities[net_level], settings.net_capacities[next_level]]
+			)
+		"cultivation":
+			return "开放各巢穴的培育建设"
+		"automation":
+			return "开放各巢穴的自动化建设"
+		"combo_unlock":
+			return "连续吸入 %d 只后，每只额外 +1 糖果" % settings.combo_target
+		"combo_reward":
 			var next_level: int = mini(combo_level + 1, settings.combo_upgrade_costs.size())
 			return "连续吸入 %d 只后，每只额外 +%d → +%d 糖果" % [settings.combo_target, combo_level, next_level]
+		"combo_interval":
+			var next_level: int = mini(
+				combo_interval_level + 1, settings.combo_interval_bonus_seconds.size() - 1
+			)
+			return (
+				"续接间隔 %s → %s 秒"
+				% [
+					String.num(get_combo_window_seconds(), 1),
+					String.num(
+						(
+							settings.combo_window_seconds
+							+ settings.combo_interval_bonus_seconds[next_level]
+						),
+						1
+					)
+				]
+			)
 		"valuable":
 			return (
 				"每 %d 只新生个体出现 1 只 · 糖果 ×%d"
@@ -331,7 +423,7 @@ func get_nest_technology_requirement(nest_id: int, id: String) -> String:
 		return "选择一个生态区"
 	if id != "valuable":
 		return "未知科技"
-	return "需要半治理科技" if governance_level < 2 else ""
+	return "需要巢穴培育" if governance_level < 1 else ""
 
 
 func get_nest_upgrade_requirement(nest_id: int) -> String:
@@ -340,8 +432,7 @@ func get_nest_upgrade_requirement(nest_id: int) -> String:
 		return "选择一个生态区"
 	if nest.is_tamed or nest.level < governance_level:
 		return ""
-	var stages: Array[String] = ["引导", "半治理", "稳定"]
-	return "先在科技树解锁%s" % stages[nest.level]
+	return "先研究巢穴培育" if nest.level == 0 else "先研究完全自动化"
 
 
 func get_pipe_upgrade_cost() -> int:
@@ -424,19 +515,25 @@ func _get_technology_costs(id: String) -> PackedInt32Array:
 	match id:
 		"pipe":
 			return settings.pipe_upgrade_costs
-		"net":
+		"net_capacity":
 			return settings.net_upgrade_costs
-		"governance":
-			return settings.governance_upgrade_costs
-		"combo":
+		"combo_reward":
 			return settings.combo_upgrade_costs
+		"combo_interval":
+			return settings.combo_interval_upgrade_costs
 	return PackedInt32Array()
+
+
+func get_combo_window_seconds() -> float:
+	return (
+		settings.combo_window_seconds + settings.combo_interval_bonus_seconds[combo_interval_level]
+	)
 
 
 func _register_manual_capture() -> int:
 	if combo_level == 0:
 		return 0
-	combo_remaining = settings.combo_window_seconds
+	combo_remaining = get_combo_window_seconds()
 	combo_count += 1
 	if combo_count <= settings.combo_target:
 		return 0
