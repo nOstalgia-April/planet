@@ -1,0 +1,79 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://features/splash_preview/effects/burst_splash.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/splash_preview/splash_canvas.svg" id="2_texture"]
+[ext_resource type="Shader" path="res://features/splash_preview/shaders/burst_splash.gdshader" id="3_shader"]
+[ext_resource type="PackedScene" path="res://features/splash_preview/effects/splash_droplet.tscn" id="4_drop"]
+
+[ext_resource type="Texture2D" path="res://assets/splash_preview/source_concept.png" id="5_source"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_body"]
+resource_local_to_scene = true
+shader = ExtResource("3_shader")
+shader_parameter/source_concept = ExtResource("5_source")
+
+[node name="BurstSplash" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Body" type="Sprite2D" parent="."]
+material = SubResource("ShaderMaterial_body")
+texture = ExtResource("2_texture")
+texture_filter = 2
+
+[node name="Droplets" type="Node2D" parent="."]
+
+[node name="Drop01" parent="Droplets" instance=ExtResource("4_drop")]
+direction_degrees = -84.0
+launch_delay = 0.045
+travel_distance = 0.67
+drop_size = 0.040
+curve = -0.16
+
+[node name="Drop02" parent="Droplets" instance=ExtResource("4_drop")]
+direction_degrees = -26.0
+launch_delay = 0.075
+travel_distance = 0.72
+drop_size = 0.055
+curve = 0.14
+
+[node name="Drop03" parent="Droplets" instance=ExtResource("4_drop")]
+direction_degrees = 22.0
+launch_delay = 0.115
+travel_distance = 0.64
+drop_size = 0.028
+curve = 0.11
+
+[node name="Drop04" parent="Droplets" instance=ExtResource("4_drop")]
+direction_degrees = 73.0
+launch_delay = 0.065
+travel_distance = 0.69
+drop_size = 0.042
+curve = 0.19
+
+[node name="Drop05" parent="Droplets" instance=ExtResource("4_drop")]
+direction_degrees = 135.0
+launch_delay = 0.10
+travel_distance = 0.62
+drop_size = 0.043
+curve = -0.16
+
+[node name="Drop06" parent="Droplets" instance=ExtResource("4_drop")]
+direction_degrees = -152.0
+launch_delay = 0.15
+travel_distance = 0.76
+drop_size = 0.026
+curve = -0.07
+
+[node name="Drop07" parent="Droplets" instance=ExtResource("4_drop")]
+direction_degrees = -46.0
+launch_delay = 0.13
+travel_distance = 0.86
+drop_size = 0.020
+curve = -0.06
+
+[node name="Drop08" parent="Droplets" instance=ExtResource("4_drop")]
+direction_degrees = 106.0
+launch_delay = 0.18
+travel_distance = 0.91
+drop_size = 0.024
+curve = 0.08

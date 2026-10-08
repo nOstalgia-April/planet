@@ -1,0 +1,126 @@
+[gd_scene load_steps=19 format=3]
+
+[ext_resource type="Script" path="res://scripts/物品动画/动画物件.gd" id="r001"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液花/待机/001.png" id="r002"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液花/待机/002.png" id="r003"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液花/待机/003.png" id="r004"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液花/待机/004.png" id="r005"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液花/待机/005.png" id="r006"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液花/待机/006.png" id="r007"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液花/待机/007.png" id="r008"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液花/待机/008.png" id="r009"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液花/待机/009.png" id="r010"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液花/待机/010.png" id="r011"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液花/产出/001.png" id="r012"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液花/产出/002.png" id="r013"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液花/产出/003.png" id="r014"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液花/产出/004.png" id="r015"]
+
+[sub_resource type="Animation" id="r016"]
+resource_name = "待机"
+length = 1.25
+step = 0.125
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1, 1.125),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("r002"), ExtResource("r003"), ExtResource("r004"), ExtResource("r005"), ExtResource("r006"), ExtResource("r007"), ExtResource("r008"), ExtResource("r009"), ExtResource("r010"), ExtResource("r011")]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1, 1.125),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-57, -127), Vector2(-57, -127), Vector2(-57, -127), Vector2(-57, -127), Vector2(-57, -127), Vector2(-57, -127), Vector2(-57, -127), Vector2(-57, -127), Vector2(-57, -127), Vector2(-57, -127)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1, 1.125),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1)]
+}
+
+[sub_resource type="Animation" id="r017"]
+resource_name = "产出"
+length = 0.5
+step = 0.125
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("r012"), ExtResource("r013"), ExtResource("r014"), ExtResource("r015")]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-75.0375, -135), Vector2(-75.0375, -135), Vector2(-75.0375, -135), Vector2(-75.0375, -135)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(0.225, 0.225), Vector2(0.225, 0.225), Vector2(0.225, 0.225), Vector2(0.225, 0.225)]
+}
+
+[sub_resource type="AnimationLibrary" id="r018"]
+_data = {
+&"待机": SubResource("r016"),
+&"产出": SubResource("r017")
+}
+
+[node name="黏液花" type="Node2D" node_paths=PackedStringArray("animation_player")]
+texture_filter = 1
+script = ExtResource("r001")
+default_animation = &"待机"
+animation_order = Array[StringName]([&"待机", &"产出"])
+animation_player = NodePath("动画播放器")
+
+[node name="画面" type="Node2D" parent="."]
+
+[node name="贴图" type="Sprite2D" parent="画面"]
+position = Vector2(-57, -127)
+scale = Vector2(1, 1)
+texture = ExtResource("r002")
+centered = false
+
+[node name="动画播放器" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("r018")
+}

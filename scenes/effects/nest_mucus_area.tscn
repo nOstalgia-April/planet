@@ -1,0 +1,16 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/nest_mucus_area.gd" id="1"]
+
+[node name="NestMucusArea" type="Node2D"]
+script = ExtResource("1")
+z_index = -1
+
+[node name="Outline" type="Polygon2D" parent="."]
+color = Color(0.22, 0.33, 0.6, 0.60)
+
+[node name="Ground" type="Polygon2D" parent="."]
+color = Color(0.5, 0.65, 0.92, 0.55)
+
+[node name="Sheen" type="Polygon2D" parent="."]
+color = Color(0.83, 0.91, 1, 0.60)

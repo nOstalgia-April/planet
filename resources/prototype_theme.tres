@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=11 format=3]
+[gd_resource type="Theme" load_steps=15 format=3]
 
 [sub_resource type="SystemFont" id="SystemFont_cjk"]
 font_names = PackedStringArray("Microsoft YaHei", "微软雅黑", "Noto Sans CJK SC", "Noto Sans SC")
@@ -9,19 +9,19 @@ content_margin_left = 24.0
 content_margin_top = 22.0
 content_margin_right = 24.0
 content_margin_bottom = 22.0
-bg_color = Color(0.966, 0.959, 0.918, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.29, 0.32, 0.28, 0.76)
+bg_color = Color(0.981, 0.973, 0.936, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.67, 0.72, 0.62, 1)
 corner_radius_top_left = 18
 corner_radius_top_right = 18
 corner_radius_bottom_right = 18
 corner_radius_bottom_left = 18
-shadow_color = Color(0.23, 0.27, 0.22, 0.10)
-shadow_size = 5
-shadow_offset = Vector2(0, 4)
+shadow_color = Color(0.10, 0.18, 0.14, 0.16)
+shadow_size = 12
+shadow_offset = Vector2(0, 7)
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_button"]
 content_margin_left = 18.0
@@ -133,6 +133,68 @@ corner_radius_top_right = 11
 corner_radius_bottom_right = 11
 corner_radius_bottom_left = 11
 
+[sub_resource type="StyleBoxFlat" id="StyleBox_quiet_hover"]
+content_margin_left = 18.0
+content_margin_top = 12.0
+content_margin_right = 18.0
+content_margin_bottom = 12.0
+bg_color = Color(0.90, 0.92, 0.84, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.38, 0.52, 0.39, 1)
+corner_radius_top_left = 11
+corner_radius_top_right = 11
+corner_radius_bottom_right = 11
+corner_radius_bottom_left = 11
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_branch"]
+content_margin_left = 16.0
+content_margin_top = 11.0
+content_margin_right = 16.0
+content_margin_bottom = 11.0
+bg_color = Color(0.946, 0.951, 0.90, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.84, 0.87, 0.80, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_dock"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0.981, 0.973, 0.936, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.62, 0.69, 0.59, 1)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+shadow_color = Color(0.10, 0.18, 0.14, 0.18)
+shadow_size = 12
+shadow_offset = Vector2(0, 5)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_tiny"]
+content_margin_left = 8.0
+content_margin_top = 1.0
+content_margin_right = 8.0
+content_margin_bottom = 1.0
+bg_color = Color(0.83, 0.87, 0.80, 1)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
 [resource]
 default_font = SubResource("SystemFont_cjk")
 default_font_size = 18
@@ -150,11 +212,24 @@ HBoxContainer/constants/separation = 16
 Label/colors/font_color = Color(0.23, 0.27, 0.22, 1)
 Label/constants/line_spacing = 5
 PanelContainer/styles/panel = SubResource("StyleBox_panel")
+Panel/styles/panel = SubResource("StyleBox_panel")
+BranchPanel/base_type = &"PanelContainer"
+BranchPanel/styles/panel = SubResource("StyleBox_branch")
+DockPanel/base_type = &"PanelContainer"
+DockPanel/styles/panel = SubResource("StyleBox_dock")
+TinyButton/base_type = &"Button"
+TinyButton/styles/normal = SubResource("StyleBox_tiny")
+TinyButton/colors/font_color = Color(0.22, 0.36, 0.29, 1)
+TinyButton/styles/hover = SubResource("StyleBox_tiny")
+TinyButton/styles/pressed = SubResource("StyleBox_tiny")
+TinyButton/styles/disabled = SubResource("StyleBox_tiny")
 ProgressBar/styles/background = SubResource("StyleBox_progress_bg")
 ProgressBar/styles/fill = SubResource("StyleBox_progress_fill")
 QuietButton/base_type = &"Button"
 QuietButton/colors/font_color = Color(0.31, 0.37, 0.30, 1)
-QuietButton/colors/font_hover_color = Color(1, 1, 0.96, 1)
+QuietButton/colors/font_hover_color = Color(0.24, 0.35, 0.28, 1)
 QuietButton/colors/font_pressed_color = Color(1, 1, 0.96, 1)
 QuietButton/styles/normal = SubResource("StyleBox_quiet_button")
+QuietButton/styles/hover = SubResource("StyleBox_quiet_hover")
+QuietButton/styles/hover_pressed = SubResource("StyleBox_button_pressed")
 VBoxContainer/constants/separation = 12

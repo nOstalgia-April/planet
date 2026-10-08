@@ -4,6 +4,8 @@ const SETTINGS: PrototypeSettings = preload("res://resources/prototype_settings.
 
 var _spawn_requests: int = 0
 var _completion_signals: int = 0
+var _economy_signals: int = 0
+var _observed_candy: int = 0
 var _failures: Array[String] = []
 
 
@@ -13,6 +15,7 @@ func _init() -> void:
 	root.add_child(run)
 	run.slime_requested.connect(_on_slime_requested)
 	run.goal_completed.connect(_on_goal_completed.bind(run))
+	run.economy_changed.connect(_on_economy_changed.bind(run))
 	var positions: Array[Vector2] = [
 		Vector2(0.0, -200.0),
 		Vector2(190.0, -60.0),
@@ -71,7 +74,6 @@ func _init() -> void:
 	)
 	run.candy = _sum_costs(SETTINGS.pipe_upgrade_costs) + _sum_costs(SETTINGS.net_upgrade_costs)
 	var initial_radius: float = run.get_pipe_radius()
-	var initial_attraction_radius: float = run.get_pipe_attraction_radius()
 	var initial_capture: float = run.get_pipe_capture_seconds()
 	var initial_net_radius: float = run.get_net_radius()
 	var initial_net_capacity: int = run.get_net_capacity()
@@ -91,7 +93,6 @@ func _init() -> void:
 		_check(
 			(
 				is_equal_approx(run.get_pipe_radius(), initial_radius)
-				and is_equal_approx(run.get_pipe_attraction_radius(), initial_attraction_radius)
 				and run.net_level == 0
 				and run.get_net_capacity() == initial_net_capacity
 				and is_equal_approx(run.get_net_radius(), initial_net_radius)
@@ -116,7 +117,6 @@ func _init() -> void:
 			(
 				is_equal_approx(run.get_pipe_capture_seconds(), final_pipe_seconds)
 				and is_equal_approx(run.get_pipe_radius(), initial_radius)
-				and is_equal_approx(run.get_pipe_attraction_radius(), initial_attraction_radius)
 				and is_equal_approx(run.get_net_radius(), initial_net_radius)
 				and is_equal_approx(run.net_cooldown_remaining, cooldown_before)
 			),
@@ -136,6 +136,7 @@ func _init() -> void:
 	)
 	_check(run.begin_net_cast(), "The net becomes available after its cooldown.")
 	_check_net_batches(positions)
+	_check_immediate_purchase(positions)
 
 	run.advance(1000.0)
 	var base_limit: int = SETTINGS.nest_population_limits[0]
@@ -152,47 +153,51 @@ func _init() -> void:
 	)
 	run.advance(1000.0)
 	_check(_spawn_requests == initial_population, "Full nests stop requesting new monsters.")
+	var economy_before_capture: int = _economy_signals
 	_check(run.collect_slime(1), "A living surface monster can be collected.")
 	_check(
 		(
 			run.get_nest(1).alive_slimes == base_limit - 1
-			and run.pending_slime_count == 1
-			and run.pending_candy == SETTINGS.slime_reward
-			and run.candy == 0
+			and run.candy == SETTINGS.slime_reward
+			and _observed_candy == run.candy
+			and _economy_signals == economy_before_capture + 1
 		),
-		"Collection frees its surface slot immediately and withholds candy until settlement."
+		"Each capture frees its slot, pays immediately and reports the new balance exactly once."
 	)
 	run.advance(SETTINGS.spawn_intervals[0])
 	_check(
 		run.get_nest(1).alive_slimes == base_limit and _spawn_requests == initial_population + 1,
-		"One released population slot refills before the pending collection is settled."
+		"A freed population slot refills without delaying the already paid capture."
 	)
 	for _index: int in range(base_limit + 3):
+		var previous_balance: int = run.candy
+		var previous_economy_signals: int = _economy_signals
 		_check(run.collect_slime(1), "Continuous collection can use newly replenished monsters.")
+		_check(
+			(
+				run.candy == previous_balance + SETTINGS.slime_reward
+				and _observed_candy == run.candy
+				and _economy_signals == previous_economy_signals + 1
+			),
+			"Every capture in one continuous collection pays and refreshes the economy immediately."
+		)
 		run.advance(SETTINGS.spawn_intervals[0])
 	var collected_count: int = base_limit + 4
 	var batch_reward: int = collected_count * SETTINGS.slime_reward
 	_check(
-		(
-			run.pending_slime_count == collected_count
-			and run.pending_slime_count > base_limit
-			and run.pending_candy == batch_reward
-			and run.candy == 0
-		),
-		"A continuous collection batch exceeds the live population limit without a carry cap."
+		collected_count > base_limit and run.candy == batch_reward,
+		"Continuous collection exceeds the live population limit with all points already paid."
 	)
+	var signals_after_capture: int = _economy_signals
+	run.advance(SETTINGS.spawn_intervals[0])
 	_check(
-		run.settle_collection() == batch_reward, "Releasing collection pays the entire batch once."
+		run.candy == batch_reward and _economy_signals == signals_after_capture,
+		"Stopping collection cannot trigger an extra delayed payout or economy refresh."
 	)
-	_check(
-		run.candy == batch_reward and run.pending_candy == 0 and run.pending_slime_count == 0,
-		"Settlement clears the pending reward and collected count."
-	)
-	_check(run.settle_collection() == 0, "An empty collection cannot pay twice.")
 	_check(not run.collect_slime(999), "An unknown source cannot be collected.")
 	_check(run.get_nest_population_limit(999) == 0, "An unknown nest has no population allowance.")
 	_check(
-		run.candy == batch_reward and run.pending_candy == 0,
+		run.candy == batch_reward and _economy_signals == signals_after_capture,
 		"Invalid collection changes no reward."
 	)
 
@@ -224,7 +229,7 @@ func _init() -> void:
 		run.advance(1000.0)
 		_check(_spawn_requests == full_requests, "Every unfinished tier stops spawning when full.")
 
-	_check(run.collect_slime(1), "A collection can remain pending while its nest is tamed.")
+	_check(run.collect_slime(1), "A capture pays before its source nest is tamed.")
 	var remaining_population: int = run.get_nest(1).alive_slimes
 	_check(run.upgrade_nest(1), "The final nest tier converts the nest to automatic income.")
 	_check(
@@ -259,10 +264,14 @@ func _init() -> void:
 	)
 	run.advance(0.2)
 	_check(run.candy == candy_before_income + 1, "Automatic income pays only whole candy.")
+	var before_tamed_capture: int = run.candy
 	_check(run.collect_slime(1), "Remaining monsters are collectible after their source is tamed.")
 	_check(
-		run.get_nest(1).alive_slimes == remaining_population - 1 and run.pending_slime_count == 2,
-		"Tamed-source collection frees live population and joins the same pending batch."
+		(
+			run.get_nest(1).alive_slimes == remaining_population - 1
+			and run.candy == before_tamed_capture + SETTINGS.slime_reward
+		),
+		"Tamed-source collection frees live population and pays its points immediately."
 	)
 	_check(_tame(run, 2), "The second nest can be fully tamed.")
 	_check(run.generated_nests == SETTINGS.nest_budget, "Replacement nests use the finite budget.")
@@ -276,10 +285,6 @@ func _init() -> void:
 		),
 		"Completing the finite nest budget emits the goal exactly once."
 	)
-	_check(
-		run.pending_candy == 0 and run.pending_slime_count == 0,
-		"Goal completion settles the last pending collection before ending the run."
-	)
 	var final_candy: int = run.candy
 	var final_requests: int = _spawn_requests
 	var final_population: int = run.get_nest(1).alive_slimes
@@ -288,8 +293,8 @@ func _init() -> void:
 		"A completed run rejects net casts and batch rewards."
 	)
 	_check(
-		not run.collect_slime(1) and run.settle_collection() == 0,
-		"A completed run rejects collection and cannot repeat its settled reward."
+		not run.collect_slime(1) and run.candy == final_candy,
+		"A completed run rejects collection and cannot repeat any already paid reward."
 	)
 	run.advance(100.0)
 	_check(
@@ -307,19 +312,13 @@ func _init() -> void:
 
 	run.start_run(positions)
 	run.advance(SETTINGS.spawn_intervals[0])
-	_check(run.collect_slime(1), "Restart testing begins with an unsettled new collection.")
+	_check(run.collect_slime(1), "Restart testing begins with an immediately paid capture.")
 	_check(run.begin_net_cast(), "Restart testing also begins with an active net cooldown.")
-	_check(
-		run.pending_candy > 0 and run.pending_slime_count == 1,
-		"A new run can have a pending batch."
-	)
+	_check(run.candy == SETTINGS.slime_reward, "The capture is paid before restart.")
 	run.start_run(positions)
 	_check(
-		run.candy == 0 and run.pending_candy == 0 and run.pending_slime_count == 0,
-		"Restart discards the unsettled batch and resets the candy balance."
-	)
-	_check(
-		run.settle_collection() == 0, "The previous run's pending batch cannot pay after restart."
+		run.candy == 0 and _observed_candy == 0,
+		"Restart resets the paid balance and refreshes the economy immediately."
 	)
 	_check(
 		(
@@ -341,13 +340,13 @@ func _init() -> void:
 		),
 		"Restart clears nest progress, populations and fractional income."
 	)
-	_check(not run.collect_slime(1), "An empty source cannot add to the collection batch.")
+	_check(not run.collect_slime(1), "An empty source cannot award collection points.")
 	run.advance(SETTINGS.spawn_intervals[0])
 	_check(run.collect_slime(1), "A newly spawned source can be collected once.")
 	_check(not run.collect_slime(1), "The same emptied source cannot invent another monster.")
 	_check(
-		run.pending_slime_count == 1 and run.pending_candy == SETTINGS.slime_reward,
-		"Rejected duplicate collection preserves the pending count and reward."
+		run.candy == SETTINGS.slime_reward,
+		"Rejected duplicate collection cannot pay for the same monster twice."
 	)
 	if _failures.is_empty():
 		print("Prototype rules: all boundary checks passed.")
@@ -364,7 +363,8 @@ func _check_net_batches(positions: Array[Vector2]) -> void:
 	root.add_child(net_run)
 	net_run.start_run(positions)
 	net_run.advance(100.0)
-	_check(net_run.collect_slime(1), "A pipe reward can remain pending during a net catch.")
+	_check(net_run.collect_slime(1), "A pipe capture pays immediately before a net catch.")
+	var pipe_reward: int = net_run.candy
 	var population_before: int = _surface_population(net_run)
 	var candidates: Array[int] = [999]
 	for index: int in range(net_run.get_net_capacity() + 5):
@@ -376,12 +376,10 @@ func _check_net_batches(positions: Array[Vector2]) -> void:
 	)
 	_check(
 		(
-			net_run.candy == expected_reward
+			net_run.candy == pipe_reward + expected_reward
 			and _surface_population(net_run) == population_before - net_run.get_net_capacity()
-			and net_run.pending_slime_count == 1
-			and net_run.pending_candy == SETTINGS.slime_reward
 		),
-		"Net catches free their live stock while keeping the pipe batch independent."
+		"Net catches free their live stock and add to the already paid pipe reward."
 	)
 	var same_source: Array[int] = []
 	for _index: int in range(net_run.get_net_capacity() + 5):
@@ -391,20 +389,37 @@ func _check_net_batches(positions: Array[Vector2]) -> void:
 		net_run.collect_net_batch(same_source) == source_population * SETTINGS.slime_reward,
 		"Repeated source IDs collect only the real monsters left in that source."
 	)
+	var paid_balance: int = net_run.candy
 	_check(
 		net_run.collect_net_batch(same_source) == 0 and net_run.collect_net_batch([999]) == 0,
 		"Empty and unknown sources cannot create net rewards."
 	)
-	var before_pipe_settlement: int = net_run.candy
 	_check(
-		net_run.settle_collection() == SETTINGS.slime_reward,
-		"The independent pipe batch still settles once."
-	)
-	_check(
-		net_run.candy == before_pipe_settlement + SETTINGS.slime_reward,
-		"Settling the pipe cannot repeat already paid net income."
+		net_run.candy == paid_balance,
+		"Rejected net catches cannot repeat either tool's already paid points."
 	)
 	net_run.queue_free()
+
+
+func _check_immediate_purchase(positions: Array[Vector2]) -> void:
+	var purchase_run: PrototypeRun = PrototypeRun.new()
+	purchase_run.settings = SETTINGS
+	root.add_child(purchase_run)
+	purchase_run.start_run(positions)
+	purchase_run.advance(SETTINGS.spawn_intervals[0])
+	var upgrade_cost: int = purchase_run.get_nest_upgrade_cost(1)
+	purchase_run.candy = upgrade_cost - SETTINGS.slime_reward
+	_check(not purchase_run.upgrade_nest(1), "A nest cannot upgrade before the needed capture.")
+	_check(purchase_run.collect_slime(1), "The needed capture can complete the upgrade balance.")
+	_check(
+		purchase_run.candy == upgrade_cost and purchase_run.upgrade_nest(1),
+		"Captured points are spendable for a nest upgrade in the same action sequence."
+	)
+	_check(
+		purchase_run.candy == 0 and purchase_run.get_nest(1).level == 1,
+		"An immediate upgrade consumes the captured reward exactly once."
+	)
+	purchase_run.queue_free()
 
 
 func _surface_population(run: PrototypeRun) -> int:
@@ -418,14 +433,12 @@ func _tame(run: PrototypeRun, nest_id: int) -> bool:
 	for level: int in range(SETTINGS.nest_upgrade_costs.size()):
 		var balance_before: int = run.candy
 		var cost: int = SETTINGS.nest_upgrade_costs[level]
-		var pending_before: int = run.pending_candy
 		_check(run.get_nest_upgrade_cost(nest_id) == cost, "Each nest tier advertises its price.")
 		if not run.upgrade_nest(nest_id):
 			return false
-		var final_reward: int = pending_before if run.is_complete else 0
 		_check(
-			run.candy == balance_before - cost + final_reward,
-			"Each nest tier deducts its price once and only the final goal settles pending candy."
+			run.candy == balance_before - cost,
+			"Each nest tier deducts its price once without adding a completion payout."
 		)
 	return true
 
@@ -455,7 +468,9 @@ func _on_slime_requested(_nest_id: int) -> void:
 
 func _on_goal_completed(run: PrototypeRun) -> void:
 	_completion_signals += 1
-	_check(
-		run.is_complete and run.pending_candy == 0 and run.pending_slime_count == 0,
-		"The goal notification observes a completed run with its pending collection already settled."
-	)
+	_check(run.is_complete, "The goal notification observes a completed run.")
+
+
+func _on_economy_changed(run: PrototypeRun) -> void:
+	_economy_signals += 1
+	_observed_candy = run.candy

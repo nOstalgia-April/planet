@@ -5,6 +5,7 @@
 # Captures, temporary reports, and exported games
 /artifacts/*
 !/artifacts/.gitkeep
+!/artifacts/.gdignore
 /output/
 
 # Local reference originals; runtime artwork remains tracked

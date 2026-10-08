@@ -1,18 +1,6 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scripts/pipe_cursor.gd" id="1_pipe"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_count"]
-content_margin_left = 3.0
-content_margin_top = 1.0
-content_margin_right = 3.0
-content_margin_bottom = 1.0
-bg_color = Color(0.945, 0.933, 0.859, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.27, 0.29, 0.27, 0.55)
 
 [node name="Pipe" type="Node2D"]
 position = Vector2(480, 400)
@@ -51,17 +39,3 @@ antialiased = true
 [node name="Opening" type="Polygon2D" parent="Mouth"]
 polygon = PackedVector2Array(-1, -6, 5, -6, 5, 6, -1, 6)
 color = Color(0.298, 0.514, 0.486, 1)
-
-[node name="Count" type="Label" parent="."]
-visible = false
-offset_left = -60.0
-offset_top = 22.0
-offset_right = -36.0
-offset_bottom = 42.0
-pivot_offset = Vector2(12, 10)
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.27, 0.29, 0.27, 1)
-theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBox_count")
-text = "0"
-horizontal_alignment = 1

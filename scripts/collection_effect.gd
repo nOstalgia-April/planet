@@ -34,7 +34,7 @@ func play(origin: Vector2, destination: Vector2, amount: int) -> void:
 	_trail.default_color = Color(color, 0.60)
 	_trail.modulate.a = 1.0
 	_amount_label.text = "+%d" % amount
-	_amount_label.position = Vector2(-26.0, -44.0)
+	_amount_label.position = Vector2(22.0, -50.0)
 	_amount_label.modulate.a = 1.0
 	_tween = create_tween().set_parallel(true)
 	_tween.tween_method(_set_flight, 0.0, 1.0, duration).set_trans(Tween.TRANS_CUBIC).set_ease(
@@ -42,7 +42,7 @@ func play(origin: Vector2, destination: Vector2, amount: int) -> void:
 	)
 	(
 		_tween
-		. tween_property(_amount_label, "position:y", -65.0, duration + 0.16)
+		. tween_property(_amount_label, "position:y", -75.0, duration + 0.16)
 		. set_trans(Tween.TRANS_QUAD)
 		. set_ease(Tween.EASE_OUT)
 	)

@@ -29,26 +29,45 @@ func _run_checks() -> void:
 		"spawn signals create actors"
 	)
 	var views: Node2D = demo.get_node("World/Nests") as Node2D
-	var nest_view: NestView = views.get_child(1) as NestView
-	var click: InputEventMouseButton = InputEventMouseButton.new()
-	click.button_index = MOUSE_BUTTON_LEFT
-	click.pressed = true
-	click.position = nest_view.get_global_transform_with_canvas() * Vector2(0.0, -45.0)
-	if DisplayServer.get_name() == "headless":
-		nest_view.get_node("SelectionArea").input_event.emit(root, click, 0)
-	else:
-		await physics_frame
-		root.push_input(click, true)
-		await physics_frame
-		await process_frame
-		click = click.duplicate() as InputEventMouseButton
-		click.pressed = false
-		root.push_input(click, true)
-	_check(demo.selected_nest_id == nest_view.nest_id, "raised nest mouse event selects detail")
+	var nest_view: NestView = views.get_child(0) as NestView
+	var selection_shape: CollisionShape2D = (
+		nest_view.get_node("SelectionArea/CollisionShape2D") as CollisionShape2D
+	)
+	var hover_position: Vector2 = selection_shape.get_global_transform_with_canvas().origin
+	demo._update_nest_hover(hover_position)
+	await process_frame
+	var nest_card: Control = demo._layout.get_node("NestCard") as Control
+	_check(
+		demo.selected_nest_id == nest_view.nest_id and nest_view._selected and nest_card.visible,
+		"hover selects the nest and opens its upgrade without a click"
+	)
+	if "--capture" in OS.get_cmdline_user_args():
+		await RenderingServer.frame_post_draw
+		_save_frame("disk_demo_nest_hover.png")
+	demo._update_nest_hover(nest_card.get_global_rect().get_center())
+	_check(
+		demo.selected_nest_id == nest_view.nest_id and nest_card.visible,
+		"moving into the upgrade panel retains the nest"
+	)
+	demo._update_nest_hover(Vector2(16.0, 400.0))
+	_check(
+		demo.selected_nest_id == -1 and not nest_view._selected and not nest_card.visible,
+		"leaving the nest and panel immediately hides detail and clears the highlight"
+	)
 	var slime_root: Node2D = demo.get_node("World/Slimes") as Node2D
 	var slime: PrototypeSlime = slime_root.get_child(0) as PrototypeSlime
 	for actor: PrototypeSlime in demo._slimes:
+		actor._process(actor.launch_seconds)
 		actor.set_process(false)
+		var bounds: Vector2 = demo._planet.get_activity_radius_bounds(actor.position.angle())
+		_check(
+			(
+				actor.surface == demo._planet
+				and actor.position.length() >= bounds.x - 0.001
+				and actor.position.length() <= bounds.y + 0.001
+			),
+			"spawned monsters share the full visible crust as their activity area"
+		)
 	var capture_point: Vector2 = slime.get_capture_point()
 	var expected_count: int = 1
 	if "--capture" in OS.get_cmdline_user_args():
@@ -58,34 +77,33 @@ func _run_checks() -> void:
 	demo._capture_at(demo.run.get_pipe_capture_seconds(), capture_point, true)
 	await process_frame
 	_check(
-		demo.run.candy == 0 and demo.run.pending_slime_count == expected_count,
-		"holding accumulates nearby monsters without paying"
+		demo.run.candy == expected_count * demo.run.settings.slime_reward,
+		"each completed capture pays while input is still held"
 	)
 	_check(
 		slime_root.get_child_count() == initial_slimes - expected_count,
 		"collected actors disappear and free their population slots immediately"
 	)
-	_check(demo.get_node("World/Effects").get_child_count() == 0, "pickup has no candy effect")
+	_check(
+		demo.get_node("World/Effects").get_child_count() == 1,
+		"capture immediately plays its reward effect"
+	)
 	if "--capture" in OS.get_cmdline_user_args():
 		demo._drive_tool(0.0, capture_point, true)
 		await RenderingServer.frame_post_draw
-		_save_frame("disk_demo_collection_hold.png")
+		_save_frame("disk_demo_collection_instant.png")
 	demo._drive_tool(0.0, capture_point, false)
 	_check(
 		demo.run.candy == expected_count * demo.run.settings.slime_reward,
-		"release beside the planet pays the whole collection immediately"
-	)
-	_check(
-		demo.run.pending_candy == 0 and demo.run.pending_slime_count == 0,
-		"release clears the batch"
+		"release preserves the wallet already paid during capture"
 	)
 	_check(
 		demo.get_node("World/Effects").get_child_count() == 1,
-		"release plays one total reward effect"
+		"release does not create another reward effect"
 	)
 	if "--capture" in OS.get_cmdline_user_args():
 		await RenderingServer.frame_post_draw
-		_save_frame("disk_demo_collection_settled.png")
+		_save_frame("disk_demo_collection_released.png")
 	demo._drive_tool(0.0, capture_point, false)
 	_check(
 		demo.run.candy == expected_count * demo.run.settings.slime_reward,
@@ -133,7 +151,7 @@ func _run_checks() -> void:
 			"net finishes automatically within its capacity"
 		)
 		_check(
-			demo.run.candy == before_net + net_reward and demo.run.pending_candy == 0,
+			demo.run.candy == before_net + net_reward,
 			"net pays directly without mouse hold or pipe processing"
 		)
 		demo._drive_tool(demo.net_result_seconds + 0.01, net_pointer, false)

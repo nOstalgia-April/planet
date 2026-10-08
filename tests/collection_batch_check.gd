@@ -17,17 +17,19 @@ func _run_checks() -> void:
 	current_scene = demo
 	demo.set_process(false)
 	_check_free_cursor(demo)
+	_check_hover_input(demo)
 	await _check_immediate_removal(demo)
 	await _check_release_positions(demo)
-	_check_continuous_batch(demo)
-	_check_restart_pending(demo)
+	_check_continuous_payment(demo)
+	_check_earned_purchase(demo)
+	_check_restart_income(demo)
 	_check_orphan_collection(demo)
 	_check_pipe_switch(demo)
 	_check_net_frames(demo)
 	_check_net_capacities(demo)
 	_check_net_cross_source(demo)
 	_check_net_cooldown(demo)
-	_check_net_switch_and_pending(demo)
+	_check_net_switch_and_income(demo)
 	_check_net_reset(demo)
 	for child: Node in demo.get_node("Audio").get_children():
 		(child as AudioStreamPlayer).stop()
@@ -37,7 +39,7 @@ func _run_checks() -> void:
 	await process_frame
 	if _failures == 0:
 		print(
-			"PASS: pipe batch release/refill, net click/FPS/capacity/nearest/CD, independent pending, switches and restart."
+			"PASS: immediate pipe payment/feedback/refill, earned purchase, net click/FPS/capacity/nearest/CD, concurrent income, switches and restart."
 		)
 	quit(0 if _failures == 0 else 1)
 
@@ -51,18 +53,71 @@ func _check_free_cursor(demo: DemoScript) -> void:
 		demo._pipe.position.distance_to(inner_pointer) < 0.001 and not demo._pipe.active,
 		"The pipe follows the inner cursor without reaching distant surface bodies."
 	)
-	actor.restore_to_surface(Vector2.UP * (demo._planet.radius + demo.capture_surface_outer_offset))
+	actor.restore_to_surface(Vector2.UP * demo._planet.get_outer_radius(-PI / 2.0))
 	actor.set_process(false)
 	var remote: Vector2 = (
 		actor.get_capture_point() + Vector2.UP * (demo.run.get_pipe_radius() + 10.0)
 	)
 	demo._drive_tool(demo.run.get_pipe_capture_seconds(), remote, true)
 	_check(
-		demo.run.pending_slime_count == 0 and is_zero_approx(actor.capture_progress),
+		demo.run.candy == 0 and is_zero_approx(actor.capture_progress),
 		"A distant cursor cannot capture by projecting its angle back to the surface."
 	)
 	_check(
 		demo._pipe.position.distance_to(remote) < 0.001, "The pipe follows the actual far cursor."
+	)
+
+
+func _check_hover_input(demo: DemoScript) -> void:
+	demo.restart_run()
+	var actor: PrototypeSlime = _prepare_one(demo)
+	var pointer: Vector2 = actor.get_capture_point()
+	demo._drive_tool(0.1, pointer, false)
+	_check(
+		actor.capture_progress > 0.0 and demo._pipe.active and demo.run.candy == 0,
+		"Hover starts pipe progress with no left button held."
+	)
+	var progress: float = actor.capture_progress
+	demo._drive_tool(0.1, pointer, true)
+	demo._drive_tool(0.1, pointer, false)
+	_check(
+		actor.capture_progress > progress,
+		"Pressing and releasing left does not interrupt a stationary pipe hover."
+	)
+	demo._drive_tool(0.1, Vector2.ZERO, false)
+	_check(
+		is_zero_approx(actor.capture_progress) and not demo._pipe.active,
+		"Leaving the collection surface clears partial hover progress."
+	)
+	demo._drive_tool(0.1, pointer, false)
+	demo.get_node("%TechnologyButton").pressed.emit()
+	demo._drive_tool(0.1, pointer, false)
+	_check(
+		is_zero_approx(actor.capture_progress) and demo.run.candy == 0,
+		"Opening technology blocks background hover collection."
+	)
+	demo._layout.close_panels()
+	demo._drive_tool(0.1, pointer, false)
+	_check(actor.capture_progress > 0.0, "Closing technology restores hover without a click.")
+	demo.get_window().focus_exited.emit()
+	demo._drive_tool(demo.run.get_pipe_capture_seconds(), pointer, false)
+	_check(
+		is_zero_approx(actor.capture_progress) and demo.run.candy == 0 and not demo._pipe.visible,
+		"An unfocused window stops pipe hover and clears unfinished progress."
+	)
+	demo.get_window().focus_entered.emit()
+	demo._drive_tool(0.1, pointer, false)
+	_check(actor.capture_progress > 0.0, "Returning focus restores hover without a click.")
+	demo._select_tool(DemoScript.ToolMode.NET)
+	demo._drive_tool(demo.run.get_pipe_capture_seconds(), pointer, false)
+	_check(
+		(
+			is_zero_approx(actor.capture_progress)
+			and demo._net_phase == DemoScript.NetPhase.IDLE
+			and is_zero_approx(demo.run.net_cooldown_remaining)
+			and demo.run.candy == 0
+		),
+		"Switching to the net stops pipe progress and hovering never casts the net."
 	)
 
 
@@ -71,14 +126,15 @@ func _check_immediate_removal(demo: DemoScript) -> void:
 	var actor: PrototypeSlime = _prepare_one(demo)
 	var source_id: int = actor.nest_id
 	var population: int = demo.run.get_nest(source_id).alive_slimes
-	demo._drive_tool(demo.run.get_pipe_capture_seconds(), actor.get_capture_point(), true)
+	var effect_count: int = demo.get_node("%Effects").get_child_count()
+	demo._drive_tool(demo.run.get_pipe_capture_seconds(), actor.get_capture_point(), false)
 	_check(
-		(
-			demo.run.pending_slime_count == 1
-			and demo.run.pending_candy == demo.run.settings.slime_reward
-			and demo.run.candy == 0
-		),
-		"Held pipe capture creates an unpaid batch."
+		demo.run.candy == demo.run.settings.slime_reward,
+		"Hover pipe capture immediately pays the completed body's reward without a click."
+	)
+	_check(
+		demo.get_node("%Effects").get_child_count() == effect_count + 1,
+		"Each completed body creates its own feedback during hover."
 	)
 	_check(
 		not demo._slimes.has(actor) and actor.is_queued_for_deletion(),
@@ -111,9 +167,10 @@ func _check_release_positions(demo: DemoScript) -> void:
 		demo._drive_tool(demo.run.get_pipe_capture_seconds(), actor.get_capture_point(), true)
 		var pointer: Vector2 = points[index]
 		if index == points.size() - 1:
+			demo.get_node("%TechnologyButton").pressed.emit()
 			await process_frame
 			await process_frame
-			var shop: Control = demo.get_node("HUD/Interface/ToolCard") as Control
+			var shop: Control = demo.get_node("%ToolCard") as Control
 			var shop_screen: Vector2 = shop.get_global_rect().get_center()
 			_check(
 				demo._layout.is_over_ui(shop_screen),
@@ -122,63 +179,85 @@ func _check_release_positions(demo: DemoScript) -> void:
 			pointer = demo._world.get_global_transform_with_canvas().affine_inverse() * shop_screen
 		demo._drive_tool(0.1, pointer, false)
 		_check(
+			demo.run.candy == demo.run.settings.slime_reward,
+			"Releasing near, far, inside or over the shop preserves the already paid reward."
+		)
+		var effects_before: int = demo.get_node("%Effects").get_child_count()
+		demo._drive_tool(0.1, pointer, false)
+		_check(
 			(
 				demo.run.candy == demo.run.settings.slime_reward
-				and demo.run.pending_slime_count == 0
-				and demo.run.pending_candy == 0
+				and demo.get_node("%Effects").get_child_count() == effects_before
 			),
-			"Releasing near, far, inside or over the shop settles the same batch."
-		)
-		demo._drive_tool(0.1, pointer, false)
-		demo._settle_collection()
-		_check(
-			demo.run.candy == demo.run.settings.slime_reward,
-			"Repeated release and explicit settlement cannot pay twice."
+			"Repeated release cannot pay twice or create a duplicate reward effect."
 		)
 
 
-func _check_continuous_batch(demo: DemoScript) -> void:
+func _check_continuous_payment(demo: DemoScript) -> void:
 	demo.restart_run()
 	demo.run.advance(demo.run.settings.spawn_intervals[0] * 4.0)
 	var actors: Array[PrototypeSlime] = []
 	actors.assign(demo._slimes)
-	_check(actors.size() >= 8, "The continuous batch uses eight real spawned actors.")
+	_check(actors.size() >= 8, "Continuous capture uses eight real spawned actors.")
 	for actor: PrototypeSlime in actors:
 		_place_body(actor, Vector2.LEFT * 235.0)
 		actor.set_process(false)
 	for index: int in range(8):
 		var actor: PrototypeSlime = actors[index]
 		_place_body(actor, NET_ANCHOR)
-		demo._drive_tool(demo.run.get_pipe_capture_seconds(), NET_ANCHOR, true)
+		var effect_count: int = demo.get_node("%Effects").get_child_count()
+		demo._drive_tool(demo.run.get_pipe_capture_seconds(), NET_ANCHOR, false)
 		_check(
 			(
-				demo.run.pending_slime_count == index + 1
-				and demo.run.candy == 0
+				demo.run.candy == (index + 1) * demo.run.settings.slime_reward
 				and not demo._slimes.has(actor)
+				and demo.get_node("%Effects").get_child_count() == effect_count + 1
 			),
-			"Held pipe input collects the next single body without a batch limit or payment."
+			"Stationary hover pays and gives separate feedback for every next completed body."
 		)
 	demo._drive_tool(0.1, Vector2.ZERO, false)
 	_check(
 		demo.run.candy == 8 * demo.run.settings.slime_reward,
-		"One release settles the complete eight-body pipe batch."
+		"Releasing after eight continuous captures preserves the complete earned wallet."
 	)
 
 
-func _check_restart_pending(demo: DemoScript) -> void:
+func _check_earned_purchase(demo: DemoScript) -> void:
+	demo.restart_run()
+	demo.run.advance(demo.run.settings.spawn_intervals[0] * 4.0)
+	_isolate_actors(demo)
+	var cost: int = demo.run.get_pipe_upgrade_cost()
+	while demo.run.candy < cost:
+		var actor: PrototypeSlime = demo._slimes[0]
+		_place_body(actor, NET_ANCHOR)
+		demo._drive_tool(demo.run.get_pipe_capture_seconds(), NET_ANCHOR, true)
+	var button: Button = demo.get_node("%ToolButton") as Button
+	_check(not button.disabled, "The upgrade button becomes available while pipe input is held.")
+	button.pressed.emit()
+	_check(
+		demo.run.pipe_level == 1 and demo.run.candy == 0,
+		"A purchase can spend the freshly earned reward without first releasing the pipe."
+	)
+	demo._drive_tool(0.0, Vector2.ZERO, false)
+	_check(demo.run.candy == 0, "Releasing after the purchase cannot repay its spent reward.")
+
+
+func _check_restart_income(demo: DemoScript) -> void:
 	demo.restart_run()
 	var actor: PrototypeSlime = _prepare_one(demo)
 	demo._drive_tool(demo.run.get_pipe_capture_seconds(), actor.get_capture_point(), true)
-	_check(demo.run.pending_slime_count == 1, "Restart begins with a real unpaid pipe collection.")
+	_check(
+		demo.run.candy == demo.run.settings.slime_reward,
+		"Restart begins with a real paid pipe collection."
+	)
 	demo.restart_run()
 	_check(
 		(
 			demo.run.candy == 0
-			and demo.run.pending_candy == 0
-			and demo.run.pending_slime_count == 0
 			and demo._slimes.is_empty()
+			and demo.get_node("%Effects").get_child_count() == 0
 		),
-		"Restart discards the unpaid batch without restoring or paying removed actors."
+		"Restart clears the wallet, collected actors and their feedback for the new run."
 	)
 
 
@@ -195,13 +274,11 @@ func _check_orphan_collection(demo: DemoScript) -> void:
 	)
 	demo._drive_tool(demo.run.get_pipe_capture_seconds(), actor.get_capture_point(), true)
 	_check(
-		demo.run.pending_slime_count == 1 and demo.run.get_nest(1).alive_slimes == 0,
-		"An orphan enters the batch and releases its former source slot."
+		demo.run.candy == demo.run.settings.slime_reward and demo.run.get_nest(1).alive_slimes == 0,
+		"An orphan pays immediately and releases its former source slot."
 	)
 	demo._drive_tool(0.1, Vector2.ZERO, false)
-	_check(
-		demo.run.candy == demo.run.settings.slime_reward, "Releasing pays for the orphan normally."
-	)
+	_check(demo.run.candy == demo.run.settings.slime_reward, "Releasing cannot repay the orphan.")
 
 
 func _check_pipe_switch(demo: DemoScript) -> void:
@@ -210,8 +287,8 @@ func _check_pipe_switch(demo: DemoScript) -> void:
 	demo._drive_tool(demo.run.get_pipe_capture_seconds(), actor.get_capture_point(), true)
 	demo._select_tool(DemoScript.ToolMode.NET)
 	_check(
-		demo.run.candy == demo.run.settings.slime_reward and demo.run.pending_slime_count == 0,
-		"Switching from the pipe settles its existing batch."
+		demo.run.candy == demo.run.settings.slime_reward,
+		"Switching from the pipe preserves its already paid reward."
 	)
 
 
@@ -225,8 +302,6 @@ func _check_net_frames(demo: DemoScript) -> void:
 		_check(
 			(
 				demo.run.candy == 3 * demo.run.settings.slime_reward
-				and demo.run.pending_slime_count == 0
-				and demo.run.pending_candy == 0
 				and demo._slimes.is_empty()
 				and demo._net_caught_count == 3
 			),
@@ -329,7 +404,7 @@ func _check_net_cross_source(demo: DemoScript) -> void:
 			"Cross-source capacity updates the stock of each actually selected nearest body."
 		)
 	_check(
-		demo.run.candy == 10 * demo.run.settings.slime_reward and demo.run.pending_slime_count == 0,
+		demo.run.candy == 10 * demo.run.settings.slime_reward,
 		"One net capacity applies across all sources and pays once directly to the wallet."
 	)
 
@@ -379,7 +454,7 @@ func _check_net_cooldown(demo: DemoScript) -> void:
 	)
 
 
-func _check_net_switch_and_pending(demo: DemoScript) -> void:
+func _check_net_switch_and_income(demo: DemoScript) -> void:
 	demo.restart_run()
 	for upgrade: int in range(3):
 		_fund_pipe_upgrade(demo)
@@ -390,8 +465,16 @@ func _check_net_switch_and_pending(demo: DemoScript) -> void:
 		net_actors.append(demo._slimes[index])
 	_place_ranked_cluster(net_actors)
 	var pipe_actor: PrototypeSlime = demo._slimes[3]
-	var pipe_pointer: Vector2 = Vector2.LEFT * 235.0
-	_place_body(pipe_actor, pipe_pointer)
+	_place_body(pipe_actor, Vector2.UP.rotated(-0.45) * 235.0)
+	var pipe_pointer: Vector2 = pipe_actor.get_capture_point()
+	_check(
+		demo._can_collect(pipe_pointer, demo.run.get_pipe_radius()),
+		"The concurrent-income fixture keeps its pipe body visible and available for collection."
+	)
+	_check(
+		pipe_pointer.distance_to(NET_ANCHOR) > demo.run.get_net_radius(),
+		"The concurrent pipe body stays outside the anchored net's collection range."
+	)
 	# Other actors stay far from both tools, so the pipe cannot collect a second body.
 	for index: int in range(4, demo._slimes.size()):
 		_place_body(demo._slimes[index], Vector2.DOWN * 235.0)
@@ -403,28 +486,25 @@ func _check_net_switch_and_pending(demo: DemoScript) -> void:
 		demo._drive_tool(delta, pipe_pointer, true)
 	_check(
 		(
-			demo.run.pending_slime_count == 1
-			and demo.run.candy == 0
+			demo.run.candy == demo.run.settings.slime_reward
 			and demo._net_phase == DemoScript.NetPhase.CLOSING
 		),
-		"The pipe can build a pending batch while a switched-away net keeps closing."
+		"The pipe pays its completed body while a switched-away net keeps closing."
 	)
 	for frame: int in range(35):
 		demo._drive_tool(delta, pipe_pointer, true)
 	_check(
 		(
-			demo.run.candy == 3 * demo.run.settings.slime_reward
-			and demo.run.pending_slime_count == 1
-			and demo.run.pending_candy == demo.run.settings.slime_reward
+			demo.run.candy == 4 * demo.run.settings.slime_reward
 			and demo._net_caught_count == 3
 			and not demo.run.can_cast_net()
 		),
-		"Net direct payment preserves the pipe pending batch while casting survives a tool switch."
+		"The finished net adds its reward to the pipe income while casting survives a tool switch."
 	)
 	demo._drive_tool(delta, pipe_pointer, false)
 	_check(
-		demo.run.candy == 4 * demo.run.settings.slime_reward and demo.run.pending_slime_count == 0,
-		"A later pipe release settles only its own body after the net has paid."
+		demo.run.candy == 4 * demo.run.settings.slime_reward,
+		"A later pipe release preserves both tools' rewards without additional payment."
 	)
 	demo._select_tool(DemoScript.ToolMode.NET)
 	_check(
@@ -443,10 +523,9 @@ func _check_net_reset(demo: DemoScript) -> void:
 			and demo.run.can_cast_net()
 			and is_zero_approx(demo.run.net_cooldown_remaining)
 			and demo.run.candy == 0
-			and demo.run.pending_slime_count == 0
 			and demo._slimes.is_empty()
 		),
-		"Restart clears an active cast, cooldown, pending collection and actors."
+		"Restart clears an active cast, cooldown, earned collection and actors."
 	)
 
 

@@ -1,5 +1,7 @@
 # FMOD 音效导入手册
 
+2026-10-08 更新：首次接手或使用 AI 协助时，先看 [FMOD / 最新 Demo 交接入口](fmod_ai_handoff.md)。本页负责 Studio 制作与 Bank 导入，实际测试步骤见 [测试通路](fmod_test_route.md)。
+
 这份手册用于把音效制作成 FMOD Bank，放进 `audio/fmod-import` 分支，并在独立试听场景中检查。当前主游戏仍使用 Godot 原生音效；本分支提供导入和试听通路，不代表最终音效已经接入玩法。仓库初始不含可试听的 Bank，需要音效同事先制作并 Build；也可以先用场景中的“测试音频输出”按钮，直接试听项目已有 WAV，确认 FMOD 输出设备通路。
 
 ## 1. 取得正确分支
@@ -13,12 +15,12 @@ git clone -b audio/fmod-import https://github.com/nOstalgia-April/planet.git
 cd planet
 ```
 
-已经有项目副本时，先保存自己的工作，再执行：
+已经有项目副本时，先运行 `git status --short`，将自己的 Bank、源工程和其他改动另存或提交。工作区干净后再执行；出现冲突时保留本地工作，不使用强制覆盖：
 
 ```sh
 git fetch origin
 git checkout audio/fmod-import
-git pull --ff-only
+git pull --ff-only origin audio/fmod-import
 ```
 
 使用 Godot **4.7.2** 打开项目根目录中的 `project.godot`。仓库已经带有并启用了 **FMOD GDExtension 6.1.0-4.5.0**，无需重复下载或安装插件。该扩展发布包面向 Godot 4.5，并使用 FMOD 2.03.06；本项目在 Godot 4.7.2 上已检查扩展导入与运行时 API。真实音效的播放、参数变化与听感仍需用制作后的 Bank 验证。[扩展发布说明](https://github.com/utopia-rise/fmod-gdextension/releases/tag/6.1.0-4.5.0)

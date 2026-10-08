@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scripts/disk_demo.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/prototype_run.gd" id="2_run"]
@@ -16,6 +16,11 @@
 
 [ext_resource type="Script" path="res://scripts/disk_layout.gd" id="14_layout"]
 [ext_resource type="PackedScene" path="res://scenes/world/capture_net.tscn" id="15_net"]
+[ext_resource type="PackedScene" path="res://scenes/world/planet_view_controller.tscn" id="16_view"]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/technology_branch.tscn" id="17_branch"]
+[ext_resource type="Script" path="res://scripts/ui/technology_glyph.gd" id="18_glyph"]
+[ext_resource type="PackedScene" path="res://scenes/world/overview_ecology.tscn" id="19_overview"]
 
 [node name="DiskDemo" type="Node2D"]
 script = ExtResource("1_main")
@@ -28,9 +33,22 @@ unique_name_in_owner = true
 script = ExtResource("2_run")
 settings = ExtResource("3_settings")
 
+[node name="PlanetViewController" parent="." node_paths=PackedStringArray("world", "projection_root", "planet_surface", "bottom_toolbar") instance=ExtResource("16_view")]
+unique_name_in_owner = true
+world = NodePath("../World")
+projection_root = NodePath("..")
+planet_surface = NodePath("../World/PlanetSurface")
+bottom_toolbar = NodePath("../HUD/Interface/ToolDock")
+near_horizontal_stretch = 1.65
+overview_radius_ratio = 0.46
+
 [node name="World" type="Node2D" parent="."]
 unique_name_in_owner = true
 position = Vector2(510, 400)
+
+[node name="OverviewEcology" parent="." node_paths=PackedStringArray("interface") instance=ExtResource("19_overview")]
+unique_name_in_owner = true
+interface = NodePath("../HUD/Interface")
 
 [node name="PlanetSurface" parent="World" instance=ExtResource("4_surface")]
 unique_name_in_owner = true
@@ -39,9 +57,17 @@ radius = 240.0
 [node name="Nests" type="Node2D" parent="World"]
 unique_name_in_owner = true
 
+[node name="Regions" type="Node2D" parent="World"]
+unique_name_in_owner = true
+z_index = 1
+
 [node name="Slimes" type="Node2D" parent="World"]
 unique_name_in_owner = true
 z_index = 5
+
+[node name="GroundMucus" type="Node2D" parent="World"]
+unique_name_in_owner = true
+z_index = 2
 
 [node name="Effects" type="Node2D" parent="World"]
 unique_name_in_owner = true
@@ -81,6 +107,7 @@ volume_db = -12.0
 
 [node name="HUD" type="CanvasLayer" parent="."]
 
+
 [node name="Interface" type="Control" parent="HUD"]
 unique_name_in_owner = true
 layout_mode = 0
@@ -90,51 +117,77 @@ mouse_filter = 2
 theme = ExtResource("9_theme")
 script = ExtResource("14_layout")
 
+[node name="EconomyCard" type="Panel" parent="HUD/Interface"]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 24.0
+offset_right = 344.0
+offset_bottom = 124.0
+mouse_filter = 2
+
 [node name="GameName" type="Label" parent="HUD/Interface"]
 layout_mode = 0
-offset_left = 48.0
-offset_top = 28.0
-offset_right = 390.0
-offset_bottom = 52.0
 mouse_filter = 2
-theme_override_colors/font_color = Color(0.39, 0.44, 0.36, 1)
-theme_override_font_sizes/font_size = 17
+theme_override_font_sizes/font_size = 14
 text = "星球退烧计划"
+theme_override_colors/font_color = Color(0.38, 0.49, 0.39, 1)
 
 [node name="Economy" type="HBoxContainer" parent="HUD/Interface"]
 layout_mode = 0
-offset_left = 48.0
-offset_top = 55.0
-offset_right = 540.0
-offset_bottom = 100.0
 mouse_filter = 2
-theme_override_constants/separation = 24
+theme_override_constants/separation = 16
 
 [node name="CandyLabel" type="Label" parent="HUD/Interface/Economy"]
-unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
-theme_override_colors/font_color = Color(0.71, 0.40, 0.21, 1)
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 30
 text = "0 糖果"
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.70, 0.39, 0.20, 1)
 
 [node name="PassiveLabel" type="Label" parent="HUD/Interface/Economy"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 14
+text = "自动 +0 / 秒"
+vertical_alignment = 1
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.36, 0.46, 0.37, 1)
+
+[node name="ComboChip" type="PanelContainer" parent="HUD/Interface"]
+visible = false
+layout_mode = 0
+theme_type_variation = &"BranchPanel"
+
+[node name="Content" type="VBoxContainer" parent="HUD/Interface/ComboChip"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="ComboLabel" type="Label" parent="HUD/Interface/ComboChip/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
-theme_override_colors/font_color = Color(0.39, 0.44, 0.36, 1)
-theme_override_font_sizes/font_size = 18
-text = "自动 +0 / 秒"
-vertical_alignment = 1
+theme_override_colors/font_color = Color(0.60, 0.36, 0.18, 1)
+theme_override_font_sizes/font_size = 15
+text = "连击 0 / 5 · +1 糖果"
+
+[node name="ComboTimerBar" type="ProgressBar" parent="HUD/Interface/ComboChip/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 5)
+layout_mode = 2
+mouse_filter = 2
+max_value = 3.0
+show_percentage = false
+
+[node name="GoalCard" type="Panel" parent="HUD/Interface"]
+layout_mode = 0
+mouse_filter = 2
 
 [node name="Goal" type="VBoxContainer" parent="HUD/Interface"]
 layout_mode = 0
-offset_left = 625.0
-offset_top = 40.0
-offset_right = 845.0
-offset_bottom = 95.0
 mouse_filter = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 8
 
 [node name="GoalRow" type="HBoxContainer" parent="HUD/Interface/Goal"]
 layout_mode = 2
@@ -142,111 +195,461 @@ mouse_filter = 2
 
 [node name="GoalName" type="Label" parent="HUD/Interface/Goal/GoalRow"]
 layout_mode = 2
-size_flags_horizontal = 3
 mouse_filter = 2
-theme_override_font_sizes/font_size = 17
-text = "恢复绿色"
+theme_override_font_sizes/font_size = 15
+text = "自动化所有巢穴"
+size_flags_horizontal = 3
 
 [node name="ProgressLabel" type="Label" parent="HUD/Interface/Goal/GoalRow"]
-unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
-theme_override_font_sizes/font_size = 18
-text = "0 / 5"
+theme_override_font_sizes/font_size = 15
+text = "治理 0 / 3"
+unique_name_in_owner = true
 
 [node name="ProgressBar" type="ProgressBar" parent="HUD/Interface/Goal"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 8)
+custom_minimum_size = Vector2(0, 7)
 layout_mode = 2
 mouse_filter = 2
-max_value = 5.0
+max_value = 3.0
 show_percentage = false
 
-[node name="ToolCard" type="PanelContainer" parent="HUD/Interface"]
-layout_mode = 0
-offset_left = 920.0
-offset_top = 143.0
-offset_right = 1240.0
-offset_bottom = 399.0
-mouse_filter = 2
-
-[node name="Content" type="VBoxContainer" parent="HUD/Interface/ToolCard"]
+[node name="GovernanceLabel" type="Label" parent="HUD/Interface/Goal"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 12
+theme_override_font_sizes/font_size = 12
+text = "活跃 2  ·  半治理 0  ·  已治理 0"
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.47, 0.55, 0.46, 1)
 
-[node name="Tools" type="HBoxContainer" parent="HUD/Interface/ToolCard/Content"]
+[node name="StatusLabel" type="Label" parent="HUD/Interface"]
+layout_mode = 0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = ""
+autowrap_mode = 3
+horizontal_alignment = 1
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.98, 0.96, 0.86, 1)
+theme_override_colors/font_outline_color = Color(0.18, 0.25, 0.20, 0.95)
+theme_override_constants/outline_size = 4
+
+[node name="InputHint" type="Label" parent="HUD/Interface"]
+unique_name_in_owner = true
+layout_mode = 0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "悬停吸取  ·  左键投网  ·  右键拖动星球  ·  滚轮切换视图"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.94, 0.94, 0.85, 1)
+theme_override_colors/font_outline_color = Color(0.18, 0.25, 0.20, 0.95)
+theme_override_constants/outline_size = 3
+
+[node name="ToolDock" type="PanelContainer" parent="HUD/Interface"]
+layout_mode = 0
+mouse_filter = 0
+theme_type_variation = &"DockPanel"
+
+[node name="Content" type="HBoxContainer" parent="HUD/Interface/ToolDock"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 10
 
-[node name="PipeToolButton" type="Button" parent="HUD/Interface/ToolCard/Content/Tools"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 42)
+[node name="QuickTools" type="HBoxContainer" parent="HUD/Interface/ToolDock/Content"]
 layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 0
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="QuickPipeButton" type="Button" parent="HUD/Interface/ToolDock/Content/QuickTools"]
+layout_mode = 2
+text = ""
+custom_minimum_size = Vector2(210, 66)
 toggle_mode = true
 button_pressed = true
+tooltip_text = "持续牵引可解除黏液怪附着。"
 theme_type_variation = &"QuietButton"
-theme_override_font_sizes/font_size = 16
-text = "管子"
-
-[node name="NetToolButton" type="Button" parent="HUD/Interface/ToolCard/Content/Tools"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 42)
+
+[node name="Visual" type="HBoxContainer" parent="HUD/Interface/ToolDock/Content/QuickTools/QuickPipeButton"]
+layout_mode = 1
+mouse_filter = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = 8.0
+offset_right = -12.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="Icon" type="Control" parent="HUD/Interface/ToolDock/Content/QuickTools/QuickPipeButton/Visual"]
+custom_minimum_size = Vector2(38, 38)
 layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 0
-toggle_mode = true
-theme_type_variation = &"QuietButton"
-theme_override_font_sizes/font_size = 16
-text = "捕网"
+size_flags_vertical = 4
+mouse_filter = 2
+script = ExtResource("18_glyph")
+symbol = 0
 
-[node name="ToolLevelLabel" type="Label" parent="HUD/Interface/ToolCard/Content"]
-unique_name_in_owner = true
+[node name="Text" type="VBoxContainer" parent="HUD/Interface/ToolDock/Content/QuickTools/QuickPipeButton/Visual"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_colors/font_color = Color(0.41, 0.47, 0.38, 1)
-theme_override_font_sizes/font_size = 16
-text = "等级 1 / 4"
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 2
 
-[node name="ToolStatsLabel" type="Label" parent="HUD/Interface/ToolCard/Content"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 66)
+[node name="Name" type="Label" parent="HUD/Interface/ToolDock/Content/QuickTools/QuickPipeButton/Visual/Text"]
 layout_mode = 2
-size_flags_vertical = 3
 mouse_filter = 2
 theme_override_font_sizes/font_size = 17
-text = "处理 0.60 秒 / 只\n本趟 +0 糖果"
-autowrap_mode = 3
+text = "吸取管"
 
-[node name="ToolButton" type="Button" parent="HUD/Interface/ToolCard/Content"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 54)
+[node name="Detail" type="Label" parent="HUD/Interface/ToolDock/Content/QuickTools/QuickPipeButton/Visual/Text"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "0.60 秒 / 只"
+
+[node name="Shortcut" type="Label" parent="HUD/Interface/ToolDock/Content/QuickTools/QuickPipeButton/Visual"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "1"
+vertical_alignment = 1
+
+[node name="QuickNetButton" type="Button" parent="HUD/Interface/ToolDock/Content/QuickTools"]
+layout_mode = 2
+text = ""
+custom_minimum_size = Vector2(210, 66)
+toggle_mode = true
+button_pressed = false
+tooltip_text = "捕网可直接捕获附着中的黏液怪。"
+theme_type_variation = &"QuietButton"
+unique_name_in_owner = true
+
+[node name="Visual" type="HBoxContainer" parent="HUD/Interface/ToolDock/Content/QuickTools/QuickNetButton"]
+layout_mode = 1
+mouse_filter = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = 8.0
+offset_right = -12.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="Icon" type="Control" parent="HUD/Interface/ToolDock/Content/QuickTools/QuickNetButton/Visual"]
+custom_minimum_size = Vector2(38, 38)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+script = ExtResource("18_glyph")
+symbol = 1
+
+[node name="Text" type="VBoxContainer" parent="HUD/Interface/ToolDock/Content/QuickTools/QuickNetButton/Visual"]
+layout_mode = 2
+mouse_filter = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 2
+
+[node name="Name" type="Label" parent="HUD/Interface/ToolDock/Content/QuickTools/QuickNetButton/Visual/Text"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 17
+text = "捕网"
+
+[node name="Detail" type="Label" parent="HUD/Interface/ToolDock/Content/QuickTools/QuickNetButton/Visual/Text"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "容量 5 只"
+
+[node name="Shortcut" type="Label" parent="HUD/Interface/ToolDock/Content/QuickTools/QuickNetButton/Visual"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "2"
+vertical_alignment = 1
+
+[node name="TechnologyButton" type="Button" parent="HUD/Interface/ToolDock/Content"]
+layout_mode = 2
+text = "科技树"
+custom_minimum_size = Vector2(150, 66)
+unique_name_in_owner = true
+
+[node name="RestartButton" type="Button" parent="HUD/Interface"]
+layout_mode = 0
+text = "重新开始"
+custom_minimum_size = Vector2(122, 42)
+theme_type_variation = &"QuietButton"
+unique_name_in_owner = true
+theme_override_font_sizes/font_size = 13
+
+[node name="PipeUpgrade" type="PanelContainer" parent="HUD/Interface"]
+visible = false
+layout_mode = 0
 mouse_filter = 0
-text = "速度升级 · 10 糖果"
+theme_type_variation = &"DockPanel"
+
+[node name="Content" type="VBoxContainer" parent="HUD/Interface/PipeUpgrade"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="HUD/Interface/PipeUpgrade/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = "吸取管升级"
+
+[node name="Effect" type="Label" parent="HUD/Interface/PipeUpgrade/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 13
+text = "处理 0.60 → 0.45 秒 / 只"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.40, 0.49, 0.40, 1)
+
+[node name="Purchase" type="Button" parent="HUD/Interface/PipeUpgrade/Content"]
+layout_mode = 2
+text = "升级 · 10 糖果"
+custom_minimum_size = Vector2(0, 42)
+theme_override_font_sizes/font_size = 14
+
+[node name="NetUpgrade" type="PanelContainer" parent="HUD/Interface"]
+visible = false
+layout_mode = 0
+mouse_filter = 0
+theme_type_variation = &"DockPanel"
+
+[node name="Content" type="VBoxContainer" parent="HUD/Interface/NetUpgrade"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="HUD/Interface/NetUpgrade/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = "捕网升级"
+
+[node name="Effect" type="Label" parent="HUD/Interface/NetUpgrade/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 13
+text = "处理 0.60 → 0.45 秒 / 只"
+autowrap_mode = 3
+theme_override_colors/font_color = Color(0.40, 0.49, 0.40, 1)
+
+[node name="Purchase" type="Button" parent="HUD/Interface/NetUpgrade/Content"]
+layout_mode = 2
+text = "升级 · 10 糖果"
+custom_minimum_size = Vector2(0, 42)
+theme_override_font_sizes/font_size = 14
+
+[node name="Technology" type="Control" parent="HUD/Interface"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Shade" type="ColorRect" parent="HUD/Interface/Technology"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.08, 0.18, 0.13, 0.62)
+
+[node name="ToolCard" type="PanelContainer" parent="HUD/Interface/Technology"]
+unique_name_in_owner = true
+layout_mode = 0
+mouse_filter = 0
+
+[node name="Content" type="VBoxContainer" parent="HUD/Interface/Technology/ToolCard"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="HBoxContainer" parent="HUD/Interface/Technology/ToolCard/Content"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Identity" type="VBoxContainer" parent="HUD/Interface/Technology/ToolCard/Content/Header"]
+layout_mode = 2
+mouse_filter = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Title" type="Label" parent="HUD/Interface/Technology/ToolCard/Content/Header/Identity"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 29
+text = "科技树"
+
+[node name="Subtitle" type="Label" parent="HUD/Interface/Technology/ToolCard/Content/Header/Identity"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 13
+text = "改善工具，建立持续运转的生态区"
+theme_override_colors/font_color = Color(0.41, 0.52, 0.41, 1)
+
+[node name="Wallet" type="Label" parent="HUD/Interface/Technology/ToolCard/Content/Header"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 22
+text = "0 糖果"
+vertical_alignment = 1
+theme_override_colors/font_color = Color(0.70, 0.39, 0.20, 1)
+
+[node name="CloseTechnologyButton" type="Button" parent="HUD/Interface/Technology/ToolCard/Content/Header"]
+layout_mode = 2
+text = "×"
+custom_minimum_size = Vector2(44, 44)
+size_flags_vertical = 4
+theme_type_variation = &"QuietButton"
+tooltip_text = "关闭 · Esc"
+unique_name_in_owner = true
+
+[node name="Branches" type="VBoxContainer" parent="HUD/Interface/Technology/ToolCard/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Pipe" parent="HUD/Interface/Technology/ToolCard/Content/Branches" instance=ExtResource("17_branch")]
+layout_mode = 2
+technology_id = "pipe"
+branch_title = "吸取管"
+branch_category = "全局 · 基础工具"
+icon_index = 0
+stage_names = PackedStringArray("0.45 秒", "0.32 秒", "0.22 秒", "0.17 秒", "0.135 秒", "0.11 秒")
+
+[node name="Net" parent="HUD/Interface/Technology/ToolCard/Content/Branches" instance=ExtResource("17_branch")]
+layout_mode = 2
+technology_id = "net"
+branch_title = "捕网"
+branch_category = "全局 · 基础工具"
+icon_index = 1
+stage_names = PackedStringArray("解锁捕网", "10 只", "20 只", "30 只")
+
+[node name="Governance" parent="HUD/Interface/Technology/ToolCard/Content/Branches" instance=ExtResource("17_branch")]
+layout_mode = 2
+technology_id = "governance"
+branch_title = "巢穴治理"
+branch_category = "全局 · 解锁区域投资"
+icon_index = 2
+stage_names = PackedStringArray("治理许可 I", "治理许可 II", "治理许可 III")
+
+[node name="Combo" parent="HUD/Interface/Technology/ToolCard/Content/Branches" instance=ExtResource("17_branch")]
+layout_mode = 2
+technology_id = "combo"
+branch_title = "连击吸取"
+branch_category = "全局 · 连吸 5 只后逐只奖励"
+icon_index = 3
+stage_names = PackedStringArray("赠送 1 糖果", "赠送 2 糖果", "赠送 3 糖果")
+
+[node name="Valuable" parent="HUD/Interface/Technology/ToolCard/Content/Branches" instance=ExtResource("17_branch")]
+layout_mode = 2
+technology_id = "valuable"
+branch_title = "高价值个体"
+branch_category = "区域研究 · 只影响此巢穴"
+icon_index = 4
+stage_names = PackedStringArray("黄金变体")
+
+[node name="Footer" type="Label" parent="HUD/Interface/Technology/ToolCard/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "工具也可在下方悬停升级     ·     Esc 关闭"
+theme_override_colors/font_color = Color(0.49, 0.57, 0.46, 1)
+
+[node name="Legacy" type="VBoxContainer" parent="HUD/Interface/Technology/ToolCard/Content"]
+layout_mode = 2
+mouse_filter = 2
+visible = false
+
+[node name="Tools" type="HBoxContainer" parent="HUD/Interface/Technology/ToolCard/Content/Legacy"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="PipeToolButton" type="Button" parent="HUD/Interface/Technology/ToolCard/Content/Legacy/Tools"]
+layout_mode = 2
+text = "管子"
+toggle_mode = true
+unique_name_in_owner = true
+
+[node name="NetToolButton" type="Button" parent="HUD/Interface/Technology/ToolCard/Content/Legacy/Tools"]
+layout_mode = 2
+text = "捕网"
+toggle_mode = true
+unique_name_in_owner = true
+
+[node name="ToolLevelLabel" type="Label" parent="HUD/Interface/Technology/ToolCard/Content/Legacy"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = ""
+unique_name_in_owner = true
+
+[node name="ToolStatsLabel" type="Label" parent="HUD/Interface/Technology/ToolCard/Content/Legacy"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = ""
+unique_name_in_owner = true
+
+[node name="ToolButton" type="Button" parent="HUD/Interface/Technology/ToolCard/Content/Legacy"]
+layout_mode = 2
+text = ""
+unique_name_in_owner = true
 
 [node name="NestCard" type="PanelContainer" parent="HUD/Interface"]
+visible = false
 layout_mode = 0
 offset_left = 920.0
 offset_top = 423.0
 offset_right = 1240.0
 offset_bottom = 700.0
-mouse_filter = 2
+mouse_filter = 0
 
 [node name="Content" type="VBoxContainer" parent="HUD/Interface/NestCard"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 12
 
-[node name="NestTitleLabel" type="Label" parent="HUD/Interface/NestCard/Content"]
-unique_name_in_owner = true
+[node name="Header" type="HBoxContainer" parent="HUD/Interface/NestCard/Content"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_font_sizes/font_size = 23
+
+[node name="NestTitleLabel" type="Label" parent="HUD/Interface/NestCard/Content/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 20
 text = "巢穴"
+
+[node name="CloseNestButton" type="Button" parent="HUD/Interface/NestCard/Content/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+theme_type_variation = &"QuietButton"
+theme_override_font_sizes/font_size = 16
+text = "×"
+tooltip_text = "关闭"
 
 [node name="NestLevelLabel" type="Label" parent="HUD/Interface/NestCard/Content"]
 unique_name_in_owner = true
@@ -262,7 +665,7 @@ layout_mode = 2
 size_flags_vertical = 3
 mouse_filter = 2
 theme_override_font_sizes/font_size = 17
-text = "点选一个巢穴"
+text = "悬停巢穴查看升级"
 autowrap_mode = 3
 
 [node name="NestButton" type="Button" parent="HUD/Interface/NestCard/Content"]
@@ -272,42 +675,6 @@ layout_mode = 2
 mouse_filter = 0
 disabled = true
 text = "驯化"
-
-[node name="StatusLabel" type="Label" parent="HUD/Interface"]
-unique_name_in_owner = true
-layout_mode = 0
-offset_left = 48.0
-offset_top = 703.0
-offset_right = 847.0
-offset_bottom = 733.0
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.31, 0.45, 0.33, 1)
-theme_override_font_sizes/font_size = 17
-autowrap_mode = 3
-
-[node name="InputHint" type="Label" parent="HUD/Interface"]
-layout_mode = 0
-offset_left = 48.0
-offset_top = 744.0
-offset_right = 847.0
-offset_bottom = 774.0
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.44, 0.49, 0.41, 1)
-theme_override_font_sizes/font_size = 16
-text = "1 管子 · 2 捕网 · 管子按住收集，松手结算 · 捕网点击施放"
-
-[node name="RestartButton" type="Button" parent="HUD/Interface"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 48)
-layout_mode = 0
-offset_left = 1073.0
-offset_top = 730.0
-offset_right = 1240.0
-offset_bottom = 778.0
-mouse_filter = 0
-theme_type_variation = &"QuietButton"
-theme_override_font_sizes/font_size = 16
-text = "重新开始"
 
 [node name="Completion" type="Control" parent="HUD/Interface"]
 unique_name_in_owner = true

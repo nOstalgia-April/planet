@@ -2,19 +2,49 @@
 class_name PrototypeSlime
 extends Node2D
 
+const SurfaceProjection = preload("res://scripts/surface_projection.gd")
+const SlimeBodyCache = preload("res://scripts/slime_body_cache.gd")
+# P(-z < N(0, 1) < z) = 0.75.
+const NORMAL_CENTRAL_75_Z: float = 1.15034938
+
+enum Species { SLIME, MUCUS }
+
+@export var species: Species = Species.SLIME:
+	set(value):
+		species = value
+		_cached_body_texture = null
+		queue_redraw()
+@export var high_value: bool = false
+@export_range(0.1, 2.0, 0.1) var peel_seconds: float = 2.0
+
+var peel_progress: float = 0.0
+var detached_remaining: float = 0.0
+var reward: int = 2
+var on_mucus: bool = false
+
 signal left_screen(slime: PrototypeSlime)
 signal landed(slime: PrototypeSlime)
 
 @export_range(8.0, 30.0, 0.5) var body_size: float = 15.0:
 	set(value):
 		body_size = value
+		_cached_body_texture = null
 		queue_redraw()
-@export var body_color: Color = Color("f1eedb")
-@export var outline_color: Color = Color("454944")
+@export_range(0.25, 2.0, 0.05) var presentation_scale: float = 1.0:
+	set(value):
+		presentation_scale = value
+		queue_redraw()
+@export var body_color: Color = Color("f1eedb"):
+	set(value):
+		body_color = value
+		_cached_body_texture = null
+		queue_redraw()
+@export var outline_color: Color = Color("454944"):
+	set(value):
+		outline_color = value
+		_cached_body_texture = null
+		queue_redraw()
 @export_range(5.0, 40.0, 1.0) var wander_speed: float = 16.0
-@export_range(0.1, 0.8, 0.01) var local_angle_range: float = 0.42
-@export_range(20.0, 100.0, 1.0) var surface_inner_offset: float = 65.0
-@export_range(10.0, 70.0, 1.0) var surface_outer_offset: float = 35.0
 @export_range(0.3, 0.5, 0.01) var launch_seconds: float = 0.38
 @export_range(30.0, 50.0, 1.0) var launch_distance: float = 40.0
 @export_range(8.0, 25.0, 1.0) var launch_height: float = 16.0
@@ -23,6 +53,7 @@ signal landed(slime: PrototypeSlime)
 var nest_id: int = -1
 var capture_progress: float = 0.0
 var consumed: bool = false
+var surface: PlanetSurface
 
 var _home: Vector2 = Vector2(0.0, -225.0)
 var _planet_radius: float = 240.0
@@ -36,6 +67,7 @@ var _attraction_hold: float = 0.0
 var _wander_wait: float = 0.0
 var _has_active_nest: bool = true
 var _speed_variation: float = 1.0
+var _roaming_deviation: float = 0.76
 var _launch_start: Vector2 = Vector2.ZERO
 var _launch_end: Vector2 = Vector2.ZERO
 var _launch_elapsed: float = 0.38
@@ -46,12 +78,19 @@ var _flight_bounds: Rect2 = Rect2()
 var _drop_settings: DropSettings
 var _fall_elapsed: float = 0.0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var _cached_body_texture: Texture2D
+var _cached_shadow_texture: Texture2D
 
 
-func setup(owner_id: int, home: Vector2, planet_radius: float) -> void:
+func setup(
+	owner_id: int, home: Vector2, planet_surface: PlanetSurface, screen_half_angle: float = 0.875
+) -> void:
+	assert(planet_surface != null, "Slime movement requires its planet surface dependency.")
 	nest_id = owner_id
-	_home = home
-	_planet_radius = planet_radius
+	surface = planet_surface
+	_home = surface.project_to_surface(home)
+	_planet_radius = surface.radius
+	configure_roaming(screen_half_angle)
 	_rng.randomize()
 	_phase = _rng.randf_range(0.0, TAU)
 	_has_active_nest = true
@@ -62,6 +101,9 @@ func setup(owner_id: int, home: Vector2, planet_radius: float) -> void:
 	clear_attraction()
 	consumed = false
 	capture_progress = 0.0
+	on_mucus = false
+	detached_remaining = 0.0
+	peel_progress = 0.0
 	_launch_elapsed = launch_seconds
 	position = _random_destination()
 	_update_surface_rotation()
@@ -71,6 +113,54 @@ func setup(owner_id: int, home: Vector2, planet_radius: float) -> void:
 	visible = true
 	set_process(true)
 	queue_redraw()
+
+
+func configure_roaming(screen_half_angle: float) -> void:
+	assert(screen_half_angle > 0.0, "Nest roaming requires a positive viewing range.")
+	_roaming_deviation = clampf(screen_half_angle / NORMAL_CENTRAL_75_Z, 0.35, 0.9)
+
+
+func configure_species(kind: Species, valuable: bool, candy_reward: int) -> void:
+	species = kind
+	high_value = valuable
+	reward = candy_reward
+	body_color = Color("a9bff6") if species == Species.MUCUS else Color("ffa6c6")
+	outline_color = Color("243672") if species == Species.MUCUS else Color("6c334e")
+	if high_value:
+		body_color = Color("f3ca6a")
+	if species == Species.MUCUS:
+		wander_speed = 10.0
+		body_size = 18.0
+	else:
+		wander_speed = 16.0
+		body_size = 15.0
+	queue_redraw()
+
+
+func is_anchored() -> bool:
+	return species == Species.MUCUS and detached_remaining <= 0.0 and not consumed and on_mucus
+
+
+func pull_off_mucus(delta: float, target: Vector2, duration: float = -1.0) -> bool:
+	if not is_anchored():
+		return true
+	apply_attraction(delta, target, 0.7)
+	var seconds: float = peel_seconds if duration <= 0.0 else duration
+	peel_progress = minf(1.0, peel_progress + delta / maxf(seconds, 0.05))
+	if peel_progress < 1.0:
+		return false
+	detached_remaining = 6.0
+	peel_progress = 0.0
+	return true
+
+
+func can_emit_ground_mucus() -> bool:
+	return (
+		species == Species.MUCUS
+		and not consumed
+		and detached_remaining <= 0.0
+		and _launch_elapsed >= launch_seconds
+	)
 
 
 func launch(direction: Vector2) -> void:
@@ -83,8 +173,8 @@ func launch(direction: Vector2) -> void:
 	clear_attraction()
 	var launch_direction: Vector2 = direction.normalized()
 	if launch_direction.is_zero_approx():
-		launch_direction = _home.normalized()
-	_launch_start = _project_to_surface(_home)
+		launch_direction = Vector2.from_angle(_rng.randf_range(-PI, PI))
+	_launch_start = _home
 	var distance: float = _rng.randf_range(launch_distance - 10.0, launch_distance + 10.0)
 	_launch_end = _project_to_surface(_launch_start + launch_direction * distance)
 	position = _launch_start
@@ -101,11 +191,18 @@ func release_from_nest() -> void:
 	if not _has_active_nest:
 		return
 	_has_active_nest = false
-	var angular_distance: float = _rng.randf_range(1.2, PI)
-	if _rng.randf() < 0.5:
-		angular_distance = -angular_distance
-	_wander_target = Vector2.from_angle(_home.angle() + angular_distance) * _random_radius()
+	_wander_target = _random_destination()
 	_wander_wait = 0.0
+
+
+func refresh_surface_bounds() -> void:
+	if _flying:
+		return
+	position = _project_to_surface(position)
+	_wander_target = _project_to_surface(_wander_target)
+	_launch_end = _project_to_surface(_launch_end)
+	_update_surface_rotation()
+	queue_redraw()
 
 
 func restore_to_surface(drop_position: Vector2) -> void:
@@ -149,7 +246,14 @@ func update_fall_bounds(bounds: Rect2) -> void:
 
 
 func get_capture_point() -> Vector2:
-	return position + Vector2(0.0, -body_size * 0.65).rotated(rotation)
+	return position + _get_body_center_offset().rotated(rotation)
+
+
+func _get_body_center_offset() -> Vector2:
+	return (
+		SurfaceProjection.get_visual_compensation(self)
+		* Vector2(0.0, -body_size * 0.65 * presentation_scale)
+	)
 
 
 func apply_attraction(delta: float, target: Vector2, strength: float) -> void:
@@ -182,6 +286,9 @@ func _process(delta: float) -> void:
 	if consumed:
 		return
 	_elapsed += delta
+	detached_remaining = maxf(0.0, detached_remaining - delta)
+	if _capture_hold <= 0.0:
+		peel_progress = maxf(0.0, peel_progress - delta * 2.0)
 	_capture_hold = maxf(0.0, _capture_hold - delta)
 	_attraction_hold = maxf(0.0, _attraction_hold - delta)
 	if _attraction_hold <= 0.0:
@@ -191,6 +298,8 @@ func _process(delta: float) -> void:
 	if _capture_hold <= 0.0:
 		if _launch_elapsed < launch_seconds:
 			_advance_launch(delta)
+		elif _has_active_nest:
+			_advance_nest_roaming(delta)
 		elif position.distance_to(_wander_target) <= 1.0:
 			_wander_wait -= delta
 			if _wander_wait <= 0.0:
@@ -212,7 +321,7 @@ func apply_capture(delta: float, capture_seconds: float, target: Vector2) -> boo
 	var body_center: Vector2 = get_capture_point().move_toward(
 		target, delta * (24.0 + capture_progress * 46.0)
 	)
-	position = body_center - body_center.normalized() * body_size * 0.65
+	position = body_center - _get_body_center_offset().rotated(rotation)
 	_update_surface_rotation()
 	queue_redraw()
 	if capture_progress >= 1.0:
@@ -223,6 +332,7 @@ func apply_capture(delta: float, capture_seconds: float, target: Vector2) -> boo
 
 func release_capture(delta: float) -> void:
 	_capture_hold = 0.0
+	peel_progress = 0.0
 	capture_progress = maxf(0.0, capture_progress - delta * 0.75)
 	queue_redraw()
 
@@ -231,11 +341,7 @@ func _advance_launch(delta: float) -> void:
 	_launch_elapsed = minf(launch_seconds, _launch_elapsed + delta)
 	var progress: float = _launch_elapsed / launch_seconds
 	var travel_progress: float = 1.0 - (1.0 - progress) * (1.0 - progress)
-	var angle: float = lerp_angle(_launch_start.angle(), _launch_end.angle(), travel_progress)
-	var radial_distance: float = lerpf(
-		_launch_start.length(), _launch_end.length(), travel_progress
-	)
-	position = Vector2.from_angle(angle) * radial_distance
+	position = _project_to_surface(_launch_start.lerp(_launch_end, travel_progress))
 
 
 func _advance_fall(delta: float) -> void:
@@ -273,8 +379,7 @@ func _advance_fall(delta: float) -> void:
 
 func _surface_contact(previous: Vector2, current: Vector2) -> Vector2:
 	if previous.length_squared() <= _planet_radius * _planet_radius:
-		var angle: float = current.angle() if not current.is_zero_approx() else _home.angle()
-		return Vector2.from_angle(angle) * _planet_radius
+		return _project_to_surface(current)
 	var segment: Vector2 = current - previous
 	var quadratic_a: float = segment.length_squared()
 	var quadratic_b: float = 2.0 * previous.dot(segment)
@@ -298,44 +403,66 @@ func _finish_fall(on_surface: bool) -> void:
 
 
 func _update_surface_rotation() -> void:
-	rotation = position.angle() + PI / 2.0
+	# A two-dimensional surface has no radial "up" at its center. Keep actors
+	# upright in the view while their ground positions still rotate with the planet.
+	var local_right: Vector2 = get_global_transform_with_canvas().affine_inverse().basis_xform(
+		Vector2.RIGHT
+	)
+	rotation += local_right.angle()
 
 
 func _move_on_surface(target: Vector2, travel_distance: float) -> void:
-	var radial_distance: float = position.length()
-	var angular_step: float = travel_distance / maxf(radial_distance, 1.0)
-	var angle: float = (
-		position.angle()
-		+ clampf(angle_difference(position.angle(), target.angle()), -angular_step, angular_step)
+	var candidate: Vector2 = position.move_toward(target, travel_distance)
+	var inner: float = surface.get_activity_radius_bounds(position.angle()).x
+	var nearest: Vector2 = Geometry2D.get_closest_point_to_segment(
+		Vector2.ZERO, position, candidate
 	)
-	radial_distance = move_toward(radial_distance, target.length(), travel_distance * 0.65)
-	position = _project_to_surface(Vector2.from_angle(angle) * radial_distance)
+	if nearest.length_squared() < inner * inner - 0.0001:
+		var difference: float = angle_difference(position.angle(), target.angle())
+		var angular_step: float = minf(
+			absf(difference), travel_distance / maxf(position.length(), inner)
+		)
+		var direction: float = -1.0 if difference < 0.0 else 1.0
+		candidate = position.rotated(angular_step * direction)
+	position = _project_to_surface(candidate)
 
 
 func _random_destination() -> Vector2:
-	var angle: float = _rng.randf_range(-PI, PI)
-	if _has_active_nest:
-		angle = _home.angle() + _rng.randf_range(-local_angle_range, local_angle_range)
-		if _rng.randf() < 0.3:
-			angle = lerp_angle(angle, _home.angle(), 0.65)
-	return Vector2.from_angle(angle) * _random_radius()
+	if not _has_active_nest:
+		var angle: float = _rng.randf_range(-PI, PI)
+		return Vector2.from_angle(angle) * _random_radius(angle)
+	var spread: float = _planet_radius * _roaming_deviation * 0.6
+	var destination: Vector2 = _home
+	for attempt: int in range(8):
+		destination = _home + Vector2(_rng.randfn(), _rng.randfn()) * spread
+		if surface.contains_surface_point(destination, surface.activity_edge_inset):
+			return destination
+	return _project_to_surface(destination)
 
 
-func _random_radius() -> float:
-	return _rng.randf_range(
-		_planet_radius - surface_inner_offset, _planet_radius + surface_outer_offset
-	)
+func _advance_nest_roaming(delta: float) -> void:
+	if delta <= 0.0 or wander_speed <= 0.0:
+		return
+	if position.distance_squared_to(_wander_target) <= 1.0:
+		_wander_wait -= delta
+		if _wander_wait <= 0.0:
+			_wander_target = _random_destination()
+			_wander_wait = _rng.randf_range(0.3, 1.4)
+		return
+	_move_on_surface(_wander_target, wander_speed * _speed_variation * delta)
+
+
+func _random_radius(angle: float) -> float:
+	var bounds: Vector2 = surface.get_activity_radius_bounds(angle)
+	return sqrt(lerpf(bounds.x * bounds.x, bounds.y * bounds.y, _rng.randf()))
 
 
 func _project_to_surface(point: Vector2) -> Vector2:
-	var angle: float = point.angle() if not point.is_zero_approx() else _home.angle()
-	var radial_distance: float = clampf(
-		point.length(), _planet_radius - surface_inner_offset, _planet_radius + surface_outer_offset
-	)
-	return Vector2.from_angle(angle) * radial_distance
+	return surface.project_to_surface(point)
 
 
 func _draw() -> void:
+	var compensation: Transform2D = SurfaceProjection.get_visual_compensation(self)
 	var bounce: float = sin(_elapsed * 4.5 + _phase)
 	var squash: float = bounce * 0.045
 	var launch_bob: float = 0.0
@@ -343,18 +470,57 @@ func _draw() -> void:
 		var progress: float = _launch_elapsed / launch_seconds
 		launch_bob = -sin(progress * PI) * launch_height
 		squash += sin(progress * TAU) * 0.14
-	var body_width: float = body_size * (1.0 + squash - capture_progress * 0.37)
-	var body_height: float = body_size * (1.0 - squash + capture_progress * 0.60)
+	var capture_scale: float = lerpf(1.0, 0.2, capture_progress)
+	var body_width: float = (
+		body_size * (1.0 + squash - peel_progress * 0.18 - capture_progress * 0.37) * capture_scale
+	)
+	var body_height: float = (
+		body_size * (1.0 - squash + peel_progress * 0.40 + capture_progress * 0.60) * capture_scale
+	)
 	var bob: float = -maxf(0.0, bounce) * 2.0 + launch_bob
+	var cached_body: bool = _can_use_cached_body()
+	if cached_body and _cached_body_texture == null:
+		_cached_body_texture = SlimeBodyCache.get_body_texture(
+			body_size, species == Species.MUCUS, body_color, outline_color
+		)
+		_cached_shadow_texture = SlimeBodyCache.get_shadow_texture(
+			body_size, species == Species.MUCUS, body_color, outline_color
+		)
 	if not _flying:
 		var shadow_color: Color = Color(0.15, 0.18, 0.14, 0.12 * (1.0 - capture_progress * 0.6))
-		draw_set_transform(Vector2(0.0, 3.0) + _attraction_offset * 0.15, 0.0, Vector2(1.0, 0.28))
-		draw_circle(Vector2.ZERO, body_size * 0.85, shadow_color)
-	draw_set_transform(
-		Vector2(0.0, bob) + _attraction_offset,
-		_attraction_offset.x * 0.012,
-		Vector2(1.0 - _attraction_strength * 0.05, 1.0 + _attraction_strength * 0.12)
+		draw_set_transform_matrix(
+			(
+				compensation
+				* Transform2D(
+					0.0,
+					Vector2(1.0, 0.28) * presentation_scale,
+					0.0,
+					(Vector2(0.0, 3.0) + _attraction_offset * 0.15) * presentation_scale
+				)
+			)
+		)
+		if cached_body:
+			draw_texture_rect(
+				_cached_shadow_texture, SlimeBodyCache.get_shadow_rect(body_size), false, shadow_color
+			)
+		else:
+			draw_circle(Vector2.ZERO, body_size * 0.85, shadow_color)
+	var body_transform: Transform2D = (
+		compensation
+		* Transform2D(
+			_attraction_offset.x * 0.012,
+			(
+				Vector2(1.0 - _attraction_strength * 0.05, 1.0 + _attraction_strength * 0.12)
+				* presentation_scale
+			),
+			0.0,
+			(Vector2(0.0, bob) + _attraction_offset) * presentation_scale
+		)
 	)
+	draw_set_transform_matrix(body_transform)
+	if cached_body:
+		_draw_cached_body(body_transform, body_width, body_height)
+		return
 	var body_points: PackedVector2Array = PackedVector2Array(
 		[
 			Vector2(-0.95 * body_width, -0.08 * body_height),
@@ -377,13 +543,49 @@ func _draw() -> void:
 	draw_colored_polygon(body_points, body_color)
 	body_points.append(body_points[0])
 	draw_polyline(body_points, outline_color, 1.9, true)
-	draw_circle(Vector2(-body_width * 0.33, -body_height * 0.86), body_size * 0.19, Color("fbfcf5"))
-	draw_circle(Vector2(body_width * 0.33, -body_height * 0.83), body_size * 0.19, Color("fbfcf5"))
-	draw_circle(Vector2(-body_width * 0.30, -body_height * 0.83), body_size * 0.085, outline_color)
-	draw_circle(Vector2(body_width * 0.30, -body_height * 0.80), body_size * 0.085, outline_color)
+	if species == Species.MUCUS:
+		for spot: Vector2 in [Vector2(-0.6, -0.4), Vector2(0.6, -0.3), Vector2(0.2, -1.2)]:
+			draw_circle(
+				spot * Vector2(body_width, body_height),
+				body_size * capture_scale * 0.13,
+				Color("7293d9")
+			)
+	if high_value:
+		_draw_value_marker(body_height)
+	if peel_progress > 0.0:
+		draw_arc(
+			Vector2(0.0, -body_size * 0.65),
+			body_size * 1.35,
+			-PI / 2.0,
+			-PI / 2.0 + TAU * peel_progress,
+			24,
+			Color("c9a5ea"),
+			2.8,
+			true
+		)
+	draw_circle(
+		Vector2(-body_width * 0.33, -body_height * 0.86),
+		body_size * capture_scale * 0.19,
+		Color("fbfcf5")
+	)
+	draw_circle(
+		Vector2(body_width * 0.33, -body_height * 0.83),
+		body_size * capture_scale * 0.19,
+		Color("fbfcf5")
+	)
+	draw_circle(
+		Vector2(-body_width * 0.30, -body_height * 0.83),
+		body_size * capture_scale * 0.085,
+		outline_color
+	)
+	draw_circle(
+		Vector2(body_width * 0.30, -body_height * 0.80),
+		body_size * capture_scale * 0.085,
+		outline_color
+	)
 	draw_arc(
 		Vector2(0.0, -body_height * 0.55),
-		body_size * 0.13,
+		body_size * capture_scale * 0.13,
 		0.12,
 		PI - 0.12,
 		8,
@@ -409,3 +611,41 @@ func _draw() -> void:
 			2.4,
 			true
 		)
+
+
+func _can_use_cached_body() -> bool:
+	return (
+		not _flying
+		and _launch_elapsed >= launch_seconds
+		and capture_progress <= 0.0
+		and peel_progress <= 0.0
+		and _attraction_strength <= 0.001
+		and _attraction_offset.length_squared() <= 0.001
+	)
+
+
+func _draw_cached_body(body_transform: Transform2D, width: float, height: float) -> void:
+	# Keep bob and squash continuous. Active handling retains the original vector
+	# geometry so the eyes, progress rings and stretched body stay exact.
+	draw_set_transform_matrix(
+		body_transform * Transform2D(0.0, Vector2(width, height) / body_size, 0.0, Vector2.ZERO)
+	)
+	draw_texture_rect(_cached_body_texture, SlimeBodyCache.get_body_rect(body_size), false)
+	if high_value:
+		draw_set_transform_matrix(body_transform)
+		_draw_value_marker(height)
+
+
+func _draw_value_marker(body_height: float) -> void:
+	var marker: Vector2 = Vector2(0.0, -body_height * 1.9)
+	var diamond: PackedVector2Array = PackedVector2Array(
+		[
+			marker + Vector2(0.0, -6.0),
+			marker + Vector2(4.0, 0.0),
+			marker + Vector2(0.0, 6.0),
+			marker + Vector2(-4.0, 0.0)
+		]
+	)
+	draw_colored_polygon(diamond, Color("fff4b7"))
+	diamond.append(diamond[0])
+	draw_polyline(diamond, Color("ad7b35"), 1.3, true)

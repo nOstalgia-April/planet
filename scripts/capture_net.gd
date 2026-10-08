@@ -2,6 +2,8 @@
 class_name CaptureNet
 extends Node2D
 
+const SurfaceProjection = preload("res://scripts/surface_projection.gd")
+
 enum Presentation { PREVIEW, CAST, OPEN, CARRIED, RESULT, COOLDOWN }
 
 @export_range(0.05, 0.6, 0.01) var cast_seconds: float = 0.18
@@ -22,10 +24,11 @@ var _result_count: int = 0
 @onready var _sack: Polygon2D = $Sack
 @onready var _sack_outline: Line2D = $SackOutline
 @onready var _handle: Line2D = $Handle
-@onready var _collected_label: Label = $CollectedLabel
+@onready var _label_compensation: Node2D = $LabelCompensation
+@onready var _collected_label: Label = %CollectedLabel
 @onready var _result_ring: Line2D = $ResultRing
-@onready var _result_label: Label = $ResultCount
-@onready var _cooldown_label: Label = $CooldownLabel
+@onready var _result_label: Label = %ResultCount
+@onready var _cooldown_label: Label = %CooldownLabel
 
 
 func _ready() -> void:
@@ -33,10 +36,22 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_visual_compensation()
 	if _presentation == Presentation.RESULT:
 		_result_age += delta
 		_update_result_ring()
-		queue_redraw()
+	queue_redraw()
+
+
+func _update_visual_compensation() -> void:
+	var compensation: Transform2D = SurfaceProjection.get_visual_compensation(self)
+	_sack.transform = compensation
+	_sack_outline.transform = compensation
+	_handle.transform = compensation
+	var screen_transform: Transform2D = get_global_transform_with_canvas() * compensation
+	_label_compensation.transform = (
+		compensation * Transform2D(-screen_transform.get_rotation(), Vector2.ZERO)
+	)
 
 
 func show_preview(pointer: Vector2, radius: float) -> void:
@@ -77,6 +92,7 @@ func show_cooldown(pointer: Vector2, radius: float, remaining: float, total: flo
 
 func _present(mode: Presentation, pointer: Vector2, radius: float, progress: float) -> void:
 	position = pointer
+	_update_visual_compensation()
 	_presentation = mode
 	_radius = radius
 	_progress = clampf(progress, 0.0, 1.0)
@@ -120,6 +136,7 @@ func _display_radius() -> float:
 
 func _draw() -> void:
 	if _presentation == Presentation.CARRIED:
+		draw_set_transform_matrix(SurfaceProjection.get_visual_compensation(self))
 		_draw_bag_mesh()
 		return
 	if _presentation == Presentation.RESULT:
@@ -138,6 +155,7 @@ func _draw() -> void:
 		var half_length: float = sqrt(maxf(0.0, display_radius * display_radius - cross * cross))
 		draw_line(Vector2(cross, -half_length), Vector2(cross, half_length), mesh_color, 1.1, true)
 		draw_line(Vector2(-half_length, cross), Vector2(half_length, cross), mesh_color, 1.1, true)
+	draw_set_transform_matrix(SurfaceProjection.get_visual_compensation(self))
 	if cooling:
 		draw_arc(Vector2.ZERO, 13.0, 0.0, TAU, 48, Color(ink, 0.2), 2.5, true)
 		draw_arc(

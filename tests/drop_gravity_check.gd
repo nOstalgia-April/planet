@@ -16,9 +16,12 @@ func _initialize() -> void:
 
 
 func _run_checks() -> void:
+	var surface: PlanetSurface = PlanetSurface.new()
+	surface.radius = PLANET_RADIUS
+	root.add_child(surface)
 	var slime: PrototypeSlime = SlimeScene.instantiate() as PrototypeSlime
 	root.add_child(slime)
-	slime.setup(9, Vector2.UP * 225.0, PLANET_RADIUS)
+	slime.setup(9, Vector2.UP * 225.0, surface)
 	slime.landed.connect(_on_landed)
 	slime.left_screen.connect(_on_left_screen)
 	_check_near_landing(slime)
@@ -30,6 +33,7 @@ func _run_checks() -> void:
 	_check_bounds_update(slime)
 	_check_capture_point(slime)
 	slime.queue_free()
+	surface.queue_free()
 	await process_frame
 	if _failures == 0:
 		print(
@@ -95,16 +99,16 @@ func _check_inside_surface_release(slime: PrototypeSlime) -> void:
 	slime._process(0.03)
 	_check(
 		slime.position.y > initial_y and _landed_count == 0,
-		"A release born inside the walkable ring still has a brief visible fall."
+		"A release born inside the walkable disk still has a brief visible fall."
 	)
 	slime._process(2.0)
 	_check(
 		(
 			_landed_count == 1
 			and _left_count == 0
-			and is_equal_approx(slime.position.length(), PLANET_RADIUS)
+			and slime.position.distance_to(Vector2.UP * 200.0) < 40.0
 		),
-		"A ring-interior birth settles after the delay without crossing the planet."
+		"An interior release settles near its actual position without being sent to the outer ring."
 	)
 
 
@@ -189,8 +193,8 @@ func _check_capture_point(slime: PrototypeSlime) -> void:
 		slime.set_process(false)
 		var target: Vector2 = slime.get_capture_point()
 		_check(
-			target.distance_to(radial * (PLANET_RADIUS + slime.body_size * 0.65)) < 0.001,
-			"The capture point matches the visible body center at every cardinal angle."
+			target.distance_to(slime.position + Vector2.UP * slime.body_size * 0.65) < 0.001,
+			"The capture point stays above the upright body at every position on the disk."
 		)
 		slime.apply_capture(0.1, 0.6, target)
 		_check(

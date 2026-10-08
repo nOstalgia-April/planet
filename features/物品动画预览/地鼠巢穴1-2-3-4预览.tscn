@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://features/物品动画预览/物品动画总览.tscn" id="r001"]
+
+[node name="地鼠巢穴1-2-3-4预览" instance=ExtResource("r001")]
+initial_index = 8

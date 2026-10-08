@@ -1,0 +1,124 @@
+[gd_scene load_steps=17 format=3]
+
+[ext_resource type="Script" path="res://scripts/物品动画/动画物件.gd" id="r001"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/史莱姆/待机/001.png" id="r002"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/史莱姆/待机/002.png" id="r003"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/史莱姆/待机/003.png" id="r004"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/史莱姆/待机/004.png" id="r005"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/史莱姆/待机/005.png" id="r006"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/史莱姆/跳跃/001.png" id="r007"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/史莱姆/跳跃/002.png" id="r008"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/史莱姆/跳跃/003.png" id="r009"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/史莱姆/跳跃/004.png" id="r010"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/史莱姆/跳跃/005.png" id="r011"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/史莱姆/跳跃/006.png" id="r012"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/史莱姆/跳跃/007.png" id="r013"]
+
+[sub_resource type="Animation" id="r014"]
+resource_name = "待机"
+length = 0.625
+step = 0.125
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("r002"), ExtResource("r003"), ExtResource("r004"), ExtResource("r005"), ExtResource("r006")]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-45, -75), Vector2(-45, -75), Vector2(-45, -75), Vector2(-45, -75), Vector2(-45, -75)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1)]
+}
+
+[sub_resource type="Animation" id="r015"]
+resource_name = "跳跃"
+length = 0.875
+step = 0.125
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("r007"), ExtResource("r008"), ExtResource("r009"), ExtResource("r010"), ExtResource("r011"), ExtResource("r012"), ExtResource("r013")]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-261, -90), Vector2(-261, -90), Vector2(-261, -90), Vector2(-56, -90), Vector2(-56, -90), Vector2(-56, -90), Vector2(-56, -90)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1)]
+}
+
+[sub_resource type="AnimationLibrary" id="r016"]
+_data = {
+&"待机": SubResource("r014"),
+&"跳跃": SubResource("r015")
+}
+
+[node name="史莱姆" type="Node2D" node_paths=PackedStringArray("animation_player")]
+texture_filter = 1
+script = ExtResource("r001")
+default_animation = &"待机"
+animation_order = Array[StringName]([&"待机", &"跳跃"])
+animation_player = NodePath("动画播放器")
+
+[node name="画面" type="Node2D" parent="."]
+
+[node name="贴图" type="Sprite2D" parent="画面"]
+position = Vector2(-45, -75)
+scale = Vector2(1, 1)
+texture = ExtResource("r002")
+centered = false
+
+[node name="动画播放器" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("r016")
+}

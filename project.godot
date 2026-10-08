@@ -10,7 +10,6 @@ config_version=5
 
 [Fmod]
 
-General/auto_initialize=true
 General/banks_path="res://assets/fmod/banks"
 General/should_load_by_name=true
 
@@ -45,5 +44,5 @@ enabled=PackedStringArray("res://addons/fmod/plugin.cfg")
 
 [rendering]
 
-textures/vram_compression/import_etc2_astc=true
 rendering_device/driver.windows="d3d12"
+textures/vram_compression/import_etc2_astc=true

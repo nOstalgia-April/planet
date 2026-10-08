@@ -1,0 +1,180 @@
+[gd_scene load_steps=17 format=3]
+
+[ext_resource type="Script" path="res://features/物品动画预览/动画预览.gd" id="r001"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/史莱姆.tscn" id="r002"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/黏液怪.tscn" id="r003"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/地鼠.tscn" id="r004"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/史莱姆花.tscn" id="r005"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/黏液花.tscn" id="r006"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/地鼠花.tscn" id="r007"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/史莱姆巢穴1-2-3-4.tscn" id="r008"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/黏液巢穴1-2-3-4.tscn" id="r009"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/地鼠巢穴1-2-3-4.tscn" id="r010"]
+
+[sub_resource type="SystemFont" id="r011"]
+font_names = PackedStringArray("Microsoft YaHei", "微软雅黑", "Noto Sans CJK SC")
+
+[sub_resource type="StyleBoxFlat" id="r012"]
+content_margin_left = 18.0
+content_margin_top = 10.0
+content_margin_right = 18.0
+content_margin_bottom = 10.0
+bg_color = Color(0.13, 0.16, 0.20, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_left = 8
+corner_radius_bottom_right = 8
+
+[sub_resource type="StyleBoxFlat" id="r013"]
+content_margin_left = 18.0
+content_margin_top = 10.0
+content_margin_right = 18.0
+content_margin_bottom = 10.0
+bg_color = Color(0.23, 0.28, 0.33, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_left = 8
+corner_radius_bottom_right = 8
+
+[sub_resource type="StyleBoxFlat" id="r014"]
+bg_color = Color(0.28, 0.37, 0.37, 1)
+content_margin_left = 18.0
+content_margin_top = 10.0
+content_margin_right = 18.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="r015"]
+bg_color = Color(0.09, 0.12, 0.16, 1)
+content_margin_left = 24.0
+content_margin_right = 24.0
+content_margin_top = 16.0
+content_margin_bottom = 16.0
+
+[sub_resource type="Theme" id="r016"]
+default_font = SubResource("r011")
+default_font_size = 22
+Button/styles/normal = SubResource("r012")
+Button/styles/hover = SubResource("r013")
+Button/styles/pressed = SubResource("r014")
+OptionButton/styles/normal = SubResource("r012")
+OptionButton/styles/hover = SubResource("r013")
+OptionButton/styles/pressed = SubResource("r014")
+PopupMenu/styles/panel = SubResource("r015")
+HBoxContainer/constants/separation = 12
+VBoxContainer/constants/separation = 14
+
+[node name="物品动画预览" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("r016")
+script = ExtResource("r001")
+object_scenes = Array[PackedScene]([ExtResource("r002"), ExtResource("r003"), ExtResource("r004"), ExtResource("r005"), ExtResource("r006"), ExtResource("r007"), ExtResource("r008"), ExtResource("r009"), ExtResource("r010")])
+
+[node name="背景" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.045, 0.063, 0.083, 1)
+
+[node name="画面" type="Node2D" parent="."]
+
+[node name="接地线" type="Line2D" parent="画面"]
+points = PackedVector2Array(-200, 1, 200, 1)
+width = 0.5
+default_color = Color(0.32, 0.40, 0.45, 0.3)
+
+[node name="工具栏" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -160.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 28
+
+[node name="纵排" type="VBoxContainer" parent="工具栏"]
+layout_mode = 2
+
+[node name="选择行" type="HBoxContainer" parent="工具栏/纵排"]
+layout_mode = 2
+alignment = 1
+
+[node name="物件选择" type="OptionButton" parent="工具栏/纵排/选择行"]
+custom_minimum_size = Vector2(310, 0)
+layout_mode = 2
+focus_mode = 0
+fit_to_longest_item = false
+
+[node name="动作选择" type="OptionButton" parent="工具栏/纵排/选择行"]
+custom_minimum_size = Vector2(205, 0)
+layout_mode = 2
+focus_mode = 0
+fit_to_longest_item = false
+
+[node name="播放按钮" type="Button" parent="工具栏/纵排/选择行"]
+layout_mode = 2
+focus_mode = 0
+text = "暂停"
+
+[node name="重播按钮" type="Button" parent="工具栏/纵排/选择行"]
+layout_mode = 2
+focus_mode = 0
+text = "重播"
+
+[node name="上一帧按钮" type="Button" parent="工具栏/纵排/选择行"]
+layout_mode = 2
+focus_mode = 0
+text = "上一帧"
+
+[node name="下一帧按钮" type="Button" parent="工具栏/纵排/选择行"]
+layout_mode = 2
+focus_mode = 0
+text = "下一帧"
+
+[node name="循环开关" type="CheckButton" parent="工具栏/纵排/选择行"]
+layout_mode = 2
+focus_mode = 0
+button_pressed = true
+text = "循环"
+
+[node name="进度行" type="HBoxContainer" parent="工具栏/纵排"]
+layout_mode = 2
+
+[node name="帧进度" type="HSlider" parent="工具栏/纵排/进度行"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+focus_mode = 0
+step = 1.0
+
+[node name="帧数" type="Label" parent="工具栏/纵排/进度行"]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+text = "01 / 05 · 8帧/秒"
+horizontal_alignment = 2
+
+[connection signal="item_selected" from="工具栏/纵排/选择行/物件选择" to="." method="_on_object_selected"]
+
+[connection signal="item_selected" from="工具栏/纵排/选择行/动作选择" to="." method="_on_animation_selected"]
+
+[connection signal="pressed" from="工具栏/纵排/选择行/播放按钮" to="." method="_on_toggle_play"]
+
+[connection signal="pressed" from="工具栏/纵排/选择行/重播按钮" to="." method="_on_replay"]
+
+[connection signal="pressed" from="工具栏/纵排/选择行/上一帧按钮" to="." method="_on_previous_frame"]
+
+[connection signal="pressed" from="工具栏/纵排/选择行/下一帧按钮" to="." method="_on_next_frame"]
+
+[connection signal="value_changed" from="工具栏/纵排/进度行/帧进度" to="." method="_on_frame_selected"]

@@ -1,0 +1,220 @@
+[gd_scene load_steps=32 format=3]
+
+[ext_resource type="Script" path="res://scripts/物品动画/动画物件.gd" id="r001"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/1-2/001.png" id="r002"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/1-2/002.png" id="r003"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/1-2/003.png" id="r004"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/1-2/004.png" id="r005"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/1-2/005.png" id="r006"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/1-2/006.png" id="r007"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/1-2/007.png" id="r008"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/1-2/008.png" id="r009"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/2-3/001.png" id="r010"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/2-3/002.png" id="r011"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/2-3/003.png" id="r012"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/2-3/004.png" id="r013"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/2-3/005.png" id="r014"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/2-3/006.png" id="r015"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/2-3/007.png" id="r016"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/2-3/008.png" id="r017"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/3-4/001.png" id="r018"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/3-4/002.png" id="r019"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/3-4/003.png" id="r020"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/3-4/004.png" id="r021"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/3-4/005.png" id="r022"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/3-4/006.png" id="r023"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/3-4/007.png" id="r024"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/3-4/008.png" id="r025"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠巢穴/3-4/009.png" id="r026"]
+
+[sub_resource type="Animation" id="r027"]
+resource_name = "1-2-3-4"
+length = 3.125
+step = 0.125
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 2, 2.125, 2.25, 2.375, 2.5, 2.625, 2.75, 2.875, 3),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("r002"), ExtResource("r003"), ExtResource("r004"), ExtResource("r005"), ExtResource("r006"), ExtResource("r007"), ExtResource("r008"), ExtResource("r009"), ExtResource("r010"), ExtResource("r011"), ExtResource("r012"), ExtResource("r013"), ExtResource("r014"), ExtResource("r015"), ExtResource("r016"), ExtResource("r017"), ExtResource("r018"), ExtResource("r019"), ExtResource("r020"), ExtResource("r021"), ExtResource("r022"), ExtResource("r023"), ExtResource("r024"), ExtResource("r025"), ExtResource("r026")]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 2, 2.125, 2.25, 2.375, 2.5, 2.625, 2.75, 2.875, 3),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 2, 2.125, 2.25, 2.375, 2.5, 2.625, 2.75, 2.875, 3),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106)]
+}
+
+[sub_resource type="Animation" id="r028"]
+resource_name = "1-2"
+length = 1
+step = 0.125
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("r002"), ExtResource("r003"), ExtResource("r004"), ExtResource("r005"), ExtResource("r006"), ExtResource("r007"), ExtResource("r008"), ExtResource("r009")]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305)]
+}
+
+[sub_resource type="Animation" id="r029"]
+resource_name = "2-3"
+length = 1
+step = 0.125
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("r010"), ExtResource("r011"), ExtResource("r012"), ExtResource("r013"), ExtResource("r014"), ExtResource("r015"), ExtResource("r016"), ExtResource("r017")]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554)]
+}
+
+[sub_resource type="Animation" id="r030"]
+resource_name = "3-4"
+length = 1.125
+step = 0.125
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("r018"), ExtResource("r019"), ExtResource("r020"), ExtResource("r021"), ExtResource("r022"), ExtResource("r023"), ExtResource("r024"), ExtResource("r025"), ExtResource("r026")]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106)]
+}
+
+[sub_resource type="AnimationLibrary" id="r031"]
+_data = {
+&"1-2-3-4": SubResource("r027"),
+&"1-2": SubResource("r028"),
+&"2-3": SubResource("r029"),
+&"3-4": SubResource("r030")
+}
+
+[node name="地鼠巢穴1-2-3-4" type="Node2D" node_paths=PackedStringArray("animation_player")]
+texture_filter = 1
+script = ExtResource("r001")
+default_animation = &"1-2-3-4"
+animation_order = Array[StringName]([&"1-2-3-4", &"1-2", &"2-3", &"3-4"])
+animation_player = NodePath("动画播放器")
+
+[node name="画面" type="Node2D" parent="."]
+
+[node name="贴图" type="Sprite2D" parent="画面"]
+position = Vector2(-90.5827815, -110.8874172)
+scale = Vector2(0.1854305, 0.1854305)
+texture = ExtResource("r002")
+centered = false
+
+[node name="动画播放器" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("r031")
+}

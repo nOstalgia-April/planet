@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/collection_effect.gd" id="1_collection"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_amount"]
-font_size = 18
+font_size = 24
 font_color = Color(0.31, 0.38, 0.25, 1)
 outline_size = 3
 outline_color = Color(0.98, 0.98, 0.93, 1)
@@ -40,10 +40,10 @@ end_cap_mode = 2
 antialiased = true
 
 [node name="AmountLabel" type="Label" parent="."]
-offset_left = -26.0
-offset_top = -44.0
-offset_right = 26.0
-offset_bottom = -18.0
+offset_left = 22.0
+offset_top = -50.0
+offset_right = 74.0
+offset_bottom = -16.0
 mouse_filter = 2
 text = "+2"
 label_settings = SubResource("LabelSettings_amount")

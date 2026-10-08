@@ -105,7 +105,7 @@ func advance_preview(
 			_strength = lerpf(_strength, 0.0, recovery)
 			_pull_offset = _pull_offset.lerp(Vector2.ZERO, recovery)
 	_slime.show_pose(_progress, _strength, _pull_offset, _elapsed)
-	_pipe.set_tool_state(target, target, active, 0)
+	_pipe.set_tool_state(target, target, active)
 	if _progress >= 1.0:
 		_completed = true
 		_slime.hide()
@@ -128,7 +128,7 @@ func reset_preview() -> void:
 	_slime.position = _home_position
 	_slime.show()
 	_slime.show_pose(0.0, 0.0, Vector2.ZERO, 0.0)
-	_pipe.set_tool_state(_pointer, _pointer, false, 0)
+	_pipe.set_tool_state(_pointer, _pointer, false)
 
 
 func _on_attraction_toggled(enabled: bool) -> void:

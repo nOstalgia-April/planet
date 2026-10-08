@@ -1,0 +1,20 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://features/splash_preview/effects/splash_effect_base.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/splash_preview/splash_canvas.svg" id="2_texture"]
+[ext_resource type="Shader" path="res://features/splash_preview/shaders/twist_splash.gdshader" id="3_shader"]
+
+[ext_resource type="Texture2D" path="res://assets/splash_preview/source_concept.png" id="5_source"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_body"]
+resource_local_to_scene = true
+shader = ExtResource("3_shader")
+shader_parameter/source_concept = ExtResource("5_source")
+
+[node name="TwistSplash" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Body" type="Sprite2D" parent="."]
+material = SubResource("ShaderMaterial_body")
+texture = ExtResource("2_texture")
+texture_filter = 2

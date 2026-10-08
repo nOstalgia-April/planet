@@ -3,11 +3,12 @@ extends SceneTree
 const SlimeScene: PackedScene = preload("res://scenes/world/slime.tscn")
 const NestScene: PackedScene = preload("res://scenes/world/nest.tscn")
 const PLANET_RADIUS: float = 240.0
-const HOME: Vector2 = Vector2(0.0, -225.0)
+const HOME: Vector2 = Vector2(0.0, -PLANET_RADIUS)
 
 var _failures: int = 0
 var _flight_events: int = 0
 var _last_flight_slime: PrototypeSlime
+var _surface: PlanetSurface
 
 
 func _initialize() -> void:
@@ -15,46 +16,57 @@ func _initialize() -> void:
 
 
 func _run_checks() -> void:
+	_surface = PlanetSurface.new()
+	_surface.radius = PLANET_RADIUS
+	_surface.set_near_view(true)
+	root.add_child(_surface)
 	var slime: PrototypeSlime = SlimeScene.instantiate() as PrototypeSlime
 	root.add_child(slime)
-	slime.setup(7, HOME, PLANET_RADIUS)
+	slime.setup(7, HOME, _surface)
 	slime.set_process(false)
 	slime._rng.seed = 78143
-	_check_local_roaming(slime)
+	_check_active_nest_roaming(slime)
 	_check_launch(slime)
+	_check_edge_launch(slime)
+	_check_full_contour_roaming(slime)
 	_check_orphan_roaming(slime)
 	_check_restoration(slime)
 	_check_radial_orientation(slime)
 	_check_attraction(slime)
 	_check_flight(slime)
 	slime.queue_free()
+	_surface.queue_free()
 	await process_frame
 	if _failures == 0:
 		print(
-			"PASS: roaming, radial orientation, visual attraction, restoration and one-shot flight."
+			"PASS: nest-centered roaming, full crust and orphan reach, radial orientation, attraction, restoration and one-shot flight."
 		)
 	quit(0 if _failures == 0 else 1)
 
 
-func _check_local_roaming(slime: PrototypeSlime) -> void:
+func _check_active_nest_roaming(slime: PrototypeSlime) -> void:
 	var greatest_angle: float = 0.0
-	var minimum_radius: float = INF
-	var maximum_radius: float = 0.0
+	var minimum_depth: float = INF
+	var maximum_depth: float = 0.0
 	var valid_surface: bool = true
 	for _frame: int in range(12000):
 		slime._process(1.0 / 30.0)
 		var angle: float = absf(angle_difference(HOME.angle(), slime.position.angle()))
 		greatest_angle = maxf(greatest_angle, angle)
-		minimum_radius = minf(minimum_radius, slime.position.length())
-		maximum_radius = maxf(maximum_radius, slime.position.length())
+		var depth: float = _get_surface_depth(slime.position)
+		minimum_depth = minf(minimum_depth, depth)
+		maximum_depth = maxf(maximum_depth, depth)
 		valid_surface = valid_surface and _is_on_surface(slime)
-	_check(valid_surface, "Active-nest wander stays on the traversable surface ring.")
-	_check(greatest_angle <= 0.421, "Active-nest wander retains a bounded home territory.")
-	_check(greatest_angle > 0.30, "Local roaming uses the expanded angular territory.")
+	_check(valid_surface, "Active-nest wander stays between the actual irregular crust edges.")
 	_check(
-		minimum_radius < 195.0 and maximum_radius > 260.0,
-		"Local roaming uses both the inner and outer parts of the expanded surface."
+		greatest_angle > slime._roaming_deviation,
+		"An active-nest monster explores the Gaussian outskirts of its local group."
 	)
+	_check(
+		minimum_depth < 0.10 and maximum_depth > 0.90,
+		"Active-nest roaming reaches the front and rear of the full visible crust."
+	)
+	print("Near-view roaming crust depth: %.3f to %.3f." % [minimum_depth, maximum_depth])
 
 
 func _check_launch(slime: PrototypeSlime) -> void:
@@ -78,9 +90,97 @@ func _check_launch(slime: PrototypeSlime) -> void:
 		)
 	_check(valid_surface, "Every launch direction remains inside the surface ring.")
 	_check(
-		shortest_launch >= 29.9 and longest_launch <= 50.1,
-		"The configured launch moves approximately 30 to 50 pixels."
+		(
+			shortest_launch > 0.0
+			and longest_launch >= slime.launch_distance - 10.1
+			and longest_launch <= slime.launch_distance + 10.1
+		),
+		"The full crust clips outward launches while preserving inward and tangential travel."
 	)
+	print("Scene launch displacement: %.3f to %.3f." % [shortest_launch, longest_launch])
+
+
+func _check_edge_launch(slime: PrototypeSlime) -> void:
+	var edge_home: Vector2 = _surface.get_nest_position(-PI / 2.0)
+	slime.setup(7, edge_home, _surface)
+	slime.set_process(false)
+	slime.launch(Vector2.DOWN)
+	slime.set_process(false)
+	_check(
+		slime.position.is_equal_approx(edge_home) and _faces_outward(slime),
+		"An edge nest launches from its actual ground root before entering the roaming band."
+	)
+	slime._process(slime.launch_seconds)
+	_check(
+		_is_on_surface(slime) and _faces_outward(slime),
+		"The edge launch finishes inside the full crust with outward orientation."
+	)
+	slime.setup(7, HOME, _surface)
+	slime.set_process(false)
+
+
+func _check_full_contour_roaming(slime: PrototypeSlime) -> void:
+	for near_view: bool in [true, false]:
+		_surface.set_near_view(near_view)
+		slime.refresh_surface_bounds()
+		var all_positions_on_crust: bool = true
+		var closest_front: float = INF
+		var closest_rear: float = 0.0
+		for angle_index: int in range(48):
+			var angle: float = float(angle_index) * TAU / 48.0
+			var radial: Vector2 = Vector2.from_angle(angle)
+			slime.restore_to_surface(radial * PLANET_RADIUS * 0.2)
+			slime.set_process(false)
+			closest_front = minf(closest_front, _get_surface_depth(slime.position))
+			all_positions_on_crust = all_positions_on_crust and _is_on_surface(slime)
+			slime.restore_to_surface(radial * PLANET_RADIUS * 2.0)
+			slime.set_process(false)
+			closest_rear = maxf(closest_rear, _get_surface_depth(slime.position))
+			all_positions_on_crust = all_positions_on_crust and _is_on_surface(slime)
+			# Cross an angular shelf while walking from the rear to the opposite front.
+			var destination_angle: float = angle + 0.75
+			slime._wander_target = (
+				Vector2.from_angle(destination_angle)
+				* (_surface.get_inner_radius(destination_angle) + 2.0)
+			)
+			slime._wander_wait = 100.0
+			for _step: int in range(120):
+				slime._move_on_surface(slime._wander_target, slime.wander_speed / 15.0)
+				all_positions_on_crust = all_positions_on_crust and _is_on_surface(slime)
+		_check(
+			all_positions_on_crust,
+			"Drops and diagonal walking stay inside every irregular crust sector in both views."
+		)
+		_check(
+			closest_front < 0.05 and closest_rear > 0.95,
+			"Both views allow feet to reach within a small inset of either visible edge."
+		)
+		print(
+			(
+				"%s projected crust depths: %.3f to %.3f."
+				% ["Near" if near_view else "Overview", closest_front, closest_rear]
+			)
+		)
+	# A near-view front-edge actor and destination must follow the narrower overview shore.
+	_surface.set_near_view(true)
+	slime.restore_to_surface(Vector2.UP * PLANET_RADIUS * 0.2)
+	slime.set_process(false)
+	slime._wander_target = slime.position
+	var near_position: Vector2 = slime.position
+	_surface.set_near_view(false)
+	slime.refresh_surface_bounds()
+	_check(
+		(
+			_is_on_surface(slime)
+			and slime.position.length() > near_position.length()
+			and _point_is_on_surface(slime._wander_target)
+		),
+		"Changing to overview reprojects feet and their destination onto its visible shore."
+	)
+	_surface.set_near_view(true)
+	slime.refresh_surface_bounds()
+	slime.setup(7, HOME, _surface)
+	slime.set_process(false)
 
 
 func _check_orphan_roaming(slime: PrototypeSlime) -> void:
@@ -95,6 +195,9 @@ func _check_orphan_roaming(slime: PrototypeSlime) -> void:
 		slime._wander_target == first_orphan_target,
 		"Repeated nest updates preserve an orphan's current destination."
 	)
+	# Verify far-side reachability independently of the random wandering schedule.
+	slime._wander_target = Vector2.from_angle(HOME.angle() + PI) * PLANET_RADIUS
+	slime._wander_wait = 0.0
 	var greatest_angle: float = 0.0
 	var valid_surface: bool = true
 	for _frame: int in range(7200):
@@ -103,7 +206,7 @@ func _check_orphan_roaming(slime: PrototypeSlime) -> void:
 			greatest_angle, absf(angle_difference(HOME.angle(), slime.position.angle()))
 		)
 		valid_surface = valid_surface and _is_on_surface(slime)
-	_check(valid_surface, "Orphan roaming follows the ring without crossing the central sea.")
+	_check(valid_surface, "Orphan roaming follows the full crust without crossing the rock face.")
 	_check(greatest_angle > 2.5, "An orphan can travel around the planet beyond its former nest.")
 
 
@@ -129,11 +232,22 @@ func _check_restoration(slime: PrototypeSlime) -> void:
 
 
 func _is_on_surface(slime: PrototypeSlime) -> bool:
-	var radial_distance: float = slime.position.length()
+	return _point_is_on_surface(slime.position)
+
+
+func _point_is_on_surface(point: Vector2) -> bool:
+	var angle: float = point.angle()
+	var radial_distance: float = point.length()
 	return (
-		radial_distance >= PLANET_RADIUS - slime.surface_inner_offset - 0.001
-		and radial_distance <= PLANET_RADIUS + slime.surface_outer_offset + 0.001
+		radial_distance >= _surface.get_inner_radius(angle) + 1.999
+		and radial_distance <= _surface.get_outer_radius(angle) - 1.999
 	)
+
+
+func _get_surface_depth(point: Vector2) -> float:
+	var inner: float = _surface.get_inner_radius(point.angle())
+	var outer: float = _surface.get_outer_radius(point.angle())
+	return inverse_lerp(inner, outer, point.length())
 
 
 func _check_radial_orientation(slime: PrototypeSlime) -> void:
@@ -141,7 +255,7 @@ func _check_radial_orientation(slime: PrototypeSlime) -> void:
 	root.add_child(nest)
 	var cardinal_points: Array[Vector2] = [Vector2.UP, Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT]
 	for radial: Vector2 in cardinal_points:
-		slime.setup(7, radial * 225.0, PLANET_RADIUS)
+		slime.setup(7, radial * PLANET_RADIUS, _surface)
 		slime.set_process(false)
 		_check(_faces_outward(slime), "A configured slime stands outward around its foot pivot.")
 		slime.launch(radial.orthogonal())
@@ -162,7 +276,7 @@ func _check_radial_orientation(slime: PrototypeSlime) -> void:
 		)
 		slime.apply_capture(0.1, 0.6, radial.rotated(0.3) * 240.0)
 		_check(_faces_outward(slime), "Capture traction updates the slime's radial orientation.")
-		nest.position = radial * 225.0
+		nest.position = radial * PLANET_RADIUS
 		nest.setup(7)
 		_check(
 			_faces_outward(nest), "Each cardinal nest stands radially outward at its ground root."
@@ -179,7 +293,7 @@ func _check_radial_orientation(slime: PrototypeSlime) -> void:
 
 
 func _check_attraction(slime: PrototypeSlime) -> void:
-	slime.setup(7, HOME, PLANET_RADIUS)
+	slime.setup(7, HOME, _surface)
 	slime.set_process(false)
 	slime.restore_to_surface(HOME)
 	slime.set_process(false)
@@ -224,7 +338,7 @@ func _check_attraction(slime: PrototypeSlime) -> void:
 	slime.restore_to_surface(HOME)
 	_check(slime._attraction_offset.is_zero_approx(), "Restoring the actor clears attraction.")
 	slime.apply_attraction(0.1, logical_body + Vector2.RIGHT * 80.0, 1.0)
-	slime.setup(7, HOME, PLANET_RADIUS)
+	slime.setup(7, HOME, _surface)
 	_check(slime._attraction_offset.is_zero_approx(), "Actor setup clears prior attraction.")
 	slime.set_process(false)
 
@@ -282,7 +396,7 @@ func _check_flight(slime: PrototypeSlime) -> void:
 		"Restoring an ejected slime clears flight and resumes radial ground movement."
 	)
 	slime.begin_fall(Vector2.RIGHT * 100.0, bounds, drop_settings)
-	slime.setup(7, HOME, PLANET_RADIUS)
+	slime.setup(7, HOME, _surface)
 	_check(
 		not slime._flying and not slime.consumed and _faces_outward(slime),
 		"Reconfiguring a slime clears its previous flight state."
