@@ -8,6 +8,7 @@ const MucusField = preload("res://scripts/mucus_field.gd")
 const MUCUS_SCENE: PackedScene = preload("res://scenes/effects/mucus_field.tscn")
 const NestMucusArea = preload("res://scripts/nest_mucus_area.gd")
 const NEST_MUCUS_SCENE: PackedScene = preload("res://scenes/effects/nest_mucus_area.tscn")
+const VacuumAudio = preload("res://scripts/vacuum_audio.gd")
 
 enum ToolMode { PIPE, NET }
 enum NetPhase { IDLE, CASTING, CLOSING, RESULT }
@@ -41,6 +42,7 @@ var _restore_tween: Tween
 var _status_tween: Tween
 var _hud_refresh_queued: bool = false
 var _site_random: RandomNumberGenerator = RandomNumberGenerator.new()
+var _vacuum_audio: VacuumAudio
 
 @onready var run: PrototypeRun = $Run
 @onready var _world: Node2D = $World
@@ -82,6 +84,9 @@ var _site_random: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
 	assert(slime_scene != null and nest_scene != null and collection_scene != null)
+	_vacuum_audio = VacuumAudio.new()
+	_vacuum_audio.name = "VacuumAudio"
+	$Audio.add_child(_vacuum_audio)
 	get_viewport().physics_object_picking = true
 	run.economy_changed.connect(_queue_hud_refresh)
 	run.nest_added.connect(_on_nest_added)
@@ -414,6 +419,7 @@ func restart_run() -> void:
 	_nest_mucus_areas.clear()
 	_slimes.clear()
 	_capture_targets.clear()
+	_vacuum_audio.stop_now()
 	selected_nest_id = -1
 	_was_holding = false
 	_view_blocks_tool_until_release = false
@@ -466,6 +472,7 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 			previous.capture_progress = 0.0
 			previous.release_capture(delta)
 	_capture_targets.clear()
+	_vacuum_audio.update(delta, nearest != null, active and _is_on_ground_mucus(target))
 	if nearest == null:
 		return
 	_capture_targets.append(nearest)
