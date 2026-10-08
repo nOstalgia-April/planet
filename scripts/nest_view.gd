@@ -1,22 +1,17 @@
-@tool
 class_name NestView
 extends Node2D
 
 const SurfaceProjection = preload("res://scripts/surface_projection.gd")
-const AutomaticFacility = preload("res://scripts/automatic_facility.gd")
+const NestArt = preload("res://scripts/nest_art.gd")
 
 @export_group("场景显示")
 @export var outline_color: Color = Color("454944")
-@export var slime_color: Color = Color("e985b3")
-@export var mucus_color: Color = Color("7398e5")
+@export_range(0.0, 6.0, 0.25) var ground_inset: float = 1.5
 @export_range(48.0, 108.0, 1.0) var nest_height: float = 70.0:
 	set(value):
 		nest_height = value
 		if is_node_ready():
 			_refresh_art()
-@export_range(0.4, 1.0, 0.02) var small_height_ratio: float = 0.68
-@export_range(0.6, 1.2, 0.02) var flower_height_ratio: float = 0.94
-@export_range(0.5, 1.0, 0.05) var tamed_scale: float = 0.92
 @export var presentation_scale: Vector2 = Vector2.ONE:
 	set(value):
 		presentation_scale = Vector2.ONE * value.x
@@ -29,16 +24,16 @@ var species: int = 0
 var _level: int = 0
 var _max_level: int = 3
 var _tamed: bool = false
-var _selected: bool = false
 var _art_rect: Rect2 = Rect2()
-var _bloom_tween: Tween
+var _state_initialized: bool = false
 
 @onready var _selection_shape: CollisionShape2D = $SelectionArea/CollisionShape2D
-@onready var _facility: AutomaticFacility = $AutomaticFacility
+@onready var _art: NestArt = $NestArt
 
 
 func _ready() -> void:
 	set_notify_transform(true)
+	_art.bounds_changed.connect(_refresh_art)
 	_refresh_art()
 
 
@@ -58,64 +53,33 @@ func configure_species(value: int) -> void:
 	assert(value == 0 or value == 1, "NestView supports slime and mucus species.")
 	species = value
 	if is_node_ready():
+		_art.configure_species(species)
 		_refresh_art()
 
 
 func update_state(level: int, tamed: bool, max_level: int) -> void:
-	var art_changed: bool = level != _level or tamed != _tamed
-	var became_tamed: bool = tamed and not _tamed
-	var was_tamed: bool = _tamed
+	var level_changed: bool = level != _level
 	_level = level
 	_tamed = tamed
 	_max_level = maxi(1, max_level)
-	_facility.visible = level >= 2
-	_facility.presentation_scale = presentation_scale
-	if art_changed:
-		_refresh_art()
-	if became_tamed:
-		if _bloom_tween != null:
-			_bloom_tween.kill()
-		modulate.a = 0.35
-		_bloom_tween = create_tween().set_parallel(true)
-		_bloom_tween.tween_property(self, "modulate:a", 1.0, 0.35)
-		(
-			_bloom_tween
-			. tween_property(self, "scale", Vector2.ONE * tamed_scale, 0.35)
-			. set_trans(Tween.TRANS_BACK)
-			. set_ease(Tween.EASE_OUT)
-		)
-	elif was_tamed and not tamed:
-		if _bloom_tween != null:
-			_bloom_tween.kill()
-		modulate.a = 1.0
-		scale = Vector2.ONE
-	queue_redraw()
+	if level_changed or not _state_initialized:
+		_art.set_stage(level, _state_initialized)
+	_state_initialized = true
+	_refresh_art()
 
 
 func pulse_automatic() -> void:
-	_facility.pulse()
+	_art.play_production()
 
 
 func get_collection_point() -> Vector2:
 	var point: Vector2 = Vector2(0.0, _art_rect.position.y * 0.65)
-	return (
-		transform * SurfaceProjection.get_visual_compensation(self) * (point * presentation_scale)
-	)
-
-
-func set_selected(value: bool) -> void:
-	_selected = value
-	queue_redraw()
+	return transform * _get_presentation_transform() * point
 
 
 func _refresh_art() -> void:
-	var height: float = nest_height
-	if _tamed:
-		height *= flower_height_ratio
-	elif _level == 0:
-		height *= small_height_ratio
-	var display_size: Vector2 = Vector2(height * 1.6, height)
-	_art_rect = Rect2(Vector2(-display_size.x * 0.5, -display_size.y), display_size)
+	var factor: float = nest_height / 110.0
+	_art_rect = Rect2(_art.get_art_bounds().position * factor, _art.get_art_bounds().size * factor)
 	var rectangle: RectangleShape2D = RectangleShape2D.new()
 	rectangle.size = _art_rect.size
 	_selection_shape.shape = rectangle
@@ -123,16 +87,35 @@ func _refresh_art() -> void:
 	queue_redraw()
 
 
-func _update_presentation() -> void:
+func _get_presentation_transform() -> Transform2D:
 	var presentation: Transform2D = (
 		SurfaceProjection.get_visual_compensation(self)
 		* Transform2D(0.0, presentation_scale, 0.0, Vector2.ZERO)
+	)
+	var ground_radius: float = position.length()
+	var half_width: float = presentation.basis_xform(Vector2(_art_rect.size.x * 0.5, 0.0)).length()
+	var sink: float = ground_inset
+	var inward: Vector2 = Vector2.DOWN
+	if ground_radius > 0.0:
+		# Seat the flat footprint into the curved surface instead of balancing it at its center.
+		sink += (
+			ground_radius - sqrt(maxf(0.0, ground_radius * ground_radius - half_width * half_width))
+		)
+		inward = (-position.normalized()).rotated(-rotation)
+	# Transparent padding and changing frame bounds must not lift the contact edge.
+	presentation.origin = inward * sink - presentation.basis_xform(Vector2(0.0, _art_rect.end.y))
+	return presentation
+
+
+func _update_presentation() -> void:
+	var presentation: Transform2D = _get_presentation_transform()
+	_art.transform = (
+		presentation * Transform2D(0.0, Vector2.ONE * nest_height / 110.0, 0.0, Vector2.ZERO)
 	)
 	var shape_transform: Transform2D = presentation * Transform2D(0.0, _art_rect.get_center())
 	if _selection_shape.transform.is_equal_approx(shape_transform):
 		return
 	_selection_shape.transform = shape_transform
-	_facility.presentation_scale = presentation_scale
 	queue_redraw()
 
 
@@ -155,33 +138,7 @@ func get_hover_rect() -> Rect2:
 func _draw() -> void:
 	if not is_node_ready():
 		return
-	draw_set_transform_matrix(
-		(
-			SurfaceProjection.get_visual_compensation(self)
-			* Transform2D(0.0, presentation_scale, 0.0, Vector2.ZERO)
-		)
-	)
-	if _selected:
-		var half_width: float = _art_rect.size.x * 0.5 + 5.0
-		draw_set_transform_matrix(
-			(
-				SurfaceProjection.get_visual_compensation(self)
-				* Transform2D(
-					0.0,
-					Vector2(1.0, 0.24) * presentation_scale,
-					0.0,
-					Vector2(0.0, 3.0) * presentation_scale
-				)
-			)
-		)
-		draw_arc(Vector2.ZERO, half_width, 0.0, TAU, 64, Color("729763"), 2.5, true)
-		draw_set_transform_matrix(
-			(
-				SurfaceProjection.get_visual_compensation(self)
-				* Transform2D(0.0, presentation_scale, 0.0, Vector2.ZERO)
-			)
-		)
-	_draw_nest_shape()
+	draw_set_transform_matrix(_get_presentation_transform())
 	if not _tamed:
 		var total_width: float = float(_max_level - 1) * 9.0
 		for pip_index: int in range(_max_level):
@@ -192,33 +149,3 @@ func _draw() -> void:
 				pip_position, 2.6, Color("809c69") if pip_index < _level else Color("d2d2c3")
 			)
 			draw_arc(pip_position, 2.6, 0.0, TAU, 12, outline_color, 1.0, true)
-
-
-func _draw_nest_shape() -> void:
-	var color: Color = slime_color if species == 0 else mucus_color
-	var body: PackedVector2Array = PackedVector2Array()
-	var entrance: PackedVector2Array = PackedVector2Array()
-	for index: int in range(25):
-		var angle: float = PI * float(index) / 24.0
-		body.append(Vector2(-cos(angle) * _art_rect.size.x * 0.5, -sin(angle) * _art_rect.size.y))
-		entrance.append(
-			Vector2(-cos(angle) * _art_rect.size.x * 0.19, -sin(angle) * _art_rect.size.y * 0.55)
-		)
-	draw_colored_polygon(body, color.lightened(0.20 if _tamed else 0.0))
-	body.append(body[0])
-	draw_polyline(body, outline_color, 2.0, true)
-	draw_colored_polygon(entrance, color.darkened(0.48))
-	if _tamed:
-		var center: Vector2 = Vector2(0.0, -_art_rect.size.y * 0.72)
-		draw_polyline(
-			PackedVector2Array(
-				[
-					center + Vector2(-6.0, 0.0),
-					center + Vector2(-1.0, 5.0),
-					center + Vector2(8.0, -6.0)
-				]
-			),
-			Color("f4f6e8"),
-			3.0,
-			true
-		)

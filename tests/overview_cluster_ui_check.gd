@@ -1,7 +1,8 @@
 extends SceneTree
 
+const PageScript = preload("res://scripts/ui/technology_page.gd")
 const DemoScript = preload("res://scripts/disk_demo.gd")
-const BranchScript = preload("res://scripts/ui/technology_branch.gd")
+const NodeScript = preload("res://scripts/ui/technology_node.gd")
 const DemoScene: PackedScene = preload("res://scenes/disk_demo.tscn")
 const OverviewScene: PackedScene = preload("res://scenes/world/overview_ecology.tscn")
 const PlanetScene: PackedScene = preload("res://scenes/world/planet_surface.tscn")
@@ -122,14 +123,18 @@ func _check_timers_and_stages(demo: DemoScript) -> void:
 	demo.run.purchase_technology("net")
 	demo._layout.refresh_progression(demo.run)
 	await _settle()
-	var branch: BranchScript = demo._layout._branches.get_node("Pipe") as BranchScript
-	_check(branch._stage_panels.size() == 6, "the pipe branch contains all six configured upgrades")
+	var page: PageScript = demo._layout._technology
 	_check(
-		branch.stage_names[4] == "0.135 秒",
-		"the precision tier does not round to an incorrect capture time"
+		page._max_level("pipe") == 7, "the single speed node includes all seven configured levels"
 	)
-	var first_stage: PanelContainer = branch._stage_panels[0]
-	var style: StyleBox = first_stage.get_theme_stylebox("panel")
+	demo.run.pipe_level = 4
+	page.select_node("pipe")
+	_check(
+		page._detail_effect.text.contains("0.135"),
+		"precision tier preserves the actual capture time"
+	)
+	var first_stage: NodeScript = page._nodes["pipe"]
+	var style: StyleBox = first_stage.get_theme_stylebox("normal")
 	demo.run.combo_count = demo.run.settings.combo_target
 	demo.run.combo_remaining = 3.0
 	demo.run.net_cooldown_remaining = 6.0
@@ -143,7 +148,7 @@ func _check_timers_and_stages(demo: DemoScript) -> void:
 		demo.run.net_cooldown_remaining = 6.0 - float(tick) * 0.1
 		demo._layout.refresh_timers(demo.run)
 	_check(
-		branch._stage_panels[0] == first_stage and first_stage.get_theme_stylebox("panel") == style,
+		page._nodes["pipe"] == first_stage and first_stage.get_theme_stylebox("normal") == style,
 		"timer ticks preserve technology nodes and style resources"
 	)
 	_check(
@@ -178,13 +183,10 @@ func _check_timers_and_stages(demo: DemoScript) -> void:
 		await _settle()
 		demo._layout._show_technology()
 		await _settle()
-		var card: Control = demo.get_node("%ToolCard") as Control
+		var card: Control = demo._layout._technology
 		var screen: Rect2 = Rect2(Vector2.ZERO, root.get_visible_rect().size)
-		_check(
-			screen.encloses(card.get_global_rect()),
-			"the six-tier technology card fits the viewport"
-		)
-		for stage: PanelContainer in branch._stage_panels:
+		_check(screen.encloses(card.get_global_rect()), "the technology page fits the viewport")
+		for stage: NodeScript in page._nodes.values():
 			_check(
 				card.get_global_rect().encloses(stage.get_global_rect()),
 				"every pipe upgrade remains inside the technology card"

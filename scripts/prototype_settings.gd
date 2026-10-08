@@ -28,8 +28,11 @@ extends Resource
 @export_range(1.0, 200.0, 1.0) var net_radius: float = 84.0
 @export_range(0.1, 60.0, 0.1) var net_cooldown_seconds: float = 6.0
 @export_group("Research")
-@export var governance_upgrade_costs: PackedInt32Array = PackedInt32Array([20, 50, 100])
+@export var governance_upgrade_costs: PackedInt32Array = PackedInt32Array([20, 100])
 @export var combo_upgrade_costs: PackedInt32Array = PackedInt32Array([15, 40, 80])
+@export var combo_interval_upgrade_costs: PackedInt32Array = PackedInt32Array([15, 40, 80])
+@export
+var combo_interval_bonus_seconds: PackedFloat32Array = PackedFloat32Array([0.0, 1.0, 2.0, 3.0])
 @export var valuable_upgrade_costs: PackedInt32Array = PackedInt32Array([65])
 @export_range(1, 20, 1) var combo_target: int = 5
 @export_range(0.1, 30.0, 0.1) var combo_window_seconds: float = 3.0

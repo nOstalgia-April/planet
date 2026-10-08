@@ -18,7 +18,7 @@
 [ext_resource type="PackedScene" path="res://scenes/world/capture_net.tscn" id="15_net"]
 [ext_resource type="PackedScene" path="res://scenes/world/planet_view_controller.tscn" id="16_view"]
 
-[ext_resource type="PackedScene" path="res://scenes/ui/technology_branch.tscn" id="17_branch"]
+[ext_resource type="PackedScene" path="res://scenes/ui/technology_page.tscn" id="17_page"]
 [ext_resource type="Script" path="res://scripts/ui/technology_glyph.gd" id="18_glyph"]
 [ext_resource type="PackedScene" path="res://scenes/world/overview_ecology.tscn" id="19_overview"]
 
@@ -59,6 +59,7 @@ unique_name_in_owner = true
 
 [node name="Regions" type="Node2D" parent="World"]
 unique_name_in_owner = true
+visible = false
 z_index = 1
 
 [node name="Slimes" type="Node2D" parent="World"]
@@ -453,165 +454,47 @@ text = "升级 · 10 糖果"
 custom_minimum_size = Vector2(0, 42)
 theme_override_font_sizes/font_size = 14
 
-[node name="Technology" type="Control" parent="HUD/Interface"]
+[node name="Technology" parent="HUD/Interface" instance=ExtResource("17_page")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 0
 
-[node name="Shade" type="ColorRect" parent="HUD/Interface/Technology"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-color = Color(0.08, 0.18, 0.13, 0.62)
-
-[node name="ToolCard" type="PanelContainer" parent="HUD/Interface/Technology"]
-unique_name_in_owner = true
-layout_mode = 0
-mouse_filter = 0
-
-[node name="Content" type="VBoxContainer" parent="HUD/Interface/Technology/ToolCard"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 10
-
-[node name="Header" type="HBoxContainer" parent="HUD/Interface/Technology/ToolCard/Content"]
-layout_mode = 2
-mouse_filter = 2
-
-[node name="Identity" type="VBoxContainer" parent="HUD/Interface/Technology/ToolCard/Content/Header"]
-layout_mode = 2
-mouse_filter = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 2
-
-[node name="Title" type="Label" parent="HUD/Interface/Technology/ToolCard/Content/Header/Identity"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 29
-text = "科技树"
-
-[node name="Subtitle" type="Label" parent="HUD/Interface/Technology/ToolCard/Content/Header/Identity"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 13
-text = "改善工具，建立持续运转的生态区"
-theme_override_colors/font_color = Color(0.41, 0.52, 0.41, 1)
-
-[node name="Wallet" type="Label" parent="HUD/Interface/Technology/ToolCard/Content/Header"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 22
-text = "0 糖果"
-vertical_alignment = 1
-theme_override_colors/font_color = Color(0.70, 0.39, 0.20, 1)
-
-[node name="CloseTechnologyButton" type="Button" parent="HUD/Interface/Technology/ToolCard/Content/Header"]
-layout_mode = 2
-text = "×"
-custom_minimum_size = Vector2(44, 44)
-size_flags_vertical = 4
-theme_type_variation = &"QuietButton"
-tooltip_text = "关闭 · Esc"
-unique_name_in_owner = true
-
-[node name="Branches" type="VBoxContainer" parent="HUD/Interface/Technology/ToolCard/Content"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 8
-
-[node name="Pipe" parent="HUD/Interface/Technology/ToolCard/Content/Branches" instance=ExtResource("17_branch")]
-layout_mode = 2
-technology_id = "pipe"
-branch_title = "吸取管"
-branch_category = "全局 · 基础工具"
-icon_index = 0
-stage_names = PackedStringArray("0.45 秒", "0.32 秒", "0.22 秒", "0.17 秒", "0.135 秒", "0.11 秒")
-
-[node name="Net" parent="HUD/Interface/Technology/ToolCard/Content/Branches" instance=ExtResource("17_branch")]
-layout_mode = 2
-technology_id = "net"
-branch_title = "捕网"
-branch_category = "全局 · 基础工具"
-icon_index = 1
-stage_names = PackedStringArray("解锁捕网", "10 只", "20 只", "30 只")
-
-[node name="Governance" parent="HUD/Interface/Technology/ToolCard/Content/Branches" instance=ExtResource("17_branch")]
-layout_mode = 2
-technology_id = "governance"
-branch_title = "巢穴治理"
-branch_category = "全局 · 解锁区域投资"
-icon_index = 2
-stage_names = PackedStringArray("治理许可 I", "治理许可 II", "治理许可 III")
-
-[node name="Combo" parent="HUD/Interface/Technology/ToolCard/Content/Branches" instance=ExtResource("17_branch")]
-layout_mode = 2
-technology_id = "combo"
-branch_title = "连击吸取"
-branch_category = "全局 · 连吸 5 只后逐只奖励"
-icon_index = 3
-stage_names = PackedStringArray("赠送 1 糖果", "赠送 2 糖果", "赠送 3 糖果")
-
-[node name="Valuable" parent="HUD/Interface/Technology/ToolCard/Content/Branches" instance=ExtResource("17_branch")]
-layout_mode = 2
-technology_id = "valuable"
-branch_title = "高价值个体"
-branch_category = "区域研究 · 只影响此巢穴"
-icon_index = 4
-stage_names = PackedStringArray("黄金变体")
-
-[node name="Footer" type="Label" parent="HUD/Interface/Technology/ToolCard/Content"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 12
-text = "工具也可在下方悬停升级     ·     Esc 关闭"
-theme_override_colors/font_color = Color(0.49, 0.57, 0.46, 1)
-
-[node name="Legacy" type="VBoxContainer" parent="HUD/Interface/Technology/ToolCard/Content"]
+[node name="Legacy" type="VBoxContainer" parent="HUD/Interface"]
 layout_mode = 2
 mouse_filter = 2
 visible = false
 
-[node name="Tools" type="HBoxContainer" parent="HUD/Interface/Technology/ToolCard/Content/Legacy"]
+[node name="Tools" type="HBoxContainer" parent="HUD/Interface/Legacy"]
 layout_mode = 2
 mouse_filter = 2
 
-[node name="PipeToolButton" type="Button" parent="HUD/Interface/Technology/ToolCard/Content/Legacy/Tools"]
+[node name="PipeToolButton" type="Button" parent="HUD/Interface/Legacy/Tools"]
 layout_mode = 2
 text = "管子"
 toggle_mode = true
 unique_name_in_owner = true
 
-[node name="NetToolButton" type="Button" parent="HUD/Interface/Technology/ToolCard/Content/Legacy/Tools"]
+[node name="NetToolButton" type="Button" parent="HUD/Interface/Legacy/Tools"]
 layout_mode = 2
 text = "捕网"
 toggle_mode = true
 unique_name_in_owner = true
 
-[node name="ToolLevelLabel" type="Label" parent="HUD/Interface/Technology/ToolCard/Content/Legacy"]
+[node name="ToolLevelLabel" type="Label" parent="HUD/Interface/Legacy"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_font_sizes/font_size = 16
 text = ""
 unique_name_in_owner = true
 
-[node name="ToolStatsLabel" type="Label" parent="HUD/Interface/Technology/ToolCard/Content/Legacy"]
+[node name="ToolStatsLabel" type="Label" parent="HUD/Interface/Legacy"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_font_sizes/font_size = 16
 text = ""
 unique_name_in_owner = true
 
-[node name="ToolButton" type="Button" parent="HUD/Interface/Technology/ToolCard/Content/Legacy"]
+[node name="ToolButton" type="Button" parent="HUD/Interface/Legacy"]
 layout_mode = 2
 text = ""
 unique_name_in_owner = true

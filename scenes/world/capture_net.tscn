@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/capture_net.gd" id="1_net"]
+
+[ext_resource type="PackedScene" path="res://scenes/场景动画/捕网.tscn" id="2_art"]
 
 [node name="CaptureNet" type="Node2D"]
 position = Vector2(480, 400)
@@ -11,24 +13,9 @@ width = 2.2
 default_color = Color(0.27, 0.29, 0.27, 0.85)
 antialiased = true
 
-[node name="Sack" type="Polygon2D" parent="."]
-visible = false
-show_behind_parent = true
-polygon = PackedVector2Array(-16, -5, 16, -5, 25, 13, 23, 28, 11, 40, 0, 44, -11, 40, -23, 28, -25, 13)
-color = Color(0.9, 0.92, 0.83, 0.82)
+[node name="ArtRoot" type="Node2D" parent="."]
 
-[node name="SackOutline" type="Line2D" parent="."]
-visible = false
-points = PackedVector2Array(-16, -5, 16, -5, 25, 13, 23, 28, 11, 40, 0, 44, -11, 40, -23, 28, -25, 13, -16, -5)
-width = 2.2
-default_color = Color(0.27, 0.29, 0.27, 1)
-antialiased = true
-
-[node name="Handle" type="Line2D" parent="."]
-points = PackedVector2Array(-21, 25, -5, 6)
-width = 3.0
-default_color = Color(0.27, 0.29, 0.27, 1)
-antialiased = true
+[node name="捕网" parent="ArtRoot" instance=ExtResource("2_art")]
 
 [node name="LabelCompensation" type="Node2D" parent="."]
 

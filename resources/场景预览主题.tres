@@ -1,0 +1,48 @@
+[gd_resource type="Theme" load_steps=6 format=3]
+
+[sub_resource type="SystemFont" id="font"]
+font_names = PackedStringArray("Microsoft YaHei", "微软雅黑", "Noto Sans CJK SC")
+
+[sub_resource type="StyleBoxFlat" id="normal"]
+bg_color = Color(0.08, 0.08, 0.10, 0.96)
+content_margin_left = 22.0
+content_margin_right = 22.0
+content_margin_top = 12.0
+content_margin_bottom = 12.0
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_left = 5
+corner_radius_bottom_right = 5
+
+[sub_resource type="StyleBoxFlat" id="hover"]
+bg_color = Color(0.36, 0.035, 0.10, 1)
+content_margin_left = 22.0
+content_margin_right = 22.0
+content_margin_top = 12.0
+content_margin_bottom = 12.0
+
+[sub_resource type="StyleBoxFlat" id="panel"]
+bg_color = Color(0.035, 0.03, 0.04, 0.98)
+content_margin_left = 24.0
+content_margin_right = 24.0
+content_margin_top = 24.0
+content_margin_bottom = 24.0
+
+[sub_resource type="StyleBoxFlat" id="focus"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.8, 0.45, 0.55, 1)
+
+[resource]
+default_font = SubResource("font")
+default_font_size = 22
+Button/styles/normal = SubResource("normal")
+Button/styles/hover = SubResource("hover")
+Button/styles/pressed = SubResource("hover")
+Button/styles/focus = SubResource("focus")
+PanelContainer/styles/panel = SubResource("panel")
+HBoxContainer/constants/separation = 12
+VBoxContainer/constants/separation = 12

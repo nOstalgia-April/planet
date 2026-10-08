@@ -116,6 +116,14 @@ func get_nest_position(angle: float) -> Vector2:
 	return Vector2.from_angle(angle) * (get_outer_radius(angle) - nest_edge_inset)
 
 
+func get_nest_rotation(angle: float) -> float:
+	var sample_step: float = TAU / float(CONTOUR_STEPS)
+	var tangent: Vector2 = (
+		get_nest_position(angle + sample_step) - get_nest_position(angle - sample_step)
+	)
+	return tangent.angle()
+
+
 func get_activity_radius_bounds(angle: float) -> Vector2:
 	return Vector2(
 		get_inner_radius(angle) + activity_edge_inset, get_outer_radius(angle) - activity_edge_inset

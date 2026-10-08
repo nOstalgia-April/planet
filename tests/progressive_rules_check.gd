@@ -49,6 +49,8 @@ func _check_opening_and_net_unlock() -> void:
 	)
 	run.advance(100.0)
 	_check(run.nests.size() == 2, "Elapsed time alone does not introduce new nest types.")
+	run.candy = SETTINGS.pipe_upgrade_costs[0]
+	_check(run.upgrade_pipe(), "Speed level two permits net unlock.")
 	run.candy = SETTINGS.net_unlock_cost - 1
 	_check(not run.upgrade_net(), "The net unlock requires its full advertised price.")
 	run.candy += 1
@@ -197,6 +199,7 @@ func _check_continuous_discovery() -> void:
 	settings.nest_roll_chance_max = 1.0
 	run.settings = settings
 	run.candy = 10000
+	run.upgrade_pipe()
 	run.upgrade_net()
 	run._random.seed = 72861
 	_nest_requests = 0
@@ -225,6 +228,7 @@ func _check_continuous_discovery() -> void:
 	var pending_run: PrototypeRun = _create_run()
 	pending_run.settings = settings
 	pending_run.candy = 10000
+	pending_run.upgrade_pipe()
 	pending_run.upgrade_net()
 	_nest_requests = 0
 	pending_run.nest_spawn_requested.connect(_count_nest_request)
@@ -253,6 +257,7 @@ func _check_continuous_discovery() -> void:
 func _check_governance_roll_weight() -> void:
 	var run: PrototypeRun = _create_run()
 	run.candy = 10000
+	run.upgrade_pipe()
 	run.upgrade_net()
 	_enable_full_governance(run)
 	_check(
@@ -298,6 +303,7 @@ func _check_existing_nests_completion() -> void:
 	settings.nest_roll_chance_max = 1.0
 	run.settings = settings
 	run.candy = 10000
+	run.upgrade_pipe()
 	run.upgrade_net()
 	_enable_full_governance(run)
 	_goal_count = 0
@@ -330,8 +336,8 @@ func _check_existing_nests_completion() -> void:
 func _enable_full_governance(run: PrototypeRun) -> void:
 	run.upgrade_pipe()
 	run.upgrade_pipe()
-	for _index: int in range(3):
-		run.purchase_technology("governance")
+	run.purchase_technology("cultivation")
+	run.purchase_technology("automation")
 
 
 func _place_requested_nest(species: NestState.Species, run: PrototypeRun) -> void:

@@ -63,12 +63,22 @@ func _check_foreground(demo: DemoScript) -> void:
 	_check(core_top.y < toolbar.position.y, "the empty core stays visible above the toolbar")
 	var core_point: Vector2 = projection.affine_inverse() * Vector2(screen.x * 0.5, screen.y - 5.0)
 	_check(
-		not demo._planet.contains_surface_point(core_point) and not demo._can_collect(core_point, 0.1),
+		(
+			not demo._planet.contains_surface_point(core_point)
+			and not demo._can_collect(core_point, 0.1)
+		),
 		"the visible empty center is outside the gameplay crust"
 	)
 	print(
-		"P1 core %.2f / toolbar %.2f = %.5f at viewport %s"
-		% [visible_core_height, toolbar.size.y, visible_core_height / toolbar.size.y, str(screen)]
+		(
+			"P1 core %.2f / toolbar %.2f = %.5f at viewport %s"
+			% [
+				visible_core_height,
+				toolbar.size.y,
+				visible_core_height / toolbar.size.y,
+				str(screen)
+			]
+		)
 	)
 	for ratio: Vector2 in [
 		Vector2(0.25, 0.78),
@@ -92,6 +102,7 @@ func _seed_nests(demo: DemoScript) -> void:
 	demo.run._random.seed = 7817
 	demo._site_random.seed = 41129
 	demo.run.candy = 100000
+	_check(demo.run.upgrade_pipe(), "pipe level two opens the net research branch")
 	_check(demo.run.purchase_technology("net"), "net unlock enables the legal spawn sampler")
 	_check(demo.run.purchase_technology("governance"), "governance research enables nest upgrades")
 	var scripted_count: int = demo.run.nests.size()
@@ -146,6 +157,7 @@ func _check_nest_access(demo: DemoScript) -> void:
 		demo._view.begin_drag(Vector2.ZERO)
 		demo._view.drag_to(Vector2(rotation_delta * screen_radius, 0.0))
 		demo._view.end_drag()
+		await _settle()
 		var view: NestView = demo._nest_views[nest.nest_id - 1]
 		var bounds: Rect2 = view.get_hover_rect()
 		_check(screen.encloses(bounds), "rotated nest %d is fully on screen" % nest.nest_id)

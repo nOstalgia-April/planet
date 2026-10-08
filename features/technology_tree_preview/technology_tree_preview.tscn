@@ -1,0 +1,57 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://features/technology_tree_preview/technology_tree_preview.gd" id="1_preview"]
+[ext_resource type="Script" path="res://scripts/prototype_run.gd" id="2_run"]
+[ext_resource type="Resource" path="res://resources/prototype_settings.tres" id="3_settings"]
+[ext_resource type="PackedScene" path="res://scenes/ui/technology_page.tscn" id="4_page"]
+
+[node name="TechnologyTreePreview" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_preview")
+
+[node name="Run" type="Node" parent="."]
+script = ExtResource("2_run")
+settings = ExtResource("3_settings")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.044, 0.076, 0.098, 1)
+
+[node name="TechnologyPage" parent="." instance=ExtResource("4_page")]
+layout_mode = 0
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+
+[node name="PreviewControls" type="HBoxContainer" parent="."]
+layout_mode = 0
+theme_override_constants/separation = 10
+
+[node name="Opening" type="Button" parent="PreviewControls"]
+layout_mode = 2
+toggle_mode = true
+text = "开局"
+
+[node name="Available" type="Button" parent="PreviewControls"]
+layout_mode = 2
+toggle_mode = true
+text = "可购买"
+
+[node name="Growing" type="Button" parent="PreviewControls"]
+layout_mode = 2
+toggle_mode = true
+text = "成长中"
+
+[node name="Advanced" type="Button" parent="PreviewControls"]
+layout_mode = 2
+toggle_mode = true
+text = "高阶"

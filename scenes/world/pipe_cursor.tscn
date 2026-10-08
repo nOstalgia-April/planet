@@ -1,41 +1,14 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/pipe_cursor.gd" id="1_pipe"]
+[ext_resource type="PackedScene" path="res://scenes/场景动画/吸尘器.tscn" id="2_art"]
 
 [node name="Pipe" type="Node2D"]
 position = Vector2(480, 400)
 script = ExtResource("1_pipe")
 
-[node name="PipeOutline" type="Line2D" parent="."]
-show_behind_parent = true
-points = PackedVector2Array(-58, 14, -40, 14, -24, 3, -10, 0)
-width = 12.0
-default_color = Color(0.27, 0.29, 0.27, 1)
-begin_cap_mode = 2
-end_cap_mode = 2
-antialiased = true
+[node name="ArtRoot" type="Node2D" parent="."]
 
-[node name="PipeFill" type="Line2D" parent="."]
-show_behind_parent = true
-points = PackedVector2Array(-58, 14, -40, 14, -24, 3, -10, 0)
-width = 8.0
-default_color = Color(0.725, 0.773, 0.714, 1)
-begin_cap_mode = 2
-end_cap_mode = 2
-antialiased = true
-
-[node name="Mouth" type="Node2D" parent="."]
-
-[node name="Collar" type="Polygon2D" parent="Mouth"]
-polygon = PackedVector2Array(-12, -7, 1, -11, 8, -7, 8, 7, 1, 11, -12, 7)
-color = Color(0.945, 0.933, 0.859, 1)
-
-[node name="Outline" type="Line2D" parent="Mouth"]
-points = PackedVector2Array(-12, -7, 1, -11, 8, -7, 8, 7, 1, 11, -12, 7, -12, -7)
-width = 2.0
-default_color = Color(0.27, 0.29, 0.27, 1)
-antialiased = true
-
-[node name="Opening" type="Polygon2D" parent="Mouth"]
-polygon = PackedVector2Array(-1, -6, 5, -6, 5, 6, -1, 6)
-color = Color(0.298, 0.514, 0.486, 1)
+[node name="吸尘器" parent="ArtRoot" instance=ExtResource("2_art")]
+position = Vector2(13.86, -16.92)
+scale = Vector2(0.36, 0.36)

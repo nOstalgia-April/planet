@@ -1,0 +1,303 @@
+{
+  "excluded": [
+    "星星（月亮在同一图层）",
+    "彩色恢复素材",
+    "位置参考合成图"
+  ],
+  "near_import_size_limit": 4096,
+  "files": [
+    {
+      "source": "放大后的地球（5帧每秒/放大后的地球动画（5帧每秒/IMG_3040-1.png",
+      "target": "assets/场景动画/近景星球/001.png",
+      "fps": 5,
+      "sha256": "8ec2ad200fa06f1c49a110be8786c1357a912ac44d6fffe67c5b2a9fd3195792"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的地球动画（5帧每秒/IMG_3040-2.png",
+      "target": "assets/场景动画/近景星球/002.png",
+      "fps": 5,
+      "sha256": "49e523bcdb78f54984edacc9d7071e9a5969268811d234ab1b5f680362d341ba"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的地球动画（5帧每秒/IMG_3040-3.png",
+      "target": "assets/场景动画/近景星球/003.png",
+      "fps": 5,
+      "sha256": "783e28d88fc841b6f00977805662b78608e21c62c025d85422277b39650fa788"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的地球动画（5帧每秒/IMG_3040-4.png",
+      "target": "assets/场景动画/近景星球/004.png",
+      "fps": 5,
+      "sha256": "d3429ae7d7ac8b6395ce893580ac25334e03809d00aee682d56d82a0b38dd7d5"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的地球动画（5帧每秒/IMG_3040-5.png",
+      "target": "assets/场景动画/近景星球/005.png",
+      "fps": 5,
+      "sha256": "7b09b04949b891a96f4f5a19524676e9de19b55735e6ab68d52e4d3841b53427"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的地球动画（5帧每秒/IMG_3040-6.png",
+      "target": "assets/场景动画/近景星球/006.png",
+      "fps": 5,
+      "sha256": "83e289ca4c85276f792e2b3f6b121225316517f06b8849ed2f16d1e7b1454beb"
+    },
+    {
+      "source": "全景地球（5帧每秒）/地球/未命名作品-1.png",
+      "target": "assets/场景动画/全景星球/001.png",
+      "fps": 5,
+      "sha256": "78b1fcf1c66751a2cd961f74a02b2de53dfbc18a0d641fd182f1cd3fcddf8fe2"
+    },
+    {
+      "source": "全景地球（5帧每秒）/地球/未命名作品-2.png",
+      "target": "assets/场景动画/全景星球/002.png",
+      "fps": 5,
+      "sha256": "47e0d3674f8bc95fd131d3849c44a5b5b05e8ebc12c80b8ee58317f878bf7a15"
+    },
+    {
+      "source": "全景地球（5帧每秒）/地球/未命名作品-3.png",
+      "target": "assets/场景动画/全景星球/003.png",
+      "fps": 5,
+      "sha256": "48114b71fdc7164c26e4871cab8097d6cc420de5f1546093acd038891ef7ef67"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/颜色背景/未命名作品-1.png",
+      "target": "assets/场景动画/近景背景颜色/001.png",
+      "fps": 5,
+      "sha256": "cc77b1ce071b431c09191bfb967e42408a428d2fc1f947a88bdaa2191434e2bd"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/颜色背景/未命名作品-2.png",
+      "target": "assets/场景动画/近景背景颜色/002.png",
+      "fps": 5,
+      "sha256": "84582283a5cba929afbc284fb4dacdd5e285b8b563bdb5bd20e09bff2c8d208c"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/颜色背景/未命名作品-3.png",
+      "target": "assets/场景动画/近景背景颜色/003.png",
+      "fps": 5,
+      "sha256": "42ec1d889443246a115bbba3cfd764d08007347aa2e36d85cc8d3a5e4d024c2a"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/颜色背景/未命名作品-4.png",
+      "target": "assets/场景动画/近景背景颜色/004.png",
+      "fps": 5,
+      "sha256": "e3ce3059a21121f2f8fa5123d17bb0322bba62e01488cfca9c11e44bdc0628f2"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/颜色背景/未命名作品-5.png",
+      "target": "assets/场景动画/近景背景颜色/005.png",
+      "fps": 5,
+      "sha256": "84582283a5cba929afbc284fb4dacdd5e285b8b563bdb5bd20e09bff2c8d208c"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/黑色背景/未命名作品-1.png",
+      "target": "assets/场景动画/近景背景暗角/001.png",
+      "fps": 5,
+      "sha256": "5e75382077b733384aa2b39830b395ec309801bd024bb7d2e0a9cb76fe422903"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/黑色背景/未命名作品-2.png",
+      "target": "assets/场景动画/近景背景暗角/002.png",
+      "fps": 5,
+      "sha256": "ac695debaeaac9ff491583f212c95e7c28c6ac2bd74e21d4bc82da26fab0b588"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/黑色背景/未命名作品-3.png",
+      "target": "assets/场景动画/近景背景暗角/003.png",
+      "fps": 5,
+      "sha256": "8c42f7d57bb0a34659876d868a902cef11c3c146bc9d2f5aaf042afce6df142a"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/黑色背景/未命名作品-4.png",
+      "target": "assets/场景动画/近景背景暗角/004.png",
+      "fps": 5,
+      "sha256": "de1e28e4f4c9b7af3608692df6721b937272bd52715224bfdd5b58f134436128"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/黑色背景/未命名作品-5.png",
+      "target": "assets/场景动画/近景背景暗角/005.png",
+      "fps": 5,
+      "sha256": "47e1d779b96e5cd454d89498d1d820c26e4282c2df742b6a4083c48a7f60788c"
+    },
+    {
+      "source": "全景地球（5帧每秒）/背景/未命名作品-1.png",
+      "target": "assets/场景动画/全景背景/001.png",
+      "fps": 5,
+      "sha256": "5a0c6f2723c629de6b8ceec28c2452d67a0db3ca78a2a284a054e4200d307e80"
+    },
+    {
+      "source": "全景地球（5帧每秒）/背景/未命名作品-2.png",
+      "target": "assets/场景动画/全景背景/002.png",
+      "fps": 5,
+      "sha256": "8c46739df781d3c53e131cb5f994d65de14d295ca9ba08ba8f3c559c9e97c55e"
+    },
+    {
+      "source": "全景地球（5帧每秒）/背景/未命名作品-3.png",
+      "target": "assets/场景动画/全景背景/003.png",
+      "fps": 5,
+      "sha256": "e663932353ba4230baa940cb1d4bd2c4d0df837b17670c85e4a67b56c015e4d7"
+    },
+    {
+      "source": "工具动画/吸尘器动画（7帧每秒/吸尘器/未命名作品-1.png",
+      "target": "assets/场景动画/吸尘器/001.png",
+      "fps": 7,
+      "sha256": "49aecaf3f0b2de1a11c55d7b08401b11104380d394ceed4ae0c5f47d77a17363"
+    },
+    {
+      "source": "工具动画/吸尘器动画（7帧每秒/吸尘器/未命名作品-2.png",
+      "target": "assets/场景动画/吸尘器/002.png",
+      "fps": 7,
+      "sha256": "ab947a94f0c24a37300333c773d7b53f9c8670e95e3e75cd82a737079d1afb26"
+    },
+    {
+      "source": "工具动画/吸尘器动画（7帧每秒/吸尘器/未命名作品-3.png",
+      "target": "assets/场景动画/吸尘器/003.png",
+      "fps": 7,
+      "sha256": "65fc3f3814afbfa14a2a8718c00db19bfd7c5f72c127207961aadf0029cd8979"
+    },
+    {
+      "source": "工具动画/吸尘器动画（7帧每秒/吸尘器/未命名作品-4.png",
+      "target": "assets/场景动画/吸尘器/004.png",
+      "fps": 7,
+      "sha256": "a8f8c05e19ec7c57ea067ce4817ea8e5d8e2ff4ffa24e43eccdbada11e4f6a6a"
+    },
+    {
+      "source": "工具动画/吸尘器动画（7帧每秒/吸尘器/未命名作品-5.png",
+      "target": "assets/场景动画/吸尘器/005.png",
+      "fps": 7,
+      "sha256": "ec8a8be8c380133fda712d5e3354ecbd97f578b48d685ca3cac0588e99887483"
+    },
+    {
+      "source": "工具动画/吸尘器动画（7帧每秒/吸尘器/未命名作品-6.png",
+      "target": "assets/场景动画/吸尘器/006.png",
+      "fps": 7,
+      "sha256": "79a96cd8e402bbc9b8ff76c6a45eba383086ba2d3e5f4273e9fbdf25cbd5ba35"
+    },
+    {
+      "source": "工具动画/吸尘器动画（7帧每秒/吸尘器/未命名作品-7.png",
+      "target": "assets/场景动画/吸尘器/007.png",
+      "fps": 7,
+      "sha256": "6d5c684cf7b6a71ae0e5725a7b83ea4ccf9549c3f534c0f8bf0a20d6c56e72f4"
+    },
+    {
+      "source": "工具动画/旧网（5帧每秒/未命名作品-1.png",
+      "target": "assets/场景动画/捕网/001.png",
+      "fps": 5,
+      "sha256": "bd5c8d35ef6a096f49c532c5c80bca2b19d77bbdd72202607e1f8133b6b8cb8d"
+    },
+    {
+      "source": "工具动画/旧网（5帧每秒/未命名作品-2.png",
+      "target": "assets/场景动画/捕网/002.png",
+      "fps": 5,
+      "sha256": "bb5dce79e13a03fdb06ccbc279588ac44506f9e1254bf721f9e1cab0e2dc138e"
+    },
+    {
+      "source": "工具动画/旧网（5帧每秒/未命名作品-3.png",
+      "target": "assets/场景动画/捕网/003.png",
+      "fps": 5,
+      "sha256": "88ce8f0221b7d60b4e7ea1c9fd443d2c58a940fb2379fbe8b8cf7230da02de3c"
+    },
+    {
+      "source": "工具动画/旧网（5帧每秒/未命名作品-4.png",
+      "target": "assets/场景动画/捕网/004.png",
+      "fps": 5,
+      "sha256": "8cc16efbb024b5826430bfdb7ab9e14adf8f2318f22af6f95bc576fe370b3f58"
+    },
+    {
+      "source": "工具动画/旧网（5帧每秒/未命名作品-5.png",
+      "target": "assets/场景动画/捕网/005.png",
+      "fps": 5,
+      "sha256": "8a556bf8ee747c40d9a30c7b76af53fbe8ffa09713f3fe71f27e1709e022b882"
+    },
+    {
+      "source": "粘液怪（5帧每秒/粘液怪/39b0a678a83e6215f1bb21889ec2d4bc-1.png",
+      "target": "assets/场景动画/黏液怪移动/001.png",
+      "fps": 5,
+      "sha256": "99dbbdfa99f349617a1b8b92a64d3cf21e2ac672da78015a4e609886ba44fcdb"
+    },
+    {
+      "source": "粘液怪（5帧每秒/粘液怪/39b0a678a83e6215f1bb21889ec2d4bc-2.png",
+      "target": "assets/场景动画/黏液怪移动/002.png",
+      "fps": 5,
+      "sha256": "9ca9d7b36cac068f6c3388f1cb5a4f4f14a533a174aa050fe18d0e174a39c6cc"
+    },
+    {
+      "source": "粘液怪（5帧每秒/粘液怪/39b0a678a83e6215f1bb21889ec2d4bc-3.png",
+      "target": "assets/场景动画/黏液怪移动/003.png",
+      "fps": 5,
+      "sha256": "a67ffba6bf90e9af577a852d7ed85ac8cbe01e9083ed1051d26f80483ed3f366"
+    },
+    {
+      "source": "粘液怪（5帧每秒/粘液怪/39b0a678a83e6215f1bb21889ec2d4bc-4.png",
+      "target": "assets/场景动画/黏液怪移动/004.png",
+      "fps": 5,
+      "sha256": "d50a2565528eaa0f11294a2e6d11cbf92f7fde424ba322b33db690fcc866822f"
+    },
+    {
+      "source": "粘液怪（5帧每秒/粘液怪/39b0a678a83e6215f1bb21889ec2d4bc-5.png",
+      "target": "assets/场景动画/黏液怪移动/005.png",
+      "fps": 5,
+      "sha256": "441742d8a52a6ecf9692cf80b9dd288830c71fbeece438355afa640a82392920"
+    },
+    {
+      "source": "粘液怪（5帧每秒/粘液怪/39b0a678a83e6215f1bb21889ec2d4bc-6.png",
+      "target": "assets/场景动画/黏液怪移动/006.png",
+      "fps": 5,
+      "sha256": "7c03ef58c16e998dc4d694fa756b6bb145594f0ed6d0cadfa208c06b970162b5"
+    },
+    {
+      "source": "粘液怪（5帧每秒/粘液怪/39b0a678a83e6215f1bb21889ec2d4bc-7.png",
+      "target": "assets/场景动画/黏液怪移动/007.png",
+      "fps": 5,
+      "sha256": "9bdc45ea9e29e6cd6a13b706478ff995b43a11d6204afccef9486c5395a8b76a"
+    },
+    {
+      "source": "粘液怪（5帧每秒/粘液怪/39b0a678a83e6215f1bb21889ec2d4bc-8.png",
+      "target": "assets/场景动画/黏液怪移动/008.png",
+      "fps": 5,
+      "sha256": "c78d50d95153f46f5910c48482eeb1e6c3bcb7ecd5ee7704dc87b3af95462f9f"
+    },
+    {
+      "source": "粘液怪（5帧每秒/粘液怪/39b0a678a83e6215f1bb21889ec2d4bc-9.png",
+      "target": "assets/场景动画/黏液怪移动/009.png",
+      "fps": 5,
+      "sha256": "c396df11c821b25dfaae2a300534da545ca8be4f757d5a0247a31f39a54667e2"
+    },
+    {
+      "source": "封面/底图.png",
+      "target": "assets/场景动画/主菜单/封面.png",
+      "sha256": "1c2437509459d388cd2543a19f93231ab9f43b51804656db5400a29bb7c6d006"
+    },
+    {
+      "source": "封面/IMG_3484.png",
+      "target": "assets/场景动画/主菜单/右侧底板.png",
+      "sha256": "e02cd82f102ccc8140dd43dffd2a09349a55966bf09ff992ad70162adc4b7563"
+    },
+    {
+      "source": "封面/IMG_3485.png",
+      "target": "assets/场景动画/主菜单/长底板.png",
+      "sha256": "4aacacec5e5b222c115f2f8d714a367e9a0b46e916da959528baee174ed8834f"
+    },
+    {
+      "source": "封面/IMG_3486.png",
+      "target": "assets/场景动画/主菜单/左侧底板.png",
+      "sha256": "8d1c0b0e7b141b21eb8e7f443ea67bdeb5d1605f26def701d268b4236e155362"
+    },
+    {
+      "source": "封面/IMG_3487.png",
+      "target": "assets/场景动画/主菜单/选中底板.png",
+      "sha256": "ec67bfabc80debba09e84f8fc5d2d48202969041f73bed98bd357d55c8c831e8"
+    },
+    {
+      "source": "封面/IMG_3488.png",
+      "target": "assets/场景动画/主菜单/更多.png",
+      "sha256": "a963119a60985d952851bdf76763fe62139d67392a7d465a81bd6ddac65ddda2"
+    },
+    {
+      "source": "封面/IMG_3489.png",
+      "target": "assets/场景动画/主菜单/设置.png",
+      "sha256": "fc6425bfe3216f32b3c497bf4c5bae7a4efd96d216c0fd97206876c73c608873"
+    }
+  ]
+}

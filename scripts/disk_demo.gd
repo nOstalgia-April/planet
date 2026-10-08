@@ -106,7 +106,6 @@ func _ready() -> void:
 	_nest_button.pressed.connect(_on_nest_upgrade)
 	_layout.interaction_panel_changed.connect(_cancel_view_drag)
 	_view.view_changed.connect(_sync_view_presentation)
-	_view.view_rotated.connect(_sync_view_rotation)
 	%RestartButton.pressed.connect(restart_run)
 	%ReplayButton.pressed.connect(restart_run)
 	%CloseVictoryButton.pressed.connect(_close_victory)
@@ -363,13 +362,6 @@ func _get_roaming_screen_half_angle() -> float:
 	return _view.get_near_screen_half_angle(_planet.radius)
 
 
-func _sync_view_rotation() -> void:
-	if _view.is_overview():
-		return
-	for nest: NestView in _nest_views:
-		nest.rotation = -_world.rotation
-
-
 func _sync_view_presentation() -> void:
 	_clear_nest_selection()
 	_capture_at(0.0, _tool_pointer, false)
@@ -379,7 +371,6 @@ func _sync_view_presentation() -> void:
 	_nests.visible = near_view
 	_mucus_root.visible = near_view
 	_effects.visible = near_view
-	_region_root.visible = near_view
 	if not near_view:
 		_pipe.hide()
 		_net.hide()
@@ -388,7 +379,6 @@ func _sync_view_presentation() -> void:
 		slime.presentation_scale = _view.near_slime_scale if near_view else 1.0
 	for nest: NestView in _nest_views:
 		nest.presentation_scale = _view.near_nest_scale if near_view else Vector2.ONE
-		nest.rotation = -_world.rotation
 	for region: GovernedRegion in _regions:
 		if crust_changed:
 			region.refresh_surface()
@@ -678,7 +668,7 @@ func _on_nest_added(nest: NestState) -> void:
 	_nests.add_child(view)
 	view.position = nest.position
 	view.setup(nest.nest_id)
-	view.rotation = -_world.rotation
+	view.rotation = _planet.get_nest_rotation(nest.position.angle())
 	view.configure_species(nest.species)
 	view.presentation_scale = _view.near_nest_scale if not _view.is_overview() else Vector2.ONE
 	view.update_state(nest.level, nest.is_tamed, run.settings.nest_upgrade_costs.size())
@@ -770,8 +760,6 @@ func _on_auto_collect_requested(nest_id: int) -> void:
 func _select_nest(nest_id: int) -> void:
 	selected_nest_id = nest_id
 	_layout.selected_technology_nest_id = nest_id
-	for view: NestView in _nest_views:
-		view.set_selected(view.nest_id == nest_id)
 	_refresh_hud()
 	_layout.show_nest_details(_nest_views[nest_id - 1].get_hover_rect())
 
@@ -810,7 +798,6 @@ func _is_over_selected_nest(viewport_position: Vector2) -> bool:
 
 func _clear_nest_selection() -> void:
 	if selected_nest_id >= 0:
-		_nest_views[selected_nest_id - 1].set_selected(false)
 		selected_nest_id = -1
 	_layout.hide_nest_details()
 
@@ -936,7 +923,7 @@ func _on_quick_upgrade(tool: int) -> void:
 
 
 func _on_technology_upgrade(technology_id: String) -> void:
-	var unlocking_net: bool = technology_id == "net" and not run.net_unlocked
+	var unlocking_net: bool = technology_id in ["net", "net_unlock"] and not run.net_unlocked
 	if run.purchase_technology(technology_id):
 		_refresh_hud()
 		_upgrade_sound.play()

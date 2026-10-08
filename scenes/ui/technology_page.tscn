@@ -1,0 +1,305 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/technology_page.gd" id="1_page"]
+[ext_resource type="Script" path="res://scripts/ui/technology_graph.gd" id="2_graph"]
+[ext_resource type="Script" path="res://scripts/ui/technology_backdrop.gd" id="3_background"]
+[ext_resource type="Script" path="res://scripts/ui/technology_glyph.gd" id="4_glyph"]
+
+[sub_resource type="SystemFont" id="Font"]
+font_names = PackedStringArray("Microsoft YaHei", "微软雅黑", "Noto Sans CJK SC")
+
+[sub_resource type="StyleBoxFlat" id="Panel"]
+content_margin_left = 22.0
+content_margin_top = 24.0
+content_margin_right = 22.0
+content_margin_bottom = 24.0
+bg_color = Color(0.078, 0.133, 0.165, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.19, 0.27, 0.3, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+
+[sub_resource type="StyleBoxFlat" id="Button"]
+content_margin_left = 16.0
+content_margin_top = 10.0
+content_margin_right = 16.0
+content_margin_bottom = 10.0
+bg_color = Color(0.88, 0.73, 0.39, 1)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_left = 7
+corner_radius_bottom_right = 7
+
+[sub_resource type="StyleBoxFlat" id="Hover"]
+content_margin_left = 16.0
+content_margin_top = 10.0
+content_margin_right = 16.0
+content_margin_bottom = 10.0
+bg_color = Color(0.98, 0.85, 0.53, 1)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_left = 7
+corner_radius_bottom_right = 7
+
+[sub_resource type="StyleBoxFlat" id="Disabled"]
+content_margin_left = 16.0
+content_margin_top = 10.0
+content_margin_right = 16.0
+content_margin_bottom = 10.0
+bg_color = Color(0.16, 0.22, 0.24, 1)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_left = 7
+corner_radius_bottom_right = 7
+
+[sub_resource type="StyleBoxFlat" id="Focus"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.95, 0.95, 0.87, 1)
+corner_radius_top_left = 7
+corner_radius_top_right = 7
+corner_radius_bottom_left = 7
+corner_radius_bottom_right = 7
+
+[sub_resource type="StyleBoxEmpty" id="Empty"]
+
+[sub_resource type="Theme" id="Theme"]
+default_font = SubResource("Font")
+default_font_size = 16
+Label/colors/font_color = Color(0.88, 0.92, 0.9, 1)
+Button/colors/font_color = Color(0.10, 0.15, 0.17, 1)
+Button/colors/font_hover_color = Color(0.10, 0.15, 0.17, 1)
+Button/colors/font_pressed_color = Color(0.10, 0.15, 0.17, 1)
+Button/colors/font_disabled_color = Color(0.56, 0.65, 0.67, 1)
+Button/styles/normal = SubResource("Button")
+Button/styles/hover = SubResource("Hover")
+Button/styles/pressed = SubResource("Button")
+Button/styles/disabled = SubResource("Disabled")
+Button/styles/focus = SubResource("Focus")
+OptionButton/styles/normal = SubResource("Disabled")
+OptionButton/styles/hover = SubResource("Disabled")
+OptionButton/styles/pressed = SubResource("Disabled")
+OptionButton/colors/font_color = Color(0.85, 0.9, 0.86, 1)
+PopupMenu/styles/panel = SubResource("Panel")
+PopupMenu/colors/font_color = Color(0.85, 0.9, 0.86, 1)
+
+[node name="TechnologyPage" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = SubResource("Theme")
+script = ExtResource("1_page")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.044, 0.076, 0.098, 1)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+
+[node name="Content" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Header" type="HBoxContainer" parent="Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="Title" type="Label" parent="Margin/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 27
+text = "科技树"
+
+[node name="Wallet" type="Label" parent="Margin/Content/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.81, 0.44, 1)
+theme_override_font_sizes/font_size = 22
+text = "0 糖果"
+
+[node name="Close" type="Button" parent="Margin/Content/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.67, 0.77, 0.78, 1)
+theme_override_colors/font_hover_color = Color(0.95, 0.96, 0.9, 1)
+theme_override_styles/normal = SubResource("Empty")
+theme_override_styles/hover = SubResource("Empty")
+theme_override_styles/pressed = SubResource("Empty")
+text = "返回  ×"
+tooltip_text = "关闭 · Esc"
+
+[node name="Body" type="Control" parent="Margin/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Canvas" type="Control" parent="Margin/Content/Body"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+clip_contents = true
+
+[node name="Backdrop" type="Control" parent="Margin/Content/Body/Canvas"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("3_background")
+
+[node name="Graph" type="Control" parent="Margin/Content/Body/Canvas"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 1280.0
+offset_bottom = 660.0
+mouse_filter = 2
+script = ExtResource("2_graph")
+
+[node name="Detail" type="PanelContainer" parent="Margin/Content/Body"]
+custom_minimum_size = Vector2(272, 0)
+layout_mode = 1
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -272.0
+grow_horizontal = 0
+theme_override_styles/panel = SubResource("Panel")
+
+[node name="Content" type="VBoxContainer" parent="Margin/Content/Body/Detail"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="DetailIcon" type="Control" parent="Margin/Content/Body/Detail/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(54, 54)
+layout_mode = 2
+size_flags_horizontal = 0
+mouse_filter = 2
+script = ExtResource("4_glyph")
+
+[node name="Identity" type="VBoxContainer" parent="Margin/Content/Body/Detail/Content"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="DetailTitle" type="Label" parent="Margin/Content/Body/Detail/Content/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "吸取速率"
+
+[node name="DetailLevel" type="Label" parent="Margin/Content/Body/Detail/Content/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.60, 0.70, 0.73, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="DetailState" type="Label" parent="Margin/Content/Body/Detail/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+
+[node name="DetailEffect" type="Label" parent="Margin/Content/Body/Detail/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+autowrap_mode = 3
+
+[node name="DetailNote" type="Label" parent="Margin/Content/Body/Detail/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.59, 0.69, 0.72, 1)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+
+[node name="Scope" type="OptionButton" parent="Margin/Content/Body/Detail/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="RequirementHeading" type="Label" parent="Margin/Content/Body/Detail/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.64, 0.67, 1)
+theme_override_font_sizes/font_size = 13
+text = "前置科技"
+
+[node name="Requirements" type="VBoxContainer" parent="Margin/Content/Body/Detail/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Spacer" type="Control" parent="Margin/Content/Body/Detail/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="Cost" type="Label" parent="Margin/Content/Body/Detail/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.81, 0.44, 1)
+theme_override_font_sizes/font_size = 23
+
+[node name="Purchase" type="Button" parent="Margin/Content/Body/Detail/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "研究"
+
+[node name="Footer" type="HBoxContainer" parent="Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="Purchased" type="Label" parent="Margin/Content/Footer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.57, 0.76, 0.68, 1)
+theme_override_font_sizes/font_size = 13
+text = "✓ 已研究"
+
+[node name="Available" type="Label" parent="Margin/Content/Footer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.81, 0.44, 1)
+theme_override_font_sizes/font_size = 13
+text = "✦ 可购买"
+
+[node name="Unaffordable" type="Label" parent="Margin/Content/Footer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.61, 0.73, 0.80, 1)
+theme_override_font_sizes/font_size = 13
+text = "◇ 待积累"
+
+[node name="Locked" type="Label" parent="Margin/Content/Footer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.52, 0.61, 0.64, 1)
+theme_override_font_sizes/font_size = 13
+text = "○ 前置未满足"
+
+[node name="Hint" type="Label" parent="Margin/Content/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.42, 0.54, 0.58, 1)
+theme_override_font_sizes/font_size = 13
+text = "点击节点查看"
+horizontal_alignment = 2

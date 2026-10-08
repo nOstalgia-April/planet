@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/nest_view.gd" id="1_nest"]
-[ext_resource type="PackedScene" path="res://scenes/world/automatic_facility.tscn" id="2_auto"]
+[ext_resource type="PackedScene" path="res://scenes/world/nest_art.tscn" id="2_art"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_selection"]
 size = Vector2(93.36, 47.6)
@@ -9,8 +9,8 @@ size = Vector2(93.36, 47.6)
 [node name="Nest" type="Node2D"]
 script = ExtResource("1_nest")
 
-[node name="AutomaticFacility" parent="." instance=ExtResource("2_auto")]
-visible = false
+[node name="NestArt" parent="." instance=ExtResource("2_art")]
+scale = Vector2(0.6363636, 0.6363636)
 
 [node name="SelectionArea" type="Area2D" parent="."]
 collision_layer = 1
