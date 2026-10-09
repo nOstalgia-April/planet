@@ -45,12 +45,18 @@ func _run_checks() -> void:
 	_check_ledger(demo)
 	demo.run.candy = demo.run.settings.net_unlock_cost + demo.run.settings.pipe_upgrade_costs[0]
 	_check(demo.run.upgrade_pipe(), "speed level two opens the net branch")
-	_check(demo.run.purchase_technology("net"), "purchasing the net unlocks its first mucus nest")
+	_check(demo.run.purchase_technology("net"), "purchasing the net unlocks the tool")
+	_check(demo.run.nests.size() == 2, "net unlock keeps only the two opening nests")
+	demo.run._pending_nest_species = NestState.Species.MUCUS
+	_check(
+		demo.run.resolve_nest_spawn(demo._planet.get_nest_position(-PI / 2.0 + 0.78)),
+		"a resolved discovery prepares the mucus nest for governance checks"
+	)
 	demo.run.advance(demo.run.settings.spawn_intervals[0])
 	_freeze_actors(demo)
 	_check(
 		demo.run.get_nest(3).species == NestState.Species.MUCUS,
-		"the unlocked third region contains mucus"
+		"the discovered third region contains mucus"
 	)
 	await _check_research_and_future_spawns(demo)
 	_check_manual_collection(demo)
@@ -78,7 +84,8 @@ func _run_checks() -> void:
 		"restart closes completion and technology"
 	)
 	for audio: Node in demo.get_node("Audio").get_children():
-		(audio as AudioStreamPlayer).stop()
+		if audio is AudioStreamPlayer:
+			audio.stop()
 	current_scene = null
 	demo.queue_free()
 	await process_frame

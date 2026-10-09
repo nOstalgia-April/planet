@@ -6,8 +6,7 @@
 [ext_resource type="Script" path="res://features/globe_preview/globe_shadow.gd" id="4_shadow"]
 [ext_resource type="Texture2D" path="res://assets/globe_preview/monster_cutout.png" id="5_monster_art"]
 
-[sub_resource type="SystemFont" id="SystemFont_ui"]
-font_names = PackedStringArray("Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC")
+[ext_resource type="FontVariation" path="res://fonts/game_font.tres" id="6_font"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_panel"]
 bg_color = Color(0.0745, 0.1176, 0.098, 0.9)
@@ -59,7 +58,7 @@ content_margin_right = 17.0
 content_margin_bottom = 8.0
 
 [sub_resource type="Theme" id="Theme_ui"]
-default_font = SubResource("SystemFont_ui")
+default_font = ExtResource("6_font")
 default_font_size = 16
 Button/colors/font_color = Color(0.89, 0.91, 0.84, 1)
 Button/colors/font_hover_color = Color(1, 0.96, 0.84, 1)

@@ -143,8 +143,14 @@ func _check_overview_expiry() -> void:
 	demo.set_process(false)
 	demo._view.set_process(false)
 	demo._layout.set_process(false)
-	demo.run.candy = demo.run.settings.net_unlock_cost
-	_check(demo.run.purchase_technology("net"), "the overview fixture unlocks a real mucus nest")
+	demo.run.candy = demo.run.settings.net_unlock_cost + demo.run.get_pipe_upgrade_cost()
+	_check(demo.run.upgrade_pipe(), "speed level two enables net research")
+	_check(demo.run.purchase_technology("net"), "the overview fixture unlocks the net")
+	demo.run._pending_nest_species = NestState.Species.MUCUS
+	_check(
+		demo.run.resolve_nest_spawn(demo._planet.get_nest_position(-PI / 2.0 + 0.78)),
+		"a resolved discovery prepares the mucus nest for overview checks"
+	)
 	var nest: NestState = demo.run.get_nest(3)
 	demo.run._advance_nest_population(nest, demo.run.get_nest_spawn_interval(3))
 	for actor: PrototypeSlime in demo._slimes:
@@ -171,7 +177,8 @@ func _check_overview_expiry() -> void:
 		"overview still expires stopped history and frees ribbon scenes while preserving nest pools"
 	)
 	for audio: Node in demo.get_node("Audio").get_children():
-		(audio as AudioStreamPlayer).stop()
+		if audio is AudioStreamPlayer:
+			audio.stop()
 	current_scene = null
 	demo.queue_free()
 	await process_frame

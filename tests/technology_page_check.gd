@@ -74,13 +74,14 @@ func _check_page() -> void:
 	page.select_node("net_unlock")
 	page.purchase.pressed.emit()
 	_check(
-		preview.run.net_unlocked and preview.run.nests.size() == 3,
-		"net unlock introduces one mucus nest"
+		preview.run.net_unlocked and preview.run.nests.size() == 2,
+		"net unlock opens the tool without introducing a nest"
 	)
+	_check(page._note("net_unlock").is_empty(), "net details contain no nest-discovery promise")
 	page.purchase.pressed.emit()
 	_check(
-		preview.run.nests.size() == 3 and preview.run.candy == 30,
-		"unlock cannot charge or create nests twice"
+		preview.run.nests.size() == 2 and preview.run.candy == 30,
+		"unlock cannot charge twice or create nests"
 	)
 	page.select_node("net_capacity")
 	page.purchase.pressed.emit()
@@ -95,7 +96,7 @@ func _check_page() -> void:
 	page._select_scope(1)
 	page.purchase.pressed.emit()
 	_check(
-		preview.run.get_nest(2).valuable_level == 1 and preview.run.get_nest(3).valuable_level == 0,
+		preview.run.get_nest(2).valuable_level == 1 and preview.run.get_nest(1).valuable_level == 1,
 		"regional purchase only affects the selected nest"
 	)
 	for resolution: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
@@ -162,7 +163,8 @@ func _check_page() -> void:
 		"restart refreshes node ownership and wallet"
 	)
 	for child: Node in demo.get_node("Audio").get_children():
-		(child as AudioStreamPlayer).stop()
+		if child is AudioStreamPlayer:
+			child.stop()
 	demo.queue_free()
 	await process_frame
 	if _failures == 0:

@@ -1,0 +1,9 @@
+[gd_resource type="FontVariation" load_steps=4 format=3]
+
+[ext_resource type="FontFile" path="res://fonts/Oldenburg/Oldenburg-Regular.ttf" id="1_english"]
+[ext_resource type="FontFile" path="res://fonts/站酷小薇LOGO体/站酷小薇LOGO体.otf" id="2_chinese"]
+[ext_resource type="FontFile" path="res://fonts/NotoSansSC-Regular.otf" id="3_fallback"]
+
+[resource]
+base_font = ExtResource("1_english")
+fallbacks = Array[Font]([ExtResource("2_chinese"), ExtResource("3_fallback")])

@@ -5,8 +5,7 @@
 [ext_resource type="Script" path="res://scripts/ui/technology_backdrop.gd" id="3_background"]
 [ext_resource type="Script" path="res://scripts/ui/technology_glyph.gd" id="4_glyph"]
 
-[sub_resource type="SystemFont" id="Font"]
-font_names = PackedStringArray("Microsoft YaHei", "微软雅黑", "Noto Sans CJK SC")
+[ext_resource type="FontVariation" path="res://fonts/game_font.tres" id="5_font"]
 
 [sub_resource type="StyleBoxFlat" id="Panel"]
 content_margin_left = 22.0
@@ -72,7 +71,7 @@ corner_radius_bottom_right = 7
 [sub_resource type="StyleBoxEmpty" id="Empty"]
 
 [sub_resource type="Theme" id="Theme"]
-default_font = SubResource("Font")
+default_font = ExtResource("5_font")
 default_font_size = 16
 Label/colors/font_color = Color(0.88, 0.92, 0.9, 1)
 Button/colors/font_color = Color(0.10, 0.15, 0.17, 1)

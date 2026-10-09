@@ -11,8 +11,7 @@
 [ext_resource type="PackedScene" path="res://scenes/物品动画/黏液巢穴1-2-3-4.tscn" id="r009"]
 [ext_resource type="PackedScene" path="res://scenes/物品动画/地鼠巢穴1-2-3-4.tscn" id="r010"]
 
-[sub_resource type="SystemFont" id="r011"]
-font_names = PackedStringArray("Microsoft YaHei", "微软雅黑", "Noto Sans CJK SC")
+[ext_resource type="FontVariation" path="res://fonts/game_font.tres" id="r011"]
 
 [sub_resource type="StyleBoxFlat" id="r012"]
 content_margin_left = 18.0
@@ -51,7 +50,7 @@ content_margin_top = 16.0
 content_margin_bottom = 16.0
 
 [sub_resource type="Theme" id="r016"]
-default_font = SubResource("r011")
+default_font = ExtResource("r011")
 default_font_size = 22
 Button/styles/normal = SubResource("r012")
 Button/styles/hover = SubResource("r013")

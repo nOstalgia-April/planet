@@ -28,7 +28,8 @@ func _run_checks() -> void:
 	await _settle()
 	await _check_timers_and_stages(demo)
 	for node: Node in demo.get_node("Audio").get_children():
-		(node as AudioStreamPlayer).stop()
+		if node is AudioStreamPlayer:
+			node.stop()
 	current_scene = null
 	demo.queue_free()
 	await process_frame

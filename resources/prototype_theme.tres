@@ -1,8 +1,6 @@
 [gd_resource type="Theme" load_steps=15 format=3]
 
-[sub_resource type="SystemFont" id="SystemFont_cjk"]
-font_names = PackedStringArray("Microsoft YaHei", "微软雅黑", "Noto Sans CJK SC", "Noto Sans SC")
-allow_system_fallback = true
+[ext_resource type="FontVariation" path="res://fonts/game_font.tres" id="1_font"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_panel"]
 content_margin_left = 24.0
@@ -196,7 +194,7 @@ corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
 
 [resource]
-default_font = SubResource("SystemFont_cjk")
+default_font = ExtResource("1_font")
 default_font_size = 18
 Button/colors/font_color = Color(0.98, 0.98, 0.93, 1)
 Button/colors/font_hover_color = Color(1, 1, 0.96, 1)

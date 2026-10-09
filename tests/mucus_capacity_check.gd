@@ -31,7 +31,8 @@ func _run_checks() -> void:
 		"high source pressure retains exactly one ribbon scene per live emitter"
 	)
 	for audio: Node in demo.get_node("Audio").get_children():
-		(audio as AudioStreamPlayer).stop()
+		if audio is AudioStreamPlayer:
+			audio.stop()
 	current_scene = null
 	demo.queue_free()
 	await process_frame
@@ -51,9 +52,10 @@ func _prepare_sources(demo: DemoScript, count: int, history_limit: int) -> Array
 	demo.run.settings.mucus_trail_limit = history_limit
 	demo.restart_run()
 	demo._site_random.seed = 8192
-	demo.run.candy = demo.run.settings.net_unlock_cost
-	_check(demo.run.purchase_technology("net"), "unlocking the net creates a real mucus nest")
-	for _index: int in range(ceili(float(count) / float(per_nest)) - 1):
+	demo.run.candy = demo.run.settings.net_unlock_cost + demo.run.get_pipe_upgrade_cost()
+	_check(demo.run.upgrade_pipe(), "speed level two enables net research")
+	_check(demo.run.purchase_technology("net"), "unlocking the net opens the tool")
+	for _index: int in range(ceili(float(count) / float(per_nest))):
 		demo.run._pending_nest_species = NestState.Species.MUCUS
 		demo._on_nest_spawn_requested(NestState.Species.MUCUS)
 	for nest: NestState in demo.run.nests:

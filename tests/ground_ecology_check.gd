@@ -23,6 +23,9 @@ func _run_checks() -> void:
 	demo.set_process(false)
 	demo._view.set_process(false)
 	demo._layout.set_process(false)
+	demo.run.settings = demo.run.settings.duplicate() as PrototypeSettings
+	demo.run.settings.nest_roll_chance_min = 0.0
+	demo.run.settings.nest_roll_chance_max = 0.0
 	await _settle_layout()
 	_check_outer_nest_sites(demo)
 	await _check_distinct_species_and_counts(demo)
@@ -49,7 +52,8 @@ func _run_checks() -> void:
 		"restart clears the overview's live species populations"
 	)
 	for audio: Node in demo.get_node("Audio").get_children():
-		(audio as AudioStreamPlayer).stop()
+		if audio is AudioStreamPlayer:
+			audio.stop()
 	current_scene = null
 	demo.queue_free()
 	await process_frame
@@ -65,7 +69,7 @@ func _run_checks() -> void:
 
 func _check_outer_nest_sites(demo: DemoScript) -> void:
 	demo.restart_run()
-	_unlock_net(demo)
+	_prepare_mucus_nest(demo)
 	demo._site_random.seed = 7264
 	for index: int in range(18):
 		var species: NestState.Species = (index % 2) as NestState.Species
@@ -98,7 +102,7 @@ func _check_distinct_species_and_counts(demo: DemoScript) -> void:
 			demo.run.get_nest(1).species == NestState.Species.SLIME
 			and demo.run.get_nest(3).species == NestState.Species.MUCUS
 		),
-		"ordinary and newly unlocked mucus populations retain distinct nest types"
+		"ordinary and discovered mucus populations retain distinct nest types"
 	)
 	demo._view.zoom_steps(-1.0)
 	demo._overview._process(2.0)
@@ -493,7 +497,7 @@ func _capture_scenes(demo: DemoScript) -> void:
 		root.size = resolution
 		await _settle_layout()
 		demo.restart_run()
-		_unlock_net(demo)
+		_prepare_mucus_nest(demo)
 		_look_at_nest(demo, 3)
 		_warm_ecology(demo, 8.0)
 		demo._pipe.hide()
@@ -515,15 +519,20 @@ func _capture_scenes(demo: DemoScript) -> void:
 
 func _prepare_ecology(demo: DemoScript) -> void:
 	demo.restart_run()
-	_unlock_net(demo)
+	_prepare_mucus_nest(demo)
 	demo.run.advance(demo.run.settings.spawn_intervals[0] * 4.0)
 	_freeze_actors(demo)
 
 
-func _unlock_net(demo: DemoScript) -> void:
+func _prepare_mucus_nest(demo: DemoScript) -> void:
 	demo.run.candy = demo.run.settings.net_unlock_cost + demo.run.get_pipe_upgrade_cost()
 	_check(demo.run.upgrade_pipe(), "speed level two enables net research")
-	_check(demo.run.purchase_technology("net"), "unlocking the net discovers the first mucus nest")
+	_check(demo.run.purchase_technology("net"), "unlocking the net opens the tool")
+	demo.run._pending_nest_species = NestState.Species.MUCUS
+	_check(
+		demo.run.resolve_nest_spawn(demo._planet.get_nest_position(-PI / 2.0 + 0.78)),
+		"a resolved discovery prepares the mucus nest for ecology checks"
+	)
 	demo.run.candy = 0
 
 

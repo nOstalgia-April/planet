@@ -272,8 +272,6 @@ func _effect(id: String) -> String:
 
 func _note(id: String) -> String:
 	match id:
-		"net_unlock":
-			return "解锁时发现一座黏液巢穴。"
 		"cultivation":
 			return "在具体巢穴投入 %d 糖果建设。" % _run.settings.nest_upgrade_costs[0]
 		"automation":

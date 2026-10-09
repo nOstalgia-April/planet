@@ -27,8 +27,9 @@ func _run_checks() -> void:
 		_check_overview(demo)
 		await _check_nest_access(demo)
 		print("Checked %d nests at %s" % [demo.run.nests.size(), str(resolution)])
-		for audio: AudioStreamPlayer in demo.get_node("Audio").get_children():
-			audio.stop()
+		for audio: Node in demo.get_node("Audio").get_children():
+			if audio is AudioStreamPlayer:
+				audio.stop()
 		current_scene = null
 		demo.queue_free()
 		await process_frame

@@ -424,7 +424,7 @@ func restart_run() -> void:
 	_status_label.text = ""
 	_status_label.modulate.a = 1.0
 	var spawn_positions: Array[Vector2] = []
-	for offset: float in [-0.22, 0.22, 0.78]:
+	for offset: float in [-0.22, 0.22]:
 		var angle: float = -PI / 2.0 + offset
 		spawn_positions.append(_planet.get_nest_position(angle))
 	_site_random.randomize()
@@ -874,7 +874,7 @@ func _on_technology_upgrade(technology_id: String) -> void:
 		_refresh_hud()
 		_upgrade_sound.play()
 		if unlocking_net:
-			_show_status("捕网已解锁" if run.is_complete else "捕网已解锁，邻近出现黏液巢穴")
+			_show_status("捕网已解锁")
 		else:
 			_show_status("科技升级完成")
 

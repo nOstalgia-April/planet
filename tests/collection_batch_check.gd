@@ -32,7 +32,8 @@ func _run_checks() -> void:
 	_check_net_switch_and_income(demo)
 	_check_net_reset(demo)
 	for child: Node in demo.get_node("Audio").get_children():
-		(child as AudioStreamPlayer).stop()
+		if child is AudioStreamPlayer:
+			child.stop()
 	await create_timer(0.2).timeout
 	current_scene = null
 	demo.queue_free()

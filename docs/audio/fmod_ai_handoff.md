@@ -1,12 +1,14 @@
 # FMOD 可行性验证与最新 Demo：Fred / AI 阅读入口
 
-更新日期：2026-10-08。适用仓库：[planet](https://github.com/nOstalgia-April/planet/tree/audio/fmod-import)，分支：`audio/fmod-import`。
+更新日期：2026-10-09。适用仓库：[planet](https://github.com/nOstalgia-April/planet/tree/main)，分支：`main`。本次完整 Demo 合并了 Fred 在 `audio/fmod-import` 提交的音频接入与音频包。
 
 ## 本次要完成什么
 
 请协助 Fred 在自己的电脑上跑通 **FMOD Studio → Build Bank → Godot 独立试听**，反馈这条插件通路是否能用于后续音效制作。此次同步也包含最新游戏 Demo、玩法、美术资源和独立动画预览，可用于理解声音出现的情境。
 
-截至本次更新，`assets/fmod/banks/` 只有占位文件，尚无制作好的 Bank。主游戏仍使用 Godot 原生 WAV；独立试听场景已经提供 FMOD 加载、播放、停止和参数控制。**插件初始化成功、Core WAV 能播放、Bank 事件通过、人工听感通过，是不同层次的结果，分别记录。**
+当前主游戏吸尘器已通过 `scripts/vacuum_audio.gd` 接入 FMOD，使用 `bank/Desktop/` 中的 `Master.bank`、`Master.strings.bank` 与 `ProjectVacuum.bank`；开关机与黏液进出声音的接入状态见 [音频进度](audio_integration_status.md)。收集、升级、驯化与通关仍使用 Godot 原生 WAV。
+
+下面的独立试听流程保留原验证约定，使用 `assets/fmod/banks/`、`SFX.bank` 和 `Slime/Collect`／`Tools/Suction`，与当前主游戏的音频包和事件不同，不能直接混用。**插件初始化成功、Core WAV 能播放、Bank 事件通过、人工听感通过，是不同层次的结果，分别记录。**
 
 本轮不要求 Fred 完成玩法代码或主游戏的 FMOD 迁移。音色、素材与最终声音方案由 Fred 判断；下面的事件名是现有验证场景的接口约定，不等于最终音频工程必须采用的完整设计。
 
@@ -18,14 +20,14 @@
 
 ```sh
 # 首次取得
-git clone --branch audio/fmod-import https://github.com/nOstalgia-April/planet.git
+git clone --branch main https://github.com/nOstalgia-April/planet.git
 cd planet
 
 # 已有副本：先检查，保存本地工作后再运行后面的更新命令
 git status --short
 git fetch origin
-git switch audio/fmod-import
-git pull --ff-only origin audio/fmod-import
+git switch main
+git pull --ff-only origin main
 
 # 把实际分支与提交号记入反馈
 git branch --show-current
@@ -41,7 +43,7 @@ git rev-parse --short HEAD
 | 用途 | 入口 | 操作 / 范围 |
 | --- | --- | --- |
 | 验证 FMOD 插件与音频包 | `features/fmod_audio_test/fmod_audio_test.tscn` | 打开后 F6；本轮主要验收入口 |
-| 体验最新游戏 Demo | `scenes/主菜单/主菜单.tscn` | F5 后点击 **start**；目前使用原生 WAV。基础玩法场景 `scenes/disk_demo.tscn` 可按 F6 |
+| 体验最新游戏 Demo | `scenes/主菜单/主菜单.tscn` | F5 后点击 **start**；吸尘器使用 FMOD，其余已接入音效仍使用原生 WAV。基础玩法场景 `scenes/disk_demo.tscn` 可按 F6 |
 | 看场景和工具美术预览 | 主菜单「预览」或 `features/场景预览/` | 近景、全景、吸尘器、捕网与黏液怪移动；[预览说明](../../features/场景预览/README.md) |
 | 看科技树页面 | 主游戏底部「科技树」或 `features/technology_tree_preview/technology_tree_preview.tscn` | 独立场景按 F6；[页面说明](../../features/technology_tree_preview/README.md) |
 | 看物件动作和巢穴升级过程 | `features/物品动画预览/物品动画总览.tscn` | F6；可选物件、动作、循环与逐帧进度；[预览说明](../../features/物品动画预览/README.md) |
@@ -52,7 +54,7 @@ git rev-parse --short HEAD
 ### 给声音制作的 Demo 上下文
 
 - 开局两座基础史莱姆巢穴；鼠标悬停怪物，吸管在中心逐只处理。`1` / `2` 切换工具，捕网解锁后左键投网。
-- 解锁捕网会引入首座黏液怪巢穴。黏液怪站在黏液上时，先从黏液中拔出，再正常吸入；这两段需要能被玩家听出区别。拔出不等于收集成功，移开工具或切换视图会中断未完成处理。
+- 捕网解锁只开放工具；黏液怪巢穴通过后续随机刷新出现。黏液怪站在黏液上时，先从黏液中拔出，再正常吸入；这两段需要能被玩家听出区别。拔出不等于收集成功，移开工具或切换视图会中断未完成处理。
 - 吸管升级会让两个阶段都加快；试听时可关注持续声、阶段衔接和停止是否自然。具体声音设计不限定素材配方。
 - 吸入成功产生收集反馈；解锁连击科技后连续吸入会产生连击奖励。捕网和自动采集是独立的收集来源。
 - 向下滚一格进入星球总览，向上返回近景。近景在星球上按右键拖动，总览在空白背景按右键拖动；总览仅供观察，不能捕捉。
@@ -70,7 +72,7 @@ git rev-parse --short HEAD
 6. 修改一次声音并重新 Build，停止事件后替换整套 Bank，重载后试听；关闭场景再 F6 复测。
 7. 按[测试通路手册](fmod_test_route.md)的反馈模板提交结果。缺 Bank、缺设备或缺工具时填“未测 / 被阻塞”，不能当作已通过，也不能直接认定插件不可行。
 
-## AI 可以直接核对的约定
+## 独立试听场景的原验证约定
 
 | 项目 | 现有约定 |
 | --- | --- |
@@ -129,11 +131,12 @@ git rev-parse --short HEAD
 ## 可直接发给 Fred 的 AI
 
 ```text
-请先阅读当前 audio/fmod-import 分支的 docs/audio/fmod_ai_handoff.md，
+请先阅读当前 main 分支的 docs/audio/fmod_ai_handoff.md，
 再阅读 fmod_import_guide.md 和 fmod_test_route.md。
 目标是协助我验证 FMOD Studio → Bank → Godot 独立试听的通路。
 先核对分支、提交、工具版本和 Bank 文件，再带我逐步测试。
-最新 Demo 和独立动画预览用于理解声音情境，主游戏尚未迁移到 FMOD。
+最新 Demo 的吸尘器已接入 FMOD；先读 audio_integration_status.md。
+独立试听仍使用原验证约定，与主游戏的音频包和事件不同。
 保留我的本地工作，不自动更换插件或重构玩法。
 请分别记录已验证、未测试、阻塞的问题和下一步；听感由我确认，
 不要把无界面启动、接口成功或 Core WAV 输出写成 Bank 事件验收通过。

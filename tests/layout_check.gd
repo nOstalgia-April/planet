@@ -243,7 +243,8 @@ func _run_checks() -> void:
 		)
 		completion.hide()
 	for child: Node in demo.get_node("Audio").get_children():
-		(child as AudioStreamPlayer).stop()
+		if child is AudioStreamPlayer:
+			child.stop()
 	current_scene = null
 	demo.queue_free()
 	await process_frame

@@ -28,7 +28,6 @@ var completed_nests: int = 0
 var is_complete: bool = false
 var generation_stage: int = 0
 
-var _spawn_positions: Array[Vector2] = []
 var _nest_roll_clock: float = 0.0
 var _pending_nest_species: int = -1
 var _random: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -37,21 +36,21 @@ var _random: RandomNumberGenerator = RandomNumberGenerator.new()
 func start_run(spawn_positions: Array[Vector2]) -> void:
 	assert(settings != null, "PrototypeRun requires a PrototypeSettings resource.")
 	assert(settings.initial_nests == 2, "The opening needs two basic slime nests.")
-	assert(spawn_positions.size() >= 3, "The opening and net unlock need three candidate sites.")
+	assert(spawn_positions.size() >= settings.initial_nests, "The opening needs two nest sites.")
 	assert(settings.unlocked_species_weights.size() == 2)
 	assert(settings.nest_roll_interval > 0.0)
 	assert(settings.nest_roll_chance_min >= 0.0)
 	assert(settings.nest_roll_chance_max >= settings.nest_roll_chance_min)
 	assert(settings.nest_roll_chance_max <= 1.0)
 	assert(settings.same_species_near_weight > 0.0 and settings.same_species_near_weight <= 1.0)
-	for first: int in range(3):
-		for second: int in range(first + 1, 3):
+	for first: int in range(settings.initial_nests):
+		for second: int in range(first + 1, settings.initial_nests):
 			assert(
 				(
 					spawn_positions[first].distance_to(spawn_positions[second])
 					>= settings.nest_min_distance
 				),
-				"Opening and net-unlock sites must respect the hard nest spacing."
+				"Opening sites must respect the hard nest spacing."
 			)
 	assert(settings.nest_upgrade_costs.size() > 0)
 	assert(settings.nest_upgrade_costs.size() == settings.spawn_intervals.size())
@@ -80,7 +79,6 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 		assert(interval > 0.0, "Spawn intervals must be positive.")
 	for population_limit: int in settings.nest_population_limits:
 		assert(population_limit > 0, "Nest population limits must be positive.")
-	_spawn_positions.assign(spawn_positions)
 	_nest_roll_clock = 0.0
 	_pending_nest_species = -1
 	_random.randomize()
@@ -102,7 +100,7 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	economy_changed.emit()
 	net_cooldown_changed.emit()
 	for index: int in range(settings.initial_nests):
-		_add_nest(NestState.Species.SLIME, _spawn_positions[index])
+		_add_nest(NestState.Species.SLIME, spawn_positions[index])
 
 
 func advance(delta: float) -> void:
@@ -171,8 +169,6 @@ func purchase_technology(id: String) -> bool:
 		"net_unlock":
 			net_unlocked = true
 			generation_stage = 1
-			if not is_complete:
-				_add_nest(NestState.Species.MUCUS, _spawn_positions[settings.initial_nests])
 		"net_capacity":
 			net_level += 1
 		"cultivation":
@@ -355,7 +351,7 @@ func get_technology_description(id: String) -> String:
 				]
 			)
 		"net_unlock":
-			return "解锁捕网 · 每次 %d 只 · 发现黏液巢穴" % settings.net_capacities[0]
+			return "解锁捕网 · 每次 %d 只" % settings.net_capacities[0]
 		"net_capacity":
 			var next_level: int = mini(net_level + 1, settings.net_capacities.size() - 1)
 			return (

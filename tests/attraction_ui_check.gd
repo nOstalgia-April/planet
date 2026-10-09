@@ -26,8 +26,9 @@ func _run_checks() -> void:
 		demo._window_has_focus = true
 		await _settle()
 		await _check_tree(demo, resolution)
-		for audio: AudioStreamPlayer in demo.get_node("Audio").get_children():
-			audio.stop()
+		for audio: Node in demo.get_node("Audio").get_children():
+			if audio is AudioStreamPlayer:
+				audio.stop()
 		current_scene = null
 		demo.queue_free()
 		await process_frame

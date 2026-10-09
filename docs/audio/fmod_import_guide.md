@@ -1,17 +1,17 @@
 # FMOD 音效导入手册
 
-2026-10-08 更新：首次接手或使用 AI 协助时，先看 [FMOD / 最新 Demo 交接入口](fmod_ai_handoff.md)。本页负责 Studio 制作与 Bank 导入，实际测试步骤见 [测试通路](fmod_test_route.md)。
+2026-10-09 更新：完整 Demo 与音频接入已合并到 `main`。首次接手或使用 AI 协助时，先看 [FMOD / 最新 Demo 交接入口](fmod_ai_handoff.md)。本页负责原独立试听约定的 Studio 制作与 Bank 导入，实际测试步骤见 [测试通路](fmod_test_route.md)。
 
-这份手册用于把音效制作成 FMOD Bank，放进 `audio/fmod-import` 分支，并在独立试听场景中检查。当前主游戏仍使用 Godot 原生音效；本分支提供导入和试听通路，不代表最终音效已经接入玩法。仓库初始不含可试听的 Bank，需要音效同事先制作并 Build；也可以先用场景中的“测试音频输出”按钮，直接试听项目已有 WAV，确认 FMOD 输出设备通路。
+这份手册用于把音效制作成 FMOD Bank，并在独立试听场景中检查。当前主游戏吸尘器已使用 `bank/Desktop/` 的 `ProjectVacuum.bank` 接入 FMOD，见 [音频进度](audio_integration_status.md)；本手册的 `assets/fmod/banks/`、`SFX.bank` 与两个测试事件仍是旧独立试听约定，不能直接混用。独立试听也可先用“测试音频输出”按钮播放已有 WAV，确认 FMOD 输出设备通路。
 
 ## 1. 取得正确分支
 
-不熟悉 Git 时，可以直接在浏览器打开 [audio/fmod-import 分支](https://github.com/nOstalgia-April/planet/tree/audio/fmod-import)，确认分支选择器显示 **audio/fmod-import**，点击 **Code → Download ZIP**，然后完整解压。不要在 `main` 分支下载；每次更新需要重新下载该分支的 ZIP。
+不熟悉 Git 时，可以直接在浏览器打开 [main 分支](https://github.com/nOstalgia-April/planet/tree/main)，确认分支选择器显示 **main**，点击 **Code → Download ZIP**，然后完整解压。每次更新需要重新下载该分支的 ZIP。
 
 使用 Git 时，第一次取得项目：
 
 ```sh
-git clone -b audio/fmod-import https://github.com/nOstalgia-April/planet.git
+git clone -b main https://github.com/nOstalgia-April/planet.git
 cd planet
 ```
 
@@ -19,8 +19,8 @@ cd planet
 
 ```sh
 git fetch origin
-git checkout audio/fmod-import
-git pull --ff-only origin audio/fmod-import
+git checkout main
+git pull --ff-only origin main
 ```
 
 使用 Godot **4.7.2** 打开项目根目录中的 `project.godot`。仓库已经带有并启用了 **FMOD GDExtension 6.1.0-4.5.0**，无需重复下载或安装插件。该扩展发布包面向 Godot 4.5，并使用 FMOD 2.03.06；本项目在 Godot 4.7.2 上已检查扩展导入与运行时 API。真实音效的播放、参数变化与听感仍需用制作后的 Bank 验证。[扩展发布说明](https://github.com/utopia-rise/fmod-gdextension/releases/tag/6.1.0-4.5.0)

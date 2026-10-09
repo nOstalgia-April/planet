@@ -26,7 +26,7 @@ func _ready() -> void:
 
 func set_preview(state: int) -> void:
 	preview_state = state
-	run.start_run([Vector2(-160.0, -180.0), Vector2(-40.0, -180.0), Vector2(90.0, -180.0)])
+	run.start_run([Vector2(-160.0, -180.0), Vector2(-40.0, -180.0)])
 	run.candy = 10000
 	if state >= 2:
 		run.purchase_technology("pipe")

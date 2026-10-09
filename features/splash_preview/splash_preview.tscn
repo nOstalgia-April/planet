@@ -6,9 +6,7 @@
 [ext_resource type="PackedScene" path="res://features/splash_preview/effects/twist_splash.tscn" id="4_twist"]
 [ext_resource type="PackedScene" path="res://features/splash_preview/effects/burst_splash.tscn" id="5_burst"]
 
-[sub_resource type="SystemFont" id="Font"]
-font_names = PackedStringArray("Microsoft YaHei", "微软雅黑", "Noto Sans CJK SC", "Noto Sans SC")
-allow_system_fallback = true
+[ext_resource type="FontVariation" path="res://fonts/game_font.tres" id="6_font"]
 
 [sub_resource type="StyleBoxFlat" id="Card"]
 bg_color = Color(0.072, 0.077, 0.096, 1)
@@ -68,7 +66,7 @@ corner_radius_bottom_right = 9
 corner_radius_bottom_left = 9
 
 [sub_resource type="Theme" id="Theme"]
-default_font = SubResource("Font")
+default_font = ExtResource("6_font")
 default_font_size = 21
 Label/colors/font_color = Color(0.82, 0.85, 0.90, 1)
 Button/colors/font_color = Color(0.90, 0.92, 0.96, 1)

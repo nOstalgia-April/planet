@@ -29,6 +29,11 @@ func _run() -> void:
 		demo.run.candy = 10000
 		_check(demo.run.upgrade_pipe())
 		_check(demo.run.purchase_technology("net"))
+		demo.run._pending_nest_species = NestState.Species.MUCUS
+		_check(
+			demo.run.resolve_nest_spawn(demo._planet.get_nest_position(-PI / 2.0 + 0.78)),
+			"A resolved discovery prepares the mucus nest for art checks."
+		)
 		_check(demo.run.upgrade_pipe())
 		_check(demo.run.purchase_technology("cultivation"))
 		_check(demo.run.purchase_technology("automation"))
@@ -50,8 +55,9 @@ func _run() -> void:
 		_check(demo._nest_views.size() == 2 and demo._net_phase == DemoScript.NetPhase.IDLE)
 		_check(demo._nest_views[0]._art._display_level == 0)
 		_check(not demo._nest_views[0]._art._transitioning)
-		for audio: AudioStreamPlayer in demo.get_node("Audio").get_children():
-			audio.stop()
+		for audio: Node in demo.get_node("Audio").get_children():
+			if audio is AudioStreamPlayer:
+				audio.stop()
 		current_scene = null
 		demo.queue_free()
 		await process_frame

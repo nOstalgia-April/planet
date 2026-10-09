@@ -33,7 +33,8 @@ func _run_checks() -> void:
 	if _capture:
 		await _capture_views(demo)
 	for node: Node in demo.get_node("Audio").get_children():
-		(node as AudioStreamPlayer).stop()
+		if node is AudioStreamPlayer:
+			node.stop()
 	current_scene = null
 	demo.queue_free()
 	await process_frame
@@ -133,8 +134,13 @@ func _check_peel_time_budget(demo: DemoScript) -> void:
 	_check(demo.run.upgrade_pipe(), "speed level two enables net research")
 	_check(demo.run.purchase_technology("net"), "a legal purchase unlocks the net")
 	_check(
-		demo.run.nests.size() == 3 and demo.run.get_nest(3).species == NestState.Species.MUCUS,
-		"net unlock adds one mucus nest"
+		demo.run.nests.size() == 2 and demo._nest_mucus_areas.is_empty(),
+		"net unlock does not add a nest or mucus coverage"
+	)
+	demo.run._pending_nest_species = NestState.Species.MUCUS
+	_check(
+		demo.run.resolve_nest_spawn(demo._planet.get_nest_position(-PI / 2.0 + 0.78)),
+		"a resolved discovery prepares the mucus nest for detachment checks"
 	)
 	for level: int in range(demo.run.settings.pipe_capture_seconds.size()):
 		demo.run.pipe_level = level

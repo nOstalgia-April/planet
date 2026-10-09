@@ -61,12 +61,11 @@ func _check_opening_and_net_unlock() -> void:
 		"Unlocking charges once and provides the basic five-target net."
 	)
 	_check(
-		run.nests.size() == 3 and run.get_nest(3).species == NestState.Species.MUCUS,
-		"Net unlock introduces one mucus nest."
+		run.nests.size() == 2 and run.generated_nests == 2, "Net unlock does not introduce a nest."
 	)
 	run.candy = 1000
 	_check(run.upgrade_net() and run.net_level == 1, "Later net purchases upgrade its capacity.")
-	_check(run.nests.size() == 3, "Capacity upgrades do not repeat the mucus introduction.")
+	_check(run.nests.size() == 2, "Capacity upgrades do not introduce nests.")
 	run.start_run(_positions())
 	_check(
 		not run.net_unlocked and run.nests.size() == 2 and run.completed_nests == 0,
@@ -206,18 +205,19 @@ func _check_continuous_discovery() -> void:
 	settings.nest_roll_chance_min = 1.0
 	settings.nest_roll_chance_max = 1.0
 	run.settings = settings
+	_nest_requests = 0
+	run.nest_spawn_requested.connect(_place_requested_nest.bind(run))
 	run.candy = 10000
 	run.upgrade_pipe()
 	run.upgrade_net()
+	_check(_nest_requests == 0, "Net unlock does not request an immediate nest placement.")
 	run._random.seed = 72861
-	_nest_requests = 0
-	run.nest_spawn_requested.connect(_place_requested_nest.bind(run))
 	run.advance(settings.nest_roll_interval - 0.01)
-	_check(run.nests.size() == 3, "Unlocking starts a fresh interval before any recurring roll.")
+	_check(run.nests.size() == 2, "Unlocking starts a fresh interval before any recurring roll.")
 	run.advance(0.02)
 	_check(
-		run.nests.size() == 4 and run.governance_level == 0 and run.completed_nests == 0,
-		"Both species enter recurring discovery immediately after the mucus unlock."
+		run.nests.size() == 3 and run.governance_level == 0 and run.completed_nests == 0,
+		"Recurring discovery starts after the first full interval following net unlock."
 	)
 	run.advance(settings.nest_roll_interval * 30.0)
 	var slime_nests: int = 0
@@ -228,7 +228,7 @@ func _check_continuous_discovery() -> void:
 		else:
 			mucus_nests += 1
 	_check(
-		run.nests.size() == 34 and _nest_requests == 31 and slime_nests > 3 and mucus_nests > 2,
+		run.nests.size() == 33 and _nest_requests == 31 and slime_nests > 3 and mucus_nests > 2,
 		"Recurring discovery has neither a five-site quota nor total or species count caps."
 	)
 	_check(run.generation_stage == 1, "Elapsed time no longer opens a later mandatory pool stage.")
@@ -243,7 +243,7 @@ func _check_continuous_discovery() -> void:
 	pending_run.advance(settings.nest_roll_interval)
 	pending_run.advance(settings.nest_roll_interval * 3.0)
 	_check(
-		_nest_requests == 1 and pending_run.nests.size() == 3,
+		_nest_requests == 1 and pending_run.nests.size() == 2,
 		"A pending placement request cannot duplicate itself while awaiting a site."
 	)
 	_check(
@@ -256,7 +256,7 @@ func _check_continuous_discovery() -> void:
 		"A later successful roll can place a nest after an unavailable site."
 	)
 	_check(
-		not pending_run.resolve_nest_spawn(Vector2(400, 0)) and pending_run.nests.size() == 4,
+		not pending_run.resolve_nest_spawn(Vector2(400, 0)) and pending_run.nests.size() == 3,
 		"Each placement request can add at most one nest."
 	)
 	pending_run.free()
@@ -275,12 +275,11 @@ func _check_governance_roll_weight() -> void:
 	for _index: int in range(3):
 		run.upgrade_nest(1)
 	_check(
-		is_equal_approx(run.get_nest_roll_chance(), 0.15),
-		"One fully governed nest among three raises the chance to fifteen percent."
+		is_equal_approx(run.get_nest_roll_chance(), 0.2),
+		"One fully governed nest among two raises the chance to twenty percent."
 	)
-	for nest_id: int in [2, 3]:
-		for _index: int in range(3):
-			run.upgrade_nest(nest_id)
+	for _index: int in range(3):
+		run.upgrade_nest(2)
 	_check(
 		is_equal_approx(run.get_nest_roll_chance(), 0.35),
 		"Average governance scales the configured roll chance up to thirty-five percent."
@@ -317,7 +316,7 @@ func _check_existing_nests_completion() -> void:
 	_goal_count = 0
 	run.goal_completed.connect(_count_goal.bind(run))
 	run.advance(settings.nest_roll_interval)
-	for nest_id: int in [1, 2, 3]:
+	for nest_id: int in [1, 2]:
 		for _index: int in range(3):
 			run.upgrade_nest(nest_id)
 	_check(
@@ -330,7 +329,7 @@ func _check_existing_nests_completion() -> void:
 	)
 	run.advance(settings.nest_roll_interval * 100.0)
 	_check(
-		run.nests.size() == 3 and _goal_count == 1,
+		run.nests.size() == 2 and _goal_count == 1,
 		"Completed planets keep simulating without adding nests or repeating completion."
 	)
 	run.start_run(_positions())
@@ -434,13 +433,7 @@ func _create_run() -> PrototypeRun:
 
 
 func _positions() -> Array[Vector2]:
-	return [
-		Vector2(-40, -200),
-		Vector2(40, -200),
-		Vector2(190, -60),
-		Vector2(118, 162),
-		Vector2(-118, 162)
-	]
+	return [Vector2(-40, -200), Vector2(40, -200)]
 
 
 func _count_spawn_for_first_nest(nest_id: int) -> void:

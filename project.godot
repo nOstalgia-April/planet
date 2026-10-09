@@ -40,7 +40,7 @@ enabled=PackedStringArray("res://addons/fmod/plugin.cfg")
 
 [gui]
 
-theme/custom_font="res://fonts/NotoSansSC-Regular.otf"
+theme/custom_font="res://fonts/game_font.tres"
 
 [physics]
 

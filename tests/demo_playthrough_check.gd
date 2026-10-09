@@ -72,7 +72,7 @@ func _playthrough() -> void:
 	)
 	_check(
 		demo.run.generated_nests > 3,
-		"The live playthrough also resolves recurring nest rolls after the initial mucus unlock."
+		"The live playthrough also resolves recurring nest rolls after net unlock."
 	)
 	_check(
 		(
@@ -124,8 +124,8 @@ func _playthrough() -> void:
 			"PASS: zero-candy economy is reachable through continuous paid capture and upgrade buttons."
 		)
 	for child: Node in demo.get_node("Audio").get_children():
-		var player: AudioStreamPlayer = child as AudioStreamPlayer
-		player.stop()
+		if child is AudioStreamPlayer:
+			child.stop()
 	await create_timer(0.2).timeout
 	current_scene = null
 	demo.queue_free()

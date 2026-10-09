@@ -2,6 +2,7 @@ class_name OverviewEcology
 extends Node2D
 
 const PLANET_SCENE: PackedScene = preload("res://scenes/world/planet_surface.tscn")
+const GAME_FONT: Font = preload("res://fonts/game_font.tres")
 const CLUSTER_COLUMNS: int = 3
 const CLUSTER_COUNT: int = CLUSTER_COLUMNS * CLUSTER_COLUMNS
 const SURFACE_SECTORS: int = 16
@@ -293,27 +294,14 @@ func _draw_species_bubble(species: int, count: int, radius: float) -> void:
 	var text: String = str(count)
 	var font_size: int = maxi(12, int(round(14.0 * _visual_scale)))
 	var text_width: float = (
-		ThemeDB.fallback_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		GAME_FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	)
 	var baseline: Vector2 = center + Vector2(-text_width * 0.5, radius + 18.0 * _visual_scale)
 	draw_string_outline(
-		ThemeDB.fallback_font,
-		baseline,
-		text,
-		HORIZONTAL_ALIGNMENT_LEFT,
-		-1,
-		font_size,
-		3,
-		Color("17191f")
+		GAME_FONT, baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 3, Color("17191f")
 	)
 	draw_string(
-		ThemeDB.fallback_font,
-		baseline,
-		text,
-		HORIZONTAL_ALIGNMENT_LEFT,
-		-1,
-		font_size,
-		Color("f3e8d0")
+		GAME_FONT, baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color("f3e8d0")
 	)
 
 
