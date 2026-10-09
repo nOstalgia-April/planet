@@ -1,17 +1,13 @@
 @tool
 extends PlanetSurface
 
-@export var near_art: Node2D
-@export var overview_art: Node2D
+@export var planet_art: Node2D
 
 
-func set_near_view(value: bool) -> bool:
-	var changed: bool = super.set_near_view(value)
-	near_art.visible = value
-	overview_art.visible = not value
-	near_art.scale = Vector2.ONE * radius / 240.0
-	overview_art.scale = Vector2.ONE * radius / 240.0
-	return changed
+func set_near_blend(value: float) -> void:
+	super.set_near_blend(value)
+	# The same high-resolution sprite and animation phase serve both views.
+	planet_art.scale = Vector2.ONE * radius / 240.0
 
 
 func _draw() -> void:

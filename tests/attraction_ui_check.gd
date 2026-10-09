@@ -36,7 +36,7 @@ func _run_checks() -> void:
 		push_error("FAIL: " + failure)
 	if _failures.is_empty():
 		print(
-			"PASS: nine technology items, compact pipe feedback, capture radius and quick-tool mapping"
+			"PASS: ten technology items, compact pipe feedback, capture radius and quick-tool mapping"
 		)
 	quit(0 if _failures.is_empty() else 1)
 
@@ -48,8 +48,8 @@ func _check_tree(demo: DemoScript, resolution: Vector2i) -> void:
 	demo._drive_tool(0.0, Vector2.ZERO, false)
 	await _settle()
 	_check(
-		demo._layout._technology.TECHNOLOGIES.size() == 9,
-		"the tree contains nine distinct technology items"
+		demo._layout._technology.TECHNOLOGIES.size() == 10,
+		"the tree contains ten distinct technology items"
 	)
 	_check(
 		not demo._layout._technology._nodes.has("attraction"),
@@ -79,7 +79,10 @@ func _check_tree(demo: DemoScript, resolution: Vector2i) -> void:
 	demo._layout.close_panels()
 	demo._drive_tool(0.0, pointer, false)
 	_check(demo._pipe.visible and demo._pipe.active, "P1 retains active pipe feedback")
-	_check(demo._pipe.radius == 24.0, "compact feedback preserves the actual capture radius")
+	_check(
+		is_equal_approx(demo._pipe.radius, 9.6),
+		"compact feedback follows the actual capture radius"
+	)
 	if _capture:
 		await _save("pipe_compact_feedback_%dx%d.png" % [resolution.x, resolution.y])
 	demo._layout._request_quick_upgrade(0)
@@ -97,10 +100,10 @@ func _check_tree(demo: DemoScript, resolution: Vector2i) -> void:
 	demo._layout._request_quick_upgrade(1)
 	_check(demo.run.net_unlocked, "the second quick upgrade still unlocks the net")
 	demo._layout._hide_quick_upgrades()
-	demo._view.zoom_steps(-1.0)
+	demo._view.zoom_steps(-1.0, false)
 	demo._drive_tool(0.0, pointer, false)
 	_check(
-		not demo._pipe.visible and not demo._can_collect(pointer, 24.0),
+		not demo._pipe.visible and not demo._can_collect(pointer, demo.run.get_pipe_radius()),
 		"P2 continues to disable manual collection"
 	)
 	demo._update_nest_hover(

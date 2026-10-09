@@ -161,7 +161,7 @@ func _check_overview_expiry() -> void:
 		actor.position = actor.position.rotated(0.025)
 	demo._advance_ground_mucus(0.1)
 	_check(not demo._mucus_trails.is_empty(), "the overview fixture contains real moving ribbons")
-	demo._view.zoom_steps(-1.0)
+	demo._view.zoom_steps(-1.0, false)
 	_check(not demo._mucus_root.visible, "overview hides the detailed mucus ancestor")
 	for actor: PrototypeSlime in demo._slimes:
 		actor.detached_remaining = 100.0

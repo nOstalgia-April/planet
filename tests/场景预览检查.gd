@@ -126,9 +126,9 @@ func _check_gameplay(game: PlayPreview) -> void:
 	(game.get_node("预览导航/切换视角") as Button).pressed.emit()
 	assert(game._view.is_overview() == game.start_in_overview)
 	var surface: Node = game.get_node("World/PlanetSurface")
-	assert((surface.get_node("近景画面") as Node2D).visible != game.start_in_overview)
-	assert((surface.get_node("全景画面") as Node2D).visible == game.start_in_overview)
-	var near_sprite: Sprite2D = surface.get_node("近景画面/贴图") as Sprite2D
+	assert(surface.get_child_count() == 1, "近景与全景共用一个星球画面。")
+	assert((surface.get_node("星球画面") as Node2D).visible)
+	var near_sprite: Sprite2D = surface.get_node("星球画面/贴图") as Sprite2D
 	assert(
 		near_sprite.texture.get_size().x <= 4096.0 and near_sprite.texture.get_size().y <= 4096.0
 	)

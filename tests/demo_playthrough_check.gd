@@ -22,6 +22,7 @@ var _spawn_sequence: int = 0
 var _spawns_while_holding: int = 0
 var _mucus_collected: int = 0
 var _valuable_collected: int = 0
+var _breakthrough_times: Array[float] = []
 
 
 func _initialize() -> void:
@@ -50,6 +51,11 @@ func _playthrough() -> void:
 		_drive_collection(demo)
 		if step % 10 == 9:
 			_invest(demo)
+		if step % 1200 == 1199:
+			print("Progress %.0fs: value %d, speed %d, candy %d, automated %d/%d" % [
+				_elapsed, demo.run.base_value_level, demo.run.pipe_level, demo.run.candy,
+				demo.run.completed_nests, demo.run.generated_nests
+			])
 		_check_surface_population(demo)
 		if demo.run.is_complete or _failures > 0:
 			break
@@ -59,8 +65,9 @@ func _playthrough() -> void:
 		(
 			demo.run.pipe_level == demo.run.settings.pipe_upgrade_costs.size()
 			and demo.run.net_level == demo.run.settings.net_upgrade_costs.size()
+			and demo.run.base_value_level == demo.run.settings.base_value_upgrade_costs.size()
 		),
-		"Every pipe and net technology is purchased through earned candy."
+		"Every value, pipe and net technology is purchased through earned candy."
 	)
 	_check(
 		_collected_slimes >= CONTINUOUS_CAPTURE_TARGET,
@@ -113,6 +120,7 @@ func _playthrough() -> void:
 			% [_active_income, _passive_income, _spent, demo.run.candy]
 		)
 	)
+	print("Value breakthrough times: ", _breakthrough_times)
 	print(
 		(
 			"Simulated collection: %d immediate payments; %d monsters; %d spawns while held."
@@ -135,9 +143,12 @@ func _playthrough() -> void:
 
 func _invest(demo: DemoScript) -> void:
 	var before_purchase: int = demo.run.candy
+	var value_before: int = demo.run.base_value_level
 	var first_nest: NestState = demo.run.get_nest(1)
 	if demo.run.pipe_level == 0:
 		demo._layout.quick_upgrade_requested.emit(0)
+	elif demo.run.base_value_level == 0:
+		demo._layout.technology_upgrade_requested.emit("base_value")
 	elif not demo.run.net_unlocked:
 		demo._layout.quick_upgrade_requested.emit(1)
 	elif demo.run.governance_level == 0:
@@ -148,12 +159,20 @@ func _invest(demo: DemoScript) -> void:
 		demo._layout.technology_upgrade_requested.emit("combo")
 	elif demo.run.pipe_level == 1:
 		demo._layout.quick_upgrade_requested.emit(0)
+	elif demo.run.base_value_level == 1:
+		demo._layout.technology_upgrade_requested.emit("base_value")
+	elif first_nest.valuable_level == 0:
+		demo._layout.nest_technology_upgrade_requested.emit(1, "valuable")
+	elif demo.run.pipe_level == 2:
+		demo._layout.quick_upgrade_requested.emit(0)
+	elif demo.run.base_value_level == 2:
+		demo._layout.technology_upgrade_requested.emit("base_value")
 	elif demo.run.governance_level == 1:
 		demo._layout.technology_upgrade_requested.emit("governance")
 	elif first_nest.level == 1:
 		_invest_in_nest(demo, first_nest)
-	elif first_nest.valuable_level == 0:
-		demo._layout.nest_technology_upgrade_requested.emit(1, "valuable")
+	elif demo.run.base_value_level == 3 and demo.run.pipe_level >= 4:
+		demo._layout.technology_upgrade_requested.emit("base_value")
 	elif demo.run.get_pipe_upgrade_cost() >= 0:
 		demo._layout.quick_upgrade_requested.emit(0)
 	elif demo.run.governance_level < 3:
@@ -170,6 +189,8 @@ func _invest(demo: DemoScript) -> void:
 			_invest_in_nest(demo, nest)
 	if demo.run.pipe_level > 0 and _first_upgrade_seconds < 0.0:
 		_first_upgrade_seconds = _elapsed
+	if demo.run.base_value_level > value_before:
+		_breakthrough_times.append(_elapsed)
 	if demo.run.completed_nests > 0 and _first_tamed_seconds < 0.0:
 		_first_tamed_seconds = _elapsed
 	_spent += before_purchase - demo.run.candy
@@ -179,6 +200,7 @@ func _invest(demo: DemoScript) -> void:
 
 
 func _invest_in_nest(demo: DemoScript, nest: NestState) -> void:
+	_focus_world_point(demo, nest.position)
 	for view: NestView in demo._nest_views:
 		if view.nest_id == nest.nest_id:
 			var shape: CollisionShape2D = (
@@ -212,10 +234,13 @@ func _drive_collection(demo: DemoScript) -> void:
 	var target: PrototypeSlime = _find_target(demo)
 	if target != null:
 		_pointer = target.get_capture_point()
+		if not demo._can_collect(_pointer, demo.run.get_pipe_radius()):
+			_focus_world_point(demo, _pointer)
 	var candy_before: int = demo.run.candy
 	var population_before: int = demo._slimes.size()
 	var actors_before: Array[PrototypeSlime] = demo._slimes.duplicate()
 	var combo_before: int = demo.run.combo_count
+	var fraction_before: int = demo.run._combo_reward_remainder
 	var effects_before: int = demo.get_node("%Effects").get_child_count()
 	demo._drive_tool(STEP_SECONDS, _pointer, _holding)
 	var collected: int = population_before - demo._slimes.size()
@@ -230,7 +255,9 @@ func _drive_collection(demo: DemoScript) -> void:
 				_valuable_collected += 1
 	var bonus: int = 0
 	if collected > 0 and combo_before + collected > demo.run.settings.combo_target:
-		bonus = demo.run.combo_level
+		bonus = floori(
+			float(individual_reward * demo.run.get_combo_reward_percent() + fraction_before) / 100.0
+		)
 	_check(
 		collected in [0, 1] and demo._capture_targets.size() <= 1,
 		"The pipe advances and consumes at most one body during each processing frame."
@@ -277,6 +304,16 @@ func _find_target(demo: DemoScript) -> PrototypeSlime:
 			nearest = slime
 			nearest_distance = distance
 	return nearest
+
+
+func _focus_world_point(demo: DemoScript, point: Vector2) -> void:
+	# Follow real camera rotation instead of waiting forever for an off-screen target.
+	var angle: float = wrapf(Vector2.UP.angle() - point.angle() - demo._world.rotation, -PI, PI)
+	var radius: float = demo._planet.radius * demo._world.scale.x * demo._view.projection_root.scale.x
+	demo._capture_at(0.0, point, false)
+	demo._view.begin_drag(Vector2.ZERO)
+	demo._view.drag_to(Vector2(angle * radius, 0.0))
+	demo._view.end_drag()
 
 
 func _first_active_nest(run: PrototypeRun) -> NestState:

@@ -353,7 +353,7 @@ func _check_net_capacities(demo: DemoScript) -> void:
 		_check(
 			(
 				demo.run.get_net_capacity() == capacities[level]
-				and is_equal_approx(demo.run.get_net_radius(), 84.0)
+				and is_equal_approx(demo.run.get_net_radius(), 33.6)
 				and is_equal_approx(demo.run.settings.net_cooldown_seconds, 6.0)
 				and demo.run.candy == capacities[level] * demo.run.settings.slime_reward
 				and demo.run.get_nest(1).alive_slimes == population - capacities[level]

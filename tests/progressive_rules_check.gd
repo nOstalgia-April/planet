@@ -14,16 +14,19 @@ func _init() -> void:
 
 func _run_checks() -> void:
 	_check_opening_and_net_unlock()
+	_check_nest_opening_delay()
 	_check_bursts_and_population_tiers()
+	_check_random_spawn_cooldowns()
 	_check_automatic_income()
 	_check_continuous_pipe_combo()
 	_check_tool_tiers()
 	_check_continuous_discovery()
+	_check_nest_discovery_cooldown()
 	_check_governance_roll_weight()
 	_check_existing_nests_completion()
 	if _failures.is_empty():
 		print(
-			"PASS: continuous weighted discovery, current-nest completion, seven pipe tiers, net capacity and three-second combos"
+			"PASS: opening protection, burst cooldowns, paced discovery, completion and tool progression"
 		)
 	else:
 		for failure: String in _failures:
@@ -74,6 +77,65 @@ func _check_opening_and_net_unlock() -> void:
 	run.free()
 
 
+func _check_nest_opening_delay() -> void:
+	var run: PrototypeRun = _create_run(SETTINGS.nest_initial_delay_seconds)
+	run.settings.nest_roll_chance_min = 1.0
+	run.settings.nest_roll_chance_max = 1.0
+	_nest_requests = 0
+	run.nest_spawn_requested.connect(_place_requested_nest.bind(run))
+	run.candy = 10000
+	run.upgrade_pipe()
+	run.upgrade_net()
+	run.advance(run.settings.nest_initial_delay_seconds - 1.0)
+	_check(
+		_nest_requests == 0 and run.nests.size() == 2 and run._nest_roll_clock == 0.0,
+		"Even immediate net unlock cannot add nests or bank rolls during opening protection."
+	)
+	_check(
+		run.get_nest(1).alive_slimes > 0,
+		"The two opening nests keep producing monsters throughout opening protection."
+	)
+	run.advance(1.0)
+	_check(
+		_nest_requests == 0 and run._nest_initial_delay_remaining == 0.0,
+		"Opening protection expiring does not immediately add a nest."
+	)
+	run.advance(run.settings.nest_roll_interval - 0.01)
+	_check(_nest_requests == 0, "The first opening roll waits for a full check interval.")
+	run.advance(0.02)
+	_check(
+		_nest_requests == 1, "Discovery becomes eligible after opening protection and net unlock."
+	)
+	run.start_run(_positions())
+	_nest_requests = 0
+	_check(
+		(
+			run._nest_initial_delay_remaining == run.settings.nest_initial_delay_seconds
+			and run._nest_spawn_cooldown_remaining == 0.0
+			and run.nests.size() == 2
+		),
+		"Restart restores opening protection and clears the previous success cooldown."
+	)
+	run.advance(run.settings.nest_initial_delay_seconds + 10.0)
+	_check(
+		_nest_requests == 0 and run._nest_initial_delay_remaining == 0.0,
+		"Opening protection counts from game start while the net remains locked."
+	)
+	run.candy = 10000
+	run.upgrade_pipe()
+	run.upgrade_net()
+	run.advance(run.settings.nest_roll_interval)
+	_check(_nest_requests == 1, "Late net unlock does not restart the opening protection timer.")
+	run.start_run(_positions())
+	_nest_requests = 0
+	run.candy = 10000
+	run.upgrade_pipe()
+	run.upgrade_net()
+	run.advance(run.settings.nest_initial_delay_seconds + run.settings.nest_roll_interval)
+	_check(_nest_requests == 1, "A long update consumes opening protection before its first roll.")
+	run.free()
+
+
 func _check_bursts_and_population_tiers() -> void:
 	for tier: int in range(1, 4):
 		var run: PrototypeRun = _create_run()
@@ -99,7 +161,7 @@ func _check_bursts_and_population_tiers() -> void:
 		_check(_spawn_requests == nest.alive_slimes, "Every spawned body has exactly one request.")
 		nest.alive_slimes = capacity - 1
 		nest.spawn_clock = 0.0
-		run.advance(interval)
+		run.advance(run.get_nest_spawn_interval(1))
 		_check(nest.alive_slimes == capacity, "The final burst clips to remaining capacity.")
 		run.advance(interval * 20.0)
 		_check(nest.alive_slimes == capacity, "A full nest cannot overfill during a long update.")
@@ -109,6 +171,69 @@ func _check_bursts_and_population_tiers() -> void:
 			"The final automated stage retains the sixty-monster capacity."
 		)
 		run.free()
+
+
+func _check_random_spawn_cooldowns() -> void:
+	var run: PrototypeRun = _create_run()
+	run._random.seed = 72861
+	run._add_nest(NestState.Species.MUCUS, Vector2(200, -200))
+	run._add_nest(NestState.Species.SLIME, Vector2(300, -200))
+	_check(
+		not is_equal_approx(run.get_nest_spawn_interval(3), run.get_nest_spawn_interval(4)),
+		"New nests of either species receive independent cooldowns."
+	)
+	for tier: int in range(3):
+		var nest: NestState = run.get_nest(1)
+		nest.level = tier
+		var base_interval: float = run.settings.spawn_intervals[tier]
+		for _cycle: int in range(8):
+			nest.alive_slimes = 0
+			nest.spawn_clock = 0.0
+			var interval: float = run.get_nest_spawn_interval(1)
+			_check(
+				absf(interval - base_interval) <= run.settings.spawn_interval_jitter,
+				"Every tier stays within its configured cooldown range."
+			)
+			run._advance_nest_population(nest, interval - 0.01)
+			_check(nest.alive_slimes == 0, "The sampled cooldown gates its entire burst.")
+			_check(
+				is_equal_approx(run.get_nest_spawn_interval(1), interval),
+				"Advancing or querying a running cooldown never rerolls it."
+			)
+			run._advance_nest_population(nest, 0.02)
+			_check(nest.alive_slimes > 0, "The nest spawns when its sampled cooldown expires.")
+			_check(
+				not is_equal_approx(run.get_nest_spawn_interval(1), interval),
+				"Every completed burst samples a fresh cooldown."
+			)
+	var nest: NestState = run.get_nest(1)
+	nest.level = 0
+	nest.alive_slimes = run.get_nest_population_limit(1)
+	run._advance_nest_population(nest, 100.0)
+	_check(nest.spawn_clock == 0.0, "A full nest does not bank cooldown progress.")
+	run.collect_slime(1)
+	var interval: float = run.get_nest_spawn_interval(1)
+	run._advance_nest_population(nest, interval - 0.01)
+	_check(nest.alive_slimes == 9, "A reopened slot waits for a full sampled cooldown.")
+	run._advance_nest_population(nest, 0.02)
+	_check(nest.alive_slimes == 10, "The resumed burst clips to the reopened slot.")
+	run.candy = 10000
+	_enable_full_governance(run)
+	nest.spawn_clock = 1.0
+	interval = run.get_nest_spawn_interval(1)
+	_check(run.upgrade_nest(1), "Cultivation upgrades the tested nest.")
+	_check(
+		is_equal_approx(run.get_nest_spawn_interval(1), interval + 1.0) and nest.spawn_clock == 1.0,
+		"Cultivation changes the base interval while retaining progress and the sampled offset."
+	)
+	run.settings = SETTINGS.duplicate() as PrototypeSettings
+	run.settings.spawn_interval_jitter = 0.0
+	run.start_run(_positions())
+	_check(
+		run.get_nest_spawn_interval(1) == SETTINGS.spawn_intervals[0],
+		"Disabling jitter restores fixed intervals on a new run."
+	)
+	run.free()
 
 
 func _check_continuous_pipe_combo() -> void:
@@ -125,7 +250,7 @@ func _check_continuous_pipe_combo() -> void:
 		for _index: int in range(3):
 			run.collect_slime(1)
 		_check(
-			run.combo_count == 8 and run.candy == 8 * SETTINGS.slime_reward + 3 * tier,
+			run.combo_count == 8 and run.candy == 8 * SETTINGS.slime_reward + [1, 3, 4][tier - 1],
 			"Every capture from the sixth onward adds the researched bonus without resetting."
 		)
 		run.advance(2.9)
@@ -202,6 +327,7 @@ func _check_tool_tiers() -> void:
 func _check_continuous_discovery() -> void:
 	var run: PrototypeRun = _create_run()
 	var settings: PrototypeSettings = SETTINGS.duplicate() as PrototypeSettings
+	settings.nest_initial_delay_seconds = 0.0
 	settings.nest_roll_chance_min = 1.0
 	settings.nest_roll_chance_max = 1.0
 	run.settings = settings
@@ -219,7 +345,7 @@ func _check_continuous_discovery() -> void:
 		run.nests.size() == 3 and run.governance_level == 0 and run.completed_nests == 0,
 		"Recurring discovery starts after the first full interval following net unlock."
 	)
-	run.advance(settings.nest_roll_interval * 30.0)
+	run.advance((settings.nest_spawn_cooldown_seconds + settings.nest_roll_interval) * 30.0)
 	var slime_nests: int = 0
 	var mucus_nests: int = 0
 	for nest: NestState in run.nests:
@@ -247,8 +373,16 @@ func _check_continuous_discovery() -> void:
 		"A pending placement request cannot duplicate itself while awaiting a site."
 	)
 	_check(
+		pending_run._nest_spawn_cooldown_remaining == 0.0,
+		"A request that has not landed does not start the success cooldown."
+	)
+	_check(
 		not pending_run.resolve_nest_spawn(Vector2.ZERO, false),
 		"No valid surface site declines the request without inventing a nest."
+	)
+	_check(
+		pending_run._nest_spawn_cooldown_remaining == 0.0,
+		"An unavailable site leaves the next recurring roll eligible."
 	)
 	pending_run.advance(settings.nest_roll_interval)
 	_check(
@@ -262,6 +396,109 @@ func _check_continuous_discovery() -> void:
 	pending_run.free()
 
 
+func _check_nest_discovery_cooldown() -> void:
+	var run: PrototypeRun = _create_run()
+	var settings: PrototypeSettings = SETTINGS.duplicate() as PrototypeSettings
+	settings.nest_initial_delay_seconds = 0.0
+	settings.nest_roll_chance_min = 1.0
+	settings.nest_roll_chance_max = 1.0
+	run.settings = settings
+	_nest_requests = 0
+	run.nest_spawn_requested.connect(_place_requested_nest.bind(run))
+	_check(
+		run._nest_spawn_cooldown_remaining == 0.0,
+		"The two fixed opening nests do not impose a discovery cooldown."
+	)
+	run.candy = 10000
+	run.upgrade_pipe()
+	run.upgrade_net()
+	run.advance(settings.nest_roll_interval)
+	_check(
+		(
+			_nest_requests == 1
+			and run._nest_spawn_cooldown_remaining == settings.nest_spawn_cooldown_seconds
+		),
+		"A successfully placed nest starts the global cooldown."
+	)
+	var population: int = run.get_nest(1).alive_slimes
+	run.advance(settings.nest_spawn_cooldown_seconds)
+	_check(
+		_nest_requests == 1 and run._nest_roll_clock == 0.0,
+		"Cooldown time cannot bank discovery rolls or spawn immediately on expiry."
+	)
+	_check(
+		run.get_nest(1).alive_slimes > population,
+		"Discovery cooldown does not pause existing nests' monster production."
+	)
+	run.advance(settings.nest_roll_interval - 0.01)
+	_check(_nest_requests == 1, "The first post-cooldown roll waits for its full interval.")
+	run.advance(0.02)
+	_check(_nest_requests == 2, "The next successful roll creates exactly one additional nest.")
+	run.start_run(_positions())
+	_check(
+		run._nest_spawn_cooldown_remaining == 0.0 and run._nest_roll_clock == 0.0,
+		"Restart clears success cooldown and recurring roll progress."
+	)
+	run.candy = 10000
+	run.upgrade_pipe()
+	run.upgrade_net()
+	_enable_full_governance(run)
+	run.advance(settings.nest_roll_interval)
+	_check(
+		run._nest_spawn_cooldown_remaining > 0.0,
+		"The completion fixture begins during an active discovery cooldown."
+	)
+	for nest: NestState in run.nests:
+		for _stage: int in range(3):
+			run.upgrade_nest(nest.nest_id)
+	_check(
+		run.is_complete and run._nest_spawn_cooldown_remaining == 0.0,
+		"Completion keeps discovery stopped with no leftover success cooldown."
+	)
+	run.free()
+	var fixed_step_run: PrototypeRun = _create_run()
+	fixed_step_run.settings = settings
+	fixed_step_run.candy = 10000
+	fixed_step_run.upgrade_pipe()
+	fixed_step_run.upgrade_net()
+	_nest_requests = 0
+	fixed_step_run.nest_spawn_requested.connect(_place_requested_nest.bind(fixed_step_run))
+	for _step: int in range(750):
+		fixed_step_run._advance_nest_roll(0.1)
+	_check(
+		_nest_requests == 3 and fixed_step_run.nests.size() == 5,
+		"Small updates preserve the same three placements over seventy-five seconds."
+	)
+	var long_step_run: PrototypeRun = _create_run()
+	long_step_run.settings = settings
+	long_step_run.candy = 10000
+	long_step_run.upgrade_pipe()
+	long_step_run.upgrade_net()
+	_nest_requests = 0
+	long_step_run.nest_spawn_requested.connect(_place_requested_nest.bind(long_step_run))
+	long_step_run._advance_nest_roll(75.0)
+	_check(
+		(
+			_nest_requests == 3
+			and is_equal_approx(
+				long_step_run._nest_spawn_cooldown_remaining,
+				fixed_step_run._nest_spawn_cooldown_remaining
+			)
+		),
+		"A long update consumes intervening cooldowns instead of granting extra placements."
+	)
+	fixed_step_run.free()
+	long_step_run.start_run(_positions())
+	settings.nest_spawn_cooldown_seconds = 0.0
+	long_step_run.candy = 10000
+	long_step_run.upgrade_pipe()
+	long_step_run.upgrade_net()
+	_nest_requests = 0
+	long_step_run._advance_nest_roll(settings.nest_roll_interval * 3.0)
+	_check(_nest_requests == 3, "A zero cooldown restores interval-only discovery.")
+	long_step_run.free()
+
+
 func _check_governance_roll_weight() -> void:
 	var run: PrototypeRun = _create_run()
 	run.candy = 10000
@@ -269,33 +506,37 @@ func _check_governance_roll_weight() -> void:
 	run.upgrade_net()
 	_enable_full_governance(run)
 	_check(
-		is_equal_approx(run.get_nest_roll_chance(), 0.05),
-		"An unmanaged planet starts with five percent roll chance."
+		is_equal_approx(run.get_nest_roll_chance(), 0.25),
+		"An unmanaged planet starts with twenty-five percent roll chance."
 	)
 	for _index: int in range(3):
 		run.upgrade_nest(1)
 	_check(
-		is_equal_approx(run.get_nest_roll_chance(), 0.2),
-		"One fully governed nest among two raises the chance to twenty percent."
+		is_equal_approx(run.get_nest_roll_chance(), 0.4),
+		"One fully governed nest among two raises the chance to forty percent."
 	)
 	for _index: int in range(3):
 		run.upgrade_nest(2)
 	_check(
-		is_equal_approx(run.get_nest_roll_chance(), 0.35),
-		"Average governance scales the configured roll chance up to thirty-five percent."
+		is_equal_approx(run.get_nest_roll_chance(), 0.55),
+		"Average governance scales the configured roll chance up to fifty-five percent."
 	)
 	run.free()
 
 
 func _check_existing_nests_completion() -> void:
-	var locked_run: PrototypeRun = _create_run()
+	var locked_run: PrototypeRun = _create_run(SETTINGS.nest_initial_delay_seconds)
 	locked_run.candy = 10000
 	_enable_full_governance(locked_run)
 	for nest_id: int in [1, 2]:
 		for _index: int in range(3):
 			locked_run.upgrade_nest(nest_id)
 	_check(
-		locked_run.is_complete and not locked_run.net_unlocked,
+		(
+			locked_run.is_complete
+			and not locked_run.net_unlocked
+			and locked_run._nest_initial_delay_remaining == 0.0
+		),
 		"Automating every current nest completes the run without a mandatory tool-unlock quota."
 	)
 	locked_run.upgrade_net()
@@ -306,6 +547,7 @@ func _check_existing_nests_completion() -> void:
 	locked_run.free()
 	var run: PrototypeRun = _create_run()
 	var settings: PrototypeSettings = SETTINGS.duplicate() as PrototypeSettings
+	settings.nest_initial_delay_seconds = 0.0
 	settings.nest_roll_chance_min = 1.0
 	settings.nest_roll_chance_max = 1.0
 	run.settings = settings
@@ -424,9 +666,10 @@ func _count_nest_request(_species: NestState.Species) -> void:
 	_nest_requests += 1
 
 
-func _create_run() -> PrototypeRun:
+func _create_run(initial_delay_seconds: float = 0.0) -> PrototypeRun:
 	var run: PrototypeRun = PrototypeRun.new()
-	run.settings = SETTINGS
+	run.settings = SETTINGS.duplicate() as PrototypeSettings
+	run.settings.nest_initial_delay_seconds = initial_delay_seconds
 	root.add_child(run)
 	run.start_run(_positions())
 	return run

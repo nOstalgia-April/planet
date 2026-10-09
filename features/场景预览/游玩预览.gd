@@ -10,11 +10,12 @@ extends "res://scripts/disk_demo.gd"
 func _ready() -> void:
 	super._ready()
 	_view.view_changed.connect(_sync_art)
+	_view.projection_changed.connect(_sync_art)
 	get_viewport().size_changed.connect(_fit_background)
 	RenderingServer.set_default_clear_color(Color.BLACK)
 	_fit_background()
 	if start_in_overview:
-		_view.zoom_steps(-1.0)
+		_view.zoom_steps(-1.0, false)
 	_sync_art()
 
 
@@ -28,8 +29,9 @@ func _fit_background() -> void:
 
 
 func _sync_art() -> void:
-	_near_background.visible = not _view.is_overview()
-	_overview_background.visible = _view.is_overview()
+	_near_background.visible = _view.near_blend > 0.0
+	_overview_background.visible = _view.near_blend < 1.0
+	_overview_background.modulate.a = 1.0 - _view.near_blend
 	_switch_button.text = "近景" if _view.is_overview() else "全景"
 
 

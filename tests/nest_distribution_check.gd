@@ -24,6 +24,7 @@ func _run_checks() -> void:
 	current_scene = _demo
 	await process_frame
 	_demo.set_process(false)
+	_demo._view.set_process(false)
 	_surface = _demo._planet
 	_check_demo_injection()
 	_check_population(Vector2(1920.0, 1080.0), -PI / 2.0, 7)
@@ -36,20 +37,26 @@ func _run_checks() -> void:
 	await process_frame
 	if _failures == 0:
 		print(
-			"PASS: near-view nest Gaussian density, screen coverage, wrap, source and view preservation."
+			"PASS: nest-centered 2D density, full-crust coverage, wrap, source and view preservation."
 		)
 	quit(0 if _failures == 0 else 1)
 
 
 func _check_demo_injection() -> void:
-	_demo.run.advance(1.0)
+	_demo.run.advance(
+		_demo.run.settings.spawn_intervals[0] + _demo.run.settings.spawn_interval_jitter
+	)
 	_check(
 		not _demo._slimes.is_empty(),
 		"The real run creates a population to check screen-width injection."
 	)
-	var expected_deviation: float = (
-		_demo._view.get_near_screen_half_angle(_get_near_activity_radius())
-		/ PrototypeSlime.NORMAL_CENTRAL_75_Z
+	var expected_deviation: float = clampf(
+		(
+			_demo._view.get_near_screen_half_angle(_get_near_activity_radius())
+			/ PrototypeSlime.NORMAL_CENTRAL_75_Z
+		),
+		0.35,
+		0.9
 	)
 	var spawn_widths_match: bool = true
 	for slime: PrototypeSlime in _demo._slimes:
@@ -58,12 +65,16 @@ func _check_demo_injection() -> void:
 			spawn_widths_match and is_equal_approx(slime._roaming_deviation, expected_deviation)
 		)
 	_check(spawn_widths_match, "Actual demo spawning injects its configured P1 screen width.")
-	var original_stretch: float = _demo._view.near_horizontal_stretch
-	_demo._view.near_horizontal_stretch = original_stretch + 0.15
+	var original_radius: float = _demo._view.near_radius_ratio
+	_demo._view.near_radius_ratio = original_radius + 0.15
 	_demo._apply_layout()
-	expected_deviation = (
-		_demo._view.get_near_screen_half_angle(_get_near_activity_radius())
-		/ PrototypeSlime.NORMAL_CENTRAL_75_Z
+	expected_deviation = clampf(
+		(
+			_demo._view.get_near_screen_half_angle(_get_near_activity_radius())
+			/ PrototypeSlime.NORMAL_CENTRAL_75_Z
+		),
+		0.35,
+		0.9
 	)
 	var resized_widths_match: bool = true
 	for slime: PrototypeSlime in _demo._slimes:
@@ -71,20 +82,20 @@ func _check_demo_injection() -> void:
 			resized_widths_match and is_equal_approx(slime._roaming_deviation, expected_deviation)
 		)
 	_check(resized_widths_match, "Reapplying the demo layout updates existing actors' P1 width.")
-	_demo._view.near_horizontal_stretch = original_stretch
+	_demo._view.near_radius_ratio = original_radius
 	_demo._apply_layout()
 	_clear_population()
 
 
 func _check_population(viewport_size: Vector2, home_angle: float, source_id: int) -> void:
 	_clear_population()
-	_demo._view.zoom_steps(1.0)
+	_demo._view.zoom_steps(1.0, false)
 	_demo._world.rotation = -PI / 2.0 - home_angle
 	var play_rect: Rect2 = _demo._layout.apply_layout(viewport_size)
 	_demo._view.configure(play_rect, _surface.radius)
 	var home: Vector2 = _surface.get_nest_position(home_angle)
 	var half_angle: float = _demo._view.get_near_screen_half_angle(_get_near_activity_radius())
-	var deviation: float = half_angle / PrototypeSlime.NORMAL_CENTRAL_75_Z
+	var deviation: float = clampf(half_angle / PrototypeSlime.NORMAL_CENTRAL_75_Z, 0.35, 0.9)
 	var screen: Rect2 = Rect2(Vector2.ZERO, viewport_size)
 	var projection: Transform2D = _demo._slime_root.get_global_transform_with_canvas()
 	_check(
@@ -115,6 +126,8 @@ func _check_population(viewport_size: Vector2, home_angle: float, source_id: int
 	var all_on_surface: bool = true
 	var largest_launch_overflow: float = 0.0
 	var largest_roaming_overflow: float = 0.0
+	var minimum_depth: float = 1.0
+	var maximum_depth: float = 0.0
 	var all_sources_preserved: bool = true
 	var warmup_steps: int = roundi(WARMUP_SECONDS / STEP_SECONDS)
 	var total_steps: int = warmup_steps + roundi(SAMPLE_SECONDS / STEP_SECONDS)
@@ -124,6 +137,9 @@ func _check_population(viewport_size: Vector2, home_angle: float, source_id: int
 			slime._process(STEP_SECONDS)
 			var bounds: Vector2 = _surface.get_activity_radius_bounds(slime.position.angle())
 			var radius: float = slime.position.length()
+			var depth: float = (radius - bounds.x) / (bounds.y - bounds.x)
+			minimum_depth = minf(minimum_depth, depth)
+			maximum_depth = maxf(maximum_depth, depth)
 			var overflow: float = maxf(maxf(bounds.x - radius, radius - bounds.y), 0.0)
 			if launching:
 				largest_launch_overflow = maxf(largest_launch_overflow, overflow)
@@ -193,10 +209,9 @@ func _check_population(viewport_size: Vector2, home_angle: float, source_id: int
 			% [label, largest_launch_overflow, largest_roaming_overflow]
 		)
 	)
-	_check(
-		screen_fraction >= 0.70 and screen_fraction <= 0.80,
-		label + ": about 75% occupy one actual P1 screen."
-	)
+	# P1 now crops an isotropically enlarged planet; camera framing no longer
+	# defines the population's Gaussian width. Keep screen coverage diagnostic.
+	_check(on_screen > 0 and on_screen < measurements, label + ": P1 shows part of the population.")
 	_check(
 		side_difference < 0.10 and absf(mean_offset) < deviation * 0.15,
 		label + ": long-term density is centered and symmetric around the nest."
@@ -206,17 +221,14 @@ func _check_population(viewport_size: Vector2, home_angle: float, source_id: int
 		label + ": density decreases from the nest toward equally wide outer bands."
 	)
 	_check(
-		(
-			central_fraction > 0.60
-			and central_fraction < 0.77
-			and outer_fraction > 0.02
-			and outer_fraction < 0.09
-		),
-		label + ": the Gaussian core remains dense while a sparse tail can leave the nest screen."
+		central_fraction > 0.60 and outer_fraction > 0.0 and outer_fraction < 0.09,
+		label + ": the 2D cluster keeps a dense core and a sparse roaming tail."
 	)
+	# Destinations are sampled in 2D and constrained to the crust. Their angular
+	# occupancy need not have the sigma of the retired one-dimensional model.
 	_check(
-		measured_deviation > deviation * 0.85 and measured_deviation < deviation * 1.15,
-		label + ": walking preserves the configured long-term Gaussian width."
+		minimum_depth < 0.15 and maximum_depth > 0.85,
+		label + ": roaming reaches both the inner and outer parts of the crust."
 	)
 	_check(
 		all_on_surface, label + ": every simulated step remains inside the actual irregular crust."
@@ -240,7 +252,7 @@ func _check_view_switch() -> void:
 		original_deviations.append(slime._roaming_deviation)
 		original_sources.append(slime.nest_id)
 	var half_angle: float = _demo._view.get_near_screen_half_angle(_get_near_activity_radius())
-	_demo._view.zoom_steps(-1.0)
+	_demo._view.zoom_steps(-1.0, false)
 	_check(_demo._view.is_overview(), "The real demo view switches to P2.")
 	_check(
 		is_equal_approx(
@@ -249,7 +261,7 @@ func _check_view_switch() -> void:
 		"The P1 screen metric stays unchanged while viewing P2."
 	)
 	_check_preserved_population(original_angles, original_deviations, original_sources, "P2")
-	_demo._view.zoom_steps(1.0)
+	_demo._view.zoom_steps(1.0, false)
 	_check_preserved_population(original_angles, original_deviations, original_sources, "P1 return")
 
 
@@ -278,10 +290,8 @@ func _check_preserved_population(
 
 
 func _get_near_activity_radius() -> float:
-	return (
-		_surface.radius
-		* (PlanetSurface.SURFACE_RADIUS_RATIO - _surface.near_crust_width_ratio * 0.5)
-	)
+	var bounds: Vector2 = _surface.get_activity_radius_bounds(-PI / 2.0)
+	return (bounds.x + bounds.y) * 0.5
 
 
 func _clear_population() -> void:

@@ -109,7 +109,7 @@ func _run_checks() -> void:
 		_check(
 			demo._active_tool == DemoScript.ToolMode.PIPE, "quick pipe works with technology closed"
 		)
-		camera.zoom_steps(-10.0)
+		camera.zoom_steps(-10.0, false)
 		_check(
 			is_equal_approx(camera.zoom_amount, 0.0) and is_equal_approx(camera.target_zoom, 0.0),
 			"overview selection is immediate with no interpolated layout"

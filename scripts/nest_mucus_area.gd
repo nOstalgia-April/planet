@@ -1,7 +1,7 @@
 @tool
 extends Node2D
 
-@export_range(24.0, 240.0, 1.0) var coverage_radius: float = 112.0:
+@export_range(8.0, 240.0, 0.1) var coverage_radius: float = 44.8:
 	set(value):
 		coverage_radius = value
 		if is_node_ready():
@@ -61,8 +61,13 @@ func refresh_surface() -> void:
 				var width: float = sin(fraction * PI) * coverage_radius * 0.025
 				var angle: float = angle_start + fraction * 1.55
 				sheen.append(
-					home_position
-					+ Vector2.from_angle(angle) * (distance + width * (-1.0 if side == 0 else 1.0))
+					(
+						home_position
+						+ (
+							Vector2.from_angle(angle)
+							* (distance + width * (-1.0 if side == 0 else 1.0))
+						)
+					)
 				)
 		highlights.append_array(_clip_to_crust(sheen))
 	_write_layer(_sheen, highlights)
@@ -103,7 +108,11 @@ func _write_layer(layer: Polygon2D, patches: Array[PackedVector2Array]) -> void:
 		for index: int in range(0, indices.size(), 3):
 			triangles.append(
 				PackedInt32Array(
-					[indices[index] + offset, indices[index + 1] + offset, indices[index + 2] + offset]
+					[
+						indices[index] + offset,
+						indices[index + 1] + offset,
+						indices[index + 2] + offset
+					]
 				)
 			)
 	layer.polygon = vertices

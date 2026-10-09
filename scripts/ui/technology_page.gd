@@ -11,6 +11,7 @@ const GraphScript = preload("res://scripts/ui/technology_graph.gd")
 const GlyphScript = preload("res://scripts/ui/technology_glyph.gd")
 const GRAPH_SIZE: Vector2 = Vector2(1280.0, 660.0)
 const TECHNOLOGIES: PackedStringArray = [
+	"base_value",
 	"pipe",
 	"cultivation",
 	"automation",
@@ -22,10 +23,11 @@ const TECHNOLOGIES: PackedStringArray = [
 	"net_capacity"
 ]
 const TITLES: PackedStringArray = [
-	"吸取速率", "巢穴培育", "完全自动化", "高价值个体", "连击解锁", "连击奖励", "连击间隔", "捕网解锁", "捕网扩容"
+	"基础价值", "吸取速率", "巢穴培育", "完全自动化", "高价值个体", "连击解锁", "连击奖励", "连击间隔", "捕网解锁", "捕网扩容"
 ]
-const SYMBOLS: PackedInt32Array = [0, 2, 7, 4, 3, 6, 5, 1, 8]
+const SYMBOLS: PackedInt32Array = [9, 0, 2, 7, 4, 3, 6, 5, 1, 8]
 const COLORS: Array[Color] = [
+	Color("e2b578"),
 	Color("79acd8"),
 	Color("83bea2"),
 	Color("83bea2"),
@@ -37,7 +39,7 @@ const COLORS: Array[Color] = [
 	Color("b39ada")
 ]
 
-var selected_key: String = "pipe"
+var selected_key: String = "base_value"
 var selected_nest_id: int = 1
 var _run: PrototypeRun
 var _nodes: Dictionary[String, NodeScript] = {}
@@ -103,6 +105,8 @@ func _build_graph() -> void:
 
 func _node_position(id: String) -> Vector2:
 	match id:
+		"base_value":
+			return Vector2(640.0, 426.0)
 		"pipe":
 			return Vector2(640.0, 562.0)
 		"cultivation":
@@ -134,6 +138,8 @@ func _fit_graph() -> void:
 
 func _current_level(id: String) -> int:
 	match id:
+		"base_value":
+			return _run.base_value_level + 1
 		"pipe":
 			return _run.pipe_level + 1
 		"net_capacity":
@@ -148,6 +154,8 @@ func _current_level(id: String) -> int:
 
 func _max_level(id: String) -> int:
 	match id:
+		"base_value":
+			return _run.settings.base_value_multipliers.size()
 		"pipe":
 			return _run.settings.pipe_capture_seconds.size()
 		"net_capacity":
@@ -170,8 +178,10 @@ func _cost(id: String) -> int:
 func _node_prerequisites(id: String) -> Dictionary[String, int]:
 	var result: Dictionary[String, int] = _run.get_technology_prerequisites(id)
 	# The initial tool anchors the central path without adding a research gate.
-	if id == "cultivation":
+	if id == "base_value":
 		result["pipe"] = 0
+	elif id == "cultivation":
+		result["base_value"] = 0
 	return result
 
 
@@ -252,12 +262,20 @@ func _refresh_details() -> void:
 func _effect(id: String) -> String:
 	if _state_for(id) == NodeScript.State.PURCHASED:
 		match id:
+			"base_value":
+				return (
+					"史莱姆 %d 糖果\n黏液怪 %d 糖果"
+					% [_run.get_base_value(), _run.get_base_value() * 2]
+				)
 			"pipe":
 				return "每只 %s 秒" % String.num(_run.get_pipe_capture_seconds(), 3)
 			"net_capacity":
 				return "一次捕获 %d 只" % _run.get_net_capacity()
 			"combo_reward":
-				return "连续吸入 %d 只后\n每只额外 +%d 糖果" % [_run.settings.combo_target, _run.combo_level]
+				return (
+					"连续吸入 %d 只后\n捕获收益 +%d%%"
+					% [_run.settings.combo_target, _run.get_combo_reward_percent()]
+				)
 			"combo_interval":
 				return "续接间隔 %s 秒" % String.num(_run.get_combo_window_seconds(), 1)
 	if id == "net_unlock":
@@ -272,12 +290,20 @@ func _effect(id: String) -> String:
 
 func _note(id: String) -> String:
 	match id:
+		"base_value":
+			return (
+				"全场生效，包含已有个体。金色个体保持 ×%d；自动产糖同步提高。"
+				% _run.settings.valuable_reward_multiplier
+			)
 		"cultivation":
 			return "在具体巢穴投入 %d 糖果建设。" % _run.settings.nest_upgrade_costs[0]
 		"automation":
-			return "巢穴建成后停止产怪，持续产糖；全部自动化即可达成目标。"
+			return (
+				"建成后停止产怪，每巢每秒 %.1f 糖果，随基础价值成长。全部自动化即可达成目标。"
+				% _run.get_automatic_income_per_nest()
+			)
 		"combo_unlock", "combo_reward", "combo_interval":
-			return "吸管每次吸入续接连击；捕网与自动产糖不计入。"
+			return "吸管每次吸入续接连击，小数奖励累计到账；捕网与自动产糖不计入。"
 		"valuable":
 			return "只影响选中巢穴此后刷新的个体。"
 	return ""

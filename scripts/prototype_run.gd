@@ -2,6 +2,7 @@ class_name PrototypeRun
 extends Node
 
 signal economy_changed
+signal base_value_changed
 signal net_cooldown_changed
 signal nest_added(nest: NestState)
 signal nest_changed(nest: NestState)
@@ -13,6 +14,7 @@ signal goal_completed
 @export var settings: PrototypeSettings
 
 var candy: int = 0
+var base_value_level: int = 0
 var pipe_level: int = 0
 var net_level: int = 0
 var net_unlocked: bool = false
@@ -29,6 +31,10 @@ var is_complete: bool = false
 var generation_stage: int = 0
 
 var _nest_roll_clock: float = 0.0
+# Earned fractional combo candy survives a broken streak; only a new run clears it.
+var _combo_reward_remainder: int = 0
+var _nest_spawn_cooldown_remaining: float = 0.0
+var _nest_initial_delay_remaining: float = 0.0
 var _pending_nest_species: int = -1
 var _random: RandomNumberGenerator = RandomNumberGenerator.new()
 
@@ -39,6 +45,8 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	assert(spawn_positions.size() >= settings.initial_nests, "The opening needs two nest sites.")
 	assert(settings.unlocked_species_weights.size() == 2)
 	assert(settings.nest_roll_interval > 0.0)
+	assert(settings.nest_spawn_cooldown_seconds >= 0.0)
+	assert(settings.nest_initial_delay_seconds >= 0.0)
 	assert(settings.nest_roll_chance_min >= 0.0)
 	assert(settings.nest_roll_chance_max >= settings.nest_roll_chance_min)
 	assert(settings.nest_roll_chance_max <= 1.0)
@@ -61,6 +69,9 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	assert(settings.net_radius > 0.0 and settings.net_cooldown_seconds > 0.0)
 	assert(settings.governance_upgrade_costs.size() == 2)
 	assert(settings.passive_income_per_second >= 0.0)
+	assert(settings.base_value_multipliers.size() == settings.base_value_upgrade_costs.size() + 1)
+	assert(settings.base_value_multipliers[0] == 1)
+	assert(settings.combo_reward_percentages.size() == settings.combo_upgrade_costs.size() + 1)
 	assert(settings.combo_target > 0 and settings.combo_window_seconds > 0.0)
 	assert(
 		(
@@ -71,18 +82,25 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	assert(settings.spawn_burst_ratio_min > 0.0)
 	assert(settings.spawn_burst_ratio_max >= settings.spawn_burst_ratio_min)
 	assert(settings.spawn_burst_ratio_max <= 1.0)
+	assert(settings.spawn_interval_jitter >= 0.0)
 	for weight: float in settings.unlocked_species_weights:
 		assert(weight > 0.0, "Unlocked species need positive discovery weights.")
 	for capacity: int in settings.net_capacities:
 		assert(capacity > 0, "Net capacities must be positive.")
 	for interval: float in settings.spawn_intervals:
-		assert(interval > 0.0, "Spawn intervals must be positive.")
+		assert(
+			interval > settings.spawn_interval_jitter, "Spawn intervals must exceed their jitter."
+		)
 	for population_limit: int in settings.nest_population_limits:
 		assert(population_limit > 0, "Nest population limits must be positive.")
 	_nest_roll_clock = 0.0
+	_nest_spawn_cooldown_remaining = 0.0
+	_nest_initial_delay_remaining = settings.nest_initial_delay_seconds
 	_pending_nest_species = -1
 	_random.randomize()
 	candy = 0
+	base_value_level = 0
+	_combo_reward_remainder = 0
 	pipe_level = 0
 	net_level = 0
 	net_unlocked = false
@@ -101,6 +119,7 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	net_cooldown_changed.emit()
 	for index: int in range(settings.initial_nests):
 		_add_nest(NestState.Species.SLIME, spawn_positions[index])
+	base_value_changed.emit()
 
 
 func advance(delta: float) -> void:
@@ -126,8 +145,8 @@ func collect_slime(nest_id: int, reward: int = -1) -> bool:
 	if nest == null or nest.alive_slimes <= 0:
 		return false
 	nest.alive_slimes -= 1
-	candy += settings.slime_reward if reward < 0 else reward
-	candy += _register_manual_capture()
+	var capture_reward: int = get_capture_reward(nest.species) if reward < 0 else reward
+	candy += capture_reward + _register_manual_capture(capture_reward)
 	nest_changed.emit(nest)
 	economy_changed.emit()
 	return true
@@ -145,7 +164,9 @@ func collect_net_batch(nest_ids: Array[int], rewards: Array[int] = []) -> int:
 			continue
 		nest.alive_slimes -= 1
 		collected_count += 1
-		reward += maxi(0, rewards[index]) if index < rewards.size() else settings.slime_reward
+		reward += (
+			maxi(0, rewards[index]) if index < rewards.size() else get_capture_reward(nest.species)
+		)
 		if not changed_nests.has(nest):
 			changed_nests.append(nest)
 	if collected_count == 0:
@@ -164,6 +185,9 @@ func purchase_technology(id: String) -> bool:
 		return false
 	candy -= cost
 	match id:
+		"base_value":
+			base_value_level += 1
+			base_value_changed.emit()
 		"pipe":
 			pipe_level += 1
 		"net_unlock":
@@ -243,6 +267,8 @@ func get_species_population(species: int) -> int:
 
 func get_technology_level(id: String) -> int:
 	match id:
+		"base_value":
+			return base_value_level
 		"pipe":
 			return pipe_level
 		"net":
@@ -341,6 +367,15 @@ func _resolve_technology_action(id: String) -> String:
 func get_technology_description(id: String) -> String:
 	id = _resolve_technology_action(id)
 	match id:
+		"base_value":
+			var next_level: int = mini(
+				base_value_level + 1, settings.base_value_multipliers.size() - 1
+			)
+			var next_value: int = settings.slime_reward * settings.base_value_multipliers[next_level]
+			return (
+				"史莱姆 %d → %d 糖果\n黏液怪 %d → %d 糖果"
+				% [get_base_value(), next_value, get_base_value() * 2, next_value * 2]
+			)
 		"pipe":
 			var next_level: int = mini(pipe_level + 1, settings.pipe_capture_seconds.size() - 1)
 			return (
@@ -363,10 +398,16 @@ func get_technology_description(id: String) -> String:
 		"automation":
 			return "开放各巢穴的自动化建设"
 		"combo_unlock":
-			return "连续吸入 %d 只后，每只额外 +1 糖果" % settings.combo_target
+			return (
+				"连续吸入 %d 只后，捕获收益 +%d%%"
+				% [settings.combo_target, settings.combo_reward_percentages[1]]
+			)
 		"combo_reward":
 			var next_level: int = mini(combo_level + 1, settings.combo_upgrade_costs.size())
-			return "连续吸入 %d 只后，每只额外 +%d → +%d 糖果" % [settings.combo_target, combo_level, next_level]
+			return (
+				"连击收益 +%d%% → +%d%%"
+				% [get_combo_reward_percent(), settings.combo_reward_percentages[next_level]]
+			)
 		"combo_interval":
 			var next_level: int = mini(
 				combo_interval_level + 1, settings.combo_interval_bonus_seconds.size() - 1
@@ -455,10 +496,11 @@ func get_nest_population_limit(nest_id: int) -> int:
 
 func get_nest_spawn_interval(nest_id: int) -> float:
 	var nest: NestState = get_nest(nest_id)
+	if nest == null:
+		return 0.0
 	return (
 		settings.spawn_intervals[mini(nest.level, settings.spawn_intervals.size() - 1)]
-		if nest != null
-		else 0.0
+		+ nest.spawn_interval_offset
 	)
 
 
@@ -490,12 +532,27 @@ func begin_net_cast() -> bool:
 	return true
 
 
+func get_base_value() -> int:
+	return settings.slime_reward * settings.base_value_multipliers[base_value_level]
+
+
+func get_capture_reward(species: NestState.Species, valuable: bool = false) -> int:
+	var reward: int = get_base_value() * (2 if species == NestState.Species.MUCUS else 1)
+	return reward * settings.valuable_reward_multiplier if valuable else reward
+
+
+func get_automatic_income_per_nest() -> float:
+	return settings.passive_income_per_second * settings.base_value_multipliers[base_value_level]
+
+
 func get_passive_income() -> float:
-	return float(completed_nests) * settings.passive_income_per_second
+	return float(completed_nests) * get_automatic_income_per_nest()
 
 
 func _get_technology_costs(id: String) -> PackedInt32Array:
 	match id:
+		"base_value":
+			return settings.base_value_upgrade_costs
 		"pipe":
 			return settings.pipe_upgrade_costs
 		"net_capacity":
@@ -513,14 +570,22 @@ func get_combo_window_seconds() -> float:
 	)
 
 
-func _register_manual_capture() -> int:
+func get_combo_reward_percent() -> int:
+	return settings.combo_reward_percentages[combo_level]
+
+
+func _register_manual_capture(reward: int) -> int:
 	if combo_level == 0:
 		return 0
 	combo_remaining = get_combo_window_seconds()
 	combo_count += 1
 	if combo_count <= settings.combo_target:
 		return 0
-	return combo_level
+	_combo_reward_remainder += reward * get_combo_reward_percent()
+	@warning_ignore("integer_division")
+	var bonus: int = _combo_reward_remainder / 100
+	_combo_reward_remainder %= 100
+	return bonus
 
 
 func _advance_nest_population(nest: NestState, delta: float) -> void:
@@ -536,6 +601,8 @@ func _advance_nest_population(nest: NestState, delta: float) -> void:
 	var spawned: bool = false
 	while nest.spawn_clock >= interval:
 		nest.spawn_clock -= interval
+		_roll_nest_spawn_interval(nest)
+		interval = get_nest_spawn_interval(nest.nest_id)
 		var burst_min: int = ceili(float(population_limit) * settings.spawn_burst_ratio_min)
 		var burst_max: int = floori(float(population_limit) * settings.spawn_burst_ratio_max)
 		var burst_count: int = mini(
@@ -552,10 +619,16 @@ func _advance_nest_population(nest: NestState, delta: float) -> void:
 		nest_changed.emit(nest)
 
 
+func _roll_nest_spawn_interval(nest: NestState) -> void:
+	nest.spawn_interval_offset = _random.randf_range(
+		-settings.spawn_interval_jitter, settings.spawn_interval_jitter
+	)
+
+
 func _advance_automatic_income(nest: NestState, delta: float) -> void:
 	if not nest.is_tamed:
 		return
-	nest.income_remainder += settings.passive_income_per_second * delta
+	nest.income_remainder += get_automatic_income_per_nest() * delta
 	var amount: int = floori(nest.income_remainder)
 	if amount <= 0:
 		return
@@ -587,6 +660,8 @@ func resolve_nest_spawn(position: Vector2, site_available: bool = true) -> bool:
 	_pending_nest_species = -1
 	if not site_available or is_complete:
 		return false
+	_nest_roll_clock = 0.0
+	_nest_spawn_cooldown_remaining = settings.nest_spawn_cooldown_seconds
 	_add_nest(species, position)
 	return true
 
@@ -596,19 +671,42 @@ func _check_completion() -> void:
 		return
 	is_complete = true
 	_nest_roll_clock = 0.0
+	_nest_spawn_cooldown_remaining = 0.0
+	_nest_initial_delay_remaining = 0.0
 	_pending_nest_species = -1
 	goal_completed.emit()
 
 
 func _advance_nest_roll(delta: float) -> void:
-	if not net_unlocked or is_complete:
+	if is_complete:
 		_nest_roll_clock = 0.0
+		_nest_spawn_cooldown_remaining = 0.0
+		_nest_initial_delay_remaining = 0.0
 		return
-	if _pending_nest_species >= 0:
+	var remaining_delta: float = delta
+	if _nest_initial_delay_remaining > 0.0:
+		var delay_step: float = minf(remaining_delta, _nest_initial_delay_remaining)
+		_nest_initial_delay_remaining -= delay_step
+		remaining_delta -= delay_step
+	if not net_unlocked:
+		_nest_roll_clock = 0.0
+		_nest_spawn_cooldown_remaining = 0.0
 		return
-	_nest_roll_clock += delta
-	while _nest_roll_clock >= settings.nest_roll_interval:
-		_nest_roll_clock -= settings.nest_roll_interval
+	if remaining_delta <= 0.0 or _pending_nest_species >= 0:
+		return
+	while remaining_delta > 0.0:
+		if _nest_spawn_cooldown_remaining > 0.0:
+			var cooldown_step: float = minf(remaining_delta, _nest_spawn_cooldown_remaining)
+			_nest_spawn_cooldown_remaining -= cooldown_step
+			remaining_delta -= cooldown_step
+			if remaining_delta <= 0.0:
+				return
+		var roll_step: float = minf(remaining_delta, settings.nest_roll_interval - _nest_roll_clock)
+		_nest_roll_clock += roll_step
+		remaining_delta -= roll_step
+		if _nest_roll_clock < settings.nest_roll_interval:
+			return
+		_nest_roll_clock = 0.0
 		if _random.randf() >= get_nest_roll_chance():
 			continue
 		_pending_nest_species = _choose_spawn_species()
@@ -634,6 +732,7 @@ func _add_nest(species: NestState.Species, position: Vector2) -> void:
 	nest.nest_id = generated_nests + 1
 	nest.species = species
 	nest.position = position
+	_roll_nest_spawn_interval(nest)
 	nests.append(nest)
 	generated_nests += 1
 	nest_added.emit(nest)

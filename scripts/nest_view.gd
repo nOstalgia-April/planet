@@ -67,9 +67,17 @@ func pulse_automatic() -> void:
 	_art.play_production()
 
 
+func pulse_spawn() -> void:
+	_art.play_spawn()
+
+
 func get_collection_point() -> Vector2:
 	var point: Vector2 = Vector2(0.0, _art_rect.position.y * 0.65)
 	return transform * _get_presentation_transform() * point
+
+
+func get_maximum_footprint_width() -> float:
+	return _art.get_maximum_footprint_width()
 
 
 func _refresh_art() -> void:

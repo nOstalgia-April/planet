@@ -1,10 +1,10 @@
 @tool
 extends Node2D
 
-@export_range(2.0, 16.0, 0.5) var half_width: float = 7.0
+@export_range(1.0, 16.0, 0.1) var half_width: float = 2.8
 @export_range(1.0, 20.0, 0.5) var lifetime: float = 7.0
-@export_range(20.0, 140.0, 1.0) var maximum_length: float = 72.0
-@export_range(1.0, 8.0, 0.5) var sample_spacing: float = 2.5
+@export_range(8.0, 140.0, 0.1) var maximum_length: float = 28.8
+@export_range(0.5, 8.0, 0.1) var sample_spacing: float = 1.0
 @export var edge_color: Color = Color("344991")
 @export var body_color: Color = Color("92b3ef")
 @export var highlight_color: Color = Color("e6f1ff")
@@ -66,8 +66,8 @@ func configure(
 	nest_id: int,
 	trail_half_width: float,
 	seconds: float,
-	length_limit: float = 72.0,
-	spacing: float = 2.5
+	length_limit: float = 28.8,
+	spacing: float = 1.0
 ) -> void:
 	assert(planet_surface != null)
 	_preview = false

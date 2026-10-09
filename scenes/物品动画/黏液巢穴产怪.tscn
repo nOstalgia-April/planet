@@ -1,0 +1,148 @@
+[gd_scene load_steps=27 format=3]
+
+[ext_resource type="Script" path="res://scripts/物品动画/动画物件.gd" id="script"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段1产怪/001.png" id="s1f1"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段1产怪/002.png" id="s1f2"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段1产怪/003.png" id="s1f3"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段1产怪/004.png" id="s1f4"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段1产怪/005.png" id="s1f5"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段1产怪/006.png" id="s1f6"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段1产怪/007.png" id="s1f7"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段2产怪/001.png" id="s2f1"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段2产怪/002.png" id="s2f2"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段2产怪/003.png" id="s2f3"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段2产怪/004.png" id="s2f4"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段2产怪/005.png" id="s2f5"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段2产怪/006.png" id="s2f6"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段2产怪/007.png" id="s2f7"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段3产怪/001.png" id="s3f1"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段3产怪/002.png" id="s3f2"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段3产怪/003.png" id="s3f3"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段3产怪/004.png" id="s3f4"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段3产怪/005.png" id="s3f5"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段3产怪/006.png" id="s3f6"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/黏液巢穴/阶段3产怪/007.png" id="s3f7"]
+
+[sub_resource type="Animation" id="stage1"]
+resource_name = "阶段1产怪"
+length = 0.583333333
+step = 0.083333333
+tracks/0/type = "value"
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/keys = {
+"times": PackedFloat32Array(0.000000000, 0.083333333, 0.166666667, 0.250000000, 0.333333333, 0.416666667, 0.500000000),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("s1f1"), ExtResource("s1f2"), ExtResource("s1f3"), ExtResource("s1f4"), ExtResource("s1f5"), ExtResource("s1f6"), ExtResource("s1f7")]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/keys = {
+"times": PackedFloat32Array(0.000000000, 0.083333333, 0.166666667, 0.250000000, 0.333333333, 0.416666667, 0.500000000),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-83.680779400, -96.221497100), Vector2(-83.680779400, -96.221497100), Vector2(-83.680779400, -96.221497100), Vector2(-83.680779400, -96.221497100), Vector2(-83.680779400, -96.221497100), Vector2(-83.680779400, -96.221497100), Vector2(-83.680779400, -96.221497100)]
+}
+tracks/2/type = "value"
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/keys = {
+"times": PackedFloat32Array(0.000000000, 0.083333333, 0.166666667, 0.250000000, 0.333333333, 0.416666667, 0.500000000),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100)]
+}
+
+[sub_resource type="Animation" id="stage2"]
+resource_name = "阶段2产怪"
+length = 0.583333333
+step = 0.083333333
+tracks/0/type = "value"
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/keys = {
+"times": PackedFloat32Array(0.000000000, 0.083333333, 0.166666667, 0.250000000, 0.333333333, 0.416666667, 0.500000000),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("s2f1"), ExtResource("s2f2"), ExtResource("s2f3"), ExtResource("s2f4"), ExtResource("s2f5"), ExtResource("s2f6"), ExtResource("s2f7")]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/keys = {
+"times": PackedFloat32Array(0.000000000, 0.083333333, 0.166666667, 0.250000000, 0.333333333, 0.416666667, 0.500000000),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-120.162867400, -131.335506800), Vector2(-120.162867400, -131.335506800), Vector2(-120.162867400, -131.335506800), Vector2(-120.162867400, -131.335506800), Vector2(-120.162867400, -131.335506800), Vector2(-120.162867400, -131.335506800), Vector2(-120.162867400, -131.335506800)]
+}
+tracks/2/type = "value"
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/keys = {
+"times": PackedFloat32Array(0.000000000, 0.083333333, 0.166666667, 0.250000000, 0.333333333, 0.416666667, 0.500000000),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100)]
+}
+
+[sub_resource type="Animation" id="stage3"]
+resource_name = "阶段3产怪"
+length = 0.583333333
+step = 0.083333333
+tracks/0/type = "value"
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/keys = {
+"times": PackedFloat32Array(0.000000000, 0.083333333, 0.166666667, 0.250000000, 0.333333333, 0.416666667, 0.500000000),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("s3f1"), ExtResource("s3f2"), ExtResource("s3f3"), ExtResource("s3f4"), ExtResource("s3f5"), ExtResource("s3f6"), ExtResource("s3f7")]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/keys = {
+"times": PackedFloat32Array(0.000000000, 0.083333333, 0.166666667, 0.250000000, 0.333333333, 0.416666667, 0.500000000),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-140.912054500, -130.879481500), Vector2(-140.912054500, -130.879481500), Vector2(-140.912054500, -130.879481500), Vector2(-140.912054500, -130.879481500), Vector2(-140.912054500, -130.879481500), Vector2(-140.912054500, -130.879481500), Vector2(-140.912054500, -130.879481500)]
+}
+tracks/2/type = "value"
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/keys = {
+"times": PackedFloat32Array(0.000000000, 0.083333333, 0.166666667, 0.250000000, 0.333333333, 0.416666667, 0.500000000),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100), Vector2(0.456026100, 0.456026100)]
+}
+
+[sub_resource type="AnimationLibrary" id="library"]
+_data = {
+&"阶段1产怪": SubResource("stage1"),
+&"阶段2产怪": SubResource("stage2"),
+&"阶段3产怪": SubResource("stage3")
+}
+
+[node name="黏液巢穴产怪" type="Node2D" node_paths=PackedStringArray("animation_player")]
+texture_filter = 1
+script = ExtResource("script")
+default_animation = &"阶段1产怪"
+animation_order = Array[StringName]([&"阶段1产怪", &"阶段2产怪", &"阶段3产怪"])
+animation_player = NodePath("动画播放器")
+frames_per_second = 12.0
+
+[node name="画面" type="Node2D" parent="."]
+
+[node name="贴图" type="Sprite2D" parent="画面"]
+position = Vector2(-83.680779400, -96.221497100)
+scale = Vector2(0.456026100, 0.456026100)
+texture = ExtResource("s1f1")
+centered = false
+
+[node name="动画播放器" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("library")
+}

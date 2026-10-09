@@ -40,7 +40,11 @@ var _nest_mucus_areas: Array[NestMucusArea] = []
 var _restore_tween: Tween
 var _status_tween: Tween
 var _hud_refresh_queued: bool = false
+var _overview_sample_elapsed: float = 0.0
 var _site_random: RandomNumberGenerator = RandomNumberGenerator.new()
+var _nest_site_angles: PackedFloat32Array = PackedFloat32Array()
+var _nest_site_jitter: float = 0.0
+var _nest_site_distance: float = 0.0
 var _vacuum_audio: VacuumAudio
 
 @onready var run: PrototypeRun = $Run
@@ -88,6 +92,7 @@ func _ready() -> void:
 	$Audio.add_child(_vacuum_audio)
 	get_viewport().physics_object_picking = true
 	run.economy_changed.connect(_queue_hud_refresh)
+	run.base_value_changed.connect(_refresh_monster_rewards)
 	run.nest_added.connect(_on_nest_added)
 	run.nest_spawn_requested.connect(_on_nest_spawn_requested)
 	run.nest_changed.connect(_on_nest_changed)
@@ -105,6 +110,7 @@ func _ready() -> void:
 	_nest_button.pressed.connect(_on_nest_upgrade)
 	_layout.interaction_panel_changed.connect(_cancel_view_drag)
 	_view.view_changed.connect(_sync_view_presentation)
+	_view.projection_changed.connect(_sync_view_projection)
 	%RestartButton.pressed.connect(restart_run)
 	%ReplayButton.pressed.connect(restart_run)
 	%CloseVictoryButton.pressed.connect(_close_victory)
@@ -120,6 +126,10 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_update_nest_hover(get_viewport().get_mouse_position())
 	run.advance(delta)
+	if _view.is_overview():
+		_overview_sample_elapsed += delta
+		if _overview_sample_elapsed >= 0.4:
+			_refresh_overview()
 	_layout.refresh_timers(run)
 	_advance_ground_mucus(delta)
 	var world_position: Vector2 = _world.to_local(get_global_mouse_position())
@@ -149,7 +159,7 @@ func _drive_tool(delta: float, pointer: Vector2, holding: bool) -> void:
 		):
 			_start_net(pointer)
 	_advance_net(delta)
-	if _view.is_overview():
+	if _view.is_overview() or _view.is_transitioning():
 		_net.hide()
 	if _net_phase == NetPhase.IDLE and not _can_collect(pointer, run.get_net_radius()):
 		_net.hide()
@@ -250,6 +260,7 @@ func _can_collect(pointer: Vector2, radius: float) -> bool:
 	return (
 		_window_has_focus
 		and not _view.is_overview()
+		and not _view.is_transitioning()
 		and get_viewport_rect().has_point(viewport_position)
 		and not _view.is_dragging()
 		and not _layout.is_over_ui(viewport_position)
@@ -305,13 +316,30 @@ func _unhandled_input(event: InputEvent) -> void:
 	var button: InputEventMouseButton = event as InputEventMouseButton
 	if _layout.is_over_ui(button.position):
 		return
-	if button.button_index == MOUSE_BUTTON_RIGHT and button.pressed:
+	if button.button_index == MOUSE_BUTTON_LEFT and button.pressed:
+		if (
+			not _window_has_focus
+			or not _view.is_overview()
+			or _view.is_transitioning()
+			or _view.is_dragging()
+			or not get_viewport_rect().has_point(button.position)
+		):
+			return
+		var bubble: OverviewEcology.Bubble = _overview.get_bubble_at(button.position)
+		if bubble == null:
+			return
+		var surface_angle: float = bubble.cluster.angle
+		_cancel_view_drag()
+		_view.focus_surface(surface_angle)
+		get_viewport().set_input_as_handled()
+	elif button.button_index == MOUSE_BUTTON_RIGHT and button.pressed:
 		var on_planet: bool = _view.contains_planet_body(button.position)
 		var can_start_drag: bool = not on_planet if _view.is_overview() else on_planet
 		if (
 			not _window_has_focus
 			or not get_viewport_rect().has_point(button.position)
 			or not can_start_drag
+			or _view.is_transitioning()
 			or _is_over_selected_nest(button.position)
 		):
 			return
@@ -365,19 +393,19 @@ func _sync_view_presentation() -> void:
 	_clear_nest_selection()
 	_capture_at(0.0, _tool_pointer, false)
 	var near_view: bool = not _view.is_overview()
-	%InputHint.text = ("悬停吸取 · 左键投网 · 右键拖动星球 · 滚轮切换视图" if near_view else "右键拖动空白处 · 滚轮返回近景")
-	_slime_root.visible = near_view
-	_nests.visible = near_view
-	_mucus_root.visible = near_view
-	_effects.visible = near_view
-	if not near_view:
+	%InputHint.text = (
+		"悬停吸取 · 左键投网 · 右键拖动星球 · 滚轮切换视图"
+		if near_view
+		else "点击气泡进入近景 · 右键拖动空白处 · 滚轮返回近景"
+	)
+	if not near_view or _view.is_transitioning():
 		_pipe.hide()
 		_net.hide()
 	var crust_changed: bool = _planet.set_near_view(near_view)
 	for slime: PrototypeSlime in _slimes:
-		slime.presentation_scale = _view.near_slime_scale if near_view else 1.0
+		slime.presentation_scale = _view.near_slime_scale
 	for nest: NestView in _nest_views:
-		nest.presentation_scale = _view.near_nest_scale if near_view else Vector2.ONE
+		nest.presentation_scale = _view.near_nest_scale
 	for region: GovernedRegion in _regions:
 		if crust_changed:
 			region.refresh_surface()
@@ -388,6 +416,16 @@ func _sync_view_presentation() -> void:
 		if crust_changed:
 			area.refresh_surface()
 	_refresh_overview()
+	_sync_view_projection()
+
+
+func _sync_view_projection() -> void:
+	var blend: float = _view.near_blend
+	for layer: Node2D in [_slime_root, _nests, _mucus_root, _effects]:
+		layer.visible = blend > 0.0
+		layer.modulate.a = blend
+	_planet.set_near_blend(blend)
+	_overview.set_view_opacity(1.0 - blend)
 
 
 func restart_run() -> void:
@@ -423,9 +461,12 @@ func restart_run() -> void:
 	_planet.set_restored(0.0)
 	_status_label.text = ""
 	_status_label.modulate.a = 1.0
+	_prepare_nest_sites()
 	var spawn_positions: Array[Vector2] = []
-	for offset: float in [-0.22, 0.22]:
-		var angle: float = -PI / 2.0 + offset
+	for index: int in range(run.settings.initial_nests):
+		# Keep the opening pair as close to the near-view center as their full growth allows.
+		var offset: float = _nest_site_jitter if index == 0 else -_nest_site_jitter
+		var angle: float = _nest_site_angles[index] + offset
 		spawn_positions.append(_planet.get_nest_position(angle))
 	_site_random.randomize()
 	run.start_run(spawn_positions)
@@ -584,12 +625,15 @@ func _retire_mucus_trail(trail: MucusField) -> void:
 
 
 func _refresh_overview() -> void:
-	_overview.update_nest_clusters(run.nests)
+	_overview_sample_elapsed = 0.0
+	var positions: PackedVector2Array = PackedVector2Array()
+	var kinds: PackedInt32Array = PackedInt32Array()
+	for actor: PrototypeSlime in _slimes:
+		if not actor.consumed:
+			positions.append(actor.position)
+			kinds.append(int(actor.species))
 	_overview.update_ecology(
-		run.get_species_population(NestState.Species.SLIME),
-		run.get_species_population(NestState.Species.MUCUS),
-		_view.is_overview(),
-		get_viewport_rect().size
+		positions, kinds, _view.is_overview() or _view.is_transitioning(), get_viewport_rect().size
 	)
 
 
@@ -607,18 +651,49 @@ func _play_collection_reward(reward: int, source_position: Vector2) -> void:
 	effect.play(origin, destination, reward)
 
 
+func _prepare_nest_sites() -> void:
+	var measuring_view: NestView = nest_scene.instantiate() as NestView
+	_nests.add_child(measuring_view)
+	var maximum_width: float = (
+		measuring_view.get_maximum_footprint_width() * _view.near_nest_scale.x
+	)
+	_nests.remove_child(measuring_view)
+	measuring_view.free()
+	_nest_site_distance = maxf(
+		maximum_width + run.settings.nest_spacing_margin, run.settings.nest_min_distance
+	)
+	# Relief never exceeds its configured amplitude; use this lower radius bound for every heading.
+	var minimum_radius: float = (
+		_planet.radius * (PlanetSurface.SURFACE_RADIUS_RATIO - _planet.edge_relief_ratio)
+		- _planet.nest_edge_inset
+	)
+	assert(_nest_site_distance < minimum_radius * 2.0, "The planet must fit two fully grown nests.")
+	var minimum_angle: float = 2.0 * asin(_nest_site_distance / (minimum_radius * 2.0))
+	var site_count: int = int(floor(TAU / minimum_angle))
+	assert(site_count >= run.settings.initial_nests, "The planet must fit all opening nests.")
+	var angle_step: float = TAU / float(site_count)
+	_nest_site_jitter = (angle_step - minimum_angle) * 0.5
+	_nest_site_angles.clear()
+	for index: int in range(site_count):
+		_nest_site_angles.append(-PI / 2.0 + (float(index) - 0.5) * angle_step)
+
+
 func _on_nest_spawn_requested(species: NestState.Species) -> void:
 	var points: Array[Vector2] = []
 	var weights: Array[float] = []
 	var total_weight: float = 0.0
-	for _attempt: int in range(run.settings.nest_site_samples):
-		var angle: float = _site_random.randf_range(0.0, TAU)
+	var angle_step: float = TAU / float(_nest_site_angles.size())
+	for site_angle: float in _nest_site_angles:
+		var angle: float = (
+			site_angle + _site_random.randf_range(-_nest_site_jitter, _nest_site_jitter)
+		)
 		var point: Vector2 = _planet.get_nest_position(angle)
 		var legal: bool = true
 		var weight: float = 1.0
 		for nest: NestState in run.nests:
 			var distance: float = nest.position.distance_to(point)
-			if distance < run.settings.nest_min_distance:
+			var site_offset: float = absf(wrapf(nest.position.angle() - site_angle, -PI, PI))
+			if site_offset < angle_step * 0.5 or distance < _nest_site_distance:
 				legal = false
 				break
 			if (
@@ -666,7 +741,7 @@ func _on_nest_added(nest: NestState) -> void:
 	view.setup(nest.nest_id)
 	view.rotation = _planet.get_nest_rotation(nest.position.angle())
 	view.configure_species(nest.species)
-	view.presentation_scale = _view.near_nest_scale if not _view.is_overview() else Vector2.ONE
+	view.presentation_scale = _view.near_nest_scale
 	view.update_state(nest.level, nest.is_tamed, run.settings.nest_upgrade_costs.size())
 	_nest_views.append(view)
 	_refresh_hud()
@@ -682,27 +757,29 @@ func _on_nest_changed(nest: NestState) -> void:
 
 func _on_slime_requested(nest_id: int) -> void:
 	var nest: NestState = run.get_nest(nest_id)
+	_nest_views[nest_id - 1].pulse_spawn()
 	var slime: PrototypeSlime = slime_scene.instantiate() as PrototypeSlime
 	_slime_root.add_child(slime)
 	slime.setup(nest_id, nest.position, _planet, _get_roaming_screen_half_angle())
-	slime.presentation_scale = _view.near_slime_scale if not _view.is_overview() else 1.0
+	slime.presentation_scale = _view.near_slime_scale
 	var direction_index: int = int(_spawn_directions.get(nest_id, 0))
 	_spawn_directions[nest_id] = direction_index + 1
 	var species: PrototypeSlime.Species = nest.species as PrototypeSlime.Species
 	var valuable: bool = (
 		nest.valuable_level > 0 and direction_index % run.settings.valuable_spawn_every == 0
 	)
-	var reward: int = (
-		run.settings.slime_reward * (2 if species == PrototypeSlime.Species.MUCUS else 1)
-	)
-	if valuable:
-		reward *= run.settings.valuable_reward_multiplier
+	var reward: int = run.get_capture_reward(nest.species, valuable)
 	slime.configure_species(species, valuable, reward)
 	var direction_angle: float = (
 		float(direction_index) * 2.399963 + nest.position.angle() + randf_range(-0.14, 0.14)
 	)
 	slime.launch(Vector2.from_angle(direction_angle))
 	_slimes.append(slime)
+
+
+func _refresh_monster_rewards() -> void:
+	for slime: PrototypeSlime in _slimes:
+		slime.reward = run.get_capture_reward(slime.species as NestState.Species, slime.high_value)
 
 
 func _on_automatic_income_received(nest_id: int, _amount: int) -> void:
@@ -719,7 +796,12 @@ func _select_nest(nest_id: int) -> void:
 
 
 func _update_nest_hover(viewport_position: Vector2) -> void:
-	if _view.is_overview() or _view.is_dragging() or _layout.is_technology_open():
+	if (
+		_view.is_overview()
+		or _view.is_transitioning()
+		or _view.is_dragging()
+		or _layout.is_technology_open()
+	):
 		_clear_nest_selection()
 		return
 	if selected_nest_id >= 0 and _layout.is_over_nest_details(viewport_position):
@@ -818,7 +900,7 @@ func _refresh_hud() -> void:
 	)
 	if nest.is_tamed:
 		_nest_level_label.text = "完全自动化 · 剩余生物 %d" % nest.alive_slimes
-		_nest_benefit_label.text = "停止产怪 · 每秒 %.1f 糖果" % run.settings.passive_income_per_second
+		_nest_benefit_label.text = "停止产怪 · 每秒 %.1f 糖果" % run.get_automatic_income_per_nest()
 		_nest_button.text = "自动产糖中"
 		_nest_button.disabled = true
 		return
@@ -829,13 +911,14 @@ func _refresh_hud() -> void:
 	)
 	var next_level: int = nest.level + 1
 	if next_level == run.settings.nest_upgrade_costs.size():
-		_nest_benefit_label.text = "停止产怪 · 每秒 %.1f 糖果" % run.settings.passive_income_per_second
+		_nest_benefit_label.text = "停止产怪 · 每秒 %.1f 糖果" % run.get_automatic_income_per_nest()
 	else:
 		_nest_benefit_label.text = (
-			"每 %.0f → %.0f 秒喷发一批\n上限 %d → %d 只"
+			"间隔 %.0f → %.0f 秒（±%.0f 秒）\n上限 %d → %d 只"
 			% [
 				run.settings.spawn_intervals[nest.level],
 				run.settings.spawn_intervals[next_level],
+				run.settings.spawn_interval_jitter,
 				run.get_nest_population_limit(nest.nest_id),
 				run.settings.nest_population_limits[next_level]
 			]

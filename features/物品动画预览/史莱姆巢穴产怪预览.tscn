@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://features/物品动画预览/物品动画总览.tscn" id="preview"]
+
+[node name="史莱姆巢穴产怪预览" instance=ExtResource("preview")]
+initial_index = 9

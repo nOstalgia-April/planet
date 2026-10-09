@@ -28,7 +28,7 @@ func _run_checks() -> void:
 	demo.restart_run()
 	demo.run._random.seed = 41853
 	demo._site_random.seed = 19481
-	demo.run.advance(demo.run.settings.spawn_intervals[0])
+	demo.run.advance(demo.run.settings.spawn_intervals[0] + demo.run.settings.spawn_interval_jitter)
 	_freeze_actors(demo)
 	_check(
 		demo._regions.size() == 2 and demo._nest_views.size() == 2,
@@ -52,7 +52,7 @@ func _run_checks() -> void:
 		demo.run.resolve_nest_spawn(demo._planet.get_nest_position(-PI / 2.0 + 0.78)),
 		"a resolved discovery prepares the mucus nest for governance checks"
 	)
-	demo.run.advance(demo.run.settings.spawn_intervals[0])
+	demo.run.advance(demo.run.settings.spawn_intervals[0] + demo.run.settings.spawn_interval_jitter)
 	_freeze_actors(demo)
 	_check(
 		demo.run.get_nest(3).species == NestState.Species.MUCUS,
@@ -97,7 +97,7 @@ func _run_checks() -> void:
 
 
 func _check_research_and_future_spawns(demo: DemoScript) -> void:
-	demo.run.candy = 10000
+	demo.run.candy = 100000
 	demo.run.economy_changed.emit()
 	var before: int = demo.run.candy
 	_check(not demo.run.upgrade_nest(1), "local construction waits for its research unlock")
@@ -248,15 +248,18 @@ func _check_manual_collection(demo: DemoScript) -> void:
 		demo.run.candy == before + expected_reward and demo.run.combo_count == 5,
 		"the first five consecutive pipe captures establish the streak without a bonus"
 	)
+	before = demo.run.candy
+	var streak_value: int = 0
 	for streak: int in [6, 7]:
 		var actor: PrototypeSlime = _first_species(demo, PrototypeSlime.Species.SLIME)
 		_isolate(demo, [actor])
-		before = demo.run.candy
 		var reward: int = actor.reward
+		streak_value += reward
 		demo._capture_at(demo._capture_seconds_for(actor), actor.get_capture_point(), true)
 		_check(
-			demo.run.candy == before + reward + 1 and demo.run.combo_count == streak,
-			"every pipe capture after five pays the sustained bonus"
+			demo.run.candy == before + streak_value + floori(streak_value * 0.25)
+			and demo.run.combo_count == streak,
+			"sustained percentage bonuses accumulate fractional candy across captures"
 		)
 	var batch: Array[PrototypeSlime] = []
 	expected_reward = 0
@@ -286,7 +289,7 @@ func _check_manual_collection(demo: DemoScript) -> void:
 
 
 func _check_automation_and_completion(demo: DemoScript) -> void:
-	demo.run.advance(demo.run.settings.spawn_intervals[0])
+	demo.run.advance(demo.run.settings.spawn_intervals[0] + demo.run.settings.spawn_interval_jitter)
 	_freeze_actors(demo)
 	_check(
 		demo.run.upgrade_nest(1) and demo.run.upgrade_nest(1),

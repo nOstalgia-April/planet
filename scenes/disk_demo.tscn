@@ -33,22 +33,21 @@ unique_name_in_owner = true
 script = ExtResource("2_run")
 settings = ExtResource("3_settings")
 
-[node name="PlanetViewController" parent="." node_paths=PackedStringArray("world", "projection_root", "planet_surface", "bottom_toolbar") instance=ExtResource("16_view")]
+[node name="PlanetViewController" parent="." node_paths=PackedStringArray("world", "projection_root") instance=ExtResource("16_view")]
 unique_name_in_owner = true
 world = NodePath("../World")
 projection_root = NodePath("..")
-planet_surface = NodePath("../World/PlanetSurface")
-bottom_toolbar = NodePath("../HUD/Interface/ToolDock")
-near_horizontal_stretch = 1.65
+near_radius_ratio = 0.6
+near_slime_scale = 0.64
+near_nest_scale = Vector2(0.4, 0.4)
 overview_radius_ratio = 0.46
 
 [node name="World" type="Node2D" parent="."]
 unique_name_in_owner = true
 position = Vector2(510, 400)
 
-[node name="OverviewEcology" parent="." node_paths=PackedStringArray("interface") instance=ExtResource("19_overview")]
+[node name="OverviewEcology" parent="." instance=ExtResource("19_overview")]
 unique_name_in_owner = true
-interface = NodePath("../HUD/Interface")
 
 [node name="PlanetSurface" parent="World" instance=ExtResource("4_surface")]
 unique_name_in_owner = true
@@ -108,6 +107,7 @@ stream = ExtResource("13_finish_sound")
 volume_db = -12.0
 
 [node name="HUD" type="CanvasLayer" parent="."]
+layer = 1
 
 
 [node name="Interface" type="Control" parent="HUD"]

@@ -52,16 +52,23 @@ const EDGE_HEIGHTS: Array[float] = [
 
 var _restored: float = 0.0
 var _near_view: bool = false
+var _near_blend: float = 0.0
 var _contour: PackedVector2Array = PackedVector2Array()
 var _inner_contour: PackedVector2Array = PackedVector2Array()
 
 
 func set_near_view(value: bool) -> bool:
+	set_near_blend(1.0 if value else 0.0)
 	if _near_view == value:
 		return false
 	_near_view = value
 	queue_redraw()
 	return true
+
+
+func set_near_blend(value: float) -> void:
+	_near_blend = value
+	queue_redraw()
 
 
 func set_restored(value: float) -> void:
@@ -168,7 +175,7 @@ func _draw_border(points: PackedVector2Array, color: Color, width: float) -> voi
 func _draw() -> void:
 	var earth_color: Color = Color("e6e5d9").lerp(restored_color, _restored)
 	var rim_color: Color = Color("bfc0b2").lerp(Color("8da673"), _restored)
-	var border_width: float = 1.1 if _near_view else 2.4
+	var border_width: float = lerpf(2.4, 1.1, _near_blend)
 	var outer: PackedVector2Array = get_surface_polygon()
 	draw_set_transform(Vector2(0.0, 23.0), 0.0, Vector2.ONE * 1.025)
 	draw_colored_polygon(outer, Color(0.12, 0.15, 0.12, 0.12))
@@ -178,7 +185,7 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 	draw_colored_polygon(outer, earth_color)
 	_draw_border(outer, outline_color, border_width)
-	if _near_view:
+	if _near_blend > 0.0:
 		var inner: PackedVector2Array = get_inner_polygon()
-		draw_colored_polygon(inner, core_color)
-		_draw_border(inner, Color(0.30, 0.34, 0.29, 0.35), border_width)
+		draw_colored_polygon(inner, Color(core_color, core_color.a * _near_blend))
+		_draw_border(inner, Color(0.30, 0.34, 0.29, 0.35 * _near_blend), border_width)

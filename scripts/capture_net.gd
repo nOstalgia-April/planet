@@ -3,18 +3,19 @@ extends Node2D
 
 const SurfaceProjection = preload("res://scripts/surface_projection.gd")
 const FrameArt = preload("res://scripts/场景动画/帧动画.gd")
+const REFERENCE_RADIUS: float = 84.0
 
 enum Presentation { PREVIEW, CAST, OPEN, CARRIED, RESULT, COOLDOWN }
 
 @export_range(0.05, 0.6, 0.01) var cast_seconds: float = 0.18
 @export_range(0.1, 1.5, 0.01) var close_seconds: float = 0.35
-@export_range(20.0, 160.0, 1.0) var preview_radius: float = 84.0
+@export_range(8.0, 160.0, 0.1) var preview_radius: float = 33.6
 @export_range(0.1, 0.6, 0.01) var result_flash_seconds: float = 0.30
 @export var ink: Color = Color("454944")
 @export var accent: Color = Color("7b9c83")
 
 var _presentation: Presentation = Presentation.PREVIEW
-var _radius: float = 84.0
+var _radius: float = 33.6
 var _progress: float = 0.0
 var _cooldown_progress: float = 0.0
 var _result_age: float = 0.0
@@ -48,7 +49,13 @@ func _update_visual_compensation() -> void:
 	# The net lies on the ground, so it shares the projected capture footprint.
 	_art_root.transform = Transform2D.IDENTITY
 	_label_compensation.transform = (
-		compensation * Transform2D(-screen_transform.get_rotation(), Vector2.ZERO)
+		compensation
+		* Transform2D(
+			-screen_transform.get_rotation(),
+			Vector2.ONE * _radius / REFERENCE_RADIUS,
+			0.0,
+			Vector2.ZERO
+		)
 	)
 
 
@@ -90,9 +97,9 @@ func show_cooldown(pointer: Vector2, radius: float, remaining: float, total: flo
 
 func _present(mode: Presentation, pointer: Vector2, radius: float, progress: float) -> void:
 	position = pointer
-	_update_visual_compensation()
 	_presentation = mode
 	_radius = radius
+	_update_visual_compensation()
 	_progress = clampf(progress, 0.0, 1.0)
 	visible = true
 	_collected_label.visible = false
@@ -106,6 +113,8 @@ func _present(mode: Presentation, pointer: Vector2, radius: float, progress: flo
 	for point_index: int in range(65):
 		rim_points.append(Vector2.from_angle(TAU * float(point_index) / 64.0) * display_radius)
 	_rim.points = rim_points
+	_rim.width = 2.2 * _radius / REFERENCE_RADIUS
+	_result_ring.width = 3.0 * _radius / REFERENCE_RADIUS
 	_rim.default_color = Color(
 		ink, 0.25 if mode in [Presentation.PREVIEW, Presentation.COOLDOWN] else 0.85
 	)
@@ -114,15 +123,16 @@ func _present(mode: Presentation, pointer: Vector2, radius: float, progress: flo
 
 
 func _display_radius() -> float:
+	var detail_scale: float = _radius / REFERENCE_RADIUS
 	match _presentation:
 		Presentation.PREVIEW, Presentation.COOLDOWN:
 			return _radius
 		Presentation.CAST:
-			return lerpf(9.0, _radius, ease(_progress, 0.55))
+			return lerpf(9.0 * detail_scale, _radius, ease(_progress, 0.55))
 		Presentation.OPEN:
-			return lerpf(_radius, 12.0, _progress)
+			return lerpf(_radius, 12.0 * detail_scale, _progress)
 		_:
-			return 12.0
+			return 12.0 * detail_scale
 
 
 func _sync_art() -> void:
@@ -155,16 +165,26 @@ func _draw() -> void:
 		_draw_result_sparks()
 		return
 	if _presentation == Presentation.COOLDOWN:
+		var detail_scale: float = _radius / REFERENCE_RADIUS
 		draw_set_transform_matrix(SurfaceProjection.get_visual_compensation(self))
-		draw_arc(Vector2.ZERO, 13.0, 0.0, TAU, 48, Color(ink, 0.2), 2.5, true)
 		draw_arc(
 			Vector2.ZERO,
-			13.0,
+			13.0 * detail_scale,
+			0.0,
+			TAU,
+			48,
+			Color(ink, 0.2),
+			2.5 * detail_scale,
+			true
+		)
+		draw_arc(
+			Vector2.ZERO,
+			13.0 * detail_scale,
 			-PI / 2.0,
 			-PI / 2.0 + TAU * _cooldown_progress,
 			48,
 			Color(ink, 0.65),
-			2.5,
+			2.5 * detail_scale,
 			true
 		)
 
@@ -182,13 +202,14 @@ func _update_result_ring() -> void:
 
 func _draw_result_sparks() -> void:
 	var progress: float = clampf(_result_age / result_flash_seconds, 0.0, 1.0)
+	var detail_scale: float = _radius / REFERENCE_RADIUS
 	var distance: float = lerpf(_radius * 0.45, _radius * 1.15, progress)
 	for spark_index: int in range(8):
 		var direction: Vector2 = Vector2.from_angle(TAU * float(spark_index) / 8.0)
 		draw_line(
 			direction * distance,
-			direction * (distance + 9.0),
+			direction * (distance + 9.0 * detail_scale),
 			Color(accent, 1.0 - progress),
-			2.4,
+			2.4 * detail_scale,
 			true
 		)

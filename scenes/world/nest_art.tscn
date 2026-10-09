@@ -1,17 +1,21 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/nest_art.gd" id="1_art"]
 [ext_resource type="PackedScene" path="res://scenes/物品动画/史莱姆巢穴1-2-3-4.tscn" id="2_slime"]
 [ext_resource type="PackedScene" path="res://scenes/物品动画/黏液巢穴1-2-3-4.tscn" id="3_mucus"]
 [ext_resource type="PackedScene" path="res://scenes/物品动画/史莱姆花.tscn" id="4_flower"]
 [ext_resource type="PackedScene" path="res://scenes/物品动画/黏液花.tscn" id="5_flower"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/史莱姆巢穴产怪.tscn" id="6_spawn"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/黏液巢穴产怪.tscn" id="7_spawn"]
 
-[node name="NestArt" type="Node2D" node_paths=PackedStringArray("slime_growth", "mucus_growth", "slime_flower", "mucus_flower")]
+[node name="NestArt" type="Node2D" node_paths=PackedStringArray("slime_growth", "mucus_growth", "slime_flower", "mucus_flower", "slime_spawn", "mucus_spawn")]
 script = ExtResource("1_art")
 slime_growth = NodePath("史莱姆巢穴")
 mucus_growth = NodePath("黏液巢穴")
 slime_flower = NodePath("史莱姆花")
 mucus_flower = NodePath("黏液花")
+slime_spawn = NodePath("史莱姆产怪")
+mucus_spawn = NodePath("黏液产怪")
 
 [node name="史莱姆巢穴" parent="." instance=ExtResource("2_slime")]
 
@@ -25,3 +29,9 @@ scale = Vector2(0.6278027, 0.6278027)
 [node name="黏液花" parent="." instance=ExtResource("5_flower")]
 visible = false
 scale = Vector2(0.4560261, 0.4560261)
+
+[node name="史莱姆产怪" parent="." instance=ExtResource("6_spawn")]
+visible = false
+
+[node name="黏液产怪" parent="." instance=ExtResource("7_spawn")]
+visible = false

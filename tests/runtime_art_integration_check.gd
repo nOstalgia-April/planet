@@ -44,12 +44,15 @@ func _run() -> void:
 				item.animation_player.callback_mode_process = (
 					AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 				)
-		demo.run.advance(demo.run.settings.spawn_intervals[0])
+		demo.run.advance(
+			demo.run.settings.spawn_intervals[0] + demo.run.settings.spawn_interval_jitter
+		)
 		for actor: PrototypeSlime in demo._slimes:
 			actor._process(actor.launch_seconds + 0.1)
 			actor.set_process(false)
 		await _check_nests(demo, views, dimensions)
 		await _check_tools(demo, dimensions)
+		_check_net_boundary(demo)
 		_check_rapid_upgrades(demo._nest_views[1])
 		demo.restart_run()
 		_check(demo._nest_views.size() == 2 and demo._net_phase == DemoScript.NetPhase.IDLE)
@@ -65,7 +68,7 @@ func _run() -> void:
 		quit(1)
 		return
 	print(
-		"PASS: live nest upgrades/flowers, production, hover bounds, pipe loop, all five net frames, collection, overview and reset at two resolutions."
+		"PASS: live nest spawn bursts, upgrades/flowers, production, hover bounds, pipe loop, all five net frames, collection, overview and reset at two resolutions."
 	)
 	quit()
 
@@ -77,6 +80,7 @@ func _check_nests(demo: DemoScript, views: Array[NestView], dimensions: Vector2i
 	for view: NestView in views:
 		_check(view._art._display_level == 0)
 		_check_bounds(view)
+	await _check_spawn(demo, views, dimensions, 0)
 	await _save("stage_0", dimensions)
 	await _check_ground_alignment(demo, views, dimensions, 0)
 	for level: int in range(1, 4):
@@ -102,6 +106,8 @@ func _check_nests(demo: DemoScript, views: Array[NestView], dimensions: Vector2i
 			_check(not view._art._transitioning and view._art._display_level == level)
 			_check_bounds(view)
 		await _save("stage_%d" % level, dimensions)
+		if level < 3:
+			await _check_spawn(demo, views, dimensions, level)
 		if level in [2, 3]:
 			demo._select_nest(views[0].nest_id)
 			await _settle()
@@ -113,10 +119,16 @@ func _check_nests(demo: DemoScript, views: Array[NestView], dimensions: Vector2i
 		view._art._flower.animation_player.advance(1.0)
 		_check(view._art._flower.animation_player.current_animation == &"待机")
 		var candy_before: int = demo.run.candy
-		var population: int = demo._slimes.size()
+		var existing_actors: Array[PrototypeSlime] = demo._slimes.duplicate()
+		var population: int = demo.run.get_nest(view.nest_id).alive_slimes
 		demo.run.advance(1.0)
 		_check(demo.run.candy > candy_before, "The production clip follows actual passive income.")
-		_check(demo._slimes.size() == population, "Production preserves the existing actors.")
+		_check(
+			demo.run.get_nest(view.nest_id).alive_slimes == population,
+			"An automated nest does not spawn during production."
+		)
+		for actor: PrototypeSlime in existing_actors:
+			_check(demo._slimes.has(actor), "Production preserves the existing actors.")
 		var player: AnimationPlayer = view._art._flower.animation_player
 		_check(player.current_animation == &"产出")
 		player.advance(0.125)
@@ -125,6 +137,67 @@ func _check_nests(demo: DemoScript, views: Array[NestView], dimensions: Vector2i
 		player.advance(1.0)
 		_check(player.current_animation == &"待机")
 		_check_bounds(view)
+
+
+func _check_spawn(
+	demo: DemoScript, views: Array[NestView], dimensions: Vector2i, level: int
+) -> void:
+	var settled_bounds: Array[Rect2] = []
+	for view: NestView in views:
+		var art: NestArt = view._art
+		art._spawn.animation_player.advance(1.0)
+		settled_bounds.append(art.get_art_bounds())
+		var nest: NestState = demo.run.get_nest(view.nest_id)
+		var count_before: int = demo._slimes.size()
+		var population_before: int = nest.alive_slimes
+		demo.run._advance_nest_population(nest, demo.run.get_nest_spawn_interval(nest.nest_id))
+		_check(nest.alive_slimes > population_before, "The model creates a real population burst.")
+		_check(
+			demo._slimes.size() - count_before == nest.alive_slimes - population_before,
+			"Spawn feedback preserves the model's complete burst."
+		)
+		_check(art._spawning and art._spawn.visible and not art._growth.visible)
+		_check(art._spawn.animation_player.current_animation == NestArt.SPAWN_CLIPS[level])
+		var first_bounds: Rect2 = art.get_art_bounds()
+		_check(
+			(
+				absf(first_bounds.size.x - settled_bounds[-1].size.x) < 0.01
+				and absf(first_bounds.get_center().x - settled_bounds[-1].get_center().x) < 0.01
+			),
+			"The spawn clip starts at the settled nest's width and horizontal anchor."
+		)
+		art._spawn.animation_player.advance(1.0 / 12.0)
+		var clip_time: float = art._spawn.animation_player.current_animation_position
+		view.pulse_spawn()
+		view.update_state(level, false, 3)
+		_check(
+			is_equal_approx(art._spawn.animation_player.current_animation_position, clip_time),
+			"Repeated requests and population refreshes do not restart a spawn gesture."
+		)
+	for actor: PrototypeSlime in demo._slimes:
+		actor.set_process(false)
+	for frame: int in range(7):
+		for view: NestView in views:
+			var art: NestArt = view._art
+			art._spawn.animation_player.seek(float(frame) / 12.0, true)
+			_check(
+				art._sprite.texture.resource_path.ends_with(
+					"阶段%d产怪/%03d.png" % [level + 1, frame + 1]
+				),
+				"All seven original spawn frames reach the live nest in order."
+			)
+			_check_bounds(view)
+		if frame in [1, 4]:
+			await _save("spawn_%d_frame_%d" % [level, frame + 1], dimensions)
+	var actor_count: int = demo._slimes.size()
+	for index: int in range(views.size()):
+		var art: NestArt = views[index]._art
+		art._spawn.animation_player.advance(1.0)
+		_check(not art._spawning and not art._spawn.visible and art._growth.visible)
+		_check(art.get_art_bounds().is_equal_approx(settled_bounds[index]))
+	_check(
+		demo._slimes.size() == actor_count, "Finishing a visual clip never produces extra actors."
+	)
 
 
 func _check_ground_alignment(
@@ -192,8 +265,13 @@ func _check_bounds(view: NestView) -> void:
 	var sprite: Sprite2D = view._art._sprite
 	var pixels: Rect2 = Rect2(sprite.texture.get_image().get_used_rect())
 	var drawn: Rect2 = sprite.get_global_transform_with_canvas() * pixels
+	# Compare in pixels: relative epsilon becomes too strict when a zoomed
+	# corner lands near zero, despite only float-rounding differences.
 	_check(
-		bounds.is_equal_approx(drawn),
+		(
+			bounds.position.distance_to(drawn.position) < 0.01
+			and bounds.size.distance_to(drawn.size) < 0.01
+		),
 		"Hover geometry must follow visible artwork through every frame."
 	)
 
@@ -209,6 +287,7 @@ func _check_tools(demo: DemoScript, dimensions: Vector2i) -> void:
 	)
 	demo._drive_tool(0.0, point, false)
 	_check(demo._pipe.visible and demo._pipe._art.animation_player.is_playing())
+	_check(is_equal_approx(demo._pipe.radius, demo.run.get_pipe_radius()))
 	var pipe_sprite: Sprite2D = demo._pipe._art.get_node("贴图") as Sprite2D
 	var first: Texture2D = pipe_sprite.texture
 	demo._pipe._art.animation_player.advance(0.3)
@@ -224,6 +303,14 @@ func _check_tools(demo: DemoScript, dimensions: Vector2i) -> void:
 	demo._select_tool(DemoScript.ToolMode.NET)
 	_check(not demo._pipe._art.animation_player.is_playing())
 	demo._drive_tool(0.0, point, false)
+	_check(
+		is_equal_approx(demo._net._rim.points[0].length(), demo.run.get_net_radius()),
+		"The visible net preview and the real catch radius use the same world distance."
+	)
+	_check(
+		demo._net._label_compensation.scale.is_equal_approx(Vector2(0.4, 0.4)),
+		"Net count and cooldown feedback follow the smaller tool."
+	)
 	await _save("net_preview", dimensions)
 	var candy_before: int = demo.run.candy
 	var population_before: int = demo._slimes.size()
@@ -248,27 +335,83 @@ func _check_tools(demo: DemoScript, dimensions: Vector2i) -> void:
 	demo._drive_tool(0.0, point, false)
 	_check(demo._net._presentation == CaptureNet.Presentation.COOLDOWN)
 	await _save("net_cooldown", dimensions)
-	demo._view.zoom_steps(-1.0)
+	demo._view.zoom_steps(-1.0, false)
 	demo._drive_tool(0.0, point, false)
 	_check(not demo._pipe.visible and not demo._net.visible)
-	demo._view.zoom_steps(1.0)
+	demo._view.zoom_steps(1.0, false)
 	demo._select_tool(DemoScript.ToolMode.PIPE)
 	demo._drive_tool(0.0, point, false)
 	demo._on_window_focus_exited()
 	_check(not demo._pipe._art.animation_player.is_playing())
 
 
+func _check_net_boundary(demo: DemoScript) -> void:
+	demo.run.advance(demo.run.settings.spawn_intervals[0] * 4.0)
+	_check(demo._slimes.size() >= 2, "The boundary fixture has two real spawned actors.")
+	for actor: PrototypeSlime in demo._slimes:
+		actor._process(actor.launch_seconds)
+		actor.set_process(false)
+		actor.position = Vector2(700.0, 700.0)
+		_check(
+			is_equal_approx(actor.presentation_scale, demo._view.near_slime_scale),
+			"Spawned actors use the independently calibrated character display size."
+		)
+	var inside: PrototypeSlime = demo._slimes[0]
+	var outside: PrototypeSlime = demo._slimes[1]
+	var anchor: Vector2 = Vector2(0.0, -200.0)
+	var radius: float = demo.run.get_net_radius()
+	for actor: PrototypeSlime in [inside, outside]:
+		var center: Vector2 = (
+			anchor + Vector2.RIGHT * (radius + (-0.02 if actor == inside else 0.02))
+		)
+		actor.position = center
+		actor._update_surface_rotation()
+		actor.position += center - actor.get_capture_point()
+	var before: int = demo._slimes.size()
+	demo._window_has_focus = true
+	demo._select_tool(DemoScript.ToolMode.NET)
+	demo._drive_tool(0.0, anchor, false)
+	demo._drive_tool(0.0, anchor, true)
+	demo._drive_tool(demo._net.cast_seconds, anchor, false)
+	demo._drive_tool(demo._net.close_seconds, anchor, false)
+	_check(
+		(
+			demo._slimes.size() == before - 1
+			and not demo._slimes.has(inside)
+			and demo._slimes.has(outside)
+		),
+		"The resized net catches just inside its visible edge and excludes just outside."
+	)
+
+
 func _check_rapid_upgrades(view: NestView) -> void:
+	view._art.set_stage(0, false)
+	view.pulse_spawn()
+	_check(view._art._spawning)
 	for level: int in range(1, 4):
 		view.update_state(level, level == 3, 3)
+		_check(not view._art._spawning, "Upgrades interrupt the spawn clip cleanly.")
+		view.pulse_spawn()
 	for level: int in range(1, 4):
 		_check(
 			view._art._growth.animation_player.current_animation == NestArt.TRANSITIONS[level - 1]
 		)
 		view._art._growth.animation_player.advance(2.0)
 	_check(view._art._display_level == 3 and view._art._flower.visible)
+	_check(not view._art._spawning and not view._art._pending_spawn)
 	view.update_state(0, false, 3)
 	_check(view._art._display_level == 0 and not view._art._flower.visible)
+	view.update_state(1, false, 3)
+	view.pulse_spawn()
+	_check(view._art._pending_spawn and not view._art._spawning)
+	view._art._growth.animation_player.advance(2.0)
+	_check(view._art._spawning and not view._art._pending_spawn)
+	_check(view._art._spawn.animation_player.current_animation == NestArt.SPAWN_CLIPS[1])
+	view.update_state(0, false, 3)
+	_check(not view._art._spawning and not view._art._pending_spawn)
+	view.pulse_spawn()
+	view.configure_species(1)
+	_check(not view._art._spawning and not view._art.slime_spawn.visible)
 
 
 func _settle() -> void:

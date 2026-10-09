@@ -19,7 +19,6 @@ func _initialize() -> void:
 func _run_checks() -> void:
 	root.mode = Window.MODE_WINDOWED
 	root.size = Vector2i(1280, 800)
-	await _check_clusters()
 	var demo: DemoScript = DemoScene.instantiate() as DemoScript
 	root.add_child(demo)
 	current_scene = demo
@@ -37,84 +36,9 @@ func _run_checks() -> void:
 		push_error("FAIL: " + failure)
 	if _failures.is_empty():
 		print(
-			"PASS: surface summaries, exterior species bubbles, stable clusters, HUD avoidance and lightweight timers"
+			"PASS: local monster clusters, bounded placement, UI layer order and lightweight timers"
 		)
 	quit(0 if _failures.is_empty() else 1)
-
-
-func _check_clusters() -> void:
-	var container: Node2D = Node2D.new()
-	root.add_child(container)
-	current_scene = container
-	var world: Node2D = Node2D.new()
-	container.add_child(world)
-	world.position = root.get_visible_rect().size * 0.5
-	var surface: PlanetSurface = PlanetScene.instantiate() as PlanetSurface
-	world.add_child(surface)
-	var overview: OverviewEcology = OverviewScene.instantiate() as OverviewEcology
-	container.add_child(overview)
-	overview.configure(surface, world)
-	var nests: Array[NestState] = [
-		_nest(Vector2(-160, -150), NestState.Species.SLIME, 1),
-		_nest(Vector2(-130, -140), NestState.Species.SLIME, 1),
-		_nest(Vector2(120, 110), NestState.Species.SLIME, 90),
-		_nest(Vector2(20, 0), NestState.Species.MUCUS, 3),
-		_nest(Vector2(50, 20), NestState.Species.MUCUS, 4)
-	]
-	overview.update_nest_clusters(nests)
-	overview.update_ecology(92, 7, true, root.get_visible_rect().size)
-	overview.set_process(false)
-	overview._process(2.0)
-	_check(
-		overview.cluster_regions == Vector2i(0, 4),
-		"the busiest nest regions include a real center region"
-	)
-	_check(
-		(
-			overview.cluster_anchors[0].normalized().is_equal_approx(Vector2(-1, -1).normalized())
-			and is_equal_approx(
-				overview.cluster_anchors[0].length(), surface.get_outer_radius(-PI * 0.75)
-			)
-		),
-		"the busiest group projects its mean direction to the outer surface"
-	)
-	_check(
-		overview.population_counts == Vector2i(92, 7),
-		"bubble labels retain global individual counts"
-	)
-	nests.append(_nest(Vector2(130, 140), NestState.Species.SLIME, 100))
-	overview.update_nest_clusters(nests)
-	_check(overview.cluster_regions.x == 0, "equal nest counts retain the previous region")
-	nests[1].position = Vector2(140, 160)
-	overview.update_nest_clusters(nests)
-	_check(
-		overview.cluster_regions.x == 8, "a strictly larger group moves the bubble to its region"
-	)
-	var anchor: Vector2 = overview.cluster_anchors[0]
-	world.rotation = 0.4
-	overview._process(0.0)
-	var projected: Vector2 = world.get_global_transform_with_canvas() * anchor
-	_check(
-		(
-			(projected - overview._planet_center).normalized().dot(
-				(overview.bubble_centers[0] - overview._planet_center).normalized()
-			)
-			> 0.7
-		),
-		"the bubble stays near its rotated cluster direction"
-	)
-	_check(
-		overview._bubble_is_outside_surface(overview.bubble_centers[0], overview.bubble_radii[0]),
-		"the bubble and count sit outside the planet surface"
-	)
-	overview.update_ecology(150, 2, true, root.get_visible_rect().size)
-	_check(
-		overview.cluster_anchors[0] == anchor,
-		"individual population changes do not choose another region"
-	)
-	current_scene = null
-	container.queue_free()
-	await process_frame
 
 
 func _check_timers_and_stages(demo: DemoScript) -> void:
@@ -171,8 +95,10 @@ func _check_timers_and_stages(demo: DemoScript) -> void:
 	demo.run.settings = demo.run.settings.duplicate(true) as PrototypeSettings
 	demo.run.settings.nest_roll_chance_min = 1.0
 	demo.run.settings.nest_roll_chance_max = 1.0
+	demo.run.settings.nest_spawn_cooldown_seconds = 0.0
 	demo._site_random.seed = 41129
 	demo.run._random.seed = 7817
+	demo.run._advance_nest_roll(demo.run._nest_initial_delay_remaining)
 	for _roll: int in range(8):
 		demo.run._advance_nest_roll(demo.run.settings.nest_roll_interval)
 	demo.run.advance(4.0)
@@ -199,15 +125,9 @@ func _check_timers_and_stages(demo: DemoScript) -> void:
 		demo.run.combo_remaining = 2.3
 		demo.run.net_cooldown_remaining = 4.7
 		demo._layout.refresh_timers(demo.run)
-		demo._view.zoom_steps(-1.0)
+		demo._view.zoom_steps(-1.0, false)
 		demo._drive_tool(0.0, Vector2.ZERO, false)
-		demo._overview.update_nest_clusters(demo.run.nests)
-		demo._overview.update_ecology(
-			demo.run.get_species_population(NestState.Species.SLIME),
-			demo.run.get_species_population(NestState.Species.MUCUS),
-			true,
-			root.get_visible_rect().size
-		)
+		demo._refresh_overview()
 		demo._overview._process(2.0)
 		await _settle()
 		_check(
@@ -223,38 +143,27 @@ func _check_timers_and_stages(demo: DemoScript) -> void:
 			demo._overview._process(0.0)
 		if _capture:
 			await _save("overview_surface_summary_%dx%d.png" % [resolution.x, resolution.y])
-		demo._view.zoom_steps(1.0)
-		_check(demo._region_root.visible, "P1 restores the real wide-crust nest patches")
+		demo._view.zoom_steps(1.0, false)
+		_check(
+			not demo._region_root.visible and demo._nests.visible and demo._slime_root.visible,
+			"P1 restores nest and monster models while legacy region patches remain hidden"
+		)
 
 
 func _check_bubble_positions(demo: DemoScript) -> void:
+	var overview: OverviewEcology = demo._overview
+	_check((demo.get_node("HUD") as CanvasLayer).layer > 0, "HUD layers cover distribution bubbles")
 	var screen: Rect2 = Rect2(Vector2.ZERO, root.get_visible_rect().size)
-	for species: int in range(2):
-		var center: Vector2 = demo._overview.bubble_centers[species]
-		var radius: float = demo._overview.bubble_radii[species]
-		var footprint: Rect2 = demo._overview._bubble_rect(center, radius)
-		_check(screen.encloses(footprint), "cluster bubbles and counts remain inside the viewport")
+	for bubble: Node2D in overview.bubbles:
+		var radius: float = bubble.radius
 		_check(
-			demo._overview._bubble_is_outside_surface(center, radius),
-			"cluster bubbles and counts remain outside the planet"
+			screen.encloses(overview._bubble_rect(bubble.position, radius)),
+			"local bubbles stay in the viewport"
 		)
-		for obstacle: Rect2 in demo._layout.get_overview_obstacles():
-			_check(
-				not footprint.intersects(obstacle), "cluster bubbles avoid the current HUD panels"
-			)
-		if species == 1:
-			var first: Rect2 = demo._overview._bubble_rect(
-				demo._overview.bubble_centers[0], demo._overview.bubble_radii[0]
-			)
-			_check(not footprint.intersects(first), "the two species summaries stay separate")
-
-
-func _nest(position: Vector2, species: NestState.Species, alive: int) -> NestState:
-	var nest: NestState = NestState.new()
-	nest.position = position
-	nest.species = species
-	nest.alive_slimes = alive
-	return nest
+		_check(
+			absf(bubble.offset.y) <= overview.maximum_nudge_radii + 0.001,
+			"bubbles retain their distribution bearing"
+		)
 
 
 func _settle() -> void:

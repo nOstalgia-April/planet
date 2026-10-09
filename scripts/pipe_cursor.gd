@@ -2,11 +2,12 @@ extends Node2D
 
 const SurfaceProjection = preload("res://scripts/surface_projection.gd")
 const FrameArt = preload("res://scripts/场景动画/帧动画.gd")
+const REFERENCE_RADIUS: float = 24.0
 
-@export_range(8.0, 40.0, 1.0) var radius: float = 24.0
+@export_range(1.0, 40.0, 0.1) var radius: float = 9.6
 @export_range(0.2, 1.0, 0.05) var feedback_scale: float = 0.55
 @export_range(1.0, 2.0, 0.05) var particle_spread: float = 1.5
-@export_range(0.1, 1.0, 0.01) var art_scale: float = 0.36
+@export_range(0.05, 1.0, 0.001) var art_scale: float = 0.144
 @export var mouth_pixel: Vector2 = Vector2(103.0, 190.0)
 @export var ink: Color = Color("454944")
 @export var accent: Color = Color("4c837c")
@@ -65,19 +66,31 @@ func _update_visual_compensation() -> void:
 
 func _draw() -> void:
 	if active:
+		var detail_scale: float = radius / REFERENCE_RADIUS
 		var feedback_radius: float = radius * feedback_scale
 		draw_circle(_mouth_local, feedback_radius, Color(accent, 0.10))
-		draw_arc(_mouth_local, feedback_radius, 0.0, TAU, 48, Color(accent, 0.65), 1.3, true)
+		draw_arc(
+			_mouth_local,
+			feedback_radius,
+			0.0,
+			TAU,
+			48,
+			Color(accent, 0.65),
+			1.3 * detail_scale,
+			true
+		)
 		for particle_index: int in range(6):
 			var angle: float = float(particle_index) * TAU / 6.0 + _time * 0.35
 			var progress: float = fmod(_time * 1.4 + float(particle_index) / 6.0, 1.0)
-			var distance: float = lerpf(feedback_radius * particle_spread, 3.0, progress)
+			var distance: float = lerpf(
+				feedback_radius * particle_spread, 3.0 * detail_scale, progress
+			)
 			var direction: Vector2 = Vector2.from_angle(angle)
 			var particle_point: Vector2 = _mouth_local + direction * distance
 			draw_line(
 				particle_point,
-				particle_point + direction * 2.0,
+				particle_point + direction * 2.0 * detail_scale,
 				Color(accent, 0.35 + progress * 0.3),
-				1.0,
+				detail_scale,
 				true
 			)

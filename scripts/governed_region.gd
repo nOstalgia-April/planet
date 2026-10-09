@@ -1,6 +1,6 @@
 extends Node2D
 
-@export_range(24.0, 100.0, 1.0) var region_radius: float = 56.0
+@export_range(8.0, 100.0, 0.1) var region_radius: float = 22.4
 
 var surface: PlanetSurface
 var home_position: Vector2 = Vector2.ZERO

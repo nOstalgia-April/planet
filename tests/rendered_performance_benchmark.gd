@@ -117,7 +117,7 @@ func _prepare_phase(phase: String) -> void:
 	assert(_demo._slimes.size() == 210)
 	assert(_demo._mucus_trails.size() == 70)
 	if phase == "overview":
-		_demo._view.zoom_steps(-1.0)
+		_demo._view.zoom_steps(-1.0, false)
 	elif phase == "near_rotating":
 		_demo._view.begin_drag(Vector2.ZERO)
 	for frame: int in range(WARMUP_FRAMES):

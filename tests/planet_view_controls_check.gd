@@ -30,7 +30,9 @@ func _run_checks() -> void:
 		demo._apply_layout()
 		demo.restart_run()
 		demo._window_has_focus = true
-		demo.run.advance(demo.run.settings.spawn_intervals[0])
+		demo.run.advance(
+			demo.run.settings.spawn_intervals[0] + demo.run.settings.spawn_interval_jitter
+		)
 		_check(not demo._slimes.is_empty(), "the control fixture contains real living actors")
 		for actor: PrototypeSlime in demo._slimes:
 			actor._process(actor.launch_seconds)
@@ -53,6 +55,7 @@ func _run_checks() -> void:
 		await _capture("planet_controls_overview", resolution)
 		var rotation: float = demo._world.rotation
 		_mouse_button(_background(demo), MOUSE_BUTTON_WHEEL_UP, true)
+		camera._process(camera.transition_seconds)
 		_check(
 			(
 				not camera.is_overview()
@@ -167,6 +170,7 @@ func _check_overview_rotation(demo: DemoScript) -> void:
 	var world: Node2D = demo._world
 	var rotation: float = world.rotation
 	_mouse_button(_background(demo), MOUSE_BUTTON_WHEEL_DOWN, true)
+	camera._process(camera.transition_seconds)
 	_check(
 		camera.is_overview() and is_equal_approx(world.rotation, rotation),
 		"one wheel step enters overview while preserving the existing rotation"
@@ -348,6 +352,7 @@ func _check_overview_top_handoff(demo: DemoScript, resolution: Vector2i) -> void
 	for source: String in ["manual", "automatic", "display_transform"]:
 		for heading: float in headings:
 			camera.zoom_steps(-1.0)
+			camera._process(camera.transition_seconds)
 			var screen_radius: float = (
 				planet.radius * world.scale.x * camera.projection_root.scale.x
 			)
@@ -402,6 +407,7 @@ func _check_overview_top_handoff(demo: DemoScript, resolution: Vector2i) -> void
 				await _capture("top_handoff_overview", resolution)
 			camera.begin_drag(_background(demo))
 			_mouse_button(_background(demo), MOUSE_BUTTON_WHEEL_UP, true)
+			camera._process(camera.transition_seconds)
 			_check(
 				not camera.is_overview() and not camera.is_dragging(),
 				"entering near view ends the previous drag"

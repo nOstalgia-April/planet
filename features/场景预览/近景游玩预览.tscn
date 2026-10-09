@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/disk_demo.tscn" id="r001"]
 
@@ -7,8 +7,6 @@
 [ext_resource type="Script" path="res://features/场景预览/星球地表.gd" id="r003"]
 
 [ext_resource type="PackedScene" path="res://scenes/场景动画/近景星球.tscn" id="r004"]
-
-[ext_resource type="PackedScene" path="res://scenes/场景动画/全景星球.tscn" id="r005"]
 
 [ext_resource type="PackedScene" path="res://scenes/场景动画/近景背景.tscn" id="r006"]
 
@@ -21,21 +19,20 @@
 [node name="近景游玩预览" instance=ExtResource("r001")]
 script = ExtResource("r002")
 
-[node name="PlanetSurface" parent="World" index="0" node_paths=PackedStringArray("near_art", "overview_art")]
+[node name="PlanetViewController" parent="." index="1"]
+near_radius_ratio = 0.68853
+near_horizon_ratio = 0.48544
+near_horizontal_offset_ratio = 0.0065
+
+[node name="PlanetSurface" parent="World" index="0" node_paths=PackedStringArray("planet_art")]
 script = ExtResource("r003")
-near_art = NodePath("近景画面")
-overview_art = NodePath("全景画面")
+planet_art = NodePath("星球画面")
 
-[node name="近景画面" parent="World/PlanetSurface" instance=ExtResource("r004")]
+[node name="星球画面" parent="World/PlanetSurface" instance=ExtResource("r004")]
+rotation = 1.5707963267948966
 
 
-[node name="动画播放器" parent="World/PlanetSurface/近景画面" index="1"]
-autoplay = "待机"
-
-[node name="全景画面" parent="World/PlanetSurface" instance=ExtResource("r005")]
-visible = false
-
-[node name="动画播放器" parent="World/PlanetSurface/全景画面" index="1"]
+[node name="动画播放器" parent="World/PlanetSurface/星球画面" index="1"]
 autoplay = "待机"
 
 [node name="美术背景" type="CanvasLayer" parent="."]
@@ -58,7 +55,7 @@ visible = false
 autoplay = "待机"
 
 [node name="预览导航" type="CanvasLayer" parent="."]
-layer = 0
+layer = 1
 
 [node name="返回主菜单" type="Button" parent="预览导航"]
 offset_left = 28.0

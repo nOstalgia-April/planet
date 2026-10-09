@@ -81,14 +81,17 @@ func _check_outer_nest_sites(demo: DemoScript) -> void:
 	for nest: NestState in demo.run.nests:
 		on_edge = (
 			on_edge
-			and absf(nest.position.length() - demo._planet.get_outer_radius(nest.position.angle())) < 0.005
+			and (
+				absf(nest.position.length() - demo._planet.get_outer_radius(nest.position.angle()))
+				< 0.005
+			)
 		)
 		for other: NestState in demo.run.nests:
 			if other.nest_id == nest.nest_id:
 				continue
 			spaced = (
 				spaced
-				and nest.position.distance_to(other.position) >= demo.run.settings.nest_min_distance - 0.005
+				and nest.position.distance_to(other.position) >= demo._nest_site_distance - 0.005
 			)
 	_check(on_edge, "opening, first mucus and later nests all stand on the actual outer contour")
 	_check(spaced, "outer-line sampling preserves hard spacing even when the perimeter fills")
@@ -104,12 +107,12 @@ func _check_distinct_species_and_counts(demo: DemoScript) -> void:
 		),
 		"ordinary and discovered mucus populations retain distinct nest types"
 	)
-	demo._view.zoom_steps(-1.0)
+	demo._view.zoom_steps(-1.0, false)
 	demo._overview._process(2.0)
 	await _check_overview_counts(demo)
 	_check(
-		demo._overview.bubble_radii.x > demo._overview.bubble_radii.y,
-		"the initially larger ordinary population produces the larger overview bubble"
+		demo._overview.bubble_radii.x > 0.0 and demo._overview.bubble_radii.y > 0.0,
+		"both living species produce local distribution bubbles regardless of global population rank"
 	)
 	var ordinary_actors: Array[PrototypeSlime] = demo._slimes.duplicate()
 	for actor: PrototypeSlime in ordinary_actors:
@@ -149,7 +152,7 @@ func _check_distinct_species_and_counts(demo: DemoScript) -> void:
 		"upgraded mucus nests still produce mucus when a valuable individual appears"
 	)
 	await _check_overview_counts(demo)
-	demo._view.zoom_steps(1.0)
+	demo._view.zoom_steps(1.0, false)
 
 
 func _check_nest_mucus_coverage(demo: DemoScript) -> void:
@@ -162,10 +165,14 @@ func _check_nest_mucus_coverage(demo: DemoScript) -> void:
 		"nest coverage uses twice the small region circle radius, default 112 world units"
 	)
 	var covered: Vector2 = nest.position - nest.position.normalized() * area.coverage_radius * 0.5
-	_check(area.contains_ground_point(covered), "the inland half of the nest pool is real ground mucus")
 	_check(
-		not area.contains_ground_point(nest.position + nest.position.normalized() * 12.0)
-		and not area.contains_ground_point(Vector2.ZERO),
+		area.contains_ground_point(covered), "the inland half of the nest pool is real ground mucus"
+	)
+	_check(
+		(
+			not area.contains_ground_point(nest.position + nest.position.normalized() * 12.0)
+			and not area.contains_ground_point(Vector2.ZERO)
+		),
 		"nest mucus cannot affect space outside the crust or inside the hollow core"
 	)
 	var clipped: bool = true
@@ -190,8 +197,10 @@ func _check_nest_mucus_coverage(demo: DemoScript) -> void:
 		"an anchored monster first enters the detachment stage"
 	)
 	_check(
-		mucus.pull_off_mucus(mucus.peel_seconds * 0.5, mucus.get_capture_point())
-		and not mucus.is_anchored(),
+		(
+			mucus.pull_off_mucus(mucus.peel_seconds * 0.5, mucus.get_capture_point())
+			and not mucus.is_anchored()
+		),
 		"completed detachment allows ordinary suction while still above the persistent pool"
 	)
 	_capture_actor(demo, mucus)
@@ -212,9 +221,11 @@ func _check_nest_mucus_coverage(demo: DemoScript) -> void:
 		nest.is_tamed and area.contains_ground_point(covered),
 		"full governance retains the living nest's mucus coverage"
 	)
-	demo._view.zoom_steps(-1.0)
-	demo._view.zoom_steps(1.0)
-	_check(area.contains_ground_point(covered), "view switching preserves the pool's ground contact")
+	demo._view.zoom_steps(-1.0, false)
+	demo._view.zoom_steps(1.0, false)
+	_check(
+		area.contains_ground_point(covered), "view switching preserves the pool's ground contact"
+	)
 
 
 func _check_ground_contact_and_capture(demo: DemoScript) -> void:
@@ -224,11 +235,20 @@ func _check_ground_contact_and_capture(demo: DemoScript) -> void:
 	var walked_path: PackedVector2Array = PackedVector2Array()
 	var away_angle: float = demo.run.get_nest(3).position.angle() + PI
 	var ground_radius: float = _ground_point(demo, away_angle, 0.5).length()
+	var path_half_length: float = demo.run.settings.mucus_trail_max_length * 0.35
 	for index: int in range(33):
 		var progress: float = float(index) / 32.0
 		walked_path.append(
-			Vector2(lerpf(-26.0, 26.0, progress), -ground_radius + sin(progress * TAU) * 4.0)
-			. rotated(away_angle + PI / 2.0)
+			(
+				Vector2(
+					lerpf(-path_half_length, path_half_length, progress),
+					(
+						-ground_radius
+						+ sin(progress * TAU) * demo.run.settings.mucus_trail_half_width * 0.5
+					)
+				)
+				. rotated(away_angle + PI / 2.0)
+			)
 		)
 	mucus.position = walked_path[0]
 	demo._advance_ground_mucus(0.0)
@@ -343,7 +363,7 @@ func _check_surface_attachment(demo: DemoScript) -> void:
 			trails.append(trail)
 			snapshots.append(trail.anchors.duplicate())
 	_check_trail_geometry(demo, trails, snapshots, "P1")
-	demo._view.zoom_steps(-1.0)
+	demo._view.zoom_steps(-1.0, false)
 	_check_trail_geometry(demo, trails, snapshots, "P2")
 	_check(
 		trails[-1].get_ground_points()[-1].distance_to(mucus.position) < 0.005,
@@ -363,7 +383,7 @@ func _check_surface_attachment(demo: DemoScript) -> void:
 		"historical ribbons visibly rotate with the planet"
 	)
 	_check_trail_geometry(demo, trails, snapshots, "rotated P2")
-	demo._view.zoom_steps(1.0)
+	demo._view.zoom_steps(1.0, false)
 	_check_trail_geometry(demo, trails, snapshots, "rotated P1")
 	_check(
 		trails[-1].get_ground_points()[-1].distance_to(mucus.position) < 0.005,
@@ -511,7 +531,7 @@ func _capture_scenes(demo: DemoScript) -> void:
 		_warm_ecology(demo, 0.5)
 		await _settle_layout()
 		await _save_frame("ribbon_mucus_cave_%dx%d.png" % [resolution.x, resolution.y])
-		demo._view.zoom_steps(-1.0)
+		demo._view.zoom_steps(-1.0, false)
 		demo._overview._process(2.0)
 		await _settle_layout()
 		await _save_frame("ribbon_overview_%dx%d.png" % [resolution.x, resolution.y])
@@ -529,9 +549,10 @@ func _prepare_mucus_nest(demo: DemoScript) -> void:
 	_check(demo.run.upgrade_pipe(), "speed level two enables net research")
 	_check(demo.run.purchase_technology("net"), "unlocking the net opens the tool")
 	demo.run._pending_nest_species = NestState.Species.MUCUS
+	demo._on_nest_spawn_requested(NestState.Species.MUCUS)
 	_check(
-		demo.run.resolve_nest_spawn(demo._planet.get_nest_position(-PI / 2.0 + 0.78)),
-		"a resolved discovery prepares the mucus nest for ecology checks"
+		demo.run.nests.size() == 3 and demo.run.get_nest(3).species == NestState.Species.MUCUS,
+		"a legal reserved site prepares the mucus nest for ecology checks"
 	)
 	demo.run.candy = 0
 

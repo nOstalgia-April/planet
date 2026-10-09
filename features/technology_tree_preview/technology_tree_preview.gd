@@ -27,12 +27,15 @@ func _ready() -> void:
 func set_preview(state: int) -> void:
 	preview_state = state
 	run.start_run([Vector2(-160.0, -180.0), Vector2(-40.0, -180.0)])
-	run.candy = 10000
+	run.candy = 100000
 	if state >= 2:
+		run.purchase_technology("base_value")
 		run.purchase_technology("pipe")
 		run.purchase_technology("net_unlock")
 		run.purchase_technology("cultivation")
 	if state == 3:
+		for _index: int in range(2):
+			run.purchase_technology("base_value")
 		for _index: int in range(3):
 			run.purchase_technology("pipe")
 		run.purchase_technology("automation")
@@ -42,9 +45,9 @@ func set_preview(state: int) -> void:
 		for _index: int in range(2):
 			run.purchase_technology("net_capacity")
 		run.purchase_nest_technology(1, "valuable")
-	run.candy = [0, 80, 35, 180][state]
+	run.candy = [0, 400, 180, 9000][state]
 	page.selected_nest_id = 1
-	page.selected_key = ["pipe", "pipe", "combo_unlock", "automation"][state]
+	page.selected_key = "base_value"
 	_refresh()
 	for index: int in range(4):
 		($PreviewControls.get_child(index) as Button).set_pressed_no_signal(index == state)

@@ -27,7 +27,18 @@ func _check_page() -> void:
 	await _settle()
 	preview.set_preview(0)
 	var page: PageScript = preview.page
-	_check(page._nodes.size() == 9, "each upgrade item has exactly one icon")
+	_check(page._nodes.size() == 10, "each upgrade item has exactly one icon")
+	_check(page._nodes["base_value"].level_label.text == "1", "base value starts at level one")
+	preview.run.candy = 80
+	page.refresh(preview.run)
+	page.select_node("base_value")
+	page.purchase.pressed.emit()
+	_check(
+		preview.run.get_base_value() == 4 and preview.run.candy == 0,
+		"the new central node purchases a real global value breakthrough"
+	)
+	_check(page._nodes["base_value"].level_label.text == "2", "value advances on the same icon")
+	preview.set_preview(0)
 	_check(page._nodes["pipe"].level_label.text == "1", "base speed is displayed as level one")
 	_check(
 		page._nodes["net_unlock"].state == NodeScript.State.LOCKED, "net requires speed level two"
@@ -49,13 +60,13 @@ func _check_page() -> void:
 	_check(page.selected_key == "net_capacity", "mouse input can inspect a locked node")
 	page.purchase.pressed.emit()
 	_check(
-		preview.run.net_level == 0 and preview.run.candy == 80,
+		preview.run.net_level == 0 and preview.run.candy == 400,
 		"rich wallets cannot bypass net unlock"
 	)
 	await _click(page._nodes["pipe"])
 	await _click(page.purchase)
 	_check(
-		preview.run.pipe_level == 1 and preview.run.candy == 70,
+		preview.run.pipe_level == 1 and preview.run.candy == 380,
 		"first speed purchase charges its configured cost"
 	)
 	_check(page._nodes["pipe"].level_label.text == "2", "the same icon updates its current level")
@@ -68,7 +79,7 @@ func _check_page() -> void:
 	)
 	await _click(page.purchase)
 	_check(
-		preview.run.pipe_level == 2 and preview.run.candy == 40,
+		preview.run.pipe_level == 2 and preview.run.candy == 290,
 		"the same icon buys the next speed level"
 	)
 	page.select_node("net_unlock")
@@ -80,13 +91,13 @@ func _check_page() -> void:
 	_check(page._note("net_unlock").is_empty(), "net details contain no nest-discovery promise")
 	page.purchase.pressed.emit()
 	_check(
-		preview.run.nests.size() == 2 and preview.run.candy == 30,
+		preview.run.nests.size() == 2 and preview.run.candy == 260,
 		"unlock cannot charge twice or create nests"
 	)
 	page.select_node("net_capacity")
 	page.purchase.pressed.emit()
 	_check(
-		preview.run.get_net_capacity() == 10 and preview.run.candy == 20,
+		preview.run.get_net_capacity() == 10 and preview.run.candy == 160,
 		"capacity purchases work after unlock"
 	)
 	_check_model_branches(preview)
@@ -120,13 +131,13 @@ func _check_page() -> void:
 	current_scene = demo
 	demo.set_process(false)
 	await _settle()
-	demo.run.candy = 50
+	demo.run.candy = 400
 	demo.run.economy_changed.emit()
 	demo._layout._show_technology()
 	demo._layout._technology.select_node("pipe")
 	demo._layout._technology.purchase.pressed.emit()
 	_check(
-		demo.run.pipe_level == 1 and demo.run.candy == 40,
+		demo.run.pipe_level == 1 and demo.run.candy == 380,
 		"the main demo uses the same page and real purchase handler"
 	)
 	_check(demo._layout.is_over_ui(Vector2(500, 400)), "the page blocks background input")
@@ -235,7 +246,7 @@ func _check_model_branches(preview: PreviewScript) -> void:
 	for _index: int in range(6):
 		run.collect_slime(2)
 	_check(
-		run.candy == before + 6 * run.settings.slime_reward + 2,
+		run.candy == before + 6 * run.settings.slime_reward + 1,
 		"reward upgrade affects real captures"
 	)
 	_check(
@@ -246,8 +257,8 @@ func _check_model_branches(preview: PreviewScript) -> void:
 	_check(run.combo_count == 6, "upgraded combo survives past the old three-second deadline")
 	run.advance(0.6)
 	_check(run.combo_count == 0, "upgraded combo expires at its new deadline")
-	run.candy = 10000
-	for id: String in ["pipe", "net_unlock", "net_capacity", "combo_reward", "combo_interval"]:
+	run.candy = 100000
+	for id: String in ["base_value", "pipe", "net_unlock", "net_capacity", "combo_reward", "combo_interval"]:
 		while run.purchase_technology(id):
 			pass
 		before = run.candy
@@ -267,7 +278,7 @@ func _check_model_branches(preview: PreviewScript) -> void:
 func _check_layout(preview: PreviewScript) -> void:
 	var canvas_rect: Rect2 = preview.page._canvas.get_global_rect()
 	var detail: Control = preview.page.get_node("Margin/Content/Body/Detail") as Control
-	for id: String in ["pipe", "cultivation", "automation"]:
+	for id: String in ["pipe", "base_value", "cultivation", "automation"]:
 		var center: Vector2 = (
 			preview.page._nodes[id].get_global_transform() * NodeScript.ICON_CENTER
 		)

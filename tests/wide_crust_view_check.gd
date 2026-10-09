@@ -54,32 +54,19 @@ func _check_foreground(demo: DemoScript) -> void:
 		is_equal_approx(demo._planet.get_inner_radius(0.0), demo._planet.radius * 0.60),
 		"the wide crust retains its interior boundary"
 	)
-	var core_top: Vector2 = projection * (Vector2.UP * demo._planet.get_inner_radius(0.0))
-	var toolbar: Rect2 = demo._layout._tool_dock.get_global_rect()
-	var visible_core_height: float = screen.y - core_top.y
-	_check(
-		absf(visible_core_height / toolbar.size.y - 5.0 / 3.0) < 0.001,
-		"the empty core height is five thirds of the actual toolbar height"
-	)
-	_check(core_top.y < toolbar.position.y, "the empty core stays visible above the toolbar")
-	var core_point: Vector2 = projection.affine_inverse() * Vector2(screen.x * 0.5, screen.y - 5.0)
 	_check(
 		(
-			not demo._planet.contains_surface_point(core_point)
-			and not demo._can_collect(core_point, 0.1)
+			is_equal_approx(projection.x.length(), projection.y.length())
+			and demo._view.projection_root.scale.is_equal_approx(Vector2.ONE)
 		),
-		"the visible empty center is outside the gameplay crust"
+		"the foreground is a cropped magnified circle without horizontal flattening"
 	)
-	print(
+	_check(
 		(
-			"P1 core %.2f / toolbar %.2f = %.5f at viewport %s"
-			% [
-				visible_core_height,
-				toolbar.size.y,
-				visible_core_height / toolbar.size.y,
-				str(screen)
-			]
-		)
+			not demo._planet.contains_surface_point(Vector2.ZERO)
+			and not demo._can_collect(Vector2.ZERO, 0.1)
+		),
+		"the empty center remains outside the gameplay crust when cropped out of view"
 	)
 	for ratio: Vector2 in [
 		Vector2(0.25, 0.78),
@@ -100,17 +87,20 @@ func _seed_nests(demo: DemoScript) -> void:
 	demo.run.settings = demo.run.settings.duplicate(true) as PrototypeSettings
 	demo.run.settings.nest_roll_chance_min = 1.0
 	demo.run.settings.nest_roll_chance_max = 1.0
+	demo.run.settings.nest_spawn_cooldown_seconds = 0.0
 	demo.run._random.seed = 7817
 	demo._site_random.seed = 41129
 	demo.run.candy = 100000
 	_check(demo.run.upgrade_pipe(), "pipe level two opens the net research branch")
 	_check(demo.run.purchase_technology("net"), "net unlock enables the legal spawn sampler")
 	_check(demo.run.purchase_technology("governance"), "governance research enables nest upgrades")
+	demo.run._advance_nest_roll(demo.run._nest_initial_delay_remaining)
 	var scripted_count: int = demo.run.nests.size()
 	for _roll: int in range(24):
 		demo.run._advance_nest_roll(demo.run.settings.nest_roll_interval)
 	_check(
-		demo.run.nests.size() >= scripted_count + 8, "the legal sampler produces multiple new nests"
+		demo.run.nests.size() == demo._nest_site_angles.size(),
+		"the legal sampler fills the perimeter's full-growth sites"
 	)
 	for index: int in range(scripted_count, demo.run.nests.size()):
 		var point: Vector2 = demo.run.nests[index].position
@@ -122,7 +112,7 @@ func _seed_nests(demo: DemoScript) -> void:
 
 
 func _check_overview(demo: DemoScript) -> void:
-	demo._view.zoom_steps(-1.0)
+	demo._view.zoom_steps(-1.0, false)
 	_check(
 		not demo._nests.visible and not demo._slime_root.visible,
 		"P2 hides individual nests and monsters"
@@ -143,7 +133,7 @@ func _check_overview(demo: DemoScript) -> void:
 	_check(demo._net_phase == DemoScript.NetPhase.IDLE, "P2 cannot cast a net")
 	_check(demo.run.candy == candy, "P2 interaction leaves the economy unchanged")
 	demo._select_tool(DemoScript.ToolMode.PIPE)
-	demo._view.zoom_steps(1.0)
+	demo._view.zoom_steps(1.0, false)
 
 
 func _check_nest_access(demo: DemoScript) -> void:

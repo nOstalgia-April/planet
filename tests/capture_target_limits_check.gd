@@ -40,7 +40,10 @@ func _check_nearest_only(demo: DemoScript) -> void:
 	var cluster: Array[PrototypeSlime] = _prepare(demo)
 	var original_points: Array[Vector2] = []
 	for index: int in range(CLUSTER_SIZE):
-		_place_body(cluster[index], TARGET + Vector2(4.0 + float(index) * 8.0, 0.0))
+		_place_body(
+			cluster[index],
+			TARGET + Vector2(demo.run.get_pipe_radius() * (1.0 / 6.0 + float(index) / 3.0), 0.0)
+		)
 		original_points.append(cluster[index].get_capture_point())
 	demo._capture_at(0.05, TARGET, true)
 	_check(
@@ -155,8 +158,8 @@ func _check_independent_technology(demo: DemoScript) -> void:
 	var expected_seconds: PackedFloat32Array = demo.run.settings.pipe_capture_seconds
 	_check(
 		(
-			is_equal_approx(demo.run.get_pipe_radius(), 24.0)
-			and is_equal_approx(demo.run.get_net_radius(), 84.0)
+			is_equal_approx(demo.run.get_pipe_radius(), 9.6)
+			and is_equal_approx(demo.run.get_net_radius(), 33.6)
 		),
 		"Pipe and net start with their fixed independent radii."
 	)
@@ -166,14 +169,14 @@ func _check_independent_technology(demo: DemoScript) -> void:
 		_check(
 			(
 				is_equal_approx(demo.run.get_pipe_capture_seconds(), expected_seconds[level])
-				and is_equal_approx(demo.run.get_pipe_radius(), 24.0)
+				and is_equal_approx(demo.run.get_pipe_radius(), 9.6)
 				and demo.run.net_level == 0
 				and demo.run.get_net_capacity() == initial_capacity
 				and is_equal_approx(demo.run.settings.net_cooldown_seconds, cooldown)
 			),
 			"Pipe technology changes only serial capture speed."
 		)
-		_place_body(cluster[0], TARGET + Vector2.RIGHT * 25.0)
+		_place_body(cluster[0], TARGET + Vector2.RIGHT * (demo.run.get_pipe_radius() + 0.01))
 		demo._capture_at(0.1, TARGET, true)
 		_check(
 			is_zero_approx(cluster[0].capture_progress) and demo.run.candy == 0,
@@ -193,8 +196,8 @@ func _check_independent_technology(demo: DemoScript) -> void:
 			(
 				demo.run.pipe_level == expected_seconds.size() - 1
 				and is_equal_approx(demo.run.get_pipe_capture_seconds(), pipe_seconds)
-				and is_equal_approx(demo.run.get_pipe_radius(), 24.0)
-				and is_equal_approx(demo.run.get_net_radius(), 84.0)
+				and is_equal_approx(demo.run.get_pipe_radius(), 9.6)
+				and is_equal_approx(demo.run.get_net_radius(), 33.6)
 			),
 			"Net technology changes capacity without changing either radius or pipe speed."
 		)

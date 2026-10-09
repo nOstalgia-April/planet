@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://features/物品动画预览/动画预览.gd" id="r001"]
 [ext_resource type="PackedScene" path="res://scenes/物品动画/史莱姆.tscn" id="r002"]
@@ -12,6 +12,10 @@
 [ext_resource type="PackedScene" path="res://scenes/物品动画/地鼠巢穴1-2-3-4.tscn" id="r010"]
 
 [ext_resource type="FontVariation" path="res://fonts/game_font.tres" id="r011"]
+
+[ext_resource type="PackedScene" path="res://scenes/物品动画/史莱姆巢穴产怪.tscn" id="spawn0"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/黏液巢穴产怪.tscn" id="spawn1"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/地鼠巢穴产怪.tscn" id="spawn2"]
 
 [sub_resource type="StyleBoxFlat" id="r012"]
 content_margin_left = 18.0
@@ -71,7 +75,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme = SubResource("r016")
 script = ExtResource("r001")
-object_scenes = Array[PackedScene]([ExtResource("r002"), ExtResource("r003"), ExtResource("r004"), ExtResource("r005"), ExtResource("r006"), ExtResource("r007"), ExtResource("r008"), ExtResource("r009"), ExtResource("r010")])
+object_scenes = Array[PackedScene]([ExtResource("r002"), ExtResource("r003"), ExtResource("r004"), ExtResource("r005"), ExtResource("r006"), ExtResource("r007"), ExtResource("r008"), ExtResource("r009"), ExtResource("r010"), ExtResource("spawn0"), ExtResource("spawn1"), ExtResource("spawn2")])
 
 [node name="背景" type="ColorRect" parent="."]
 layout_mode = 1

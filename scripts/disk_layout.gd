@@ -110,8 +110,12 @@ func refresh_progression(run: PrototypeRun) -> void:
 		"活跃 %d  ·  强化培育 %d  ·  自动化 %d" % [active_count, partial_count, managed_count]
 	)
 	var combo_hint: String = (
-		"连续吸入 %d 只后，每只额外获得糖果；每次吸入刷新 %.0f 秒。捕网和自动产糖不刷新。"
-		% [run.settings.combo_target, run.get_combo_window_seconds()]
+		"连续吸入 %d 只后，捕获收益 +%d%%；间隔 %.0f 秒。小数奖励累计到账。"
+		% [
+			run.settings.combo_target,
+			run.get_combo_reward_percent(),
+			run.get_combo_window_seconds()
+		]
 	)
 	$ComboChip.tooltip_text = combo_hint
 	for index: int in range(2):
@@ -123,7 +127,9 @@ func refresh_progression(run: PrototypeRun) -> void:
 func refresh_timers(run: PrototypeRun) -> void:
 	$ComboChip.visible = run.combo_level > 0
 	if run.combo_count >= run.settings.combo_target and run.combo_remaining > 0.0:
-		_combo_label.text = "连击 +%d · %.1f 秒" % [run.combo_level, run.combo_remaining]
+		_combo_label.text = (
+			"连击 +%d%% · %.1f 秒" % [run.get_combo_reward_percent(), run.combo_remaining]
+		)
 	elif run.combo_remaining > 0.0:
 		_combo_label.text = (
 			"连吸 %d / %d · %.1f 秒"
@@ -255,18 +261,6 @@ func is_over_ui(viewport_position: Vector2) -> bool:
 		if panel.is_visible_in_tree() and panel.get_global_rect().has_point(viewport_position):
 			return true
 	return false
-
-
-func get_overview_obstacles() -> Array[Rect2]:
-	var rectangles: Array[Rect2] = []
-	var controls: Array[Control] = [$EconomyCard, $GoalCard, $ComboChip, _tool_dock, _restart]
-	for panel: Control in controls:
-		if panel.is_visible_in_tree():
-			rectangles.append(panel.get_global_rect())
-	for panel: PanelContainer in _upgrade_panels:
-		if panel.is_visible_in_tree():
-			rectangles.append(panel.get_global_rect())
-	return rectangles
 
 
 func show_nest_details(anchor: Rect2) -> void:

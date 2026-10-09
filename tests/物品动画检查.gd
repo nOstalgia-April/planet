@@ -15,7 +15,7 @@ func _initialize() -> void:
 func _run_checks() -> void:
 	var preview: Preview = PreviewScene.instantiate() as Preview
 	root.add_child(preview)
-	_check(preview.object_scenes.size() == 9, "九个独立物件场景")
+	_check(preview.object_scenes.size() == 12, "十二个独立物件场景，含三种巢穴产怪")
 	for packed_scene in preview.object_scenes:
 		var view: AnimationView = packed_scene.instantiate() as AnimationView
 		root.add_child(view)
@@ -25,6 +25,8 @@ func _run_checks() -> void:
 		for clip_name in view.animation_order:
 			var animation: Animation = view.animation_player.get_animation(clip_name)
 			var frame_count: int = view.get_frame_count(clip_name)
+			if "产怪" in packed_scene.resource_path:
+				_check(frame_count == 7, "每种巢穴各阶段产怪保留原始七帧")
 			_check(is_equal_approx(animation.length, frame_count / expected_fps), "动画时长匹配帧率")
 			_check(is_equal_approx(animation.step, 1.0 / expected_fps), "时间轴步长匹配帧率")
 			_check(animation.track_get_key_count(0) == frame_count, "帧数与贴图轨道一致")

@@ -69,9 +69,15 @@ func _check_opening(demo: DemoScript) -> void:
 		demo._active_tool == DemoScript.ToolMode.PIPE, "a locked net cannot become the active tool"
 	)
 	demo._layout.close_panels()
-	demo.run.advance(demo.run.settings.spawn_intervals[0] - 0.01)
+	var first_interval: float = minf(
+		demo.run.get_nest_spawn_interval(1), demo.run.get_nest_spawn_interval(2)
+	)
+	var last_interval: float = maxf(
+		demo.run.get_nest_spawn_interval(1), demo.run.get_nest_spawn_interval(2)
+	)
+	demo.run.advance(first_interval - 0.01)
 	_check(demo._slimes.is_empty(), "no actor appears before the first burst interval")
-	demo.run.advance(0.01)
+	demo.run.advance(last_interval - first_interval + 0.02)
 	_freeze(demo)
 	for nest: NestState in demo.run.nests:
 		_check(
@@ -84,7 +90,7 @@ func _check_overview(demo: DemoScript) -> void:
 	var actors: Array[PrototypeSlime] = demo._slimes.duplicate()
 	var candy: int = demo.run.candy
 	var counts: Vector2i = Vector2i(demo._slimes.size(), 0)
-	demo._view.zoom_steps(-1.0)
+	demo._view.zoom_steps(-1.0, false)
 	await _settle()
 	_check(
 		(
@@ -117,7 +123,7 @@ func _check_overview(demo: DemoScript) -> void:
 		demo._slimes == actors and demo.run.candy == candy,
 		"overview input cannot consume invisible monsters"
 	)
-	demo._view.zoom_steps(1.0)
+	demo._view.zoom_steps(1.0, false)
 	await _settle()
 	_check(
 		demo._slime_root.visible and demo._nests.visible and not demo._region_root.visible,
@@ -345,11 +351,11 @@ func _capture_views(demo: DemoScript) -> void:
 		demo.run.purchase_technology("net")
 		demo.run.advance(8.0)
 		_freeze(demo)
-		demo._view.zoom_steps(-1.0)
+		demo._view.zoom_steps(-1.0, false)
 		demo._overview._process(2.0)
 		await _settle()
 		await _save("gameplay_overview_%dx%d.png" % [resolution.x, resolution.y])
-		demo._view.zoom_steps(1.0)
+		demo._view.zoom_steps(1.0, false)
 
 
 func _freeze(demo: DemoScript) -> void:

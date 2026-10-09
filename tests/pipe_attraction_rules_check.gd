@@ -38,14 +38,14 @@ func _run_checks() -> void:
 		(
 			is_equal_approx(run.get_pipe_capture_seconds(), 0.11)
 			and run.get_net_capacity() == 10
-			and is_equal_approx(run.get_pipe_radius(), 24.0)
+			and is_equal_approx(run.get_pipe_radius(), 9.6)
 		),
-		"Pipe speed and net capacity upgrades preserve the twenty-four-unit processing center."
+		"Pipe speed and net capacity upgrades preserve the 9.6-unit processing center."
 	)
 	run.start_run(_positions())
 	_check(
 		(
-			is_equal_approx(run.get_pipe_radius(), 24.0)
+			is_equal_approx(run.get_pipe_radius(), 9.6)
 			and is_equal_approx(run.get_pipe_capture_seconds(), 0.6)
 			and run.pipe_level == 0
 			and not run.net_unlocked
