@@ -86,6 +86,18 @@ color = Color(0.045, 0.063, 0.083, 1)
 
 [node name="画面" type="Node2D" parent="."]
 
+[node name="返回主菜单" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -188.0
+offset_top = 24.0
+offset_right = -24.0
+offset_bottom = 76.0
+grow_horizontal = 0
+text = "返回主菜单"
+
 [node name="接地线" type="Line2D" parent="画面"]
 points = PackedVector2Array(-200, 1, 200, 1)
 width = 0.5
@@ -178,3 +190,5 @@ horizontal_alignment = 2
 [connection signal="pressed" from="工具栏/纵排/选择行/下一帧按钮" to="." method="_on_next_frame"]
 
 [connection signal="value_changed" from="工具栏/纵排/进度行/帧进度" to="." method="_on_frame_selected"]
+
+[connection signal="pressed" from="返回主菜单" to="." method="_return_to_menu"]

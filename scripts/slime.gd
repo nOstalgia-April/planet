@@ -138,7 +138,7 @@ func configure_species(kind: Species, valuable: bool, candy_reward: int) -> void
 
 
 func is_anchored() -> bool:
-	return species == Species.MUCUS and detached_remaining <= 0.0 and not consumed and on_mucus
+	return detached_remaining <= 0.0 and not consumed and on_mucus
 
 
 func pull_off_mucus(delta: float, target: Vector2, duration: float = -1.0) -> bool:

@@ -128,12 +128,7 @@ func _run_checks() -> void:
 		)
 		for nest: NestView in demo._nest_views:
 			_check(
-				screen.has_point(
-					(
-						nest.get_global_transform_with_canvas()
-						* Vector2(0.0, (-nest.nest_height - 12.0) * nest.presentation_scale.y)
-					)
-				),
+				screen.encloses(nest.get_hover_rect()),
 				"P2 includes the outer nest visuals in the screen"
 			)
 		camera.reset_view()

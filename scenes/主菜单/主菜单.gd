@@ -8,6 +8,7 @@ extends Control
 
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(Color.BLACK)
+	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 	get_viewport().size_changed.connect(_fit_canvas)
 	_fit_canvas()
 

@@ -73,7 +73,7 @@ func _play_next_upgrade() -> void:
 	_growth.play_clip(TRANSITIONS[_display_level])
 	if _species == 1 and _display_level == 2:
 		# The first five source frames repeat the previous upgrade.
-		_growth.animation_player.seek(5.0 / 8.0, true)
+		_growth.animation_player.seek(5.0 / _growth.frames_per_second, true)
 	_refresh_bounds()
 
 

@@ -170,6 +170,10 @@ func _on_card_input(event: InputEvent, index: int) -> void:
 			play_effect(index)
 
 
+func _return_to_menu() -> void:
+	get_tree().change_scene_to_file("res://scenes/主菜单/主菜单.tscn")
+
+
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var key: InputEventKey = event as InputEventKey

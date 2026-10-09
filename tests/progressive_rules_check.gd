@@ -15,6 +15,7 @@ func _init() -> void:
 func _run_checks() -> void:
 	_check_opening_and_net_unlock()
 	_check_bursts_and_population_tiers()
+	_check_automatic_income()
 	_check_continuous_pipe_combo()
 	_check_tool_tiers()
 	_check_continuous_discovery()
@@ -128,7 +129,7 @@ func _check_continuous_pipe_combo() -> void:
 			run.combo_count == 8 and run.candy == 8 * SETTINGS.slime_reward + 3 * tier,
 			"Every capture from the sixth onward adds the researched bonus without resetting."
 		)
-		run.advance(2.99)
+		run.advance(2.9)
 		_check(run.combo_count == 8, "The active streak survives until its three-second deadline.")
 		run.net_unlocked = true
 		var reward: int = run.collect_net_batch([1, 1])
@@ -136,12 +137,19 @@ func _check_continuous_pipe_combo() -> void:
 			reward == 2 * SETTINGS.slime_reward and run.combo_count == 8,
 			"Net captures neither advance the pipe streak nor receive its bonus."
 		)
-		run.get_nest(1).level = 2
-		run.collect_automatic(1)
-		_check(run.combo_count == 8, "Automatic collection does not advance the pipe streak.")
+		run.get_nest(1).level = 3
+		run.get_nest(1).is_tamed = true
+		run.get_nest(1).income_remainder = 0.9
+		run.completed_nests = 1
+		var before_income: int = run.candy
+		run.advance(0.05)
 		_check(
-			is_equal_approx(run.combo_remaining, 0.01),
-			"Net and automatic capture do not refresh the remaining buff duration."
+			run.combo_count == 8 and run.candy == before_income + 1,
+			"Automatic income pays candy without advancing the pipe streak."
+		)
+		_check(
+			is_equal_approx(run.combo_remaining, 0.05),
+			"Net and automatic income do not refresh the remaining buff duration."
 		)
 		var balance: int = run.candy
 		_check(
@@ -329,6 +337,70 @@ func _check_existing_nests_completion() -> void:
 	_check(
 		not run.is_complete and run.generation_stage == 0 and run.nests.size() == 2,
 		"Restart clears completion, the roll clock and any pending placement."
+	)
+	run.free()
+
+
+func _check_automatic_income() -> void:
+	var run: PrototypeRun = _create_run()
+	run.candy = 10000
+	_enable_full_governance(run)
+	var nest: NestState = run.get_nest(1)
+	_check(run.upgrade_nest(1) and run.upgrade_nest(1), "The two cultivation stages remain.")
+	var before: int = run.candy
+	run.advance(1.0)
+	_check(
+		run.candy == before and run.get_passive_income() == 0.0,
+		"Cultivation never pays passive candy."
+	)
+	nest.spawn_clock = run.get_nest_spawn_interval(1) - 0.01
+	_check(run.upgrade_nest(1), "The final construction enables automatic income.")
+	_check(nest.spawn_clock == 0.0, "Automation clears an almost-ready spawn burst.")
+	var research_balance: int = run.candy
+	_check(
+		not run.purchase_nest_technology(1, "valuable") and run.candy == research_balance,
+		"An automated nest cannot charge for research that requires future monsters."
+	)
+	_spawn_requests = 0
+	run.slime_requested.connect(_count_spawn_for_first_nest)
+	before = run.candy
+	run.advance(0.1)
+	_check(run.candy == before, "Fractional candy is retained until a whole candy accrues.")
+	run.advance(0.3)
+	_check(
+		run.candy == before + 1 and is_equal_approx(nest.income_remainder, 0.2),
+		"Small updates preserve fractional income."
+	)
+	var population: int = nest.alive_slimes
+	run.advance(10.0)
+	_check(
+		_spawn_requests == 0 and nest.alive_slimes == population,
+		"An automated nest never spawns or consumes monsters."
+	)
+	_check(run.candy == before + 31, "Empty automated nests keep producing their configured candy.")
+	for _stage: int in range(3):
+		run.upgrade_nest(2)
+	_check(
+		run.is_complete and is_equal_approx(run.get_passive_income(), 6.0),
+		"Every automated nest contributes income after completion."
+	)
+	before = run.candy
+	run.advance(2.0)
+	_check(
+		run.candy == before + 12 and _spawn_requests == 0,
+		"Completion keeps income running and spawning stopped."
+	)
+	before = run.candy
+	run.advance(-1.0)
+	_check(run.candy == before, "Negative elapsed time cannot change income.")
+	run.start_run(_positions())
+	_check(
+		(
+			run.candy == 0
+			and run.get_passive_income() == 0.0
+			and run.get_nest(1).income_remainder == 0.0
+		),
+		"Restart clears production and fractional balances."
 	)
 	run.free()
 

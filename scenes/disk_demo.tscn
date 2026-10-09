@@ -56,6 +56,7 @@ radius = 240.0
 
 [node name="Nests" type="Node2D" parent="World"]
 unique_name_in_owner = true
+z_index = -1
 
 [node name="Regions" type="Node2D" parent="World"]
 unique_name_in_owner = true
@@ -220,7 +221,7 @@ show_percentage = false
 layout_mode = 2
 mouse_filter = 2
 theme_override_font_sizes/font_size = 12
-text = "活跃 2  ·  半治理 0  ·  已治理 0"
+text = "活跃 2  ·  强化培育 0  ·  自动化 0"
 unique_name_in_owner = true
 theme_override_colors/font_color = Color(0.47, 0.55, 0.46, 1)
 

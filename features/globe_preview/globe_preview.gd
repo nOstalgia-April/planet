@@ -62,6 +62,10 @@ func _ready() -> void:
 	_update_layout()
 
 
+func _return_to_menu() -> void:
+	get_tree().change_scene_to_file("res://scenes/主菜单/主菜单.tscn")
+
+
 func _process(_delta: float) -> void:
 	var hovered: MonsterView = null if _dragging else _pick_monster(get_global_mouse_position())
 	if hovered != _hovered_monster:

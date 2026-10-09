@@ -125,7 +125,7 @@ func _check_distinct_species_and_counts(demo: DemoScript) -> void:
 	demo.run.candy = 10000
 	demo.run.upgrade_pipe()
 	demo.run.upgrade_pipe()
-	for _level: int in range(3):
+	for _level: int in range(2):
 		demo.run.purchase_technology("governance")
 		demo.run.upgrade_nest(3)
 	demo.run.purchase_nest_technology(3, "valuable")
@@ -178,7 +178,7 @@ func _check_nest_mucus_coverage(demo: DemoScript) -> void:
 	mucus.position = covered
 	demo._advance_ground_mucus(0.0)
 	_check(
-		demo._capture_seconds_for(normal) > demo.run.get_pipe_capture_seconds() and mucus.is_anchored(),
+		normal.is_anchored() and mucus.is_anchored(),
 		"persistent mucus slows normal collection and anchors a mucus monster even before it leaves a trail"
 	)
 	_check(
@@ -470,22 +470,19 @@ func _check_partial_mucus_automation(demo: DemoScript) -> void:
 	demo.run.purchase_technology("governance")
 	demo.run.upgrade_nest(3)
 	demo.run.upgrade_nest(3)
-	demo._automatic_attempts[3] = 0
 	var population: int = demo.run.get_nest(3).alive_slimes
 	var before: int = demo.run.candy
-	for _attempt: int in range(2):
-		demo._on_auto_collect_requested(3)
+	demo.run.advance(1.0)
 	_check(
 		demo.run.get_nest(3).alive_slimes == population and demo.run.candy == before,
-		"partial mucus automation waits for its slower handling interval"
+		"Intermediate mucus cultivation has no automatic collection or income."
 	)
-	demo._on_auto_collect_requested(3)
+	demo.run.upgrade_nest(3)
+	before = demo.run.candy
+	demo.run.advance(6.0)
 	_check(
-		(
-			demo.run.get_nest(3).alive_slimes == population - 1
-			and demo.run.candy == before + demo.run.settings.slime_reward * 2
-		),
-		"a partial mucus region processes a real mucus individual every third attempt"
+		demo.run.get_nest(3).alive_slimes == population and demo.run.candy == before + 18,
+		"Full mucus automation stops spawning and pays passive candy without consuming actors."
 	)
 	_check_actor_species(demo)
 	await _check_overview_counts(demo)
@@ -524,7 +521,8 @@ func _prepare_ecology(demo: DemoScript) -> void:
 
 
 func _unlock_net(demo: DemoScript) -> void:
-	demo.run.candy = demo.run.settings.net_unlock_cost
+	demo.run.candy = demo.run.settings.net_unlock_cost + demo.run.get_pipe_upgrade_cost()
+	_check(demo.run.upgrade_pipe(), "speed level two enables net research")
 	_check(demo.run.purchase_technology("net"), "unlocking the net discovers the first mucus nest")
 	demo.run.candy = 0
 

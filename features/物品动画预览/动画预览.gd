@@ -142,13 +142,19 @@ func _on_next_frame() -> void:
 
 func _update_frame_display() -> void:
 	var count: int = current_view.get_frame_count(current_clip)
+	var fps: float = current_view.frames_per_second
 	var index: int = count - 1
 	if not _finished:
 		index = mini(
-			count - 1, floori(current_view.animation_player.current_animation_position * 8.0)
+			count - 1,
+			floori(current_view.animation_player.current_animation_position * fps + 0.0001)
 		)
 	_frame_slider.set_value_no_signal(index)
-	_frame_label.text = "%02d / %02d · 8帧/秒" % [index + 1, count]
+	_frame_label.text = "%02d / %02d · %d帧/秒" % [index + 1, count, roundi(fps)]
+
+
+func _return_to_menu() -> void:
+	get_tree().change_scene_to_file("res://scenes/主菜单/主菜单.tscn")
 
 
 func _unhandled_key_input(event: InputEvent) -> void:

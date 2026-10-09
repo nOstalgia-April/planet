@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/disk_demo.tscn" id="r001"]
 
@@ -15,6 +15,8 @@
 [ext_resource type="PackedScene" path="res://scenes/场景动画/全景背景.tscn" id="r007"]
 
 [ext_resource type="Theme" path="res://resources/场景预览主题.tres" id="r008"]
+
+[ext_resource type="PackedScene" path="res://scenes/场景动画/背景地壳裁剪.tscn" id="r009"]
 
 [node name="近景游玩预览" instance=ExtResource("r001")]
 script = ExtResource("r002")
@@ -39,16 +41,20 @@ autoplay = "待机"
 [node name="美术背景" type="CanvasLayer" parent="."]
 layer = -10
 
-[node name="画布" type="Node2D" parent="美术背景"]
+[node name="地壳裁剪" parent="美术背景" node_paths=PackedStringArray("planet_surface", "background_canvas") instance=ExtResource("r009")]
+planet_surface = NodePath("../../World/PlanetSurface")
+background_canvas = NodePath("画布")
+
+[node name="画布" type="Node2D" parent="美术背景/地壳裁剪"]
 
 
-[node name="近景背景" parent="美术背景/画布" instance=ExtResource("r006")]
+[node name="近景背景" parent="美术背景/地壳裁剪/画布" instance=ExtResource("r006")]
 
 
-[node name="全景背景" parent="美术背景/画布" instance=ExtResource("r007")]
+[node name="全景背景" parent="美术背景/地壳裁剪/画布" instance=ExtResource("r007")]
 visible = false
 
-[node name="动画播放器" parent="美术背景/画布/全景背景" index="1"]
+[node name="动画播放器" parent="美术背景/地壳裁剪/画布/全景背景" index="1"]
 autoplay = "待机"
 
 [node name="预览导航" type="CanvasLayer" parent="."]

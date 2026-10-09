@@ -107,10 +107,10 @@ func refresh_progression(run: PrototypeRun) -> void:
 		else:
 			active_count += 1
 	%GovernanceLabel.text = (
-		"活跃 %d  ·  半治理 %d  ·  已治理 %d" % [active_count, partial_count, managed_count]
+		"活跃 %d  ·  强化培育 %d  ·  自动化 %d" % [active_count, partial_count, managed_count]
 	)
 	var combo_hint: String = (
-		"连续吸入 %d 只后，每只额外获得糖果；每次吸入刷新 %.0f 秒。捕网和自动采集不刷新。"
+		"连续吸入 %d 只后，每只额外获得糖果；每次吸入刷新 %.0f 秒。捕网和自动产糖不刷新。"
 		% [run.settings.combo_target, run.get_combo_window_seconds()]
 	)
 	$ComboChip.tooltip_text = combo_hint

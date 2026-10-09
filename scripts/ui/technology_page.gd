@@ -277,9 +277,9 @@ func _note(id: String) -> String:
 		"cultivation":
 			return "在具体巢穴投入 %d 糖果建设。" % _run.settings.nest_upgrade_costs[0]
 		"automation":
-			return "各巢穴仍需逐步建设；全部自动化即可达成目标。"
+			return "巢穴建成后停止产怪，持续产糖；全部自动化即可达成目标。"
 		"combo_unlock", "combo_reward", "combo_interval":
-			return "吸管每次吸入续接连击；捕网与自动采集不计入。"
+			return "吸管每次吸入续接连击；捕网与自动产糖不计入。"
 		"valuable":
 			return "只影响选中巢穴此后刷新的个体。"
 	return ""

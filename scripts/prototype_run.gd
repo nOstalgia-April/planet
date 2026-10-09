@@ -7,7 +7,7 @@ signal nest_added(nest: NestState)
 signal nest_changed(nest: NestState)
 signal nest_spawn_requested(species: NestState.Species)
 signal slime_requested(nest_id: int)
-signal auto_collect_requested(nest_id: int)
+signal automatic_income_received(nest_id: int, amount: int)
 signal goal_completed
 
 @export var settings: PrototypeSettings
@@ -26,7 +26,6 @@ var nests: Array[NestState] = []
 var generated_nests: int = 0
 var completed_nests: int = 0
 var is_complete: bool = false
-var passive_remainder: float = 0.0
 var generation_stage: int = 0
 
 var _spawn_positions: Array[Vector2] = []
@@ -62,7 +61,7 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	assert(settings.pipe_radius > 0.0)
 	assert(settings.net_radius > 0.0 and settings.net_cooldown_seconds > 0.0)
 	assert(settings.governance_upgrade_costs.size() == 2)
-	assert(settings.automatic_capture_intervals.size() == settings.nest_upgrade_costs.size() + 1)
+	assert(settings.passive_income_per_second >= 0.0)
 	assert(settings.combo_target > 0 and settings.combo_window_seconds > 0.0)
 	assert(
 		(
@@ -99,7 +98,6 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	generated_nests = 0
 	completed_nests = 0
 	is_complete = false
-	passive_remainder = 0.0
 	generation_stage = 0
 	economy_changed.emit()
 	net_cooldown_changed.emit()
@@ -121,7 +119,7 @@ func advance(delta: float) -> void:
 	var current_nests: Array[NestState] = nests.duplicate()
 	for nest: NestState in current_nests:
 		_advance_nest_population(nest, delta)
-		_advance_automatic_collection(nest, delta)
+		_advance_automatic_income(nest, delta)
 	_advance_nest_roll(delta)
 
 
@@ -159,17 +157,6 @@ func collect_net_batch(nest_ids: Array[int], rewards: Array[int] = []) -> int:
 		nest_changed.emit(nest)
 	economy_changed.emit()
 	return reward
-
-
-func collect_automatic(nest_id: int, reward: int = 2) -> bool:
-	var nest: NestState = get_nest(nest_id)
-	if nest == null or nest.level < 2 or nest.alive_slimes <= 0 or reward < 0:
-		return false
-	nest.alive_slimes -= 1
-	candy += reward
-	nest_changed.emit(nest)
-	economy_changed.emit()
-	return true
 
 
 func purchase_technology(id: String) -> bool:
@@ -234,6 +221,8 @@ func upgrade_nest(nest_id: int) -> bool:
 	nest.level += 1
 	if nest.level == settings.nest_upgrade_costs.size():
 		nest.is_tamed = true
+		nest.spawn_clock = 0.0
+		nest.income_remainder = 0.0
 		completed_nests += 1
 	_check_completion()
 	nest_changed.emit(nest)
@@ -419,10 +408,13 @@ func get_nest_technology_cost(nest_id: int, id: String) -> int:
 
 
 func get_nest_technology_requirement(nest_id: int, id: String) -> String:
-	if get_nest(nest_id) == null:
+	var nest: NestState = get_nest(nest_id)
+	if nest == null:
 		return "选择一个生态区"
 	if id != "valuable":
 		return "未知科技"
+	if nest.is_tamed:
+		return "已自动化，停止产怪"
 	return "需要巢穴培育" if governance_level < 1 else ""
 
 
@@ -503,12 +495,7 @@ func begin_net_cast() -> bool:
 
 
 func get_passive_income() -> float:
-	var income: float = 0.0
-	for nest: NestState in nests:
-		var interval: float = settings.automatic_capture_intervals[nest.level]
-		if interval > 0.0:
-			income += float(settings.slime_reward) / interval
-	return income
+	return float(completed_nests) * settings.passive_income_per_second
 
 
 func _get_technology_costs(id: String) -> PackedInt32Array:
@@ -541,6 +528,9 @@ func _register_manual_capture() -> int:
 
 
 func _advance_nest_population(nest: NestState, delta: float) -> void:
+	if nest.is_tamed:
+		nest.spawn_clock = 0.0
+		return
 	var population_limit: int = get_nest_population_limit(nest.nest_id)
 	if nest.alive_slimes >= population_limit:
 		nest.spawn_clock = 0.0
@@ -566,17 +556,17 @@ func _advance_nest_population(nest: NestState, delta: float) -> void:
 		nest_changed.emit(nest)
 
 
-func _advance_automatic_collection(nest: NestState, delta: float) -> void:
-	var interval: float = settings.automatic_capture_intervals[nest.level]
-	if interval <= 0.0 or nest.alive_slimes <= 0:
-		nest.automatic_clock = 0.0
+func _advance_automatic_income(nest: NestState, delta: float) -> void:
+	if not nest.is_tamed:
 		return
-	nest.automatic_clock += delta
-	while nest.automatic_clock >= interval and nest.alive_slimes > 0:
-		nest.automatic_clock -= interval
-		auto_collect_requested.emit(nest.nest_id)
-	if nest.alive_slimes <= 0:
-		nest.automatic_clock = 0.0
+	nest.income_remainder += settings.passive_income_per_second * delta
+	var amount: int = floori(nest.income_remainder)
+	if amount <= 0:
+		return
+	nest.income_remainder -= float(amount)
+	candy += amount
+	automatic_income_received.emit(nest.nest_id, amount)
+	economy_changed.emit()
 
 
 func get_average_governance() -> float:

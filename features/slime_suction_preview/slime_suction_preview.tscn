@@ -39,6 +39,18 @@ z_index = -1
 
 [node name="UI" type="CanvasLayer" parent="."]
 
+[node name="返回主菜单" type="Button" parent="UI"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -194.0
+offset_top = 24.0
+offset_right = -24.0
+offset_bottom = 78.0
+grow_horizontal = 0
+theme = ExtResource("4_theme")
+text = "返回主菜单"
+
 [node name="Controls" type="HBoxContainer" parent="UI"]
 anchors_preset = 12
 anchor_left = 0.5
@@ -83,3 +95,5 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "复位"
 tooltip_text = "R"
+
+[connection signal="pressed" from="UI/返回主菜单" to="." method="_return_to_menu"]

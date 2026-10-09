@@ -37,10 +37,8 @@ var combo_interval_bonus_seconds: PackedFloat32Array = PackedFloat32Array([0.0, 
 @export_range(1, 20, 1) var combo_target: int = 5
 @export_range(0.1, 30.0, 0.1) var combo_window_seconds: float = 3.0
 @export_group("Living regions")
-@export var automatic_capture_intervals: PackedFloat32Array = PackedFloat32Array([0, 0, 1.15, 0.5])
 @export_range(2, 50, 1) var valuable_spawn_every: int = 8
 @export_range(2, 10, 1) var valuable_reward_multiplier: int = 3
-@export_range(1.0, 5.0, 0.05) var mucus_slow_multiplier: float = 1.65
 @export_range(1.0, 4.0, 0.1) var mucus_nest_coverage_multiplier: float = 2.0
 @export_group("Ground mucus trail")
 @export_range(2.0, 16.0, 0.5) var mucus_trail_half_width: float = 7.0

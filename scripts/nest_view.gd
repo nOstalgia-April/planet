@@ -6,12 +6,7 @@ const NestArt = preload("res://scripts/nest_art.gd")
 
 @export_group("场景显示")
 @export var outline_color: Color = Color("454944")
-@export_range(0.0, 6.0, 0.25) var ground_inset: float = 1.5
-@export_range(48.0, 108.0, 1.0) var nest_height: float = 70.0:
-	set(value):
-		nest_height = value
-		if is_node_ready():
-			_refresh_art()
+@export_range(0.0, 12.0, 0.25) var ground_inset: float = 8.0
 @export var presentation_scale: Vector2 = Vector2.ONE:
 	set(value):
 		presentation_scale = Vector2.ONE * value.x
@@ -78,8 +73,7 @@ func get_collection_point() -> Vector2:
 
 
 func _refresh_art() -> void:
-	var factor: float = nest_height / 110.0
-	_art_rect = Rect2(_art.get_art_bounds().position * factor, _art.get_art_bounds().size * factor)
+	_art_rect = _art.get_art_bounds()
 	var rectangle: RectangleShape2D = RectangleShape2D.new()
 	rectangle.size = _art_rect.size
 	_selection_shape.shape = rectangle
@@ -109,9 +103,7 @@ func _get_presentation_transform() -> Transform2D:
 
 func _update_presentation() -> void:
 	var presentation: Transform2D = _get_presentation_transform()
-	_art.transform = (
-		presentation * Transform2D(0.0, Vector2.ONE * nest_height / 110.0, 0.0, Vector2.ZERO)
-	)
+	_art.transform = presentation
 	var shape_transform: Transform2D = presentation * Transform2D(0.0, _art_rect.get_center())
 	if _selection_shape.transform.is_equal_approx(shape_transform):
 		return

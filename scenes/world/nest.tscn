@@ -10,7 +10,6 @@ size = Vector2(93.36, 47.6)
 script = ExtResource("1_nest")
 
 [node name="NestArt" parent="." instance=ExtResource("2_art")]
-scale = Vector2(0.6363636, 0.6363636)
 
 [node name="SelectionArea" type="Area2D" parent="."]
 collision_layer = 1

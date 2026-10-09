@@ -29,8 +29,8 @@
 
 [sub_resource type="Animation" id="r027"]
 resource_name = "1-2-3-4"
-length = 3.125
-step = 0.125
+length = 2.083333333
+step = 0.083333333
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
@@ -38,7 +38,7 @@ tracks/0/path = NodePath("画面/贴图:texture")
 tracks/0/interp = 0
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 2, 2.125, 2.25, 2.375, 2.5, 2.625, 2.75, 2.875, 3),
+"times": PackedFloat32Array(0, 0.083333333, 0.166666667, 0.25, 0.333333333, 0.416666667, 0.5, 0.583333333, 0.666666667, 0.75, 0.833333333, 0.916666667, 1, 1.083333333, 1.166666667, 1.25, 1.333333333, 1.416666667, 1.5, 1.583333333, 1.666666667, 1.75, 1.833333333, 1.916666667, 2),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
 "update": 1,
 "values": [ExtResource("r002"), ExtResource("r003"), ExtResource("r004"), ExtResource("r005"), ExtResource("r006"), ExtResource("r007"), ExtResource("r008"), ExtResource("r009"), ExtResource("r010"), ExtResource("r011"), ExtResource("r012"), ExtResource("r013"), ExtResource("r014"), ExtResource("r015"), ExtResource("r016"), ExtResource("r017"), ExtResource("r018"), ExtResource("r019"), ExtResource("r020"), ExtResource("r021"), ExtResource("r022"), ExtResource("r023"), ExtResource("r024"), ExtResource("r025"), ExtResource("r026")]
@@ -50,7 +50,7 @@ tracks/1/path = NodePath("画面/贴图:position")
 tracks/1/interp = 0
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 2, 2.125, 2.25, 2.375, 2.5, 2.625, 2.75, 2.875, 3),
+"times": PackedFloat32Array(0, 0.083333333, 0.166666667, 0.25, 0.333333333, 0.416666667, 0.5, 0.583333333, 0.666666667, 0.75, 0.833333333, 0.916666667, 1, 1.083333333, 1.166666667, 1.25, 1.333333333, 1.416666667, 1.5, 1.583333333, 1.666666667, 1.75, 1.833333333, 1.916666667, 2),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
 "update": 1,
 "values": [Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238)]
@@ -62,7 +62,7 @@ tracks/2/path = NodePath("画面/贴图:scale")
 tracks/2/interp = 0
 tracks/2/loop_wrap = true
 tracks/2/keys = {
-"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 2, 2.125, 2.25, 2.375, 2.5, 2.625, 2.75, 2.875, 3),
+"times": PackedFloat32Array(0, 0.083333333, 0.166666667, 0.25, 0.333333333, 0.416666667, 0.5, 0.583333333, 0.666666667, 0.75, 0.833333333, 0.916666667, 1, 1.083333333, 1.166666667, 1.25, 1.333333333, 1.416666667, 1.5, 1.583333333, 1.666666667, 1.75, 1.833333333, 1.916666667, 2),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
 "update": 1,
 "values": [Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106)]
@@ -70,8 +70,8 @@ tracks/2/keys = {
 
 [sub_resource type="Animation" id="r028"]
 resource_name = "1-2"
-length = 1
-step = 0.125
+length = 0.666666667
+step = 0.083333333
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
@@ -79,7 +79,7 @@ tracks/0/path = NodePath("画面/贴图:texture")
 tracks/0/interp = 0
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875),
+"times": PackedFloat32Array(0, 0.083333333, 0.166666667, 0.25, 0.333333333, 0.416666667, 0.5, 0.583333333),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
 "update": 1,
 "values": [ExtResource("r002"), ExtResource("r003"), ExtResource("r004"), ExtResource("r005"), ExtResource("r006"), ExtResource("r007"), ExtResource("r008"), ExtResource("r009")]
@@ -91,7 +91,7 @@ tracks/1/path = NodePath("画面/贴图:position")
 tracks/1/interp = 0
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875),
+"times": PackedFloat32Array(0, 0.083333333, 0.166666667, 0.25, 0.333333333, 0.416666667, 0.5, 0.583333333),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
 "update": 1,
 "values": [Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172), Vector2(-90.5827815, -110.8874172)]
@@ -103,7 +103,7 @@ tracks/2/path = NodePath("画面/贴图:scale")
 tracks/2/interp = 0
 tracks/2/loop_wrap = true
 tracks/2/keys = {
-"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875),
+"times": PackedFloat32Array(0, 0.083333333, 0.166666667, 0.25, 0.333333333, 0.416666667, 0.5, 0.583333333),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
 "update": 1,
 "values": [Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305), Vector2(0.1854305, 0.1854305)]
@@ -111,8 +111,8 @@ tracks/2/keys = {
 
 [sub_resource type="Animation" id="r029"]
 resource_name = "2-3"
-length = 1
-step = 0.125
+length = 0.666666667
+step = 0.083333333
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
@@ -120,7 +120,7 @@ tracks/0/path = NodePath("画面/贴图:texture")
 tracks/0/interp = 0
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875),
+"times": PackedFloat32Array(0, 0.083333333, 0.166666667, 0.25, 0.333333333, 0.416666667, 0.5, 0.583333333),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
 "update": 1,
 "values": [ExtResource("r010"), ExtResource("r011"), ExtResource("r012"), ExtResource("r013"), ExtResource("r014"), ExtResource("r015"), ExtResource("r016"), ExtResource("r017")]
@@ -132,7 +132,7 @@ tracks/1/path = NodePath("画面/贴图:position")
 tracks/1/interp = 0
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875),
+"times": PackedFloat32Array(0, 0.083333333, 0.166666667, 0.25, 0.333333333, 0.416666667, 0.5, 0.583333333),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
 "update": 1,
 "values": [Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461), Vector2(-124.4313454, -151.5010461)]
@@ -144,7 +144,7 @@ tracks/2/path = NodePath("画面/贴图:scale")
 tracks/2/interp = 0
 tracks/2/loop_wrap = true
 tracks/2/keys = {
-"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875),
+"times": PackedFloat32Array(0, 0.083333333, 0.166666667, 0.25, 0.333333333, 0.416666667, 0.5, 0.583333333),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1),
 "update": 1,
 "values": [Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554), Vector2(0.4168554, 0.4168554)]
@@ -152,8 +152,8 @@ tracks/2/keys = {
 
 [sub_resource type="Animation" id="r030"]
 resource_name = "3-4"
-length = 1.125
-step = 0.125
+length = 0.75
+step = 0.083333333
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
@@ -161,7 +161,7 @@ tracks/0/path = NodePath("画面/贴图:texture")
 tracks/0/interp = 0
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1),
+"times": PackedFloat32Array(0, 0.083333333, 0.166666667, 0.25, 0.333333333, 0.416666667, 0.5, 0.583333333, 0.666666667),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1),
 "update": 1,
 "values": [ExtResource("r018"), ExtResource("r019"), ExtResource("r020"), ExtResource("r021"), ExtResource("r022"), ExtResource("r023"), ExtResource("r024"), ExtResource("r025"), ExtResource("r026")]
@@ -173,7 +173,7 @@ tracks/1/path = NodePath("画面/贴图:position")
 tracks/1/interp = 0
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1),
+"times": PackedFloat32Array(0, 0.083333333, 0.166666667, 0.25, 0.333333333, 0.416666667, 0.5, 0.583333333, 0.666666667),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1),
 "update": 1,
 "values": [Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238), Vector2(-115.260526, -104.594238)]
@@ -185,7 +185,7 @@ tracks/2/path = NodePath("画面/贴图:scale")
 tracks/2/interp = 0
 tracks/2/loop_wrap = true
 tracks/2/keys = {
-"times": PackedFloat32Array(0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1),
+"times": PackedFloat32Array(0, 0.083333333, 0.166666667, 0.25, 0.333333333, 0.416666667, 0.5, 0.583333333, 0.666666667),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1),
 "update": 1,
 "values": [Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106), Vector2(0.4176106, 0.4176106)]
@@ -205,6 +205,7 @@ script = ExtResource("r001")
 default_animation = &"1-2-3-4"
 animation_order = Array[StringName]([&"1-2-3-4", &"1-2", &"2-3", &"3-4"])
 animation_player = NodePath("动画播放器")
+frames_per_second = 12.0
 
 [node name="画面" type="Node2D" parent="."]
 

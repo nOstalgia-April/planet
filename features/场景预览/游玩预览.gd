@@ -2,9 +2,8 @@ extends "res://scripts/disk_demo.gd"
 
 @export var start_in_overview: bool = false
 
-@onready var _near_background: Node2D = $美术背景/画布/近景背景
-@onready var _overview_background: Node2D = $美术背景/画布/全景背景
-@onready var _background_canvas: Node2D = $美术背景/画布
+@onready var _near_background: Node2D = $美术背景/地壳裁剪/画布/近景背景
+@onready var _overview_background: Node2D = $美术背景/地壳裁剪/画布/全景背景
 @onready var _switch_button: Button = $预览导航/切换视角
 
 
@@ -20,7 +19,6 @@ func _ready() -> void:
 
 
 func _fit_background() -> void:
-	_background_canvas.scale = get_viewport_rect().size / Vector2(1920.0, 1080.0)
 	var interface_scale: Vector2 = _layout.scale
 	var menu_button: Button = $预览导航/返回主菜单
 	menu_button.scale = interface_scale

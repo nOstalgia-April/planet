@@ -101,32 +101,65 @@ theme_override_styles/pressed = SubResource("r009")
 [node name="预览选择" type="PanelContainer" parent="画布"]
 visible = false
 offset_left = 444.0
-offset_top = 642.0
-offset_right = 820.0
-offset_bottom = 1022.0
+offset_top = 688.0
+offset_right = 1196.0
+offset_bottom = 1068.0
 
-[node name="列表" type="VBoxContainer" parent="画布/预览选择"]
+[node name="列表" type="GridContainer" parent="画布/预览选择"]
 layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+columns = 2
 
 [node name="近景游玩" type="Button" parent="画布/预览选择/列表"]
 layout_mode = 2
+size_flags_horizontal = 3
 text = "近景游玩"
 
 [node name="全景游玩" type="Button" parent="画布/预览选择/列表"]
 layout_mode = 2
+size_flags_horizontal = 3
 text = "全景游玩"
 
 [node name="吸尘器" type="Button" parent="画布/预览选择/列表"]
 layout_mode = 2
+size_flags_horizontal = 3
 text = "吸尘器"
 
 [node name="捕网" type="Button" parent="画布/预览选择/列表"]
 layout_mode = 2
+size_flags_horizontal = 3
 text = "捕网"
 
 [node name="黏液怪移动" type="Button" parent="画布/预览选择/列表"]
 layout_mode = 2
+size_flags_horizontal = 3
 text = "黏液怪移动"
+
+[node name="物件与巢穴" type="Button" parent="画布/预览选择/列表"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "物件与巢穴"
+
+[node name="中央喷溅" type="Button" parent="画布/预览选择/列表"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "中央喷溅"
+
+[node name="史莱姆吸取" type="Button" parent="画布/预览选择/列表"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "史莱姆吸取"
+
+[node name="地球仪" type="Button" parent="画布/预览选择/列表"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "地球仪"
+
+[node name="科技树" type="Button" parent="画布/预览选择/列表"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "科技树"
 
 [connection signal="pressed" from="画布/开始" to="." method="_start"]
 
@@ -143,3 +176,13 @@ text = "黏液怪移动"
 [connection signal="pressed" from="画布/预览选择/列表/捕网" to="." method="_open_scene" binds=["res://features/场景预览/捕网预览.tscn"]]
 
 [connection signal="pressed" from="画布/预览选择/列表/黏液怪移动" to="." method="_open_scene" binds=["res://features/场景预览/黏液怪移动预览.tscn"]]
+
+[connection signal="pressed" from="画布/预览选择/列表/物件与巢穴" to="." method="_open_scene" binds=["res://features/物品动画预览/物品动画总览.tscn"]]
+
+[connection signal="pressed" from="画布/预览选择/列表/中央喷溅" to="." method="_open_scene" binds=["res://features/splash_preview/splash_preview.tscn"]]
+
+[connection signal="pressed" from="画布/预览选择/列表/史莱姆吸取" to="." method="_open_scene" binds=["res://features/slime_suction_preview/slime_suction_preview.tscn"]]
+
+[connection signal="pressed" from="画布/预览选择/列表/地球仪" to="." method="_open_scene" binds=["res://features/globe_preview/globe_preview.tscn"]]
+
+[connection signal="pressed" from="画布/预览选择/列表/科技树" to="." method="_open_scene" binds=["res://features/technology_tree_preview/technology_tree_preview.tscn"]]

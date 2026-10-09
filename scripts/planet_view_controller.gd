@@ -12,7 +12,7 @@ signal view_rotated
 @export_range(0.1, 0.75, 0.001) var near_horizon_ratio: float = 0.55
 @export_range(1.0, 1.3, 0.01) var near_surface_radius_ratio: float = 1.07
 @export_range(0.2, 1.5, 0.01) var near_slime_scale: float = 0.90
-@export var near_nest_scale: Vector2 = Vector2(0.80, 0.80)
+@export var near_nest_scale: Vector2 = Vector2.ONE
 @export_range(0.2, 0.48, 0.01) var overview_radius_ratio: float = 0.42
 @export_range(1.0, 1.4, 0.01) var overview_outer_radius_ratio: float = 1.10
 @export_range(0.0, 80.0, 1.0) var overview_shadow_offset: float = 24.0

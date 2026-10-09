@@ -34,6 +34,7 @@ func _run() -> void:
 		_check(demo.run.purchase_technology("automation"))
 		var views: Array[NestView] = [demo._nest_views[0], demo._nest_views[2]]
 		for view: NestView in demo._nest_views:
+			_check(is_equal_approx(view._art._growth.frames_per_second, 12.0))
 			for item: ItemArt in view._art.get_children():
 				item.animation_player.callback_mode_process = (
 					AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
@@ -78,6 +79,12 @@ func _check_nests(demo: DemoScript, views: Array[NestView], dimensions: Vector2i
 			_check(view._art._transitioning)
 			var player: AnimationPlayer = view._art._growth.animation_player
 			var clip_time: float = player.current_animation_position
+			if level == 3 and view.species == 1:
+				_check(is_equal_approx(clip_time, 5.0 / 12.0))
+				_check(
+					view._art._sprite.texture.resource_path.ends_with("3-4/006.png"),
+					"Mucus skips exactly five repeated frames at 12 fps."
+				)
 			# Economy/population updates must not restart an in-flight upgrade.
 			view.update_state(level, level == 3, 3)
 			_check(is_equal_approx(player.current_animation_position, clip_time))
@@ -89,14 +96,21 @@ func _check_nests(demo: DemoScript, views: Array[NestView], dimensions: Vector2i
 			_check(not view._art._transitioning and view._art._display_level == level)
 			_check_bounds(view)
 		await _save("stage_%d" % level, dimensions)
+		if level in [2, 3]:
+			demo._select_nest(views[0].nest_id)
+			await _settle()
+			await _save("details_%d" % level, dimensions)
+			demo._clear_nest_selection()
 		await _check_ground_alignment(demo, views, dimensions, level)
 	for view: NestView in views:
 		_check(view._art._flower.visible and not view._art._growth.visible)
+		view._art._flower.animation_player.advance(1.0)
 		_check(view._art._flower.animation_player.current_animation == &"待机")
 		var candy_before: int = demo.run.candy
-		for attempt: int in range(3):
-			demo._on_auto_collect_requested(view.nest_id)
-		_check(demo.run.candy > candy_before, "The production clip follows real automatic income.")
+		var population: int = demo._slimes.size()
+		demo.run.advance(1.0)
+		_check(demo.run.candy > candy_before, "The production clip follows actual passive income.")
+		_check(demo._slimes.size() == population, "Production preserves the existing actors.")
 		var player: AnimationPlayer = view._art._flower.animation_player
 		_check(player.current_animation == &"产出")
 		player.advance(0.125)

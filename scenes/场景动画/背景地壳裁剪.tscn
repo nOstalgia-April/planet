@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/场景动画/背景地壳裁剪.gd" id="1_cutout"]
+
+[node name="背景地壳裁剪" type="Polygon2D"]
+clip_children = 1
+invert_enabled = true
+invert_border = 4096.0
+script = ExtResource("1_cutout")

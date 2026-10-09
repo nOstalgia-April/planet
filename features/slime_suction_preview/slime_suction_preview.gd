@@ -131,6 +131,10 @@ func reset_preview() -> void:
 	_pipe.set_tool_state(_pointer, _pointer, false)
 
 
+func _return_to_menu() -> void:
+	get_tree().change_scene_to_file("res://scenes/主菜单/主菜单.tscn")
+
+
 func _on_attraction_toggled(enabled: bool) -> void:
 	reset_preview()
 	_attraction_button.set_pressed_no_signal(enabled)

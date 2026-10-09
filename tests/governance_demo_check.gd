@@ -283,39 +283,27 @@ func _check_automation_and_completion(demo: DemoScript) -> void:
 	_freeze_actors(demo)
 	_check(
 		demo.run.upgrade_nest(1) and demo.run.upgrade_nest(1),
-		"researched local construction reaches partial governance"
+		"Local construction retains both cultivation stages."
 	)
-	var population_before: int = demo.run.get_nest(1).alive_slimes
-	var actor_count: int = demo._slimes.size()
 	var candy_before: int = demo.run.candy
-	var combo_before: int = demo.run.combo_count
-	demo._capture_targets.assign(demo._slimes)
-	demo._on_auto_collect_requested(1)
+	var original_actors: Array[PrototypeSlime] = demo._slimes.duplicate()
+	demo.run.advance(1.0)
+	_check(demo.run.candy == candy_before, "Intermediate cultivation has no passive income.")
+	for actor: PrototypeSlime in original_actors:
+		_check(demo._slimes.has(actor), "Cultivation never automatically consumes a real actor.")
+	_check(demo.run.upgrade_nest(1), "The first region becomes fully automated.")
+	var nest: NestState = demo.run.get_nest(1)
+	var population: int = nest.alive_slimes
+	var spawn_count: int = int(demo._spawn_directions.get(1, 0))
+	candy_before = demo.run.candy
+	demo.run.advance(2.0)
 	_check(
-		demo.run.candy == candy_before and demo._slimes.size() == actor_count,
-		"automatic requests with no eligible actor never invent passive candy"
+		demo.run.candy == candy_before + 6,
+		"Full automation pays three candy per second without collecting actors."
 	)
-	demo._capture_targets.clear()
-	demo._on_auto_collect_requested(1)
 	_check(
-		(
-			demo._slimes.size() == actor_count - 1
-			and demo.run.get_nest(1).alive_slimes == population_before - 1
-		),
-		"automation consumes one real actor and frees one population slot"
-	)
-	_check(
-		(
-			demo.run.candy == candy_before + demo.run.settings.slime_reward
-			and demo.run.combo_count == combo_before
-		),
-		"automatic reward is paid once without advancing combo"
-	)
-	_check(demo.run.get_technology_level("automation") == 1, "automation research remains unlocked")
-	_check(demo.run.upgrade_nest(1), "the first region becomes fully governed")
-	_check(
-		demo.run.get_nest(1).is_tamed and demo._regions.size() == demo.run.generated_nests,
-		"governed regions remain present without requiring an immediate replacement nest"
+		nest.alive_slimes == population and int(demo._spawn_directions.get(1, 0)) == spawn_count,
+		"Full automation stops spawning and retains existing actors."
 	)
 	while demo.run.get_pipe_upgrade_cost() >= 0:
 		var pipe_cost: int = demo.run.get_pipe_upgrade_cost()
@@ -323,47 +311,40 @@ func _check_automation_and_completion(demo: DemoScript) -> void:
 		_branch_purchase(demo, "Pipe").pressed.emit()
 		_check(
 			demo.run.candy == candy_before - pipe_cost,
-			"each additional pipe tier charges its displayed price"
+			"Each additional pipe tier charges its displayed price."
 		)
 	_check(
 		demo.run.pipe_level == 6 and is_equal_approx(demo.run.get_pipe_capture_seconds(), 0.11),
-		"the technology page reaches the seventh pipe speed tier"
+		"The technology page reaches the seventh pipe speed tier."
 	)
-	_check_stable_valuable_collection(demo)
-	var spawn_count: int = int(demo._spawn_directions.get(1, 0))
-	demo.run.advance(demo.run.get_nest_spawn_interval(1))
-	_check(
-		int(demo._spawn_directions.get(1, 0)) > spawn_count,
-		"fully governed region keeps creating actual monsters"
-	)
-	_freeze_actors(demo)
 	var nest_id: int = 1
 	while nest_id <= demo.run.generated_nests:
-		var nest: NestState = demo.run.get_nest(nest_id)
-		for _level: int in range(nest.level, demo.run.settings.nest_upgrade_costs.size()):
-			_check(demo.run.upgrade_nest(nest_id), "remaining region can complete governance")
+		var remaining: NestState = demo.run.get_nest(nest_id)
+		for _level: int in range(remaining.level, demo.run.settings.nest_upgrade_costs.size()):
+			_check(demo.run.upgrade_nest(nest_id), "Remaining regions can complete automation.")
 		nest_id += 1
 	_check(
 		demo.run.is_complete and demo._regions.size() == demo.run.generated_nests,
-		"completion retains every governed region"
+		"Completion retains every automated region."
 	)
 	var directions_before: int = _spawn_total(demo)
 	var completed_nest_count: int = demo.run.generated_nests
+	var actors_before: Array[PrototypeSlime] = demo._slimes.duplicate()
 	candy_before = demo.run.candy
 	_warm_ecology(demo, 7.0)
 	_check(
-		_spawn_total(demo) > directions_before and demo.run.candy > candy_before,
-		"completion keeps spawning and automatic collection running"
+		(
+			_spawn_total(demo) == directions_before
+			and demo.run.candy > candy_before
+			and demo._slimes == actors_before
+		),
+		"Completion keeps passive income running without spawning or collecting monsters."
 	)
-	_check(
-		demo.run.generated_nests == completed_nest_count,
-		"completion keeps the existing ecology but stops new nest discovery"
-	)
+	_check(demo.run.generated_nests == completed_nest_count, "Completion stops new nest discovery.")
 	candy_before = demo.run.candy
 	demo._process(0.6)
 	_check(
-		demo.run.candy > candy_before,
-		"the main scene still advances its living economy after completion"
+		demo.run.candy > candy_before, "The main scene advances passive income after completion."
 	)
 	_check_ledger(demo)
 	demo._close_victory()
@@ -372,34 +353,7 @@ func _check_automation_and_completion(demo: DemoScript) -> void:
 	candy_before = demo.run.candy
 	demo._capture_at(demo._capture_seconds_for(actor), actor.get_capture_point(), true)
 	_check(
-		demo.run.candy > candy_before,
-		"manual capture remains available after all regions are governed"
-	)
-	_check_ledger(demo)
-
-
-func _check_stable_valuable_collection(demo: DemoScript) -> void:
-	var valuable_count: int = 0
-	for actor: PrototypeSlime in demo._slimes:
-		if actor.nest_id == 1:
-			actor.configure_species(
-				actor.species, true, actor.reward * demo.run.settings.valuable_reward_multiplier
-			)
-			valuable_count += 1
-	_check(valuable_count > 0, "stable stress case contains valuable actors")
-	demo._automatic_attempts[1] = 0
-	var before: int = demo.run.candy
-	var actor_count: int = demo._slimes.size()
-	for _attempt: int in range(5):
-		demo.run.auto_collect_requested.emit(1)
-	_check(
-		demo.run.candy == before and demo._slimes.size() == actor_count,
-		"waiting for special automatic handling creates no synthetic income"
-	)
-	demo.run.auto_collect_requested.emit(1)
-	_check(
-		demo.run.candy > before and demo._slimes.size() == actor_count - 1,
-		"stable automation eventually clears valuable stock instead of permanently saturating"
+		demo.run.candy > candy_before, "Manual capture remains available for the remaining actors."
 	)
 	_check_ledger(demo)
 
@@ -459,7 +413,7 @@ func _capture_layouts(demo: DemoScript) -> void:
 		for _capture_index: int in range(2):
 			var actor: PrototypeSlime = _first_species(demo, PrototypeSlime.Species.SLIME)
 			demo._capture_at(demo._capture_seconds_for(actor), actor.get_capture_point(), true)
-		demo._on_auto_collect_requested(1)
+		demo.run.advance(1.0)
 		await _settle_layout()
 		await _save_frame("governance_stable_%dx%d.png" % [resolution.x, resolution.y])
 

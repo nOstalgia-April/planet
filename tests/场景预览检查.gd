@@ -3,6 +3,7 @@ extends SceneTree
 const FrameArt = preload("res://scripts/场景动画/帧动画.gd")
 const PlayPreview = preload("res://features/场景预览/游玩预览.gd")
 const ActionPreview = preload("res://features/场景预览/动作预览.gd")
+const ItemPreview = preload("res://features/物品动画预览/动画预览.gd")
 const Menu = preload("res://scenes/主菜单/主菜单.gd")
 const ENTRIES: Array[String] = [
 	"res://scenes/主菜单/主菜单.tscn",
@@ -11,6 +12,23 @@ const ENTRIES: Array[String] = [
 	"res://features/场景预览/吸尘器预览.tscn",
 	"res://features/场景预览/捕网预览.tscn",
 	"res://features/场景预览/黏液怪移动预览.tscn",
+	"res://features/物品动画预览/物品动画总览.tscn",
+	"res://features/splash_preview/splash_preview.tscn",
+	"res://features/slime_suction_preview/slime_suction_preview.tscn",
+	"res://features/globe_preview/globe_preview.tscn",
+	"res://features/technology_tree_preview/technology_tree_preview.tscn",
+]
+const RETURN_BUTTONS: Array[NodePath] = [
+	^"预览导航/返回主菜单",
+	^"预览导航/返回主菜单",
+	^"返回主菜单",
+	^"返回主菜单",
+	^"返回主菜单",
+	^"返回主菜单",
+	^"UI/Layout/Columns/Playback/返回主菜单",
+	^"UI/返回主菜单",
+	^"Controls/Row/返回主菜单",
+	^"TechnologyPage/Margin/Content/Header/Close",
 ]
 
 
@@ -30,12 +48,18 @@ func _run() -> void:
 			_check_gameplay(entry as PlayPreview)
 		elif entry is ActionPreview:
 			_check_animation(entry as ActionPreview)
+		elif entry is Menu:
+			(entry as Menu)._toggle_previews()
 		if "--capture" in OS.get_cmdline_user_args():
 			for dimensions in [Vector2i(1920, 1080), Vector2i(1280, 800)]:
 				root.size = dimensions
 				await create_timer(0.4).timeout
 				if entry is ActionPreview:
 					(entry as ActionPreview)._seek(3.0)
+				elif entry is ItemPreview:
+					(entry as ItemPreview)._object_picker.select(7)
+					(entry as ItemPreview)._on_object_selected(7)
+					(entry as ItemPreview)._on_frame_selected(12.0)
 				await RenderingServer.frame_post_draw
 				var destination: String = (
 					"res://artifacts/scene_art_audit_2026_10_08/%s_%dx%d.png"
@@ -56,10 +80,35 @@ func _run() -> void:
 	(game.get_node("预览导航/返回主菜单") as Button).pressed.emit()
 	await scene_changed
 	assert(current_scene.scene_file_path == ENTRIES[0])
+	await _check_preview_navigation()
 	print(
-		"PASS: 6 scenes, frame rates, pause/seek, non-looping net, shared gameplay across views, Start and return."
+		"PASS: 11 scenes, all 10 title preview buttons and return paths, frame rates, pause/seek, shared gameplay, Start and return."
 	)
 	quit()
+
+
+func _check_preview_navigation() -> void:
+	for index: int in range(RETURN_BUTTONS.size()):
+		var menu: Menu = current_scene as Menu
+		(menu.get_node("画布/预览") as Button).pressed.emit()
+		await process_frame
+		var previews: GridContainer = menu.get_node("画布/预览选择/列表") as GridContainer
+		assert(previews.get_child_count() == RETURN_BUTTONS.size())
+		for dimensions: Vector2i in [Vector2i(1920, 1080), Vector2i(1280, 800)]:
+			root.size = dimensions
+			await process_frame
+			await process_frame
+			for child: Button in previews.get_children():
+				var rectangle: Rect2 = (
+					child.get_global_transform_with_canvas() * Rect2(Vector2.ZERO, child.size)
+				)
+				assert(root.get_visible_rect().encloses(rectangle), "预览按钮必须完整显示。")
+		(previews.get_child(index) as Button).pressed.emit()
+		await scene_changed
+		assert(current_scene.scene_file_path == ENTRIES[index + 1], "标题预览按钮必须打开对应页面。")
+		(current_scene.get_node(RETURN_BUTTONS[index]) as Button).pressed.emit()
+		await scene_changed
+		assert(current_scene.scene_file_path == ENTRIES[0], "每个预览必须能返回主菜单。")
 
 
 func _check_gameplay(game: PlayPreview) -> void:

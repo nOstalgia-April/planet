@@ -195,3 +195,9 @@ file_mode = 0
 access = 2
 filters = PackedStringArray("*.png,*.webp ; 透明怪物图片")
 use_native_dialog = true
+
+[node name="返回主菜单" type="Button" parent="Controls/Row"]
+layout_mode = 2
+text = "返回主菜单"
+
+[connection signal="pressed" from="Controls/Row/返回主菜单" to="." method="_return_to_menu"]

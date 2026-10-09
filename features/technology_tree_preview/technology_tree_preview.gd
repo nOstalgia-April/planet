@@ -12,7 +12,7 @@ func _ready() -> void:
 	$PreviewControls.theme = page.theme
 	page.technology_upgrade_requested.connect(_purchase_technology)
 	page.nest_technology_upgrade_requested.connect(_purchase_nest_technology)
-	page.close_requested.connect(func() -> void: get_tree().quit())
+	page.close_requested.connect(_return_to_menu)
 	run.economy_changed.connect(_refresh)
 	for index: int in range(4):
 		var button: Button = $PreviewControls.get_child(index) as Button
@@ -72,4 +72,8 @@ func _layout() -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		get_tree().quit()
+		_return_to_menu()
+
+
+func _return_to_menu() -> void:
+	get_tree().change_scene_to_file.call_deferred("res://scenes/主菜单/主菜单.tscn")

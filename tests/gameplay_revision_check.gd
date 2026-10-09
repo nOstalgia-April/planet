@@ -2,6 +2,7 @@ extends SceneTree
 
 const DemoScript = preload("res://scripts/disk_demo.gd")
 const MucusField = preload("res://scripts/mucus_field.gd")
+const NestMucusArea = preload("res://scripts/nest_mucus_area.gd")
 const DemoScene: PackedScene = preload("res://scenes/disk_demo.tscn")
 
 var _failures: Array[String] = []
@@ -27,6 +28,7 @@ func _run_checks() -> void:
 	await _check_overview(demo)
 	_check_foreground_capture(demo)
 	_check_peel_time_budget(demo)
+	await _check_basic_slime_nest_mucus(demo)
 	_check_mucus_outside_center(demo)
 	if _capture:
 		await _capture_views(demo)
@@ -117,8 +119,8 @@ func _check_overview(demo: DemoScript) -> void:
 	demo._view.zoom_steps(1.0)
 	await _settle()
 	_check(
-		demo._slime_root.visible and demo._nests.visible and demo._region_root.visible,
-		"near view restores the individual actors, nests and actual crust regions"
+		demo._slime_root.visible and demo._nests.visible and not demo._region_root.visible,
+		"near view restores actors and nests while obsolete region circles remain hidden"
 	)
 	_check(
 		demo._slimes == actors and demo._overview.population_counts == counts,
@@ -127,7 +129,8 @@ func _check_overview(demo: DemoScript) -> void:
 
 
 func _check_peel_time_budget(demo: DemoScript) -> void:
-	demo.run.candy = demo.run.settings.net_unlock_cost
+	demo.run.candy = demo.run.settings.net_unlock_cost + demo.run.get_pipe_upgrade_cost()
+	_check(demo.run.upgrade_pipe(), "speed level two enables net research")
 	_check(demo.run.purchase_technology("net"), "a legal purchase unlocks the net")
 	_check(
 		demo.run.nests.size() == 3 and demo.run.get_nest(3).species == NestState.Species.MUCUS,
@@ -182,6 +185,56 @@ func _check_peel_at_level(demo: DemoScript) -> void:
 	_check(
 		not demo._slimes.has(mucus[1]), "the remaining normal suction time completes the capture"
 	)
+
+
+func _check_basic_slime_nest_mucus(demo: DemoScript) -> void:
+	var area: NestMucusArea = demo._nest_mucus_areas[0]
+	var nest: NestState = demo.run.get_nest(3)
+	var ground: Vector2 = nest.position - nest.position.normalized() * area.coverage_radius * 0.5
+	for level: int in range(demo.run.settings.pipe_capture_seconds.size()):
+		demo.run.pipe_level = level
+		demo.run.advance(4.0)
+		_freeze(demo)
+		var basic: PrototypeSlime = null
+		for actor: PrototypeSlime in demo._slimes:
+			actor.position = Vector2(700.0, 700.0)
+			if basic == null and actor.species == PrototypeSlime.Species.SLIME:
+				basic = actor
+		_check(basic != null, "A basic slime is available for nest-mucus capture.")
+		if basic == null:
+			return
+		basic.position = ground
+		demo._advance_ground_mucus(0.0)
+		_check(basic.is_anchored(), "Nest mucus anchors a basic slime.")
+		var seconds: float = demo.run.get_pipe_capture_seconds()
+		var before: int = demo.run.candy
+		demo._capture_at(seconds * 0.5, basic.get_capture_point(), true)
+		_check(
+			(
+				basic.peel_progress > 0.0
+				and basic.capture_progress == 0.0
+				and demo.run.candy == before
+			),
+			"Basic slimes first stretch free without paying candy."
+		)
+		if _capture and level == 0:
+			demo._pipe.visible = true
+			demo._pipe.set_tool_state(basic.get_capture_point(), basic.get_capture_point(), true)
+			await _save("automation_basic_slime_mucus_peeling.png")
+		demo._capture_at(0.0, basic.get_capture_point(), false)
+		_check(
+			basic.peel_progress == 0.0, "Interrupting basic-slime detachment clears its progress."
+		)
+		demo._capture_at(seconds, basic.get_capture_point(), true)
+		_check(
+			not basic.is_anchored() and is_zero_approx(basic.capture_progress),
+			"One interval detaches a basic slime without reusing time for suction."
+		)
+		demo._capture_at(seconds, basic.get_capture_point(), true)
+		_check(
+			not demo._slimes.has(basic) and demo.run.candy == before + basic.reward,
+			"The second interval captures and pays for the basic slime once."
+		)
 
 
 func _check_mucus_outside_center(demo: DemoScript) -> void:

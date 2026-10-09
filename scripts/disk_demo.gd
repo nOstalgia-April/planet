@@ -33,7 +33,6 @@ var _view_blocks_tool_until_release: bool = false
 var _window_has_focus: bool = true
 var _spawn_directions: Dictionary = {}
 var _regions: Array[GovernedRegion] = []
-var _automatic_attempts: Dictionary = {}
 var _mucus_trails: Array[MucusField] = []
 var _active_mucus_trails: Dictionary = {}
 var _nest_mucus_areas: Array[NestMucusArea] = []
@@ -89,7 +88,7 @@ func _ready() -> void:
 	run.nest_changed.connect(_on_nest_changed)
 	run.slime_requested.connect(_on_slime_requested)
 	run.goal_completed.connect(_on_goal_completed)
-	run.auto_collect_requested.connect(_on_auto_collect_requested)
+	run.automatic_income_received.connect(_on_automatic_income_received)
 	_layout.quick_upgrade_requested.connect(_on_quick_upgrade)
 	_layout.technology_upgrade_requested.connect(_on_technology_upgrade)
 	_layout.nest_technology_upgrade_requested.connect(_on_nest_technology_upgrade)
@@ -398,7 +397,6 @@ func restart_run() -> void:
 			child.queue_free()
 	_nest_views.clear()
 	_regions.clear()
-	_automatic_attempts.clear()
 	_mucus_trails.clear()
 	_active_mucus_trails.clear()
 	_nest_mucus_areas.clear()
@@ -466,7 +464,7 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 		capture_delta = maxf(0.0, delta - (1.0 - nearest.peel_progress) * peel_seconds)
 	if not nearest.pull_off_mucus(delta, target, peel_seconds):
 		return
-	if not nearest.apply_capture(capture_delta, _capture_seconds_for(nearest), target):
+	if not nearest.apply_capture(capture_delta, peel_seconds, target):
 		return
 	var before: int = run.candy
 	var accepted: bool = run.collect_slime(nearest.nest_id, nearest.reward)
@@ -483,10 +481,9 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 
 func _capture_seconds_for(slime: PrototypeSlime) -> float:
 	var seconds: float = run.get_pipe_capture_seconds()
-	if slime.species == PrototypeSlime.Species.MUCUS:
-		return seconds
-	if _is_on_ground_mucus(slime.position):
-		return seconds * run.settings.mucus_slow_multiplier
+	# Total time estimate; actual capture handles detachment and suction separately.
+	if slime.detached_remaining <= 0.0 and _is_on_ground_mucus(slime.position):
+		return seconds * 2.0
 	return seconds
 
 
@@ -533,8 +530,7 @@ func _advance_ground_mucus(delta: float) -> void:
 	for trail: MucusField in _mucus_trails:
 		trail.refresh_surface(false, trail.is_detail_on_screen())
 	for slime: PrototypeSlime in _slimes:
-		if slime.species == PrototypeSlime.Species.MUCUS:
-			slime.on_mucus = _is_on_ground_mucus(slime.position)
+		slime.on_mucus = _is_on_ground_mucus(slime.position)
 
 
 func _start_mucus_trail(slime: PrototypeSlime) -> MucusField:
@@ -702,52 +698,10 @@ func _on_slime_requested(nest_id: int) -> void:
 	_slimes.append(slime)
 
 
-func _on_auto_collect_requested(nest_id: int) -> void:
-	var nest: NestState = run.get_nest(nest_id)
-	var candidate: PrototypeSlime = null
-	var candidate_priority: int = -1
-	var attempts: int = int(_automatic_attempts.get(nest_id, 0)) + 1
-	_automatic_attempts[nest_id] = attempts
-	for slime: PrototypeSlime in _slimes:
-		if slime.nest_id != nest_id or slime.consumed or _capture_targets.has(slime):
-			continue
-		if slime._launch_elapsed < slime.launch_seconds:
-			continue
-		var priority: int = 0
-		if slime.high_value:
-			if not nest.is_tamed or attempts % 6 != 0:
-				continue
-			priority = 2
-		elif slime.species == PrototypeSlime.Species.MUCUS:
-			if attempts % 3 != 0:
-				continue
-			priority = 1
-		if priority > candidate_priority:
-			candidate = slime
-			candidate_priority = priority
-	if candidate == null:
+func _on_automatic_income_received(nest_id: int, _amount: int) -> void:
+	if _view.is_overview():
 		return
-	candidate.consumed = true
-	_slimes.erase(candidate)
-	var collected: bool = run.collect_automatic(nest_id, candidate.reward)
-	assert(collected, "Automatic collection must consume its reserved living actor.")
-	if not collected:
-		candidate.consumed = false
-		_slimes.append(candidate)
-		return
-	if not _view.is_overview():
-		var origin: Vector2 = _world.to_global(candidate.get_capture_point())
-		var destination: Vector2 = _world.to_global(_nest_views[nest_id - 1].get_collection_point())
-		var effect: CollectionEffect = collection_scene.instantiate() as CollectionEffect
-		_effects.add_child(effect)
-		effect.top_level = true
-		effect.global_transform = Transform2D.IDENTITY
-		effect.color = Color("98d2ad")
-		effect.play(origin, destination, candidate.reward)
-		_nest_views[nest_id - 1].pulse_automatic()
-	candidate.hide()
-	candidate.set_process(false)
-	candidate.queue_free()
+	_nest_views[nest_id - 1].pulse_automatic()
 
 
 func _select_nest(nest_id: int) -> void:
@@ -806,7 +760,7 @@ func _refresh_hud() -> void:
 	_hud_refresh_queued = false
 	_refresh_overview()
 	_candy_label.text = "%d 糖果" % run.candy
-	_passive_label.text = "治理版图  %d 区" % run.generated_nests
+	_passive_label.text = "自动产糖  %.1f / 秒" % run.get_passive_income()
 	_progress_label.text = "已自动化 %d / %d" % [run.completed_nests, run.generated_nests]
 	_progress_bar.max_value = maxi(1, run.generated_nests)
 	_progress_bar.value = run.completed_nests
@@ -856,21 +810,19 @@ func _refresh_hud() -> void:
 		"%s巢穴 %02d" % ["黏液怪" if nest.species == NestState.Species.MUCUS else "史莱姆", nest.nest_id]
 	)
 	if nest.is_tamed:
-		_nest_level_label.text = (
-			"完全治理 · 生物 %d / %d" % [nest.alive_slimes, run.get_nest_population_limit(nest.nest_id)]
-		)
-		_nest_benefit_label.text = "持续繁衍 · 自动采集\n黏液与金色个体处理较慢"
-		_nest_button.text = "生态运转中"
+		_nest_level_label.text = "完全自动化 · 剩余生物 %d" % nest.alive_slimes
+		_nest_benefit_label.text = "停止产怪 · 每秒 %.1f 糖果" % run.settings.passive_income_per_second
+		_nest_button.text = "自动产糖中"
 		_nest_button.disabled = true
 		return
-	var stage_names: Array[String] = ["野生", "培育中", "半治理"]
+	var stage_names: Array[String] = ["野生", "培育中", "强化培育"]
 	_nest_level_label.text = (
 		"%s · 生物 %d / %d"
 		% [stage_names[nest.level], nest.alive_slimes, run.get_nest_population_limit(nest.nest_id)]
 	)
 	var next_level: int = nest.level + 1
 	if next_level == run.settings.nest_upgrade_costs.size():
-		_nest_benefit_label.text = "稳定核心 · 加速自动采集\n保留生态，扩展新区域"
+		_nest_benefit_label.text = "停止产怪 · 每秒 %.1f 糖果" % run.settings.passive_income_per_second
 	else:
 		_nest_benefit_label.text = (
 			"每 %.0f → %.0f 秒喷发一批\n上限 %d → %d 只"
@@ -881,12 +833,6 @@ func _refresh_hud() -> void:
 				run.settings.nest_population_limits[next_level]
 			]
 		)
-		if next_level == 2:
-			_nest_benefit_label.text = (
-				"部署自动设施\n缓慢采集黏液，金色个体需手动"
-				if nest.species == NestState.Species.MUCUS
-				else "部署自动设施\n自动采集史莱姆，金色个体需手动"
-			)
 	var nest_cost: int = run.get_nest_upgrade_cost(selected_nest_id)
 	var requirement: String = run.get_nest_upgrade_requirement(selected_nest_id)
 	_nest_button.text = "治理 · %d 糖果" % nest_cost if requirement.is_empty() else requirement
@@ -905,10 +851,10 @@ func _on_nest_upgrade() -> void:
 		var nest: NestState = run.get_nest(selected_nest_id)
 		if nest.is_tamed:
 			_tame_sound.play()
-			_show_status("治理完成，生态继续运转")
+			_show_status("巢穴已自动产糖")
 		else:
 			_upgrade_sound.play()
-			_show_status("自动设施开始运转" if nest.level == 2 else "生态区开始繁荣")
+			_show_status("巢穴培育升级")
 
 
 func _on_quick_upgrade(tool: int) -> void:
@@ -954,7 +900,7 @@ func _show_completion() -> void:
 	_layout.close_panels()
 	_finish_sound.play()
 	_completion_title.text = "整个星球，生生不息"
-	_completion_detail.text = "全部 %d 座巢穴已自动化。\n设施持续工作，你仍可继续捕获与研究。" % run.generated_nests
+	_completion_detail.text = "全部 %d 座巢穴已自动化。\n持续产糖，你仍可捕获剩余生物与研究。" % run.generated_nests
 	_completion.show()
 	%ReplayButton.grab_focus()
 
