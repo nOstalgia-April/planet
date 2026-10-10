@@ -19,6 +19,7 @@ const SPECIES_EVENTS: Dictionary = {
 }
 const SUCK_UP_EVENT: String = "event:/SuckUp_Pop"
 const CANDY_EVENT: String = "event:/Candy_Acquire"
+const NET_CANDY_EVENT: String = "event:/Candy_Nest"
 const CANDY_COMBO_PARAMETER: String = "Candy_Combo"
 const COMBO_FOR_MAX_PITCH: int = 10
 
@@ -34,7 +35,7 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
 func _ready() -> void:
-	var event_paths: PackedStringArray = [SUCK_UP_EVENT, CANDY_EVENT]
+	var event_paths: PackedStringArray = [SUCK_UP_EVENT, CANDY_EVENT, NET_CANDY_EVENT]
 	for events: Dictionary in SPECIES_EVENTS.values():
 		for event_path: String in events.values():
 			event_paths.append(event_path)
@@ -55,18 +56,20 @@ func monster_spawned(species: int) -> void:
 	_play_species(species, "trigger")
 
 
-# A monster was sucked up by the pipe.
-func monster_sucked() -> void:
-	if _ready_to_play:
-		GameAudio.play(SUCK_UP_EVENT)
-
-
-# Candy reached the counter; pitch rises with the combo and peaks at 10.
-func candy_acquired(combo_count: int) -> void:
+# A monster was sucked up by the pipe: the pop and its candy sound together.
+# The candy pitch rises with the combo and peaks at 10.
+func monster_sucked(combo_count: int) -> void:
 	if not _ready_to_play:
 		return
+	GameAudio.play(SUCK_UP_EVENT)
 	var combo: float = clampf(float(combo_count) / COMBO_FOR_MAX_PITCH, 0.0, 1.0)
 	GameAudio.play(CANDY_EVENT, {CANDY_COMBO_PARAMETER: combo})
+
+
+# A net catch paid out candy.
+func candy_from_net() -> void:
+	if _ready_to_play:
+		GameAudio.play(NET_CANDY_EVENT)
 
 
 # population: species -> number of monsters currently roaming the surface.

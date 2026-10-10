@@ -12,6 +12,7 @@ const VacuumAudio = preload("res://scripts/vacuum_audio.gd")
 const GiantFusion = preload("res://scripts/giant_slime_fusion.gd")
 const GiantHarvestEffect = preload("res://scripts/giant_harvest_effect.gd")
 const MonsterAudio = preload("res://scripts/monster_audio.gd")
+const PlanetAudio = preload("res://scripts/planet_audio.gd")
 const TechnologyPage = preload("res://scripts/ui/technology_page.gd")
 
 enum ToolMode { PIPE, NET }
@@ -55,6 +56,7 @@ var _nest_site_jitter: float = 0.0
 var _nest_site_distance: float = 0.0
 var _vacuum_audio: VacuumAudio
 var _monster_audio: MonsterAudio
+var _planet_audio: PlanetAudio
 var _opening_nests: bool = false
 var _population_by_species: Dictionary = {}
 
@@ -107,6 +109,9 @@ func _ready() -> void:
 	_monster_audio = MonsterAudio.new()
 	_monster_audio.name = "MonsterAudio"
 	$Audio.add_child(_monster_audio)
+	_planet_audio = PlanetAudio.new()
+	_planet_audio.name = "PlanetAudio"
+	$Audio.add_child(_planet_audio)
 	get_viewport().physics_object_picking = true
 	run.economy_changed.connect(_queue_hud_refresh)
 	run.base_value_changed.connect(_refresh_monster_rewards)
@@ -153,6 +158,7 @@ func _process(delta: float) -> void:
 	_layout.refresh_timers(run)
 	_advance_ground_mucus(delta)
 	_advance_monster_chatter(delta)
+	_planet_audio.update_rotation(delta, _view.is_dragging(), _world.rotation)
 	var world_position: Vector2 = _world.to_local(get_global_mouse_position())
 	var holding: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	if not holding and not _view.is_dragging():
@@ -282,7 +288,9 @@ func _resolve_net() -> void:
 	_net_caught_count = caught_count
 	if reward > 0:
 		_play_collection_reward(reward, _net_anchor)
-		if not _monster_audio.is_ready():
+		if _monster_audio.is_ready():
+			_monster_audio.candy_from_net()
+		else:
 			_collect_sound.pitch_scale = 0.75
 			_collect_sound.play()
 
@@ -572,14 +580,14 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 	assert(accepted, "Collected monster must belong to its source population.")
 	_pipe.play_capture()
 	_pipe.set_capture_engaged(false)
-	_play_collection_reward(run.candy - before, nearest.get_capture_point(), run.combo_count)
+	_play_collection_reward(run.candy - before, nearest.get_capture_point())
 	_capture_targets.clear()
 	_slimes.erase(nearest)
 	nearest.hide()
 	nearest.set_process(false)
 	nearest.queue_free()
 	if _monster_audio.is_ready():
-		_monster_audio.monster_sucked()
+		_monster_audio.monster_sucked(run.combo_count)
 	else:
 		_collect_sound.pitch_scale = randf_range(0.92, 1.12)
 		_collect_sound.play()
@@ -701,10 +709,8 @@ func _refresh_overview() -> void:
 	)
 
 
-# combo_count drives the candy pitch; net batches are not part of a pipe combo.
-func _play_collection_reward(reward: int, source_position: Vector2, combo_count: int = 0) -> void:
+func _play_collection_reward(reward: int, source_position: Vector2) -> void:
 	if _view.is_overview():
-		_monster_audio.candy_acquired(combo_count)
 		return
 	var effect: CollectionEffect = collection_scene.instantiate() as CollectionEffect
 	_effects.add_child(effect)
@@ -714,7 +720,6 @@ func _play_collection_reward(reward: int, source_position: Vector2, combo_count:
 	var destination: Vector2 = (
 		_candy_label.get_global_transform_with_canvas() * (_candy_label.size * 0.5)
 	)
-	effect.arrived.connect(_monster_audio.candy_acquired.bind(combo_count))
 	effect.play(origin, destination, reward)
 
 
