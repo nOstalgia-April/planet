@@ -9,6 +9,7 @@ const MUCUS_SCENE: PackedScene = preload("res://scenes/effects/mucus_field.tscn"
 const NestMucusArea = preload("res://scripts/nest_mucus_area.gd")
 const NEST_MUCUS_SCENE: PackedScene = preload("res://scenes/effects/nest_mucus_area.tscn")
 const VacuumAudio = preload("res://scripts/vacuum_audio.gd")
+const MonsterAudio = preload("res://scripts/monster_audio.gd")
 
 enum ToolMode { PIPE, NET }
 enum NetPhase { IDLE, CASTING, CLOSING, RESULT }
@@ -46,6 +47,9 @@ var _nest_site_angles: PackedFloat32Array = PackedFloat32Array()
 var _nest_site_jitter: float = 0.0
 var _nest_site_distance: float = 0.0
 var _vacuum_audio: VacuumAudio
+var _monster_audio: MonsterAudio
+var _opening_nests: bool = false
+var _population_by_species: Dictionary = {}
 
 @onready var run: PrototypeRun = $Run
 @onready var _world: Node2D = $World
@@ -87,9 +91,13 @@ var _vacuum_audio: VacuumAudio
 
 func _ready() -> void:
 	assert(slime_scene != null and nest_scene != null and collection_scene != null)
+	GameAudio.play_music("event:/Mx_GamePlay")
 	_vacuum_audio = VacuumAudio.new()
 	_vacuum_audio.name = "VacuumAudio"
 	$Audio.add_child(_vacuum_audio)
+	_monster_audio = MonsterAudio.new()
+	_monster_audio.name = "MonsterAudio"
+	$Audio.add_child(_monster_audio)
 	get_viewport().physics_object_picking = true
 	run.economy_changed.connect(_queue_hud_refresh)
 	run.base_value_changed.connect(_refresh_monster_rewards)
@@ -102,6 +110,7 @@ func _ready() -> void:
 	_layout.quick_upgrade_requested.connect(_on_quick_upgrade)
 	_layout.technology_upgrade_requested.connect(_on_technology_upgrade)
 	_layout.nest_technology_upgrade_requested.connect(_on_nest_technology_upgrade)
+	_register_purchase_sounds()
 	_tool_button.pressed.connect(_on_tool_upgrade)
 	_pipe_button.pressed.connect(_select_tool.bind(ToolMode.PIPE))
 	_net_button.pressed.connect(_select_tool.bind(ToolMode.NET))
@@ -132,6 +141,7 @@ func _process(delta: float) -> void:
 			_refresh_overview()
 	_layout.refresh_timers(run)
 	_advance_ground_mucus(delta)
+	_advance_monster_chatter(delta)
 	var world_position: Vector2 = _world.to_local(get_global_mouse_position())
 	var holding: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	if not holding and not _view.is_dragging():
@@ -244,8 +254,9 @@ func _resolve_net() -> void:
 	_net_caught_count = caught_count
 	if reward > 0:
 		_play_collection_reward(reward, _net_anchor)
-		_collect_sound.pitch_scale = 0.75
-		_collect_sound.play()
+		if not _monster_audio.is_ready():
+			_collect_sound.pitch_scale = 0.75
+			_collect_sound.play()
 
 
 func _is_nearer_to_net(first: PrototypeSlime, second: PrototypeSlime) -> bool:
@@ -469,7 +480,10 @@ func restart_run() -> void:
 		var angle: float = _nest_site_angles[index] + offset
 		spawn_positions.append(_planet.get_nest_position(angle))
 	_site_random.randomize()
+	# The opening nests are already there when play starts; only later nests "appear".
+	_opening_nests = true
 	run.start_run(spawn_positions)
+	_opening_nests = false
 	_tool_pointer = _world.to_local(get_global_mouse_position())
 	_pipe.position = _tool_pointer
 	_refresh_hud()
@@ -517,14 +531,17 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 	var before: int = run.candy
 	var accepted: bool = run.collect_slime(nearest.nest_id, nearest.reward)
 	assert(accepted, "Collected monster must belong to its source population.")
-	_play_collection_reward(run.candy - before, nearest.get_capture_point())
+	_play_collection_reward(run.candy - before, nearest.get_capture_point(), run.combo_count)
 	_capture_targets.clear()
 	_slimes.erase(nearest)
 	nearest.hide()
 	nearest.set_process(false)
 	nearest.queue_free()
-	_collect_sound.pitch_scale = randf_range(0.92, 1.12)
-	_collect_sound.play()
+	if _monster_audio.is_ready():
+		_monster_audio.monster_sucked()
+	else:
+		_collect_sound.pitch_scale = randf_range(0.92, 1.12)
+		_collect_sound.play()
 
 
 func _capture_seconds_for(slime: PrototypeSlime) -> float:
@@ -637,8 +654,10 @@ func _refresh_overview() -> void:
 	)
 
 
-func _play_collection_reward(reward: int, source_position: Vector2) -> void:
+# combo_count drives the candy pitch; net batches are not part of a pipe combo.
+func _play_collection_reward(reward: int, source_position: Vector2, combo_count: int = 0) -> void:
 	if _view.is_overview():
+		_monster_audio.candy_acquired(combo_count)
 		return
 	var effect: CollectionEffect = collection_scene.instantiate() as CollectionEffect
 	_effects.add_child(effect)
@@ -648,7 +667,18 @@ func _play_collection_reward(reward: int, source_position: Vector2) -> void:
 	var destination: Vector2 = (
 		_candy_label.get_global_transform_with_canvas() * (_candy_label.size * 0.5)
 	)
+	effect.arrived.connect(_monster_audio.candy_acquired.bind(combo_count))
 	effect.play(origin, destination, reward)
+
+
+func _advance_monster_chatter(delta: float) -> void:
+	_population_by_species.clear()
+	for slime: PrototypeSlime in _slimes:
+		if not slime.consumed:
+			_population_by_species[slime.species] = (
+				int(_population_by_species.get(slime.species, 0)) + 1
+			)
+	_monster_audio.update_chatter(delta, _population_by_species)
 
 
 func _prepare_nest_sites() -> void:
@@ -744,6 +774,8 @@ func _on_nest_added(nest: NestState) -> void:
 	view.presentation_scale = _view.near_nest_scale
 	view.update_state(nest.level, nest.is_tamed, run.settings.nest_upgrade_costs.size())
 	_nest_views.append(view)
+	if not _opening_nests:
+		_monster_audio.nest_appeared(nest.species)
 	_refresh_hud()
 
 
@@ -758,6 +790,7 @@ func _on_nest_changed(nest: NestState) -> void:
 func _on_slime_requested(nest_id: int) -> void:
 	var nest: NestState = run.get_nest(nest_id)
 	_nest_views[nest_id - 1].pulse_spawn()
+	_monster_audio.monster_spawned(nest.species)
 	var slime: PrototypeSlime = slime_scene.instantiate() as PrototypeSlime
 	_slime_root.add_child(slime)
 	slime.setup(nest_id, nest.position, _planet, _get_roaming_screen_half_angle())
@@ -929,10 +962,51 @@ func _refresh_hud() -> void:
 	_nest_button.disabled = run.candy < nest_cost or not requirement.is_empty()
 
 
+func _register_purchase_sounds() -> void:
+	var page: Node = $HUD/Interface/Technology
+	UiAudio.register_purchase(page.purchase, _is_technology_page_unaffordable.bind(page))
+	for index: int in range(2):
+		var panel: Node = $HUD/Interface/PipeUpgrade if index == 0 else $HUD/Interface/NetUpgrade
+		UiAudio.register_purchase(
+			panel.get_node("Content/Purchase"),
+			_is_technology_unaffordable.bind(DiskDemoLayout.BRANCH_IDS[index])
+		)
+	UiAudio.register_purchase(_tool_button, _is_tool_unaffordable)
+
+
+# Technology purchases play Level Up; the original WAV remains the fallback.
+func _play_level_up() -> void:
+	if UiAudio.is_ready():
+		UiAudio.level_up()
+	else:
+		_upgrade_sound.play()
+
+
+func _is_technology_unaffordable(id: String) -> bool:
+	var cost: int = run.get_technology_cost(id)
+	return cost >= 0 and run.candy < cost and run.get_technology_requirement(id).is_empty()
+
+
+func _is_technology_page_unaffordable(page: Node) -> bool:
+	var id: String = page.selected_key
+	if id != "valuable":
+		return _is_technology_unaffordable(id)
+	var cost: int = run.get_nest_technology_cost(page.selected_nest_id, id)
+	return (
+		cost >= 0
+		and run.candy < cost
+		and run.get_nest_technology_requirement(page.selected_nest_id, id).is_empty()
+	)
+
+
+func _is_tool_unaffordable() -> bool:
+	return _is_technology_unaffordable("pipe" if _active_tool == ToolMode.PIPE else "net")
+
+
 func _on_tool_upgrade() -> void:
 	var upgraded: bool = run.upgrade_pipe() if _active_tool == ToolMode.PIPE else run.upgrade_net()
 	if upgraded:
-		_upgrade_sound.play()
+		_play_level_up()
 		_show_status("管子处理更快了" if _active_tool == ToolMode.PIPE else "捕网容量增加了")
 
 
@@ -955,7 +1029,7 @@ func _on_technology_upgrade(technology_id: String) -> void:
 	var unlocking_net: bool = technology_id in ["net", "net_unlock"] and not run.net_unlocked
 	if run.purchase_technology(technology_id):
 		_refresh_hud()
-		_upgrade_sound.play()
+		_play_level_up()
 		if unlocking_net:
 			_show_status("捕网已解锁")
 		else:
@@ -964,7 +1038,7 @@ func _on_technology_upgrade(technology_id: String) -> void:
 
 func _on_nest_technology_upgrade(nest_id: int, technology_id: String) -> void:
 	if run.purchase_nest_technology(nest_id, technology_id):
-		_upgrade_sound.play()
+		_play_level_up()
 		_show_status("生态区 %02d 开始孕育金色个体" % nest_id)
 
 

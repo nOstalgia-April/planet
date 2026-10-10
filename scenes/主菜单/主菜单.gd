@@ -11,6 +11,7 @@ func _ready() -> void:
 	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 	get_viewport().size_changed.connect(_fit_canvas)
 	_fit_canvas()
+	GameAudio.play_music("event:/Mx_MainMenu")
 
 
 func _fit_canvas() -> void:

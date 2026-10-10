@@ -1,6 +1,8 @@
 class_name CollectionEffect
 extends Node2D
 
+signal arrived
+
 @export_range(0.1, 1.5, 0.01) var duration: float = 0.48
 @export var color: Color = Color("d7e8bb")
 @export_range(0.4, 2.0, 0.05) var size: float = 1.0
@@ -70,6 +72,7 @@ func _flight_point(progress: float) -> Vector2:
 
 
 func _finish() -> void:
+	arrived.emit()
 	if _preview_mode:
 		_tween = create_tween()
 		_tween.tween_interval(0.75)

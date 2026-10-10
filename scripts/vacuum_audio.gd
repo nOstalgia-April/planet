@@ -3,10 +3,6 @@ extends Node
 # Drives the FMOD vacuum events from pipe capture state. Vacuum_Loop is started
 # and stopped inside FMOD by Vacuum_On / Vacuum_Off, so it is never played here.
 
-const BANK_ROOT: String = "res://bank/Desktop"
-const BANK_NAMES: PackedStringArray = [
-	"Master.strings.bank", "Master.bank", "ProjectVacuum.bank"
-]
 const VACUUM_ON_EVENT: String = "event:/Vacuum_On"
 const VACUUM_OFF_EVENT: String = "event:/Vacuum_Off"
 const SLIME_ENTER_EVENT: String = "event:/Slime_Enter"
@@ -24,24 +20,9 @@ var _release_elapsed: float = 0.0
 
 
 func _ready() -> void:
-	var paths: Array[String] = []
-	for bank_name: String in BANK_NAMES:
-		var bank_path: String = BANK_ROOT.path_join(bank_name)
-		if not FileAccess.file_exists(bank_path):
-			push_warning("FMOD bank missing, vacuum audio disabled: %s" % bank_path)
-			return
-		paths.append(bank_path)
-	var loader: FmodBankLoader = FmodBankLoader.new()
-	loader.name = "VacuumBanks"
-	loader.bank_paths = paths
-	add_child(loader)
-	for event_path: String in [
-		VACUUM_ON_EVENT, VACUUM_OFF_EVENT, SLIME_ENTER_EVENT, SLIME_EXIT_EVENT
-	]:
-		if not FmodServer.check_event_path(event_path):
-			push_warning("FMOD event missing, vacuum audio disabled: %s" % event_path)
-			return
-	_ready_to_play = true
+	_ready_to_play = GameAudio.has_events(
+		[VACUUM_ON_EVENT, VACUUM_OFF_EVENT, SLIME_ENTER_EVENT, SLIME_EXIT_EVENT]
+	)
 
 
 # Called every tool tick. engaged: the pipe currently holds a target.
@@ -67,6 +48,11 @@ func update(delta: float, engaged: bool, nozzle_in_mucus: bool) -> void:
 		_play(SLIME_EXIT_EVENT)
 
 
+# Banks outlive the scene, so leaving it must stop Vacuum_Loop explicitly.
+func _exit_tree() -> void:
+	stop_now()
+
+
 # Immediate shutdown for interruptions such as restart.
 func stop_now() -> void:
 	clear_slime()
@@ -82,14 +68,9 @@ func clear_slime() -> void:
 		return
 	_in_slime = false
 	if _ready_to_play:
-		FmodServer.set_global_parameter_by_name(IN_SLIME_PARAMETER, 0.0)
+		GameAudio.set_global(IN_SLIME_PARAMETER, 0.0)
 
 
 func _play(event_path: String) -> void:
-	if not _ready_to_play:
-		return
-	var instance: FmodEvent = FmodServer.create_event_instance(event_path)
-	if instance == null:
-		return
-	instance.start()
-	instance.release()
+	if _ready_to_play:
+		GameAudio.play(event_path)
