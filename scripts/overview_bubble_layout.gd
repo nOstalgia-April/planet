@@ -35,9 +35,13 @@ func radius_for_count(count: int) -> float:
 
 
 func build(
-	positions: PackedVector2Array, kinds: PackedInt32Array, previous: Array[Cluster]
+	positions: PackedVector2Array,
+	kinds: PackedInt32Array,
+	previous: Array[Cluster],
+	populations: PackedInt32Array = PackedInt32Array()
 ) -> Array[Cluster]:
 	assert(positions.size() == kinds.size())
+	assert(populations.is_empty() or populations.size() == positions.size())
 	var seeds: Dictionary[int, Cluster] = {}
 	var sector_width: float = TAU / float(SECTORS)
 	for index: int in range(positions.size()):
@@ -52,8 +56,10 @@ func build(
 			seed.upper = sector_width * 0.5
 			seed.sectors = 1 << sector
 			seeds[key] = seed
-		seeds[key].count += 1
-		seeds[key].position_sum += positions[index]
+		var population: int = populations[index] if not populations.is_empty() else 1
+		assert(population > 0)
+		seeds[key].count += population
+		seeds[key].position_sum += positions[index] * float(population)
 	var keys: Array[int] = seeds.keys()
 	keys.sort()
 	var clusters: Array[Cluster] = []

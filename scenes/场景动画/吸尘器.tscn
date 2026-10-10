@@ -19,7 +19,6 @@
 [sub_resource type="Animation" id="r009"]
 resource_name = "工作"
 length = 1.0
-loop_mode = 1
 step = 0.14285714285714285
 tracks/0/type = "value"
 tracks/0/path = NodePath("贴图:texture")

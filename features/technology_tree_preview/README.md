@@ -11,13 +11,13 @@
 - 糖果不足：保留分支色轮廓，详情显示差额。
 - 前置未满足：灰色图标，仍能查看名称、费用、效果和条件。
 
-## 当前十个科技项
+## 当前十一个科技项
 
-吸取速率、基础价值、巢穴培育、完全自动化在屏幕水平中央。基础价值使用糖果与上升箭头图标，右侧显示两物种升级前后的收益。中央连线表示成长路线，基础价值和巢穴培育开局均可研究。高价值个体从巢穴培育横向分出。捕网解锁和连击解锁同为吸取速率 2 级（含初始等级）的分支；捕网解锁后研究扩容，连击解锁后分别研究奖励与间隔。
+吸取速率、基础价值、巢穴培育、完全自动化在屏幕水平中央。基础价值使用糖果与上升箭头图标，右侧显示两物种升级前后的收益。中央连线表示成长路线，基础价值和巢穴培育开局均可研究。高价值个体与巨型史莱姆并列从巢穴培育分出，两项均为全局一次性研究。捕网解锁和连击解锁同为吸取速率 2 级（含初始等级）的分支；捕网解锁后研究扩容，连击解锁后分别研究奖励与间隔。
 
 基础价值为每只 2／4／10／20／50 糖果，突破费用 80／360／1800／7200。黏液怪两倍，金色个体三倍，已有怪物同步更新。治理研究为巢穴培育与完全自动化，费用 60／2400；每巢建设费用 60／360／1800，完全自动化研究开放后两个建设阶段。自动化每巢每秒 3／6／15／30／75 糖果随基础价值增长。全场巢穴完成自动化时达成目标。
 
-连击奖励为实际捕获价值的 +25%／+50%／+75%，解锁与奖励升级费用 40／300／1600，小数奖励累计到账；间隔由基础 3 秒提升到 4／5／6 秒，费用 80／360／1800。间隔影响真实捕获续时与 HUD 倒计时。高价值个体研究费用 240，只影响选中巢穴的未来刷新。完整价格表与定价标尺见项目 README。
+连击奖励为实际捕获价值的 +25%／+50%／+75%，解锁与奖励升级费用 40／300／1600，小数奖励累计到账；间隔由基础 3 秒提升到 4／5／6 秒，费用 80／360／1800。间隔影响真实捕获续时与 HUD 倒计时。高价值个体研究费用 240，影响所有巢穴的未来刷新，包含新出现的巢穴；已有个体不变。巨型研究费用 240，近景屏外活动范围重叠的巢穴每 36 个未融合个体合成一只独立巨型，占用归贡献最多的巢穴并允许溢出，已有巨型不再参与融合。当前 36 阈值以 Demo 的 10＋30 巢穴组合为标尺。完整价格表与定价标尺见项目 README。
 
 ## 参考与采用范围
 
@@ -26,17 +26,17 @@
 
 ## 接入与所有权
 
-- `scenes/ui/technology_page.tscn`：可复用页面；`refresh(run, nest_id)` 注入进度，`select_node(id)` 选择升级项。
+- `scenes/ui/technology_page.tscn`：可复用页面；`refresh(run)` 注入进度，`select_node(id)` 选择升级项。
 - `scenes/ui/technology_node.tscn`：一个升级项及其当前等级。
 - `PrototypeRun`：唯一拥有余额、进度及购买校验。前置由 `get_technology_prerequisites()` 提供给模型和页面。
-- 全局购买 ID：`base_value`、`pipe`、`cultivation`、`automation`、`net_unlock`、`net_capacity`、`combo_unlock`、`combo_reward`、`combo_interval`；巢穴购买 ID 为 `valuable`。旧快捷入口 `net`、`governance`、`combo` 仍选择各自下一动作。
-- 页面发出 `technology_upgrade_requested` / `nest_technology_upgrade_requested`，主 Demo 接入原有处理；`nest_selected` 同步目标，`close_requested` 返回。
+- 全局购买 ID：`base_value`、`pipe`、`cultivation`、`automation`、`net_unlock`、`net_capacity`、`combo_unlock`、`combo_reward`、`combo_interval`、`valuable`、`giant`。旧快捷入口 `net`、`governance`、`combo` 仍选择各自下一动作。
+- 页面发出 `technology_upgrade_requested`，主 Demo 接入购买处理；`close_requested` 返回。已移除巢穴选择与逐巢购买接口。
 
 价格和效果在 `resources/prototype_settings.tres`，节点位置在 `technology_page.gd` 的 `_node_position()`。右侧详情覆盖于完整画布之上，中央主线按屏幕中心定位。
 
 ## 验证
 
-`tests/technology_page_check.gd` 检查十个图标、当前等级、同项连续购买、捕网和连击前置、奖励与间隔的独立实际效果、治理两步研究、满级拒购、巢穴目标、重开及主游戏接线。加 `-- --capture` 生成 1280×800 与 1920×1080 的状态截图，并检查居中、无重叠和详情不遮挡节点。`tests/base_value_economy_check.gd` 覆盖已有怪物立即升值、飞行中的捕网结算、金色倍率、连击小数与自动产糖成长。
+`tests/technology_page_check.gd` 检查十一个图标、当前等级、同项连续购买、捕网和连击前置、奖励与间隔的独立实际效果、治理两步研究、满级拒购、全局金色与巨型研究、重开及主游戏接线。加 `-- --capture` 生成 1280×800 与 1920×1080 的状态截图，并检查居中、无重叠和详情不遮挡节点。`tests/base_value_economy_check.gd` 覆盖已有怪物立即升值、飞行中的捕网结算、金色倍率、连击小数与自动产糖成长。
 
 相关回归入口：`progressive_rules_check.gd`、`governance_demo_check.gd`、`overview_cluster_ui_check.gd`、`attraction_ui_check.gd`。历史 `collection_batch_check.gd` 仍假设开局捕网可用且只有三只初始实体，不作为当前规则的通过标准。
 

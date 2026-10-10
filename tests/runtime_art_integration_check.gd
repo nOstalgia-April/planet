@@ -68,7 +68,7 @@ func _run() -> void:
 		quit(1)
 		return
 	print(
-		"PASS: live nest spawn bursts, upgrades/flowers, production, hover bounds, pipe loop, all five net frames, collection, overview and reset at two resolutions."
+		"PASS: live nest spawn bursts, upgrades/flowers, production, hover bounds, confirmed pipe transport, all five net frames, collection, overview and reset at two resolutions."
 	)
 	quit()
 
@@ -286,8 +286,13 @@ func _check_tools(demo: DemoScript, dimensions: Vector2i) -> void:
 		AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	)
 	demo._drive_tool(0.0, point, false)
-	_check(demo._pipe.visible and demo._pipe._art.animation_player.is_playing())
+	_check(demo._pipe.visible and not demo._pipe._art.animation_player.is_playing())
 	_check(is_equal_approx(demo._pipe.radius, demo.run.get_pipe_radius()))
+	var pipe_actor: PrototypeSlime = demo._slimes[0]
+	pipe_actor.restore_to_surface(point)
+	pipe_actor.set_process(false)
+	demo._drive_tool(demo.run.get_pipe_capture_seconds(), pipe_actor.get_capture_point(), false)
+	_check(demo._pipe._art.animation_player.is_playing())
 	var pipe_sprite: Sprite2D = demo._pipe._art.get_node("贴图") as Sprite2D
 	var first: Texture2D = pipe_sprite.texture
 	demo._pipe._art.animation_player.advance(0.3)

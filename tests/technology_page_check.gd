@@ -27,7 +27,7 @@ func _check_page() -> void:
 	await _settle()
 	preview.set_preview(0)
 	var page: PageScript = preview.page
-	_check(page._nodes.size() == 10, "each upgrade item has exactly one icon")
+	_check(page._nodes.size() == 11, "each upgrade item has exactly one icon")
 	_check(page._nodes["base_value"].level_label.text == "1", "base value starts at level one")
 	preview.run.candy = 80
 	page.refresh(preview.run)
@@ -103,13 +103,15 @@ func _check_page() -> void:
 	_check_model_branches(preview)
 	preview.set_preview(3)
 	page.select_node("valuable")
-	_check(page.purchase.disabled, "regional research shows the selected nest's owned state")
-	page._select_scope(1)
+	_check(page.purchase.disabled, "global high-value research is already owned")
+	var owned_balance: int = preview.run.candy
 	page.purchase.pressed.emit()
 	_check(
-		preview.run.get_nest(2).valuable_level == 1 and preview.run.get_nest(1).valuable_level == 1,
-		"regional purchase only affects the selected nest"
+		preview.run.valuable_level == 1 and preview.run.candy == owned_balance,
+		"global research never charges again for a different nest"
 	)
+	page.select_node("giant")
+	_check(page.purchase.disabled and preview.run.giant_unlocked, "giant research is global too")
 	for resolution: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
 		root.size = resolution
 		await _settle()
@@ -120,10 +122,15 @@ func _check_page() -> void:
 			if _capture:
 				await _save("technology_page_%d_%dx%d.png" % [state, resolution.x, resolution.y])
 		preview.set_preview(0)
-		page.select_node("valuable")
+		page.select_node("giant")
 		await _settle()
 		if _capture:
-			await _save("technology_page_locked_%dx%d.png" % [resolution.x, resolution.y])
+			await _save("giant_technology_locked_%dx%d.png" % [resolution.x, resolution.y])
+		preview.set_preview(3)
+		page.select_node("giant")
+		await _settle()
+		if _capture:
+			await _save("giant_technology_owned_%dx%d.png" % [resolution.x, resolution.y])
 	preview.queue_free()
 	await process_frame
 	var demo: DemoScript = DemoScene.instantiate() as DemoScript
@@ -180,7 +187,7 @@ func _check_page() -> void:
 	await process_frame
 	if _failures == 0:
 		print(
-			"PASS: technology states, real purchases, prerequisites, regional scope, reset and both resolutions"
+			"PASS: technology states, real purchases, prerequisites, global research, reset and both resolutions"
 		)
 	quit(0 if _failures == 0 else 1)
 
@@ -206,15 +213,12 @@ func _check_model_branches(preview: PreviewScript) -> void:
 		"locked reward advertises its own upgrade cost"
 	)
 	_check(
-		(
-			not run.purchase_technology("automation")
-			and not run.purchase_nest_technology(1, "valuable")
-		),
+		not run.purchase_technology("automation") and not run.purchase_technology("valuable"),
 		"both governance branches require cultivation"
 	)
 	_check(run.candy == before, "failed prerequisites preserve candy")
 	_check(
-		run.purchase_technology("cultivation") and run.purchase_nest_technology(1, "valuable"),
+		run.purchase_technology("cultivation") and run.purchase_technology("valuable"),
 		"valuable research follows cultivation directly"
 	)
 	_check(
@@ -258,7 +262,9 @@ func _check_model_branches(preview: PreviewScript) -> void:
 	run.advance(0.6)
 	_check(run.combo_count == 0, "upgraded combo expires at its new deadline")
 	run.candy = 100000
-	for id: String in ["base_value", "pipe", "net_unlock", "net_capacity", "combo_reward", "combo_interval"]:
+	for id: String in [
+		"base_value", "pipe", "net_unlock", "net_capacity", "combo_reward", "combo_interval"
+	]:
 		while run.purchase_technology(id):
 			pass
 		before = run.candy
@@ -302,7 +308,7 @@ func _check_layout(preview: PreviewScript) -> void:
 			if node != other:
 				_check(
 					not node.get_global_rect().intersects(other.get_global_rect()),
-					"technology hit areas do not overlap"
+					"technology hit areas do not overlap: %s / %s" % [node.name, other.name]
 				)
 
 

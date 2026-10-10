@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/giant_harvest_effect.gd" id="1_stream"]
+[ext_resource type="PackedScene" path="res://scenes/effects/collection_effect.tscn" id="2_candy"]
+
+[node name="GiantHarvestEffect" type="Node2D"]
+z_index = 20
+script = ExtResource("1_stream")
+candy_scene = ExtResource("2_candy")

@@ -148,7 +148,7 @@ func _check_animation(preview: ActionPreview) -> void:
 	assert(is_equal_approx(art.animation_player.current_animation_position, 3.0 / expected_fps))
 	preview._replay()
 	art.animation_player.advance(animation.length + 0.01)
-	if art.clip == &"展开":
+	if preview.name in [&"捕网预览", &"吸尘器预览"]:
 		assert(animation.loop_mode == Animation.LOOP_NONE)
 		assert(preview._finished)
 	else:

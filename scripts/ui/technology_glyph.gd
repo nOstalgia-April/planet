@@ -1,6 +1,6 @@
 extends Control
 
-@export_range(0, 9) var symbol: int = 0
+@export_range(0, 10) var symbol: int = 0
 @export var ink: Color = Color("31594e")
 @export var inset: Color = Color("fbf7e9")
 
@@ -10,6 +10,15 @@ func _draw() -> void:
 	var unit: float = minf(size.x, size.y) / 48.0
 	draw_set_transform(center, 0.0, Vector2.ONE * unit)
 	match symbol:
+		10:
+			draw_arc(Vector2(0, 7), 15.0, PI, TAU, 24, ink, 3.0, true)
+			draw_line(Vector2(-15, 7), Vector2(15, 7), ink, 3.0, true)
+			draw_circle(Vector2(-5, 0), 2.0, ink, true, -1.0, true)
+			draw_circle(Vector2(5, 0), 2.0, ink, true, -1.0, true)
+			draw_circle(Vector2(-14, -18), 4.0, ink, false, 2.0, true)
+			draw_circle(Vector2(14, -18), 4.0, ink, false, 2.0, true)
+			draw_line(Vector2(-10, -15), Vector2(-6, -10), ink, 2.0, true)
+			draw_line(Vector2(10, -15), Vector2(6, -10), ink, 2.0, true)
 		9:
 			draw_circle(Vector2(-3, 5), 11.0, ink, false, 3.0, true)
 			draw_colored_polygon(
@@ -21,7 +30,9 @@ func _draw() -> void:
 			draw_line(Vector2(6, -8), Vector2(6, -21), ink, 3.0, true)
 			draw_polyline(
 				PackedVector2Array([Vector2(0, -15), Vector2(6, -21), Vector2(12, -15)]),
-				ink, 3.0, true
+				ink,
+				3.0,
+				true
 			)
 		0:
 			draw_polyline(

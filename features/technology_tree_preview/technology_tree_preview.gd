@@ -11,7 +11,6 @@ const PageScript = preload("res://scripts/ui/technology_page.gd")
 func _ready() -> void:
 	$PreviewControls.theme = page.theme
 	page.technology_upgrade_requested.connect(_purchase_technology)
-	page.nest_technology_upgrade_requested.connect(_purchase_nest_technology)
 	page.close_requested.connect(_return_to_menu)
 	run.economy_changed.connect(_refresh)
 	for index: int in range(4):
@@ -44,9 +43,9 @@ func set_preview(state: int) -> void:
 		run.purchase_technology("combo_interval")
 		for _index: int in range(2):
 			run.purchase_technology("net_capacity")
-		run.purchase_nest_technology(1, "valuable")
+		run.purchase_technology("valuable")
+		run.purchase_technology("giant")
 	run.candy = [0, 400, 180, 9000][state]
-	page.selected_nest_id = 1
 	page.selected_key = "base_value"
 	_refresh()
 	for index: int in range(4):
@@ -54,15 +53,11 @@ func set_preview(state: int) -> void:
 
 
 func _refresh() -> void:
-	page.refresh(run, page.selected_nest_id)
+	page.refresh(run)
 
 
 func _purchase_technology(id: String) -> void:
 	run.purchase_technology(id)
-
-
-func _purchase_nest_technology(nest_id: int, id: String) -> void:
-	run.purchase_nest_technology(nest_id, id)
 
 
 func _layout() -> void:

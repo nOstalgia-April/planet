@@ -118,15 +118,8 @@ func _check_research_and_future_spawns(demo: DemoScript) -> void:
 	)
 	var original_actors: Array[PrototypeSlime] = demo._slimes.duplicate()
 	demo._layout._technology.select_node("valuable")
-	demo._layout._technology._select_scope(1)
-	_check(
-		demo._layout.selected_technology_nest_id == 2, "region selector changes the research target"
-	)
 	_branch_purchase(demo, "Valuable").pressed.emit()
-	_check(
-		demo.run.get_nest(1).valuable_level == 0 and demo.run.get_nest(2).valuable_level == 1,
-		"other regions retain their independent research"
-	)
+	_check(demo.run.valuable_level == 1, "one high-value purchase applies globally")
 	demo._layout.close_panels()
 	for actor: PrototypeSlime in original_actors:
 		_check(not actor.high_value, "research does not rewrite existing actors")
@@ -137,8 +130,7 @@ func _check_research_and_future_spawns(demo: DemoScript) -> void:
 		if actor.high_value:
 			valuable_count += 1
 			_check(
-				actor.nest_id == 2 and not original_actors.has(actor),
-				"only future actors of the researched region become valuable"
+				not original_actors.has(actor), "only future actors become valuable in every region"
 			)
 	_check(valuable_count > 0, "subsequent spawning visibly produces a valuable individual")
 	_check_ledger(demo)
@@ -257,8 +249,10 @@ func _check_manual_collection(demo: DemoScript) -> void:
 		streak_value += reward
 		demo._capture_at(demo._capture_seconds_for(actor), actor.get_capture_point(), true)
 		_check(
-			demo.run.candy == before + streak_value + floori(streak_value * 0.25)
-			and demo.run.combo_count == streak,
+			(
+				demo.run.candy == before + streak_value + floori(streak_value * 0.25)
+				and demo.run.combo_count == streak
+			),
 			"sustained percentage bonuses accumulate fractional candy across captures"
 		)
 	var batch: Array[PrototypeSlime] = []
@@ -417,7 +411,7 @@ func _capture_layouts(demo: DemoScript) -> void:
 			demo.run.upgrade_nest(1)
 		demo.run.upgrade_nest(2)
 		demo.run.upgrade_nest(2)
-		demo.run.purchase_nest_technology(1, "valuable")
+		demo.run.purchase_technology("valuable")
 		_warm_ecology(demo, 8.0)
 		await create_timer(0.75).timeout
 		for _capture_index: int in range(2):

@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/world/slime.tscn" id="1_slime"]
+
+[node name="GiantSlime" instance=ExtResource("1_slime")]
+population_units = 36
+body_size = 34.5
+wander_speed = 8.8

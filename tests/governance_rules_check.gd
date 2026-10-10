@@ -65,11 +65,11 @@ func _check_species_identity() -> void:
 			run.get_nest(2).species == NestState.Species.MUCUS,
 			"Governance preserves the identity of a mucus region at every stage."
 		)
-	run.purchase_nest_technology(2, "valuable")
+	run.purchase_technology("valuable")
 	_check(
 		(
 			run.get_nest(2).species == NestState.Species.MUCUS
-			and run.get_nest(2).valuable_level == 1
+			and run.valuable_level == 1
 			and run.get_nest(4).species == NestState.Species.MUCUS
 		),
 		"High-value research preserves species and expansion uses the next configured region identity."
@@ -120,10 +120,7 @@ func _check_research_gates() -> void:
 	var balance: int = run.candy
 	_check(not run.upgrade_nest(1), "A region cannot skip governance research.")
 	_check(not run.purchase_technology("unknown"), "Unknown research is rejected.")
-	_check(
-		not run.purchase_nest_technology(1, "valuable"),
-		"High-value branch needs partial governance."
-	)
+	_check(not run.purchase_technology("valuable"), "High-value branch needs partial governance.")
 	_check(run.candy == balance, "Rejected purchases do not charge candy.")
 	_check(run.purchase_technology("governance"), "The first governance research is available.")
 	_check(
@@ -143,27 +140,17 @@ func _check_research_gates() -> void:
 		"Tool research opens partial governance."
 	)
 	_check(run.upgrade_nest(1), "Partial automation can be installed after its research.")
-	var valuable_cost: int = run.get_nest_technology_cost(1, "valuable")
+	var valuable_cost: int = run.get_technology_cost("valuable")
 	balance = run.candy
-	_check(
-		run.purchase_nest_technology(1, "valuable"),
-		"High-value research is purchased for a region."
-	)
+	_check(run.purchase_technology("valuable"), "High-value research is purchased for a region.")
 	_check(
 		run.candy == balance - valuable_cost,
 		"High-value branch charges exactly its displayed cost."
 	)
-	_check(
-		run.get_nest(1).valuable_level == 1 and run.get_nest(2).valuable_level == 0,
-		"High-value research only affects its selected region."
-	)
+	_check(run.valuable_level == 1, "High-value research is stored once for all regions.")
 	balance = run.candy
-	_check(
-		not run.purchase_nest_technology(1, "valuable"), "A maxed branch cannot be purchased twice."
-	)
-	_check(
-		not run.purchase_nest_technology(999, "valuable"), "An invalid region cannot buy research."
-	)
+	_check(not run.purchase_technology("valuable"), "A maxed branch cannot be purchased twice.")
+	_check(not run.purchase_technology("unknown"), "An invalid research ID cannot buy research.")
 	_check(run.candy == balance, "Maxed and invalid branches never charge candy.")
 	_check(
 		not run.purchase_technology("governance"),
@@ -328,10 +315,7 @@ func _check_persistent_regions_and_restart() -> void:
 		"Manual tools continue after the governance milestone."
 	)
 	_check(run.upgrade_pipe(), "Remaining tool research continues after the milestone.")
-	_check(
-		run.purchase_nest_technology(1, "valuable"),
-		"Regional research continues after the milestone."
-	)
+	_check(run.purchase_technology("valuable"), "Regional research continues after the milestone.")
 	run.advance(SETTINGS.net_cooldown_seconds)
 	_check(
 		run.can_cast_net() and _milestones == 1,
@@ -347,7 +331,7 @@ func _check_persistent_regions_and_restart() -> void:
 		"Restart clears all new research and combo state."
 	)
 	_check(
-		run.nests.size() == SETTINGS.initial_nests and run.get_nest(1).valuable_level == 0,
+		run.nests.size() == SETTINGS.initial_nests and run.valuable_level == 0,
 		"Restart rebuilds fresh regional research state."
 	)
 	_check(

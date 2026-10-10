@@ -135,16 +135,13 @@ func _check_distinct_species_and_counts(demo: DemoScript) -> void:
 	for _level: int in range(2):
 		demo.run.purchase_technology("governance")
 		demo.run.upgrade_nest(3)
-	demo.run.purchase_nest_technology(3, "valuable")
+	demo.run.purchase_technology("valuable")
 	demo.run.advance(demo.run.get_nest_spawn_interval(3) * 4.0)
 	_freeze_actors(demo)
 	_check_actor_species(demo)
 	var valuable_mucus: int = 0
 	for actor: PrototypeSlime in demo._slimes:
 		if actor.high_value:
-			_check(
-				actor.nest_id == 3, "high-value spawning stays scoped to the researched mucus nest"
-			)
 			if actor.species == PrototypeSlime.Species.MUCUS:
 				valuable_mucus += 1
 	_check(

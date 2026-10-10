@@ -40,11 +40,17 @@ extends Resource
 @export
 var combo_interval_bonus_seconds: PackedFloat32Array = PackedFloat32Array([0.0, 1.0, 2.0, 3.0])
 @export var valuable_upgrade_costs: PackedInt32Array = PackedInt32Array([240])
+@export_range(1, 10000, 1) var giant_unlock_cost: int = 240
 @export_range(1, 20, 1) var combo_target: int = 5
 @export_range(0.1, 30.0, 0.1) var combo_window_seconds: float = 3.0
 @export_group("Living regions")
 @export_range(2, 50, 1) var valuable_spawn_every: int = 8
 @export_range(2, 10, 1) var valuable_reward_multiplier: int = 3
+@export_group("Giant fusion")
+@export_range(2, 200, 1) var giant_fusion_threshold: int = 36
+@export_range(0.1, 10.0, 0.1) var giant_check_interval: float = 1.0
+@export_range(0.25, 2.0, 0.05) var giant_activity_radius_multiplier: float = 1.0
+@export_group("Living regions")
 @export_range(1.0, 4.0, 0.1) var mucus_nest_coverage_multiplier: float = 2.0
 @export_group("Ground mucus trail")
 @export_range(1.0, 16.0, 0.1) var mucus_trail_half_width: float = 2.8

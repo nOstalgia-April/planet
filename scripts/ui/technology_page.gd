@@ -2,8 +2,6 @@ extends Control
 
 signal close_requested
 signal technology_upgrade_requested(id: String)
-signal nest_technology_upgrade_requested(nest_id: int, id: String)
-signal nest_selected(nest_id: int)
 
 const NodeScene: PackedScene = preload("res://scenes/ui/technology_node.tscn")
 const NodeScript = preload("res://scripts/ui/technology_node.gd")
@@ -16,6 +14,7 @@ const TECHNOLOGIES: PackedStringArray = [
 	"cultivation",
 	"automation",
 	"valuable",
+	"giant",
 	"combo_unlock",
 	"combo_reward",
 	"combo_interval",
@@ -23,15 +22,16 @@ const TECHNOLOGIES: PackedStringArray = [
 	"net_capacity"
 ]
 const TITLES: PackedStringArray = [
-	"基础价值", "吸取速率", "巢穴培育", "完全自动化", "高价值个体", "连击解锁", "连击奖励", "连击间隔", "捕网解锁", "捕网扩容"
+	"基础价值", "吸取速率", "巢穴培育", "完全自动化", "高价值个体", "巨型史莱姆", "连击解锁", "连击奖励", "连击间隔", "捕网解锁", "捕网扩容"
 ]
-const SYMBOLS: PackedInt32Array = [9, 0, 2, 7, 4, 3, 6, 5, 1, 8]
+const SYMBOLS: PackedInt32Array = [9, 0, 2, 7, 4, 10, 3, 6, 5, 1, 8]
 const COLORS: Array[Color] = [
 	Color("e2b578"),
 	Color("79acd8"),
 	Color("83bea2"),
 	Color("83bea2"),
 	Color("d49c79"),
+	Color("e59bbd"),
 	Color("d3b575"),
 	Color("d3b575"),
 	Color("d3b575"),
@@ -40,7 +40,6 @@ const COLORS: Array[Color] = [
 ]
 
 var selected_key: String = "base_value"
-var selected_nest_id: int = 1
 var _run: PrototypeRun
 var _nodes: Dictionary[String, NodeScript] = {}
 
@@ -55,26 +54,22 @@ var _nodes: Dictionary[String, NodeScript] = {}
 @onready var _detail_effect: Label = %DetailEffect
 @onready var _detail_note: Label = %DetailNote
 @onready var _requirements: VBoxContainer = %Requirements
-@onready var _scope: OptionButton = %Scope
 
 
 func _ready() -> void:
 	%Close.pressed.connect(func() -> void: close_requested.emit())
 	purchase.pressed.connect(_purchase_selected)
-	_scope.item_selected.connect(_select_scope)
 	_canvas.resized.connect(_fit_graph)
 	_fit_graph.call_deferred()
 
 
-func refresh(run: PrototypeRun, nest_id: int = 1) -> void:
+func refresh(run: PrototypeRun) -> void:
 	_run = run
-	selected_nest_id = clampi(nest_id, 1, maxi(1, run.nests.size()))
 	if _nodes.is_empty():
 		_build_graph()
 	_wallet.text = "%d 糖果" % run.candy
 	for id: String in _nodes:
 		_nodes[id].refresh(_state_for(id), id == selected_key, _current_level(id))
-	_refresh_scope()
 	_refresh_details()
 	graph.queue_redraw()
 
@@ -82,7 +77,7 @@ func refresh(run: PrototypeRun, nest_id: int = 1) -> void:
 func select_node(id: String) -> void:
 	assert(_nodes.has(id), "Technology selection must name an existing upgrade item.")
 	selected_key = id
-	refresh(_run, selected_nest_id)
+	refresh(_run)
 
 
 func _build_graph() -> void:
@@ -114,7 +109,9 @@ func _node_position(id: String) -> Vector2:
 		"automation":
 			return Vector2(640.0, 74.0)
 		"valuable":
-			return Vector2(830.0, 285.0)
+			return Vector2(820.0, 200.0)
+		"giant":
+			return Vector2(820.0, 330.0)
 		"combo_unlock":
 			return Vector2(360.0, 458.0)
 		"combo_reward":
@@ -146,9 +143,6 @@ func _current_level(id: String) -> int:
 			return _run.net_level + 1 if _run.net_unlocked else 0
 		"combo_interval":
 			return _run.combo_interval_level + 1 if _run.combo_level > 0 else 0
-		"valuable":
-			var nest: NestState = _run.get_nest(selected_nest_id)
-			return nest.valuable_level if nest != null else 0
 	return _run.get_technology_level(id)
 
 
@@ -170,8 +164,6 @@ func _max_level(id: String) -> int:
 
 
 func _cost(id: String) -> int:
-	if id == "valuable":
-		return _run.get_nest_technology_cost(selected_nest_id, id)
 	return _run.get_technology_cost(id)
 
 
@@ -188,30 +180,10 @@ func _node_prerequisites(id: String) -> Dictionary[String, int]:
 func _state_for(id: String) -> NodeScript.State:
 	if _current_level(id) >= _max_level(id):
 		return NodeScript.State.PURCHASED
-	var requirement: String = (
-		_run.get_nest_technology_requirement(selected_nest_id, id)
-		if id == "valuable"
-		else _run.get_technology_requirement(id)
-	)
+	var requirement: String = _run.get_technology_requirement(id)
 	if not requirement.is_empty():
 		return NodeScript.State.LOCKED
 	return NodeScript.State.AVAILABLE if _run.candy >= _cost(id) else NodeScript.State.UNAFFORDABLE
-
-
-func _refresh_scope() -> void:
-	if _scope.item_count != _run.nests.size():
-		_scope.clear()
-		for nest: NestState in _run.nests:
-			_scope.add_item(
-				(
-					"巢穴 %02d · %s"
-					% [nest.nest_id, "史莱姆" if nest.species == NestState.Species.SLIME else "黏液怪"]
-				),
-				nest.nest_id
-			)
-	if not _run.nests.is_empty():
-		_scope.select(_scope.get_item_index(selected_nest_id))
-	_scope.visible = selected_key == "valuable"
 
 
 func _refresh_details() -> void:
@@ -263,10 +235,7 @@ func _effect(id: String) -> String:
 	if _state_for(id) == NodeScript.State.PURCHASED:
 		match id:
 			"base_value":
-				return (
-					"史莱姆 %d 糖果\n黏液怪 %d 糖果"
-					% [_run.get_base_value(), _run.get_base_value() * 2]
-				)
+				return "史莱姆 %d 糖果\n黏液怪 %d 糖果" % [_run.get_base_value(), _run.get_base_value() * 2]
 			"pipe":
 				return "每只 %s 秒" % String.num(_run.get_pipe_capture_seconds(), 3)
 			"net_capacity":
@@ -291,34 +260,23 @@ func _effect(id: String) -> String:
 func _note(id: String) -> String:
 	match id:
 		"base_value":
-			return (
-				"全场生效，包含已有个体。金色个体保持 ×%d；自动产糖同步提高。"
-				% _run.settings.valuable_reward_multiplier
-			)
+			return "全场生效，包含已有个体。金色个体保持 ×%d；自动产糖同步提高。" % _run.settings.valuable_reward_multiplier
 		"cultivation":
 			return "在具体巢穴投入 %d 糖果建设。" % _run.settings.nest_upgrade_costs[0]
 		"automation":
 			return (
-				"建成后停止产怪，每巢每秒 %.1f 糖果，随基础价值成长。全部自动化即可达成目标。"
-				% _run.get_automatic_income_per_nest()
+				"建成后停止产怪，每巢每秒 %.1f 糖果，随基础价值成长。全部自动化即可达成目标。" % _run.get_automatic_income_per_nest()
 			)
 		"combo_unlock", "combo_reward", "combo_interval":
 			return "吸管每次吸入续接连击，小数奖励累计到账；捕网与自动产糖不计入。"
 		"valuable":
-			return "只影响选中巢穴此后刷新的个体。"
+			return "研究后出生的个体生效，包含新出现的巢穴。"
+		"giant":
+			return "全局生效。巨型占用贡献最多巢穴的全部合成数量，允许溢出；已有巨型不再融合。"
 	return ""
 
 
 func _purchase_selected() -> void:
 	if _state_for(selected_key) != NodeScript.State.AVAILABLE:
 		return
-	if selected_key == "valuable":
-		nest_technology_upgrade_requested.emit(selected_nest_id, selected_key)
-	else:
-		technology_upgrade_requested.emit(selected_key)
-
-
-func _select_scope(index: int) -> void:
-	selected_nest_id = _scope.get_item_id(index)
-	nest_selected.emit(selected_nest_id)
-	refresh(_run, selected_nest_id)
+	technology_upgrade_requested.emit(selected_key)

@@ -6,9 +6,8 @@ enum Species { SLIME, MUCUS }
 var nest_id: int = 0
 var species: Species = Species.SLIME
 var level: int = 0
-var valuable_level: int = 0
 var position: Vector2 = Vector2.ZERO
-# Current living population on the planet surface.
+# Population units on the surface; a fused individual retains all of its units.
 var alive_slimes: int = 0
 var spawn_clock: float = 0.0
 var spawn_interval_offset: float = 0.0

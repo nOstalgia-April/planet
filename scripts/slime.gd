@@ -4,6 +4,7 @@ extends Node2D
 
 const SurfaceProjection = preload("res://scripts/surface_projection.gd")
 const SlimeBodyCache = preload("res://scripts/slime_body_cache.gd")
+const POPULATION_FONT: Font = preload("res://fonts/game_font.tres")
 # P(-z < N(0, 1) < z) = 0.75.
 const NORMAL_CENTRAL_75_Z: float = 1.15034938
 
@@ -20,6 +21,9 @@ enum Species { SLIME, MUCUS }
 var peel_progress: float = 0.0
 var detached_remaining: float = 0.0
 var reward: int = 2
+@export_range(1, 200, 1) var population_units: int = 1
+@export_range(1.0, 4.0, 0.1) var giant_body_multiplier: float = 2.3
+var fused_value_units: int = 0
 var on_mucus: bool = false
 
 signal left_screen(slime: PrototypeSlime)
@@ -68,6 +72,7 @@ var _wander_wait: float = 0.0
 var _has_active_nest: bool = true
 var _speed_variation: float = 1.0
 var _roaming_deviation: float = 0.76
+var _activity_radius: float = 109.44
 var _launch_start: Vector2 = Vector2.ZERO
 var _launch_end: Vector2 = Vector2.ZERO
 var _launch_elapsed: float = 0.38
@@ -118,6 +123,48 @@ func setup(
 func configure_roaming(screen_half_angle: float) -> void:
 	assert(screen_half_angle > 0.0, "Nest roaming requires a positive viewing range.")
 	_roaming_deviation = clampf(screen_half_angle / NORMAL_CENTRAL_75_Z, 0.35, 0.9)
+	_activity_radius = get_activity_radius(_planet_radius, screen_half_angle)
+
+
+# Gaussian wandering has no hard edge. Its standard radius is the shared
+# activity-area measure for local fusion, and the spread used for destinations.
+static func get_activity_radius(planet_radius: float, screen_half_angle: float) -> float:
+	return planet_radius * clampf(screen_half_angle / NORMAL_CENTRAL_75_Z, 0.35, 0.9) * 0.6
+
+
+func can_fuse() -> bool:
+	return (
+		population_units == 1
+		and not consumed
+		and not _flying
+		and _launch_elapsed >= launch_seconds
+		and capture_progress <= 0.0
+		and peel_progress <= 0.0
+		and _attraction_hold <= 0.0
+	)
+
+
+func configure_fusion(population: int, value_units: int, candy_reward: int) -> void:
+	assert(population > 1 and value_units >= population)
+	population_units = population
+	fused_value_units = value_units
+	reward = candy_reward
+	body_size *= giant_body_multiplier
+	wander_speed *= 0.55
+	queue_redraw()
+
+
+func get_visual_rect() -> Rect2:
+	var extent: Rect2 = Rect2(
+		Vector2(-body_size - 5.0, -body_size * 1.9 - 14.0),
+		Vector2(body_size * 2.0 + 10.0, body_size * 1.9 + 24.0)
+	)
+	return (
+		get_global_transform_with_canvas()
+		* SurfaceProjection.get_visual_compensation(self)
+		* Transform2D(0.0, Vector2.ONE * presentation_scale, 0.0, Vector2.ZERO)
+		* extent
+	)
 
 
 func configure_species(kind: Species, valuable: bool, candy_reward: int) -> void:
@@ -250,9 +297,14 @@ func get_capture_point() -> Vector2:
 
 
 func _get_body_center_offset() -> Vector2:
+	var height_scale: float = (
+		(1.0 + capture_progress * 0.60) * lerpf(1.0, 0.2, capture_progress)
+		if population_units > 1
+		else 1.0
+	)
 	return (
 		SurfaceProjection.get_visual_compensation(self)
-		* Vector2(0.0, -body_size * 0.65 * presentation_scale)
+		* Vector2(0.0, -body_size * 0.65 * presentation_scale * height_scale)
 	)
 
 
@@ -317,10 +369,9 @@ func apply_capture(delta: float, capture_seconds: float, target: Vector2) -> boo
 	clear_attraction()
 	_launch_elapsed = launch_seconds
 	_capture_hold = 0.12
+	var body_center: Vector2 = get_capture_point()
 	capture_progress = minf(1.0, capture_progress + delta / maxf(capture_seconds, 0.05))
-	var body_center: Vector2 = get_capture_point().move_toward(
-		target, delta * (24.0 + capture_progress * 46.0)
-	)
+	body_center = body_center.move_toward(target, delta * (24.0 + capture_progress * 46.0))
 	position = body_center - _get_body_center_offset().rotated(rotation)
 	_update_surface_rotation()
 	queue_redraw()
@@ -431,10 +482,9 @@ func _random_destination() -> Vector2:
 	if not _has_active_nest:
 		var angle: float = _rng.randf_range(-PI, PI)
 		return Vector2.from_angle(angle) * _random_radius(angle)
-	var spread: float = _planet_radius * _roaming_deviation * 0.6
 	var destination: Vector2 = _home
 	for attempt: int in range(8):
-		destination = _home + Vector2(_rng.randfn(), _rng.randfn()) * spread
+		destination = _home + Vector2(_rng.randfn(), _rng.randfn()) * _activity_radius
 		if surface.contains_surface_point(destination, surface.activity_edge_inset):
 			return destination
 	return _project_to_surface(destination)
@@ -501,10 +551,14 @@ func _draw() -> void:
 		)
 		if cached_body:
 			draw_texture_rect(
-				_cached_shadow_texture, SlimeBodyCache.get_shadow_rect(body_size), false, shadow_color
+				_cached_shadow_texture,
+				SlimeBodyCache.get_shadow_rect(body_size),
+				false,
+				shadow_color
 			)
 		else:
-			draw_circle(Vector2.ZERO, body_size * 0.85, shadow_color)
+			var shadow_scale: float = capture_scale if population_units > 1 else 1.0
+			draw_circle(Vector2.ZERO, body_size * 0.85 * shadow_scale, shadow_color)
 	var body_transform: Transform2D = (
 		compensation
 		* Transform2D(
@@ -520,6 +574,7 @@ func _draw() -> void:
 	draw_set_transform_matrix(body_transform)
 	if cached_body:
 		_draw_cached_body(body_transform, body_width, body_height)
+		_draw_population_marker(compensation)
 		return
 	var body_points: PackedVector2Array = PackedVector2Array(
 		[
@@ -601,9 +656,11 @@ func _draw() -> void:
 		true
 	)
 	if capture_progress > 0.02:
+		var ring_scale: float = capture_scale if population_units > 1 else 1.0
+		var ring_height: float = body_height if population_units > 1 else body_size
 		draw_arc(
-			Vector2(0.0, -body_size * 0.65),
-			body_size * 1.28,
+			Vector2(0.0, -ring_height * 0.65),
+			body_size * 1.28 * ring_scale,
 			-PI / 2.0,
 			-PI / 2.0 + TAU * capture_progress,
 			32,
@@ -611,6 +668,28 @@ func _draw() -> void:
 			2.4,
 			true
 		)
+	_draw_population_marker(compensation)
+
+
+func _draw_population_marker(compensation: Transform2D) -> void:
+	if population_units <= 1:
+		return
+	draw_set_transform_matrix(
+		compensation * Transform2D(0.0, Vector2.ONE * presentation_scale * 0.25, 0.0, Vector2.ZERO)
+	)
+	var caption: String = "×%d" % population_units
+	var font_size: int = 36
+	var width: float = (
+		POPULATION_FONT.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	)
+	var height_scale: float = (1.0 + capture_progress * 0.60) * lerpf(1.0, 0.2, capture_progress)
+	var origin: Vector2 = Vector2(-width * 0.5, (-body_size * 1.65 * height_scale - 5.0) * 4.0)
+	draw_string_outline(
+		POPULATION_FONT, origin, caption, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 4, outline_color
+	)
+	draw_string(
+		POPULATION_FONT, origin, caption, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color("fff6df")
+	)
 
 
 func _can_use_cached_body() -> bool:

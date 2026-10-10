@@ -21,12 +21,16 @@ func _ready() -> void:
 		_run_preview.call_deferred()
 
 
-func play(origin: Vector2, destination: Vector2, amount: int) -> void:
+func play(
+	origin: Vector2, destination: Vector2, amount: int, arc_offset: Vector2 = Vector2.ZERO
+) -> void:
 	if _tween != null:
 		_tween.kill()
 	global_position = origin
 	_destination = to_local(destination)
-	_curve_control = _destination * 0.5 + Vector2(0.0, -maxf(28.0, _destination.length() * 0.22))
+	_curve_control = (
+		_destination * 0.5 + Vector2(0.0, -maxf(28.0, _destination.length() * 0.22)) + arc_offset
+	)
 	_candy.color = color
 	_candy.position = Vector2.ZERO
 	_candy.scale = Vector2.ONE * size
@@ -34,6 +38,7 @@ func play(origin: Vector2, destination: Vector2, amount: int) -> void:
 	_trail.default_color = Color(color, 0.60)
 	_trail.modulate.a = 1.0
 	_amount_label.text = "+%d" % amount
+	_amount_label.visible = amount > 0
 	_amount_label.position = Vector2(22.0, -50.0)
 	_amount_label.modulate.a = 1.0
 	_tween = create_tween().set_parallel(true)

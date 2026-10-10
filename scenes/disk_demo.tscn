@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://scripts/disk_demo.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/prototype_run.gd" id="2_run"]
@@ -21,12 +21,16 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/technology_page.tscn" id="17_page"]
 [ext_resource type="Script" path="res://scripts/ui/technology_glyph.gd" id="18_glyph"]
 [ext_resource type="PackedScene" path="res://scenes/world/overview_ecology.tscn" id="19_overview"]
+[ext_resource type="PackedScene" path="res://scenes/world/giant_slime.tscn" id="20_giant"]
+[ext_resource type="PackedScene" path="res://scenes/effects/giant_harvest_effect.tscn" id="21_harvest"]
 
 [node name="DiskDemo" type="Node2D"]
 script = ExtResource("1_main")
 slime_scene = ExtResource("5_slime")
+giant_slime_scene = ExtResource("20_giant")
 nest_scene = ExtResource("6_nest")
 collection_scene = ExtResource("7_collection")
+giant_harvest_scene = ExtResource("21_harvest")
 
 [node name="Run" type="Node" parent="."]
 unique_name_in_owner = true

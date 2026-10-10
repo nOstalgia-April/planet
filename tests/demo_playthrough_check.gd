@@ -52,10 +52,19 @@ func _playthrough() -> void:
 		if step % 10 == 9:
 			_invest(demo)
 		if step % 1200 == 1199:
-			print("Progress %.0fs: value %d, speed %d, candy %d, automated %d/%d" % [
-				_elapsed, demo.run.base_value_level, demo.run.pipe_level, demo.run.candy,
-				demo.run.completed_nests, demo.run.generated_nests
-			])
+			print(
+				(
+					"Progress %.0fs: value %d, speed %d, candy %d, automated %d/%d"
+					% [
+						_elapsed,
+						demo.run.base_value_level,
+						demo.run.pipe_level,
+						demo.run.candy,
+						demo.run.completed_nests,
+						demo.run.generated_nests
+					]
+				)
+			)
 		_check_surface_population(demo)
 		if demo.run.is_complete or _failures > 0:
 			break
@@ -161,8 +170,8 @@ func _invest(demo: DemoScript) -> void:
 		demo._layout.quick_upgrade_requested.emit(0)
 	elif demo.run.base_value_level == 1:
 		demo._layout.technology_upgrade_requested.emit("base_value")
-	elif first_nest.valuable_level == 0:
-		demo._layout.nest_technology_upgrade_requested.emit(1, "valuable")
+	elif demo.run.valuable_level == 0:
+		demo._layout.technology_upgrade_requested.emit("valuable")
 	elif demo.run.pipe_level == 2:
 		demo._layout.quick_upgrade_requested.emit(0)
 	elif demo.run.base_value_level == 2:
@@ -309,7 +318,9 @@ func _find_target(demo: DemoScript) -> PrototypeSlime:
 func _focus_world_point(demo: DemoScript, point: Vector2) -> void:
 	# Follow real camera rotation instead of waiting forever for an off-screen target.
 	var angle: float = wrapf(Vector2.UP.angle() - point.angle() - demo._world.rotation, -PI, PI)
-	var radius: float = demo._planet.radius * demo._world.scale.x * demo._view.projection_root.scale.x
+	var radius: float = (
+		demo._planet.radius * demo._world.scale.x * demo._view.projection_root.scale.x
+	)
 	demo._capture_at(0.0, point, false)
 	demo._view.begin_drag(Vector2.ZERO)
 	demo._view.drag_to(Vector2(angle * radius, 0.0))

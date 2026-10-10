@@ -19,6 +19,8 @@ var pipe_level: int = 0
 var net_level: int = 0
 var net_unlocked: bool = false
 var governance_level: int = 0
+var valuable_level: int = 0
+var giant_unlocked: bool = false
 var combo_level: int = 0
 var combo_interval_level: int = 0
 var combo_count: int = 0
@@ -83,6 +85,8 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	assert(settings.spawn_burst_ratio_max >= settings.spawn_burst_ratio_min)
 	assert(settings.spawn_burst_ratio_max <= 1.0)
 	assert(settings.spawn_interval_jitter >= 0.0)
+	assert(settings.giant_fusion_threshold >= 2 and settings.giant_check_interval > 0.0)
+	assert(settings.giant_activity_radius_multiplier > 0.0)
 	for weight: float in settings.unlocked_species_weights:
 		assert(weight > 0.0, "Unlocked species need positive discovery weights.")
 	for capacity: int in settings.net_capacities:
@@ -105,6 +109,8 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	net_level = 0
 	net_unlocked = false
 	governance_level = 0
+	valuable_level = 0
+	giant_unlocked = false
 	combo_level = 0
 	combo_interval_level = 0
 	combo_count = 0
@@ -140,19 +146,23 @@ func advance(delta: float) -> void:
 	_advance_nest_roll(delta)
 
 
-func collect_slime(nest_id: int, reward: int = -1) -> bool:
+func collect_slime(nest_id: int, reward: int = -1, population: int = 1) -> bool:
 	var nest: NestState = get_nest(nest_id)
-	if nest == null or nest.alive_slimes <= 0:
+	if nest == null or population <= 0 or nest.alive_slimes < population:
 		return false
-	nest.alive_slimes -= 1
-	var capture_reward: int = get_capture_reward(nest.species) if reward < 0 else reward
+	nest.alive_slimes -= population
+	var capture_reward: int = (
+		get_capture_reward(nest.species) * population if reward < 0 else reward
+	)
 	candy += capture_reward + _register_manual_capture(capture_reward)
 	nest_changed.emit(nest)
 	economy_changed.emit()
 	return true
 
 
-func collect_net_batch(nest_ids: Array[int], rewards: Array[int] = []) -> int:
+func collect_net_batch(
+	nest_ids: Array[int], rewards: Array[int] = [], populations: Array[int] = []
+) -> int:
 	var collected_count: int = 0
 	var reward: int = 0
 	var changed_nests: Array[NestState] = []
@@ -160,12 +170,15 @@ func collect_net_batch(nest_ids: Array[int], rewards: Array[int] = []) -> int:
 		if collected_count >= get_net_capacity():
 			break
 		var nest: NestState = get_nest(nest_ids[index])
-		if nest == null or nest.alive_slimes <= 0:
+		var population: int = populations[index] if index < populations.size() else 1
+		if nest == null or population <= 0 or nest.alive_slimes < population:
 			continue
-		nest.alive_slimes -= 1
+		nest.alive_slimes -= population
 		collected_count += 1
 		reward += (
-			maxi(0, rewards[index]) if index < rewards.size() else get_capture_reward(nest.species)
+			maxi(0, rewards[index])
+			if index < rewards.size()
+			else get_capture_reward(nest.species) * population
 		)
 		if not changed_nests.has(nest):
 			changed_nests.append(nest)
@@ -199,22 +212,14 @@ func purchase_technology(id: String) -> bool:
 			governance_level = 1
 		"automation":
 			governance_level = 3
+		"valuable":
+			valuable_level += 1
+		"giant":
+			giant_unlocked = true
 		"combo_unlock", "combo_reward":
 			combo_level += 1
 		"combo_interval":
 			combo_interval_level += 1
-	economy_changed.emit()
-	return true
-
-
-func purchase_nest_technology(nest_id: int, id: String) -> bool:
-	var cost: int = get_nest_technology_cost(nest_id, id)
-	if cost < 0 or candy < cost or not get_nest_technology_requirement(nest_id, id).is_empty():
-		return false
-	var nest: NestState = get_nest(nest_id)
-	candy -= cost
-	nest.valuable_level += 1
-	nest_changed.emit(nest)
 	economy_changed.emit()
 	return true
 
@@ -267,6 +272,10 @@ func get_species_population(species: int) -> int:
 
 func get_technology_level(id: String) -> int:
 	match id:
+		"valuable":
+			return valuable_level
+		"giant":
+			return 1 if giant_unlocked else 0
 		"base_value":
 			return base_value_level
 		"pipe":
@@ -297,6 +306,8 @@ func get_technology_level(id: String) -> int:
 func get_technology_cost(id: String) -> int:
 	id = _resolve_technology_action(id)
 	match id:
+		"giant":
+			return -1 if giant_unlocked else settings.giant_unlock_cost
 		"net_unlock":
 			return -1 if net_unlocked else settings.net_unlock_cost
 		"cultivation":
@@ -316,8 +327,6 @@ func get_technology_cost(id: String) -> int:
 
 func get_technology_requirement(id: String) -> String:
 	id = _resolve_technology_action(id)
-	if id == "valuable":
-		return "选择一个生态区"
 	if get_technology_level(id) < 0:
 		return "未知科技"
 	var prerequisites: Dictionary[String, int] = get_technology_prerequisites(id)
@@ -347,7 +356,7 @@ func get_technology_prerequisites(id: String) -> Dictionary[String, int]:
 			prerequisites["net_unlock"] = 1
 		"combo_reward", "combo_interval":
 			prerequisites["combo_unlock"] = 1
-		"automation", "valuable":
+		"automation", "valuable", "giant":
 			prerequisites["cultivation"] = 1
 	return prerequisites
 
@@ -371,7 +380,9 @@ func get_technology_description(id: String) -> String:
 			var next_level: int = mini(
 				base_value_level + 1, settings.base_value_multipliers.size() - 1
 			)
-			var next_value: int = settings.slime_reward * settings.base_value_multipliers[next_level]
+			var next_value: int = (
+				settings.slime_reward * settings.base_value_multipliers[next_level]
+			)
 			return (
 				"史莱姆 %d → %d 糖果\n黏液怪 %d → %d 糖果"
 				% [get_base_value(), next_value, get_base_value() * 2, next_value * 2]
@@ -427,32 +438,12 @@ func get_technology_description(id: String) -> String:
 			)
 		"valuable":
 			return (
-				"每 %d 只新生个体出现 1 只 · 糖果 ×%d"
+				"所有巢穴每 %d 只新生个体出现 1 只金色个体 · 糖果 ×%d"
 				% [settings.valuable_spawn_every, settings.valuable_reward_multiplier]
 			)
+		"giant":
+			return "屏幕外活动范围重叠的巢穴，每 %d 只未融合个体合成一只巨型，收获全部糖果。" % settings.giant_fusion_threshold
 	return ""
-
-
-func get_nest_technology_cost(nest_id: int, id: String) -> int:
-	var nest: NestState = get_nest(nest_id)
-	if (
-		nest == null
-		or id != "valuable"
-		or nest.valuable_level >= settings.valuable_upgrade_costs.size()
-	):
-		return -1
-	return settings.valuable_upgrade_costs[nest.valuable_level]
-
-
-func get_nest_technology_requirement(nest_id: int, id: String) -> String:
-	var nest: NestState = get_nest(nest_id)
-	if nest == null:
-		return "选择一个生态区"
-	if id != "valuable":
-		return "未知科技"
-	if nest.is_tamed:
-		return "已自动化，停止产怪"
-	return "需要巢穴培育" if governance_level < 1 else ""
 
 
 func get_nest_upgrade_requirement(nest_id: int) -> String:
@@ -537,8 +528,36 @@ func get_base_value() -> int:
 
 
 func get_capture_reward(species: NestState.Species, valuable: bool = false) -> int:
-	var reward: int = get_base_value() * (2 if species == NestState.Species.MUCUS else 1)
-	return reward * settings.valuable_reward_multiplier if valuable else reward
+	return get_base_value() * get_capture_value_units(species, valuable)
+
+
+func get_capture_value_units(species: NestState.Species, valuable: bool = false) -> int:
+	var units: int = 2 if species == NestState.Species.MUCUS else 1
+	return units * settings.valuable_reward_multiplier if valuable else units
+
+
+# The scene supplies real offscreen individuals. This transaction moves their
+# population to the chosen host without awarding candy or freeing its occupancy.
+func fuse_population(contributions: Dictionary[int, int], owner_id: int) -> bool:
+	if not giant_unlocked or not contributions.has(owner_id):
+		return false
+	var total: int = 0
+	for source_id: int in contributions:
+		var source: NestState = get_nest(source_id)
+		var count: int = contributions[source_id]
+		if source == null or count <= 0 or count > source.alive_slimes:
+			return false
+		if count > contributions[owner_id]:
+			return false
+		total += count
+	if total != settings.giant_fusion_threshold:
+		return false
+	for source_id: int in contributions:
+		get_nest(source_id).alive_slimes -= contributions[source_id]
+	get_nest(owner_id).alive_slimes += total
+	for source_id: int in contributions:
+		nest_changed.emit(get_nest(source_id))
+	return true
 
 
 func get_automatic_income_per_nest() -> float:
@@ -551,6 +570,8 @@ func get_passive_income() -> float:
 
 func _get_technology_costs(id: String) -> PackedInt32Array:
 	match id:
+		"valuable":
+			return settings.valuable_upgrade_costs
 		"base_value":
 			return settings.base_value_upgrade_costs
 		"pipe":

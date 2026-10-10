@@ -120,9 +120,10 @@ func _check_live_rewards() -> void:
 		demo.run.upgrade_nest(2)
 	demo.run._add_nest(NestState.Species.MUCUS, demo._planet.get_nest_position(-0.8))
 	var basic: PrototypeSlime = _spawn(demo, 1)
-	demo.run.get_nest(1).valuable_level = 1
+	demo.run.valuable_level = 1
 	demo._spawn_directions[1] = 8
 	var golden: PrototypeSlime = _spawn(demo, 1)
+	demo._spawn_directions[3] = 1
 	var mucus: PrototypeSlime = _spawn(demo, 3)
 	_check(
 		basic.reward == 2 and golden.reward == 6 and mucus.reward == 4,

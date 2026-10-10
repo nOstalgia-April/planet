@@ -4,13 +4,11 @@ extends Control
 signal interaction_panel_changed
 signal quick_upgrade_requested(tool: int)
 signal technology_upgrade_requested(id: String)
-signal nest_technology_upgrade_requested(nest_id: int, id: String)
 
 const DESIGN_SIZE: Vector2 = Vector2(1280.0, 800.0)
 const BRANCH_IDS: PackedStringArray = ["pipe", "net", "governance", "combo"]
 const PageScript = preload("res://scripts/ui/technology_page.gd")
 
-var selected_technology_nest_id: int = 1
 var _shop_layout_queued: bool = false
 var _quick_layout_queued: bool = false
 var _nest_anchor: Rect2 = Rect2()
@@ -38,8 +36,6 @@ func _ready() -> void:
 	_technology_button.pressed.connect(_show_technology)
 	_technology.close_requested.connect(close_panels)
 	_technology.technology_upgrade_requested.connect(technology_upgrade_requested.emit)
-	_technology.nest_technology_upgrade_requested.connect(nest_technology_upgrade_requested.emit)
-	_technology.nest_selected.connect(_set_technology_nest)
 	%CloseNestButton.pressed.connect(close_panels)
 	_nest_card.minimum_size_changed.connect(_queue_shop_layout)
 	for index: int in range(2):
@@ -95,7 +91,7 @@ func apply_layout(viewport_size: Vector2) -> Rect2:
 
 func refresh_progression(run: PrototypeRun) -> void:
 	_run = run
-	_technology.refresh(run, selected_technology_nest_id)
+	_technology.refresh(run)
 	var active_count: int = 0
 	var partial_count: int = 0
 	var managed_count: int = 0
@@ -191,10 +187,6 @@ func _refresh_quick_tool(index: int) -> void:
 func _request_quick_upgrade(tool: int) -> void:
 	quick_upgrade_requested.emit(tool)
 	_hover_close_remaining = 0.16
-
-
-func _set_technology_nest(nest_id: int) -> void:
-	selected_technology_nest_id = nest_id
 
 
 func _show_quick_upgrade(tool: int) -> void:

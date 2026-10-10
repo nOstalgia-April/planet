@@ -599,8 +599,11 @@ func _check_automatic_income() -> void:
 	_check(nest.spawn_clock == 0.0, "Automation clears an almost-ready spawn burst.")
 	var research_balance: int = run.candy
 	_check(
-		not run.purchase_nest_technology(1, "valuable") and run.candy == research_balance,
-		"An automated nest cannot charge for research that requires future monsters."
+		(
+			run.purchase_technology("valuable")
+			and run.candy == research_balance - run.settings.valuable_upgrade_costs[0]
+		),
+		"Global research remains available for other nests after one nest is automated."
 	)
 	_spawn_requests = 0
 	run.slime_requested.connect(_count_spawn_for_first_nest)

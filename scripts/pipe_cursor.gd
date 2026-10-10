@@ -4,6 +4,8 @@ const SurfaceProjection = preload("res://scripts/surface_projection.gd")
 const FrameArt = preload("res://scripts/场景动画/帧动画.gd")
 const REFERENCE_RADIUS: float = 24.0
 
+enum TransportState { IDLE, SINGLE, CONTINUOUS }
+
 @export_range(1.0, 40.0, 0.1) var radius: float = 9.6
 @export_range(0.2, 1.0, 0.05) var feedback_scale: float = 0.55
 @export_range(1.0, 2.0, 0.05) var particle_spread: float = 1.5
@@ -13,8 +15,11 @@ const REFERENCE_RADIUS: float = 24.0
 @export var accent: Color = Color("4c837c")
 @export var active: bool = false
 
+var transport_state: TransportState = TransportState.IDLE
 var _time: float = 0.0
 var _mouth_local: Vector2 = Vector2.ZERO
+var _capture_engaged: bool = false
+var _pending_transport: bool = false
 
 @onready var _art_root: Node2D = $ArtRoot
 @onready var _art: FrameArt = $ArtRoot/吸尘器
@@ -23,9 +28,10 @@ var _mouth_local: Vector2 = Vector2.ZERO
 func _ready() -> void:
 	_art.position = (Vector2(141.5, 143.0) - mouth_pixel) * art_scale
 	_art.scale = Vector2.ONE * art_scale
+	_art.finished.connect(_on_transport_finished)
 	visibility_changed.connect(_sync_animation)
 	_update_visual_compensation()
-	_sync_animation()
+	reset_transport()
 
 
 func set_tool_state(tool_position: Vector2, mouth_position: Vector2, is_active: bool) -> void:
@@ -33,11 +39,33 @@ func set_tool_state(tool_position: Vector2, mouth_position: Vector2, is_active: 
 	if not tool_position.is_zero_approx():
 		rotation = tool_position.angle() + PI
 	_mouth_local = (mouth_position - tool_position).rotated(-rotation)
-	if active != is_active:
-		active = is_active
-		_sync_animation()
+	active = is_active
 	_update_visual_compensation()
 	queue_redraw()
+
+
+# Holding a target sustains an already confirmed transport; it never starts one.
+func set_capture_engaged(engaged: bool) -> void:
+	_capture_engaged = engaged
+	if transport_state != TransportState.IDLE:
+		transport_state = TransportState.CONTINUOUS if engaged else TransportState.SINGLE
+
+
+# Called only after a monster has actually been collected.
+func play_capture() -> void:
+	if transport_state == TransportState.IDLE:
+		transport_state = (TransportState.CONTINUOUS if _capture_engaged else TransportState.SINGLE)
+		_art.play()
+	else:
+		# Coalesce fast captures into another full cycle without rewinding this one.
+		_pending_transport = true
+
+
+func reset_transport() -> void:
+	transport_state = TransportState.IDLE
+	_capture_engaged = false
+	_pending_transport = false
+	_art.seek_frame(0)
 
 
 func _process(delta: float) -> void:
@@ -48,11 +76,17 @@ func _process(delta: float) -> void:
 
 
 func _sync_animation() -> void:
-	if active and is_visible_in_tree():
-		if not _art.animation_player.is_playing():
-			_art.play()
+	if not is_visible_in_tree():
+		reset_transport()
+
+
+func _on_transport_finished() -> void:
+	if _capture_engaged or _pending_transport:
+		_pending_transport = false
+		transport_state = (TransportState.CONTINUOUS if _capture_engaged else TransportState.SINGLE)
+		_art.play()
 	else:
-		_art.seek_frame(0)
+		reset_transport()
 
 
 func _update_visual_compensation() -> void:

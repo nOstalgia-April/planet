@@ -18,6 +18,13 @@ const Layout = preload("res://scripts/overview_bubble_layout.gd")
 @export_group("Placement")
 @export_range(0.0, 1.0, 0.05) var maximum_nudge_radii: float = 0.8
 @export_range(0.0, 12.0, 0.5) var bubble_clearance: float = 2.0
+@export_group("Hover Motion")
+@export_range(10.0, 100.0, 1.0) var return_spring: float = 32.0
+@export_range(2.0, 20.0, 0.5) var water_drag: float = 6.0
+@export_range(20.0, 240.0, 5.0) var push_strength: float = 130.0
+@export_range(0.0, 0.8, 0.05) var hover_clearance_radii: float = 0.35
+@export_range(0.0, 1.5, 0.05) var extra_motion_radii: float = 0.8
+@export_group("Preview")
 @export var preview_populations: Vector2i = Vector2i(48, 14)
 
 # Totals support the existing ecology/backdrop consumers. These do not size a
@@ -44,6 +51,7 @@ var _view_opacity: float = 1.0
 var _layout_dirty: bool = true
 var _layout_origins: PackedVector2Array = PackedVector2Array()
 var _layout_radii: PackedFloat32Array = PackedFloat32Array()
+var _hovered_bubble: Bubble
 
 @onready var _backdrop_layer: CanvasLayer = $Backdrop
 @onready var _backdrop: ColorRect = $Backdrop/Color
@@ -68,15 +76,18 @@ func update_ecology(
 	positions: PackedVector2Array,
 	kinds: PackedInt32Array,
 	is_overview: bool,
-	viewport_size: Vector2
+	viewport_size: Vector2,
+	populations: PackedInt32Array = PackedInt32Array()
 ) -> void:
 	assert(_surface != null and _world != null)
 	assert(viewport_size.x > 0.0 and viewport_size.y > 0.0)
 	assert(positions.size() == kinds.size())
+	assert(populations.is_empty() or populations.size() == positions.size())
 	population_counts = Vector2i.ZERO
-	for kind: int in kinds:
+	for index: int in range(kinds.size()):
+		var kind: int = kinds[index]
 		assert(kind >= 0 and kind < 2, "Supply the existing live monster species.")
-		population_counts[kind] += 1
+		population_counts[kind] += populations[index] if not populations.is_empty() else 1
 	_viewport_size = viewport_size
 	_visual_scale = minf(viewport_size.x / 1280.0, viewport_size.y / 800.0)
 	_is_overview = is_overview
@@ -88,7 +99,7 @@ func update_ecology(
 	_layout.maximum_ratio = maximum_radius_ratio
 	_layout.population_at_maximum = population_at_maximum
 	_layout.maximum_cluster_span = deg_to_rad(maximum_cluster_degrees)
-	var next: Array[Layout.Cluster] = _layout.build(positions, kinds, clusters)
+	var next: Array[Layout.Cluster] = _layout.build(positions, kinds, clusters, populations)
 	_assign_bubbles(next)
 	clusters = next
 	_layout_dirty = true
@@ -103,6 +114,7 @@ func update_ecology(
 
 
 func _clear_markers() -> void:
+	_set_hovered_bubble(null)
 	for bubble: Bubble in bubbles:
 		bubble.queue_free()
 	for bubble: Bubble in _retiring:
@@ -139,6 +151,8 @@ func _assign_bubbles(next: Array[Layout.Cluster]) -> void:
 		best.cluster = cluster
 		bubbles.append(best)
 	for old: Bubble in available:
+		if old == _hovered_bubble:
+			_set_hovered_bubble(null)
 		_retiring.append(old)
 
 
@@ -149,19 +163,48 @@ func set_view_opacity(value: float) -> void:
 	_backdrop_layer.visible = visible
 	_backdrop.modulate.a = value
 	set_process(visible)
+	if not visible or value < 0.99:
+		_set_hovered_bubble(null)
+
+
+func update_hover(viewport_position: Vector2, enabled: bool) -> void:
+	_set_hovered_bubble(get_bubble_at(viewport_position) if enabled else null)
+
+
+func _set_hovered_bubble(bubble: Bubble) -> void:
+	if bubble == _hovered_bubble:
+		return
+	if _hovered_bubble != null:
+		_hovered_bubble.z_index = 0
+	_hovered_bubble = bubble
+	if bubble != null:
+		bubble.z_index = 2
+	Input.set_default_cursor_shape(
+		Input.CURSOR_POINTING_HAND if bubble != null else Input.CURSOR_ARROW
+	)
+
+
+func _exit_tree() -> void:
+	if _hovered_bubble != null:
+		Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 
 
 func get_bubble_at(viewport_position: Vector2) -> Bubble:
 	if not _is_overview or not is_visible_in_tree() or _view_opacity <= 0.01:
 		return null
+	# Keep a small release margin so a moving edge cannot alternate hover every frame.
+	if (
+		_hovered_bubble != null
+		and _hovered_bubble.contains_viewport_point(
+			viewport_position, _hovered_bubble.radius * 0.05
+		)
+	):
+		return _hovered_bubble
 	var selected: Bubble = null
 	for bubble: Bubble in bubbles:
 		if not bubble.is_visible_in_tree() or bubble.opacity <= 0.01:
 			continue
-		var local_point: Vector2 = (
-			bubble.get_global_transform_with_canvas().affine_inverse() * viewport_position
-		)
-		if local_point.length_squared() > bubble.radius * bubble.radius:
+		if not bubble.contains_viewport_point(viewport_position):
 			continue
 		# Match the draw order when live bubbles overlap; fading retired bubbles
 		# are deliberately absent from this list and cannot navigate to stale data.
@@ -173,21 +216,26 @@ func get_bubble_at(viewport_position: Vector2) -> Bubble:
 func _process(delta: float) -> void:
 	if _preview:
 		_sync_preview_view()
+		update_hover(get_viewport().get_mouse_position(), get_window().has_focus())
 	var blend: float = 1.0 - exp(-delta * transition_speed)
 	backdrop_color = backdrop_color.lerp(_target_color, blend)
 	_backdrop.color = backdrop_color.darkened(0.84)
-	_sync_geometry(blend)
+	_sync_geometry(blend, delta)
 	for old: Bubble in _retiring.duplicate():
 		old.opacity = lerpf(old.opacity, 0.0, blend)
 		old.modulate.a = old.opacity
 		_update_preferred(old)
-		old.show_at(old.preferred, old.anchor, old.radius)
+		var step: float = clampf(delta, 0.0, 1.0 / 30.0)
+		old.advance_hover(step, false)
+		old.motion_velocity *= exp(-water_drag * step)
+		old.motion_offset += old.motion_velocity * step
+		old.show_at(_offset_position(old, old.motion_offset), old.anchor, old.radius)
 		if old.opacity < 0.01 or not _is_overview:
 			_retiring.erase(old)
 			old.queue_free()
 
 
-func _sync_geometry(blend: float) -> void:
+func _sync_geometry(blend: float, delta: float = 0.0) -> void:
 	var transform: Transform2D = _surface.get_global_transform_with_canvas()
 	_planet_center = transform.origin
 	_planet_radius = _surface.radius * PlanetSurface.SURFACE_RADIUS_RATIO * transform.x.length()
@@ -221,13 +269,117 @@ func _sync_geometry(blend: float) -> void:
 			_layout_origins.append(bubble.preferred)
 			_layout_radii.append(bubble.radius)
 		_layout_dirty = false
+	for bubble: Bubble in bubbles:
+		if not bubble.motion_initialized:
+			bubble.motion_offset = bubble.offset
+			bubble.motion_initialized = true
+	_advance_motion(delta)
 	bubble_radii = Vector2.ZERO
 	bubble_centers.fill(Vector2.ZERO)
 	for bubble: Bubble in bubbles:
-		bubble.show_at(bubble.position, bubble.anchor, bubble.radius)
+		bubble.show_at(_offset_position(bubble, bubble.motion_offset), bubble.anchor, bubble.radius)
 		if bubble.radius > bubble_radii[bubble.species]:
 			bubble_radii[bubble.species] = bubble.radius
 			bubble_centers[bubble.species] = bubble.position
+
+
+func _advance_motion(delta: float) -> void:
+	# Small bounded substeps keep the springs stable after a slow frame or resize.
+	# Motion is relative to the geographical anchor, so spinning never leaves a marker behind.
+	var remaining: float = clampf(delta, 0.0, 0.1)
+	while remaining > 0.000001:
+		var step: float = minf(remaining, 1.0 / 120.0)
+		remaining -= step
+		var interaction_pressure: float = 0.0
+		for bubble: Bubble in bubbles:
+			bubble.advance_hover(step, bubble == _hovered_bubble)
+			bubble.position = _offset_position(bubble, bubble.motion_offset)
+			interaction_pressure = maxf(
+				interaction_pressure,
+				(bubble.hover_scale - 1.0) / (bubble.hover_magnification - 1.0)
+			)
+		var forces: PackedVector2Array = PackedVector2Array()
+		for bubble: Bubble in bubbles:
+			var force: Vector2 = (bubble.offset - bubble.motion_offset) * return_spring
+			for other: Bubble in bubbles:
+				if other == bubble or interaction_pressure <= 0.001:
+					continue
+				var difference: Vector2 = bubble.position - other.position
+				var distance: float = difference.length()
+				var reach: float = (
+					bubble.radius * bubble.hover_scale
+					+ other.radius * other.hover_scale
+					+ 2.0 * _visual_scale
+				)
+				var hover_pressure: float = maxf(
+					(bubble.hover_scale - 1.0) / (bubble.hover_magnification - 1.0),
+					(other.hover_scale - 1.0) / (other.hover_magnification - 1.0)
+				)
+				if (
+					hover_pressure <= 0.001
+					and bubble.motion_offset.distance_squared_to(bubble.offset) < 0.0001
+					and other.motion_offset.distance_squared_to(other.offset) < 0.0001
+				):
+					continue
+				reach += (
+					minf(bubble.radius, other.radius)
+					* hover_clearance_radii
+					* maxf(0.0, hover_pressure)
+				)
+				if distance >= reach:
+					continue
+				var direction: Vector2 = (
+					difference / distance
+					if distance > 0.01
+					else Vector2.UP.rotated(float(bubble.get_index()) * 2.4)
+				)
+				var mobility: float = 0.12 if bubble == _hovered_bubble else 1.0
+				# Pressure can propagate through neighbors while interacting, then
+				# decays to zero so idle markers return to the exact density layout.
+				var push: Vector2 = (
+					direction
+					* (reach - distance)
+					* push_strength
+					* mobility
+					* minf(1.0, interaction_pressure)
+				)
+				force += _local_motion(bubble, push)
+			forces.append(force)
+		for index: int in range(bubbles.size()):
+			var bubble: Bubble = bubbles[index]
+			bubble.motion_velocity += forces[index] * step
+			bubble.motion_velocity *= exp(-water_drag * step)
+			bubble.motion_velocity = bubble.motion_velocity.limit_length(4.0)
+			bubble.motion_offset += bubble.motion_velocity * step
+			if (
+				bubble.motion_offset.distance_to(bubble.offset) < 0.001
+				and bubble.motion_velocity.length() < 0.001
+			):
+				bubble.motion_offset = bubble.offset
+				bubble.motion_velocity = Vector2.ZERO
+			var limit: float = maximum_nudge_radii + extra_motion_radii
+			if bubble.motion_offset.length() > limit:
+				var outward: Vector2 = bubble.motion_offset.normalized()
+				bubble.motion_offset = outward * limit
+				bubble.motion_velocity -= outward * maxf(0.0, bubble.motion_velocity.dot(outward))
+	# A last boundary constraint keeps the enlarged circle clickable at window edges.
+	for bubble: Bubble in bubbles:
+		var inset: float = bubble.radius * bubble.hover_scale + 4.0 * _visual_scale
+		var point: Vector2 = _offset_position(bubble, bubble.motion_offset)
+		var correction: Vector2 = (
+			point.clamp(Vector2.ONE * inset, _viewport_size - Vector2.ONE * inset) - point
+		)
+		if not correction.is_zero_approx():
+			bubble.motion_offset += _local_motion(bubble, correction)
+			var inward: Vector2 = _local_motion(bubble, correction).normalized()
+			bubble.motion_velocity -= inward * minf(0.0, bubble.motion_velocity.dot(inward))
+
+
+func _local_motion(bubble: Bubble, screen_vector: Vector2) -> Vector2:
+	var outward: Vector2 = (bubble.anchor - _planet_center).normalized()
+	return (
+		Vector2(screen_vector.dot(outward), screen_vector.dot(outward.orthogonal())) / bubble.radius
+	)
 
 
 func _update_preferred(bubble: Bubble) -> void:
@@ -313,7 +465,7 @@ func _start_preview() -> void:
 	var kinds: PackedInt32Array = PackedInt32Array()
 	for species: int in range(2):
 		for index: int in range(preview_populations[species]):
-			var angle: float = -1.2 if species == 0 else 0.55
+			var angle: float = 0.35 if species == 0 else 0.65
 			positions.append(Vector2.from_angle(angle + float(index % 5) * 0.025) * _surface.radius)
 			kinds.append(species)
 	update_ecology(positions, kinds, true, get_viewport_rect().size)
