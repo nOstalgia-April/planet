@@ -1,12 +1,12 @@
 # FMOD 可行性验证与最新 Demo：Fred / AI 阅读入口
 
-更新日期：2026-10-10。适用仓库：[planet](https://github.com/nOstalgia-April/planet/tree/main)，分支：`main`。当前完整 Demo 保留 Fred 已合入的 FMOD 吸尘器接入与音频包。
+更新日期：2026-10-10。适用仓库：[planet](https://github.com/nOstalgia-April/planet/tree/main)，分支：`main`。当前完整 Demo 已合入 Fred 今天的 `Oct10-FMOD_Update`，包含背景音乐、按钮与科技反馈、怪物和收集音效，并保留最新玩法与动画。
 
 ## 2026-10-10 最新 Demo 与巢穴产怪动画
 
 本次同步当前完整 Demo，包括近远景连续缩放、点击远景怪物气泡定位近景、基础价值与科技树调整、巢穴发现间隔，以及巢穴产怪动画。三组共 63 帧原图已导入：史莱姆、黏液巢穴的三个阶段接入真实产怪；地鼠三个阶段可独立预览，尚无玩法物种。
 
-更新后按 F5 → **start** 查看实际产怪；主菜单 **预览 → 物件与巢穴** 选择「史莱姆巢穴产怪」「黏液巢穴产怪」「地鼠巢穴产怪」，可切换阶段、暂停、循环与逐帧查看。动作按 12 帧/秒播放，每段 7 帧，完整动作约 0.583 秒，可用于理解声音出现的情境。动画随真实批量产怪触发，自动化后继续使用花朵产糖表现；本次没有新增产怪音效。
+更新后按 F5 → **start** 查看实际产怪；主菜单 **预览 → 物件与巢穴** 选择「史莱姆巢穴产怪」「黏液巢穴产怪」「地鼠巢穴产怪」，可切换阶段、暂停、循环与逐帧查看。动作按 12 帧/秒播放，每段 7 帧，完整动作约 0.583 秒，可用于理解声音出现的情境。动画随真实批量产怪触发，自动化后继续使用花朵产糖表现；Fred 今天的音频更新已另行接入史莱姆和黏液怪的出洞声音，详见当前音频进度。
 
 巢穴间距现按升级、产怪伸展与花朵全部帧预留空间，当前星球容量为 10 处。玩法和预览在 1280×800、1920×1080 检查通过；专项检查覆盖产怪与升级衔接、防重叠、经济、科技、视图切换、生态和自动试玩。旧巡游检查已改用当前二维地壳与裁切镜头的规则，屏幕占比记录为测量值，不再假定每种分辨率固定为 75%。
 
@@ -14,7 +14,7 @@
 
 请协助 Fred 在自己的电脑上跑通 **FMOD Studio → Build Bank → Godot 独立试听**，反馈这条插件通路是否能用于后续音效制作。此次同步也包含最新游戏 Demo、玩法、美术资源和独立动画预览，可用于理解声音出现的情境。
 
-当前主游戏吸尘器已通过 `scripts/vacuum_audio.gd` 接入 FMOD，使用 `bank/Desktop/` 中的 `Master.bank`、`Master.strings.bank` 与 `ProjectVacuum.bank`；开关机与黏液进出声音的接入状态见 [音频进度](audio_integration_status.md)。收集、升级、驯化与通关仍使用 Godot 原生 WAV。
+当前主游戏通过全局 `GameAudio` 持有 `bank/Desktop/` 中的 `Master.bank`、`Master.strings.bank` 与 `ProjectVacuum.bank`。背景音乐、按钮、科技研究、怪物、吸尘器与收集音效的接入状态见 [音频进度](audio_integration_status.md)；巢穴培育升级、驯化与通关仍使用 Godot 原生 WAV。高价值个体与巨型史莱姆均使用全局科技购买反馈，不再调用旧逐巢研究接口。
 
 下面的独立试听流程保留原验证约定，使用 `assets/fmod/banks/`、`SFX.bank` 和 `Slime/Collect`／`Tools/Suction`，与当前主游戏的音频包和事件不同，不能直接混用。**插件初始化成功、Core WAV 能播放、Bank 事件通过、人工听感通过，是不同层次的结果，分别记录。**
 
@@ -51,7 +51,7 @@ git rev-parse --short HEAD
 | 用途 | 入口 | 操作 / 范围 |
 | --- | --- | --- |
 | 验证 FMOD 插件与音频包 | `features/fmod_audio_test/fmod_audio_test.tscn` | 打开后 F6；本轮主要验收入口 |
-| 体验最新游戏 Demo | `scenes/主菜单/主菜单.tscn` | F5 后点击 **start**；吸尘器使用 FMOD，其余已接入音效仍使用原生 WAV。基础玩法场景 `scenes/disk_demo.tscn` 可按 F6 |
+| 体验最新游戏 Demo | `scenes/主菜单/主菜单.tscn` | F5 后点击 **start**；背景音乐、按钮、科技、怪物、吸尘器与收集使用 FMOD。基础玩法场景 `scenes/disk_demo.tscn` 可按 F6 |
 | 看场景和工具美术预览 | 主菜单「预览」或 `features/场景预览/` | 近景、全景、吸尘器、捕网与黏液怪移动；[预览说明](../../features/场景预览/README.md) |
 | 看科技树页面 | 主游戏底部「科技树」或 `features/technology_tree_preview/technology_tree_preview.tscn` | 独立场景按 F6；[页面说明](../../features/technology_tree_preview/README.md) |
 | 看物件动作、巢穴升级与产怪 | `features/物品动画预览/物品动画总览.tscn` | F6；可选物件、动作、循环与逐帧进度；[预览说明](../../features/物品动画预览/README.md) |

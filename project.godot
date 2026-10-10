@@ -23,6 +23,8 @@ config/icon="res://icon.svg"
 [autoload]
 
 FmodManager="*res://addons/fmod/FmodManager.gd"
+GameAudio="*res://scripts/fmod_audio.gd"
+UiAudio="*res://scripts/ui_audio.gd"
 
 [display]
 
