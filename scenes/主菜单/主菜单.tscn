@@ -72,7 +72,7 @@ offset_right = 402.0
 offset_bottom = 736.0
 text = "start"
 theme_override_font_sizes/font_size = 32
-theme_override_styles/normal = SubResource("r009")
+theme_override_styles/normal = SubResource("r006")
 theme_override_styles/hover = SubResource("r009")
 theme_override_styles/pressed = SubResource("r009")
 
@@ -101,7 +101,7 @@ theme_override_styles/pressed = SubResource("r009")
 [node name="预览选择" type="PanelContainer" parent="画布"]
 visible = false
 offset_left = 444.0
-offset_top = 688.0
+offset_top = 608.0
 offset_right = 1196.0
 offset_bottom = 1068.0
 
@@ -161,6 +161,16 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "科技树"
 
+[node name="花朵地块染色" type="Button" parent="画布/预览选择/列表"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "花朵地块染色"
+
+[node name="尺寸与下沉" type="Button" parent="画布/预览选择/列表"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "巢穴与怪物调节"
+
 [connection signal="pressed" from="画布/开始" to="." method="_start"]
 
 [connection signal="pressed" from="画布/预览" to="." method="_toggle_previews"]
@@ -186,3 +196,7 @@ text = "科技树"
 [connection signal="pressed" from="画布/预览选择/列表/地球仪" to="." method="_open_scene" binds=["res://features/globe_preview/globe_preview.tscn"]]
 
 [connection signal="pressed" from="画布/预览选择/列表/科技树" to="." method="_open_scene" binds=["res://features/technology_tree_preview/technology_tree_preview.tscn"]]
+
+[connection signal="pressed" from="画布/预览选择/列表/花朵地块染色" to="." method="_open_scene" binds=["res://features/territory_preview/flower_claim_preview.tscn"]]
+
+[connection signal="pressed" from="画布/预览选择/列表/尺寸与下沉" to="." method="_open_scene" binds=["res://features/art_alignment_preview/art_alignment_preview.tscn"]]

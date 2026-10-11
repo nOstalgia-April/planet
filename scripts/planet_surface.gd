@@ -2,8 +2,9 @@
 class_name PlanetSurface
 extends Node2D
 
+signal radius_changed
+
 const SURFACE_RADIUS_RATIO: float = 1.07
-const RIM_OFFSET: Vector2 = Vector2(0.0, 12.0)
 const CONTOUR_STEPS: int = 320
 const EDGE_HEIGHTS: Array[float] = [
 	-0.2,
@@ -33,47 +34,28 @@ const EDGE_HEIGHTS: Array[float] = [
 		radius = value
 		_contour.clear()
 		_inner_contour.clear()
-		queue_redraw()
-@export var outline_color: Color = Color("454944")
-@export var restored_color: Color = Color("a6bf8b")
-@export var core_color: Color = Color("d4d7ce")
+		radius_changed.emit()
 @export_range(0.0, 0.030, 0.001) var edge_relief_ratio: float = 0.020:
 	set(value):
 		edge_relief_ratio = value
 		_contour.clear()
-		queue_redraw()
 @export_range(0.0, 12.0, 0.5) var nest_edge_inset: float = 0.0
 @export_range(0.0, 12.0, 0.5) var activity_edge_inset: float = 2.0
-@export_range(0.2, 0.7, 0.01) var inner_radius_ratio: float = 0.60:
+@export_range(0.2, 0.95, 0.01) var inner_radius_ratio: float = 0.60:
 	set(value):
 		inner_radius_ratio = value
 		_inner_contour.clear()
-		queue_redraw()
 
-var _restored: float = 0.0
 var _near_view: bool = false
-var _near_blend: float = 0.0
 var _contour: PackedVector2Array = PackedVector2Array()
 var _inner_contour: PackedVector2Array = PackedVector2Array()
 
 
 func set_near_view(value: bool) -> bool:
-	set_near_blend(1.0 if value else 0.0)
 	if _near_view == value:
 		return false
 	_near_view = value
-	queue_redraw()
 	return true
-
-
-func set_near_blend(value: float) -> void:
-	_near_blend = value
-	queue_redraw()
-
-
-func set_restored(value: float) -> void:
-	_restored = clampf(value, 0.0, 1.0)
-	queue_redraw()
 
 
 func contains_crust_viewport_point(viewport_position: Vector2) -> bool:
@@ -137,16 +119,6 @@ func get_activity_radius_bounds(angle: float) -> Vector2:
 	)
 
 
-func get_crust_bounds() -> Rect2:
-	var contour: PackedVector2Array = get_surface_polygon()
-	var bounds: Rect2 = Rect2(contour[0], Vector2.ZERO)
-	for point: Vector2 in contour:
-		bounds = bounds.expand(point)
-		bounds = bounds.expand(point + RIM_OFFSET)
-		bounds = bounds.expand(point * 1.025 + Vector2(0.0, 23.0))
-	return bounds
-
-
 func get_surface_polygon() -> PackedVector2Array:
 	if not _contour.is_empty():
 		return _contour
@@ -164,28 +136,3 @@ func get_inner_polygon() -> PackedVector2Array:
 			Vector2.from_angle(float(index) * TAU / 128.0) * get_inner_radius(0.0)
 		)
 	return _inner_contour
-
-
-func _draw_border(points: PackedVector2Array, color: Color, width: float) -> void:
-	var closed_points: PackedVector2Array = points.duplicate()
-	closed_points.append(points[0])
-	draw_polyline(closed_points, color, width, true)
-
-
-func _draw() -> void:
-	var earth_color: Color = Color("e6e5d9").lerp(restored_color, _restored)
-	var rim_color: Color = Color("bfc0b2").lerp(Color("8da673"), _restored)
-	var border_width: float = lerpf(2.4, 1.1, _near_blend)
-	var outer: PackedVector2Array = get_surface_polygon()
-	draw_set_transform(Vector2(0.0, 23.0), 0.0, Vector2.ONE * 1.025)
-	draw_colored_polygon(outer, Color(0.12, 0.15, 0.12, 0.12))
-	draw_set_transform(RIM_OFFSET)
-	draw_colored_polygon(outer, rim_color)
-	_draw_border(outer, outline_color, border_width)
-	draw_set_transform(Vector2.ZERO)
-	draw_colored_polygon(outer, earth_color)
-	_draw_border(outer, outline_color, border_width)
-	if _near_blend > 0.0:
-		var inner: PackedVector2Array = get_inner_polygon()
-		draw_colored_polygon(inner, Color(core_color, core_color.a * _near_blend))
-		_draw_border(inner, Color(0.30, 0.34, 0.29, 0.35 * _near_blend), border_width)

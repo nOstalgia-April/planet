@@ -20,19 +20,24 @@ func _run_checks() -> void:
 		var view: AnimationView = packed_scene.instantiate() as AnimationView
 		root.add_child(view)
 		var expected_fps: float = 12.0 if "巢穴" in packed_scene.resource_path else 8.0
-		_check(is_equal_approx(view.frames_per_second, expected_fps), "巢穴12帧，其他物件8帧")
+		if "花.tscn" in packed_scene.resource_path:
+			expected_fps = 5.0
+		_check(is_equal_approx(view.frames_per_second, expected_fps), "巢穴12帧，花5帧，其他物件8帧")
 		_check(not view.animation_player.is_playing(), "物件实例不自动触发演出")
 		for clip_name in view.animation_order:
 			var animation: Animation = view.animation_player.get_animation(clip_name)
 			var frame_count: int = view.get_frame_count(clip_name)
+			var clip_fps: float = expected_fps
+			if packed_scene.resource_path.ends_with("/史莱姆.tscn") and clip_name == &"待机":
+				clip_fps = 5.0
 			if "产怪" in packed_scene.resource_path:
 				_check(frame_count == 7, "每种巢穴各阶段产怪保留原始七帧")
-			_check(is_equal_approx(animation.length, frame_count / expected_fps), "动画时长匹配帧率")
-			_check(is_equal_approx(animation.step, 1.0 / expected_fps), "时间轴步长匹配帧率")
+			_check(is_equal_approx(animation.length, frame_count / clip_fps), "动画时长匹配帧率")
+			_check(is_equal_approx(animation.step, 1.0 / clip_fps), "时间轴步长匹配帧率")
 			_check(animation.track_get_key_count(0) == frame_count, "帧数与贴图轨道一致")
 			for frame in range(frame_count):
 				_check(
-					is_equal_approx(animation.track_get_key_time(0, frame), frame / expected_fps),
+					is_equal_approx(animation.track_get_key_time(0, frame), frame / clip_fps),
 					"每帧时间间隔正确"
 				)
 				view.show_frame(clip_name, frame)
@@ -66,9 +71,10 @@ func _run_checks() -> void:
 	)
 	preview._on_next_frame()
 	_check(
-		is_equal_approx(preview.current_view.animation_player.current_animation_position, 0.5),
-		"下一帧推进0.125秒"
+		is_equal_approx(preview.current_view.animation_player.current_animation_position, 0.8),
+		"史莱姆待机下一帧推进0.2秒"
 	)
+	_check(preview._frame_label.text == "05 / 05 · 5帧/秒", "史莱姆待机显示实际帧率和正确帧号")
 	preview._on_object_selected(7)
 	_check(preview.current_clip == &"1-2-3-4", "巢穴默认完整串联")
 	_check(preview.current_view.get_frame_count(preview.current_clip) == 19, "切换场景复位旧播放状态")

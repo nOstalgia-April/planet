@@ -502,7 +502,7 @@ func _check_partial_mucus_automation(demo: DemoScript) -> void:
 	before = demo.run.candy
 	demo.run.advance(6.0)
 	_check(
-		demo.run.get_nest(3).alive_slimes == population and demo.run.candy == before + 18,
+		demo.run.get_nest(3).alive_slimes == population and demo.run.candy == before + 9,
 		"Full mucus automation stops spawning and pays passive candy without consuming actors."
 	)
 	_check_actor_species(demo)

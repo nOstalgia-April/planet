@@ -51,8 +51,8 @@ func _check_foreground(demo: DemoScript) -> void:
 	_check(is_equal_approx(crest.y, screen.y * 0.55), "P1 arc crest is at 55% of height")
 	_check(center.y > screen.y, "P1 foreground extends beyond the bottom edge")
 	_check(
-		is_equal_approx(demo._planet.get_inner_radius(0.0), demo._planet.radius * 0.60),
-		"the wide crust retains its interior boundary"
+		demo._planet.get_inner_radius(0.0) > demo._planet.radius * 0.60,
+		"the wide crust expands its empty center to protect the bottom toolbar"
 	)
 	_check(
 		(
@@ -69,11 +69,11 @@ func _check_foreground(demo: DemoScript) -> void:
 		"the empty center remains outside the gameplay crust when cropped out of view"
 	)
 	for ratio: Vector2 in [
-		Vector2(0.25, 0.78),
-		Vector2(0.5, 0.78),
-		Vector2(0.75, 0.78),
-		Vector2(0.2, 0.95),
-		Vector2(0.8, 0.95)
+		Vector2(0.25, 0.67),
+		Vector2(0.5, 0.67),
+		Vector2(0.75, 0.67),
+		Vector2(0.2, 0.75),
+		Vector2(0.8, 0.75)
 	]:
 		var point: Vector2 = projection.affine_inverse() * (screen * ratio)
 		_check(demo._planet.contains_surface_point(point), "foreground belongs to the active crust")

@@ -1,7 +1,7 @@
 class_name NestState
 extends RefCounted
 
-enum Species { SLIME, MUCUS }
+enum Species { SLIME, MUCUS, DRILL }
 
 var nest_id: int = 0
 var species: Species = Species.SLIME
@@ -12,4 +12,5 @@ var alive_slimes: int = 0
 var spawn_clock: float = 0.0
 var spawn_interval_offset: float = 0.0
 var income_remainder: float = 0.0
+var income_clock: float = 0.0
 var is_tamed: bool = false

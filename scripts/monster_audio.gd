@@ -1,9 +1,14 @@
 extends Node
 
-# FMOD events for monsters and candy collection. Drill events exist in the bank
-# but the demo has no drill species yet; add a row to SPECIES_EVENTS when it does.
+# FMOD events for monsters and candy collection.
 
 const SPECIES_EVENTS: Dictionary = {
+	NestState.Species.DRILL:
+	{
+		"nest_appear": "event:/Monsters/Drill_NestAppear",
+		"trigger": "event:/Monsters/DrillMon_Trigger",
+		"rand": "event:/Monsters/DrillMon_Rand",
+	},
 	NestState.Species.SLIME:
 	{
 		"nest_appear": "event:/Monsters/Slime_NestAppear",

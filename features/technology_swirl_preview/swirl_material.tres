@@ -1,0 +1,22 @@
+[gd_resource type="ShaderMaterial" load_steps=2 format=3]
+
+[ext_resource type="Shader" path="res://features/technology_swirl_preview/swirl.gdshader" id="1_swirl"]
+
+[resource]
+resource_local_to_scene = true
+shader = ExtResource("1_swirl")
+shader_parameter/background_color = Color(0.0980392, 0.0352941, 0.0627451, 1)
+shader_parameter/color_a = Color(0.337255, 0.549020, 0.505882, 1)
+shader_parameter/color_b = Color(0.501961, 0.345098, 0.431373, 1)
+shader_parameter/color_c = Color(0.741176, 0.419608, 0.560784, 1)
+shader_parameter/band_count = 2.0
+shader_parameter/twist = 0.6
+shader_parameter/center = 1.0
+shader_parameter/proportion = 0.5
+shader_parameter/softness = 1.0
+shader_parameter/noise_amount = 0.0
+shader_parameter/noise_frequency = 0.5
+shader_parameter/speed = 1.0
+shader_parameter/pattern_scale = 1.0
+shader_parameter/rotation_degrees = 0.0
+shader_parameter/offset = Vector2(0, 0)

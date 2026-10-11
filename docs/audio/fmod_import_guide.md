@@ -89,10 +89,10 @@ Studio 中的事件文件夹是 `Slime` 和 `Tools`，事件名称是 `Collect` 
 planet/
 └─ assets/
    └─ fmod/
-      └─ banks/
-         ├─ Master.strings.bank
-         ├─ Master.bank
-         └─ SFX.bank
+	  └─ banks/
+		 ├─ Master.strings.bank
+		 ├─ Master.bank
+		 └─ SFX.bank
 ```
 
 4. 打开 Godot 场景 `res://features/fmod_audio_test/fmod_audio_test.tscn`，按 **F6** 运行当前场景。

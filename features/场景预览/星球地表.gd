@@ -4,11 +4,16 @@ extends PlanetSurface
 @export var planet_art: Node2D
 
 
-func set_near_blend(value: float) -> void:
-	super.set_near_blend(value)
-	# The same high-resolution sprite and animation phase serve both views.
+func _ready() -> void:
+	radius_changed.connect(_sync_art_scale)
+	_sync_art_scale()
+
+
+func get_outer_radius(_angle: float) -> float:
+	# The formal artwork has a circular rim. Nests and their ground-bend profile
+	# must follow that rim rather than the prototype's irregular relief.
+	return radius * SURFACE_RADIUS_RATIO
+
+
+func _sync_art_scale() -> void:
 	planet_art.scale = Vector2.ONE * radius / 240.0
-
-
-func _draw() -> void:
-	pass

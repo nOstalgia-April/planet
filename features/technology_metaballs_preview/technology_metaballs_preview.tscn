@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://features/technology_metaballs_preview/technology_metaballs_preview.gd" id="1_preview"]
+[ext_resource type="PackedScene" path="res://scenes/disk_demo.tscn" id="2_game"]
+
+[node name="TechnologyMetaballsPreview" type="Node"]
+process_mode = 3
+script = ExtResource("1_preview")
+
+[node name="Game" parent="." instance=ExtResource("2_game")]
+process_mode = 1

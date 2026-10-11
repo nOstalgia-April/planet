@@ -6,6 +6,9 @@ const GovernedRegion = preload("res://scripts/governed_region.gd")
 const REGION_SCENE: PackedScene = preload("res://scenes/world/governed_region.tscn")
 const MucusField = preload("res://scripts/mucus_field.gd")
 const MUCUS_SCENE: PackedScene = preload("res://scenes/effects/mucus_field.tscn")
+const DRILL_SCENE: PackedScene = preload("res://scenes/world/drill_monster.tscn")
+const TREASURE_SCENE: PackedScene = preload("res://scenes/effects/drill_treasure.tscn")
+const DrillTreasure = preload("res://scripts/drill_treasure.gd")
 const NestMucusArea = preload("res://scripts/nest_mucus_area.gd")
 const NEST_MUCUS_SCENE: PackedScene = preload("res://scenes/effects/nest_mucus_area.tscn")
 const VacuumAudio = preload("res://scripts/vacuum_audio.gd")
@@ -43,7 +46,7 @@ var _regions: Array[GovernedRegion] = []
 var _mucus_trails: Array[MucusField] = []
 var _active_mucus_trails: Dictionary = {}
 var _nest_mucus_areas: Array[NestMucusArea] = []
-var _restore_tween: Tween
+var _completion_tween: Tween
 var _status_tween: Tween
 var _hud_refresh_queued: bool = false
 var _overview_sample_elapsed: float = 0.0
@@ -260,7 +263,10 @@ func _resolve_net() -> void:
 	var candidates: Array[PrototypeSlime] = []
 	var radius_squared: float = run.get_net_radius() * run.get_net_radius()
 	for slime: PrototypeSlime in _slimes:
-		if slime.get_capture_point().distance_squared_to(_net_anchor) <= radius_squared:
+		if (
+			slime.can_net_capture()
+			and slime.get_capture_point().distance_squared_to(_net_anchor) <= radius_squared
+		):
 			candidates.append(slime)
 	candidates.sort_custom(_is_nearer_to_net)
 	var caught_count: int = mini(candidates.size(), run.get_net_capacity())
@@ -420,9 +426,32 @@ func _on_window_focus_entered() -> void:
 func _apply_layout() -> void:
 	var play_rect: Rect2 = _layout.apply_layout(get_viewport_rect().size)
 	_view.configure(play_rect, _planet.radius)
+	_fit_activity_hole()
 	var screen_half_angle: float = _get_roaming_screen_half_angle()
 	for slime: PrototypeSlime in _slimes:
 		slime.configure_roaming(screen_half_angle)
+		slime.refresh_surface_bounds()
+
+
+func _fit_activity_hole() -> void:
+	# Use the near endpoint even in overview: changing cameras must not change geography.
+	var screen: Vector2 = get_viewport_rect().size
+	var screen_radius: float = screen.x * _view.near_radius_ratio
+	var center: Vector2 = Vector2(
+		screen.x * (0.5 + _view.near_horizontal_offset_ratio),
+		screen.y * _view.near_horizon_ratio + screen_radius
+	)
+	var clearance: Rect2 = _layout.get_tool_clearance_rect()
+	var hole_radius: float = 0.0
+	for corner: Vector2 in [
+		clearance.position,
+		clearance.end,
+		Vector2(clearance.position.x, clearance.end.y),
+		Vector2(clearance.end.x, clearance.position.y)
+	]:
+		hole_radius = maxf(hole_radius, center.distance_to(corner))
+	var near_scale: float = screen_radius / (_planet.radius * _view.near_surface_radius_ratio)
+	_planet.inner_radius_ratio = clampf((hole_radius / near_scale + 1.0) / _planet.radius, 0.60, 0.95)
 
 
 func _get_roaming_screen_half_angle() -> float:
@@ -462,15 +491,14 @@ func _sync_view_projection() -> void:
 	for layer: Node2D in [_slime_root, _nests, _mucus_root, _effects]:
 		layer.visible = blend > 0.0
 		layer.modulate.a = blend
-	_planet.set_near_blend(blend)
 	_overview.set_view_opacity(1.0 - blend)
 
 
 func restart_run() -> void:
 	_layout.close_panels()
 	_giant_harvest = null
-	if _restore_tween != null:
-		_restore_tween.kill()
+	if _completion_tween != null:
+		_completion_tween.kill()
 	if _status_tween != null:
 		_status_tween.kill()
 	for container: Node2D in [_nests, _region_root, _slime_root, _effects, _mucus_root]:
@@ -499,7 +527,6 @@ func restart_run() -> void:
 	_pipe.show()
 	_spawn_directions.clear()
 	_completion.hide()
-	_planet.set_restored(0.0)
 	_status_label.text = ""
 	_status_label.modulate.a = 1.0
 	_prepare_nest_sites()
@@ -528,14 +555,14 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 		var previous: PrototypeSlime = _capture_targets[0]
 		if (
 			is_instance_valid(previous)
-			and not previous.consumed
+			and previous.can_capture()
 			and previous.get_capture_point().distance_squared_to(target) <= radius_squared
 		):
 			nearest = previous
 	if active and nearest == null:
 		for candidate: PrototypeSlime in _slimes:
 			var distance: float = candidate.get_capture_point().distance_squared_to(target)
-			if not candidate.consumed and distance <= nearest_distance:
+			if candidate.can_capture() and distance <= nearest_distance:
 				nearest = candidate
 				nearest_distance = distance
 	# Only a former target needs its partial capture cancelled. Unrelated actors
@@ -572,7 +599,10 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 	assert(accepted, "Collected monster must belong to its source population.")
 	_pipe.play_capture()
 	_pipe.set_capture_engaged(false)
-	_play_collection_reward(run.candy - before, nearest.get_capture_point(), run.combo_count)
+	if nearest.species == PrototypeSlime.Species.DRILL:
+		_play_drill_treasure(run.candy - before, nearest.get_capture_point())
+	else:
+		_play_collection_reward(run.candy - before, nearest.get_capture_point(), run.combo_count)
 	_capture_targets.clear()
 	_slimes.erase(nearest)
 	nearest.hide()
@@ -688,7 +718,7 @@ func _refresh_overview() -> void:
 	var kinds: PackedInt32Array = PackedInt32Array()
 	var populations: PackedInt32Array = PackedInt32Array()
 	for actor: PrototypeSlime in _slimes:
-		if not actor.consumed:
+		if not actor.consumed and actor.species != PrototypeSlime.Species.DRILL:
 			positions.append(actor.position)
 			kinds.append(int(actor.species))
 			populations.append(actor.population_units)
@@ -732,6 +762,18 @@ func _update_giant_harvest(slime: PrototypeSlime) -> void:
 	)
 
 
+func _play_drill_treasure(reward: int, source_position: Vector2) -> void:
+	var effect: DrillTreasure = TREASURE_SCENE.instantiate() as DrillTreasure
+	_effects.add_child(effect)
+	effect.top_level = true
+	effect.global_transform = Transform2D.IDENTITY
+	var destination: Vector2 = (
+		_candy_label.get_global_transform_with_canvas() * (_candy_label.size * 0.5)
+	)
+	effect.arrived.connect(_monster_audio.candy_acquired.bind(0))
+	effect.play(_world.to_global(source_position), destination, reward, run.get_base_value())
+
+
 func _stop_giant_harvest() -> void:
 	if _giant_harvest != null:
 		_giant_harvest.finish()
@@ -741,7 +783,7 @@ func _stop_giant_harvest() -> void:
 func _advance_monster_chatter(delta: float) -> void:
 	_population_by_species.clear()
 	for slime: PrototypeSlime in _slimes:
-		if not slime.consumed:
+		if slime.can_capture():
 			_population_by_species[slime.species] = (
 				int(_population_by_species.get(slime.species, 0)) + 1
 			)
@@ -833,6 +875,7 @@ func _on_nest_added(nest: NestState) -> void:
 		)
 		_nest_mucus_areas.append(area)
 	var view: NestView = nest_scene.instantiate() as NestView
+	view.surface = _planet
 	_nests.add_child(view)
 	view.position = nest.position
 	view.setup(nest.nest_id)
@@ -858,7 +901,10 @@ func _on_slime_requested(nest_id: int) -> void:
 	var nest: NestState = run.get_nest(nest_id)
 	_nest_views[nest_id - 1].pulse_spawn()
 	_monster_audio.monster_spawned(nest.species)
-	var slime: PrototypeSlime = slime_scene.instantiate() as PrototypeSlime
+	var actor_scene: PackedScene = (
+		DRILL_SCENE if nest.species == NestState.Species.DRILL else slime_scene
+	)
+	var slime: PrototypeSlime = actor_scene.instantiate() as PrototypeSlime
 	_slime_root.add_child(slime)
 	slime.setup(nest_id, nest.position, _planet, _get_roaming_screen_half_angle())
 	slime.presentation_scale = _view.near_slime_scale
@@ -866,7 +912,9 @@ func _on_slime_requested(nest_id: int) -> void:
 	_spawn_directions[nest_id] = direction_index + 1
 	var species: PrototypeSlime.Species = nest.species as PrototypeSlime.Species
 	var valuable: bool = (
-		run.valuable_level > 0 and direction_index % run.settings.valuable_spawn_every == 0
+		nest.species != NestState.Species.DRILL
+		and run.valuable_level > 0
+		and direction_index % run.settings.valuable_spawn_every == 0
 	)
 	var reward: int = run.get_capture_reward(nest.species, valuable)
 	slime.configure_species(species, valuable, reward)
@@ -1022,8 +1070,8 @@ func _queue_hud_refresh() -> void:
 func _refresh_hud() -> void:
 	_hud_refresh_queued = false
 	_refresh_overview()
-	_candy_label.text = "%d 糖果" % run.candy
-	_passive_label.text = "自动产糖  %.1f / 秒" % run.get_passive_income()
+	_candy_label.text = str(run.candy)
+	_passive_label.text = "%s DPS" % String.num(run.get_passive_income(), 1).trim_suffix(".0")
 	_progress_label.text = "已自动化 %d / %d" % [run.completed_nests, run.generated_nests]
 	_progress_bar.max_value = maxi(1, run.generated_nests)
 	_progress_bar.value = run.completed_nests
@@ -1069,9 +1117,7 @@ func _refresh_hud() -> void:
 		_nest_button.text = "驯化"
 		_nest_button.disabled = true
 		return
-	_nest_title_label.text = (
-		"%s巢穴 %02d" % ["黏液怪" if nest.species == NestState.Species.MUCUS else "史莱姆", nest.nest_id]
-	)
+	_nest_title_label.text = ("%s巢穴 %02d" % [["史莱姆", "黏液怪", "钻头怪"][nest.species], nest.nest_id])
 	if nest.is_tamed:
 		_nest_level_label.text = "完全自动化 · 剩余生物 %d" % nest.alive_slimes
 		_nest_benefit_label.text = "停止产怪 · 每秒 %.1f 糖果" % run.get_automatic_income_per_nest()
@@ -1097,6 +1143,14 @@ func _refresh_hud() -> void:
 				run.settings.nest_population_limits[next_level]
 			]
 		)
+		if nest.species == NestState.Species.DRILL:
+			_nest_benefit_label.text = (
+				"每次 1 只 · 冒头时可吸取\n上限 %d → %d 只"
+				% [
+					run.get_nest_population_limit(nest.nest_id),
+					run.settings.drill_population_limits[next_level]
+				]
+			)
 	var nest_cost: int = run.get_nest_upgrade_cost(selected_nest_id)
 	var requirement: String = run.get_nest_upgrade_requirement(selected_nest_id)
 	_nest_button.text = "治理 · %d 糖果" % nest_cost if requirement.is_empty() else requirement
@@ -1181,10 +1235,9 @@ func _show_status(message: String) -> void:
 
 func _on_goal_completed() -> void:
 	_refresh_hud()
-	_restore_tween = create_tween()
-	_restore_tween.tween_method(_planet.set_restored, 0.0, 1.0, 1.1)
-	_restore_tween.tween_interval(0.4)
-	_restore_tween.tween_callback(_show_completion)
+	_completion_tween = create_tween()
+	_completion_tween.tween_interval(1.5)
+	_completion_tween.tween_callback(_show_completion)
 
 
 func _show_completion() -> void:

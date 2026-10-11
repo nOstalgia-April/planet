@@ -142,7 +142,8 @@ func _on_next_frame() -> void:
 
 func _update_frame_display() -> void:
 	var count: int = current_view.get_frame_count(current_clip)
-	var fps: float = current_view.frames_per_second
+	var animation: Animation = current_view.animation_player.get_animation(current_clip)
+	var fps: float = 1.0 / animation.step
 	var index: int = count - 1
 	if not _finished:
 		index = mini(

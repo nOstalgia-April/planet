@@ -27,7 +27,7 @@ func _check_value_purchases() -> void:
 	run.settings = SETTINGS
 	run.start_run([Vector2(-100, -200), Vector2(100, -200)])
 	var fixed_pipe_cost: int = run.get_pipe_upgrade_cost()
-	for expected: int in [4, 10, 20, 50]:
+	for expected: int in [2, 5, 10, 25]:
 		var cost: int = run.get_technology_cost("base_value")
 		run.candy = cost - 1
 		var level: int = run.base_value_level
@@ -60,17 +60,17 @@ func _check_value_purchases() -> void:
 	run.get_nest(3).alive_slimes = 2
 	run.net_unlocked = true
 	_check(
-		run.collect_net_batch([3]) == 100,
+		run.collect_net_batch([3]) == 50,
 		"Default model net rewards include species and global value."
 	)
 	run.candy = 0
 	_check(
-		run.collect_slime(3) and run.candy == 100, "Default model pipe rewards use the same value."
+		run.collect_slime(3) and run.candy == 50, "Default model pipe rewards use the same value."
 	)
-	_check(SETTINGS.slime_reward == 2, "Research never mutates shared settings.")
+	_check(SETTINGS.slime_reward == 1, "Research never mutates shared settings.")
 	run.start_run([Vector2(-100, -200), Vector2(100, -200)])
 	_check(
-		run.base_value_level == 0 and run.get_base_value() == 2, "Restart restores initial value."
+		run.base_value_level == 0 and run.get_base_value() == 1, "Restart restores initial value."
 	)
 	run.free()
 
@@ -84,15 +84,15 @@ func _check_fractional_combo() -> void:
 	for _index: int in range(6):
 		run.collect_slime(1)
 	_check(
-		run.candy == 12 and run._combo_reward_remainder == 50,
-		"Half a candy is retained, never rounded up per capture."
+		run.candy == 6 and run._combo_reward_remainder == 25,
+		"A quarter candy is retained, never rounded up per capture."
 	)
 	run.advance(3.1)
 	run.get_nest(1).alive_slimes = 20
 	for _index: int in range(6):
 		run.collect_slime(1)
 	_check(
-		run.candy == 25 and run._combo_reward_remainder == 0,
+		run.candy == 12 and run._combo_reward_remainder == 50,
 		"Earned fractions survive a broken streak."
 	)
 	run.start_run([Vector2(-100, -200), Vector2(100, -200)])
@@ -126,12 +126,12 @@ func _check_live_rewards() -> void:
 	demo._spawn_directions[3] = 1
 	var mucus: PrototypeSlime = _spawn(demo, 3)
 	_check(
-		basic.reward == 2 and golden.reward == 6 and mucus.reward == 4,
+		basic.reward == 1 and golden.reward == 3 and mucus.reward == 2,
 		"Fixture has existing basic, gold and mucus actors."
 	)
 	demo.run.purchase_technology("base_value")
 	_check(
-		basic.reward == 4 and golden.reward == 12 and mucus.reward == 8,
+		basic.reward == 2 and golden.reward == 6 and mucus.reward == 4,
 		"Existing actors immediately receive the breakthrough."
 	)
 	var automated: NestState = demo.run.get_nest(2)
@@ -139,11 +139,16 @@ func _check_live_rewards() -> void:
 	var before: int = demo.run.candy
 	demo.run._advance_automatic_income(automated, 0.125)
 	_check(
-		demo.run.candy == before + 1 and is_equal_approx(automated.income_remainder, 0.5),
-		"Scaled automatic income preserves its earned fraction."
+		demo.run.candy == before and is_equal_approx(automated.income_remainder, 1.125),
+		"Scaled automatic income waits for its production interval."
+	)
+	demo.run._advance_automatic_income(automated, 2.875)
+	_check(
+		demo.run.candy == before + 9 and is_equal_approx(automated.income_remainder, 0.75),
+		"Three-second production preserves the upgraded rate and earned fraction."
 	)
 	_check(
-		is_equal_approx(demo.run.get_passive_income(), 6.0),
+		is_equal_approx(demo.run.get_passive_income(), 3.0),
 		"Income display reports the upgraded rate."
 	)
 	for actor: PrototypeSlime in [basic, golden, mucus]:
@@ -157,7 +162,7 @@ func _check_live_rewards() -> void:
 	demo._advance_net(demo._net.cast_seconds)
 	demo._advance_net(demo._net.close_seconds)
 	_check(
-		demo._net_caught_count == 3 and demo.run.candy == before + 60,
+		demo._net_caught_count == 3 and demo.run.candy == before + 30,
 		"A net already in flight settles all species at the new value."
 	)
 	_check(
@@ -165,17 +170,17 @@ func _check_live_rewards() -> void:
 		"The net neither rewards nor renews combo."
 	)
 	var fresh: PrototypeSlime = _spawn(demo, 1)
-	_check(fresh.reward == 10, "Future actors receive the same current value.")
+	_check(fresh.reward == 5, "Future actors receive the same current value.")
 	fresh.position = Vector2(0, -190)
 	before = demo.run.candy
 	demo._capture_at(2.0, fresh.get_capture_point(), true)
 	_check(
-		demo.run.candy == before + 12 and demo.run._combo_reward_remainder == 50,
+		demo.run.candy == before + 6 and demo.run._combo_reward_remainder == 25,
 		"Real suction pays current value plus its fractional percentage bonus."
 	)
 	demo.restart_run()
 	_check(
-		demo.run.get_base_value() == 2 and demo._slimes.is_empty(),
+		demo.run.get_base_value() == 1 and demo._slimes.is_empty(),
 		"Live restart clears research and the old actors."
 	)
 	current_scene = null

@@ -116,12 +116,13 @@ func _check_nests(demo: DemoScript, views: Array[NestView], dimensions: Vector2i
 		await _check_ground_alignment(demo, views, dimensions, level)
 	for view: NestView in views:
 		_check(view._art._flower.visible and not view._art._growth.visible)
+		_check(view._art._sprite.material == null, "Flowers retain the source artwork without a bend shader.")
 		view._art._flower.animation_player.advance(1.0)
 		_check(view._art._flower.animation_player.current_animation == &"待机")
 		var candy_before: int = demo.run.candy
 		var existing_actors: Array[PrototypeSlime] = demo._slimes.duplicate()
 		var population: int = demo.run.get_nest(view.nest_id).alive_slimes
-		demo.run.advance(1.0)
+		demo.run.advance(demo.run.settings.automatic_income_interval)
 		_check(demo.run.candy > candy_before, "The production clip follows actual passive income.")
 		_check(
 			demo.run.get_nest(view.nest_id).alive_slimes == population,
@@ -246,11 +247,14 @@ func _check_ground_alignment(
 				var contact: Vector2 = Vector2(
 					lerpf(pixels.position.x, pixels.end.x, fraction), pixels.end.y
 				)
-				var ground: Vector2 = projection.affine_inverse() * picture * contact
-				_check(
-					ground.length() <= demo._planet.get_outer_radius(ground.angle()) + 2.0,
-					"The artwork's base rests against the curved ground at its center and edges."
-				)
+				var art_point: Vector2 = view._art.get_global_transform_with_canvas().affine_inverse() * picture * contact
+				art_point.y = view._art.get_ground_contact_y(art_point.x)
+				var ground: Vector2 = projection.affine_inverse() * view._art.get_global_transform_with_canvas() * art_point
+				if view._art.uses_ground_bend():
+					_check(
+						ground.length() <= demo._planet.get_outer_radius(ground.angle()) + 2.0,
+						"The artwork's base rests against the curved ground at its center and edges."
+					)
 			_check_bounds(view)
 		if stage in [0, 2, 3] and not is_zero_approx(turn):
 			await _save("grounded_%d_%s" % [stage, "left" if turn < 0.0 else "right"], dimensions)
@@ -264,7 +268,11 @@ func _check_bounds(view: NestView) -> void:
 	_check(not view.contains_viewport_point(bounds.end + Vector2(12.0, 12.0)))
 	var sprite: Sprite2D = view._art._sprite
 	var pixels: Rect2 = Rect2(sprite.texture.get_image().get_used_rect())
-	var drawn: Rect2 = sprite.get_global_transform_with_canvas() * pixels
+	var art_transform: Transform2D = view._art.get_global_transform_with_canvas()
+	var source_to_art: Transform2D = art_transform.affine_inverse() * sprite.get_global_transform_with_canvas()
+	var deformed: Rect2 = source_to_art * pixels
+	deformed.size.y += view._art._bottom_padding
+	var drawn: Rect2 = art_transform * deformed
 	# Compare in pixels: relative epsilon becomes too strict when a zoomed
 	# corner lands near zero, despite only float-rounding differences.
 	_check(

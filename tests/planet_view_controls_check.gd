@@ -140,7 +140,9 @@ func _check_body_hits(demo: DemoScript) -> void:
 		includes_contours = (
 			includes_contours
 			and camera.contains_planet_body(transform * edge)
-			and camera.contains_planet_body(transform * (edge + PlanetSurface.RIM_OFFSET))
+			and camera.contains_planet_body(
+				transform * (edge + Vector2(0.0, camera.overview_shadow_offset))
+			)
 			and camera.contains_planet_body(transform * (edge * 0.45))
 		)
 	_check(

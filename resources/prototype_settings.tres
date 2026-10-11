@@ -1,55 +1,25 @@
-[gd_resource type="Resource" script_class="PrototypeSettings" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="PrototypeSettings" format=3]
 
-[ext_resource type="Script" path="res://scripts/prototype_settings.gd" id="1_settings"]
+[ext_resource type="Script" path="res://scripts/prototype_settings.gd" id="1_5caey"]
 
 [resource]
-script = ExtResource("1_settings")
-initial_nests = 2
+script = ExtResource("1_5caey")
 unlocked_species_weights = PackedFloat32Array(2, 1)
-nest_roll_interval = 5.0
-nest_roll_chance_min = 0.25
-nest_roll_chance_max = 0.55
-nest_spawn_cooldown_seconds = 20.0
-nest_initial_delay_seconds = 60.0
-nest_min_distance = 64.0
-nest_spacing_margin = 20.0
-same_species_soft_distance = 180.0
-same_species_near_weight = 0.45
-nest_upgrade_costs = PackedInt32Array(60, 360, 1800)
+drill_population_limits = PackedInt32Array(1, 2, 4)
+drill_reward_weights = PackedInt32Array(70, 25, 5)
+drill_reward_multipliers = PackedInt32Array(10, 30, 100)
+nest_upgrade_costs = PackedInt32Array(50, 300, 2000)
 spawn_intervals = PackedFloat32Array(4, 5, 6)
-spawn_interval_jitter = 1.0
-spawn_burst_ratio_min = 0.2
-spawn_burst_ratio_max = 0.3
-passive_income_per_second = 3.0
-slime_reward = 2
 base_value_multipliers = PackedInt32Array(1, 2, 5, 10, 25)
-base_value_upgrade_costs = PackedInt32Array(80, 360, 1800, 7200)
+base_value_upgrade_costs = PackedInt32Array(30, 150, 900, 3600)
 nest_population_limits = PackedInt32Array(10, 30, 60)
-pipe_upgrade_costs = PackedInt32Array(20, 90, 240, 600, 1400, 3200)
+pipe_upgrade_costs = PackedInt32Array(10, 20, 60, 300, 700, 1600)
 pipe_capture_seconds = PackedFloat32Array(0.6, 0.45, 0.32, 0.22, 0.17, 0.135, 0.11)
-pipe_radius = 9.6
-net_upgrade_costs = PackedInt32Array(100, 600, 2400)
-net_unlock_cost = 30
+net_upgrade_costs = PackedInt32Array(50, 300, 1200)
 net_capacities = PackedInt32Array(5, 10, 20, 30)
-net_radius = 33.6
-net_cooldown_seconds = 6.0
-governance_upgrade_costs = PackedInt32Array(60, 2400)
-combo_upgrade_costs = PackedInt32Array(40, 300, 1600)
+governance_upgrade_costs = PackedInt32Array(50, 7500)
+combo_upgrade_costs = PackedInt32Array(20, 150, 800)
 combo_reward_percentages = PackedInt32Array(0, 25, 50, 75)
-combo_interval_upgrade_costs = PackedInt32Array(80, 360, 1800)
+combo_interval_upgrade_costs = PackedInt32Array(40, 180, 900)
 combo_interval_bonus_seconds = PackedFloat32Array(0, 1, 2, 3)
-valuable_upgrade_costs = PackedInt32Array(240)
-giant_unlock_cost = 240
-giant_fusion_threshold = 36
-giant_check_interval = 1.0
-giant_activity_radius_multiplier = 1.0
-combo_target = 5
-combo_window_seconds = 3.0
-valuable_spawn_every = 8
-valuable_reward_multiplier = 3
-mucus_nest_coverage_multiplier = 2.0
-mucus_trail_half_width = 2.8
-mucus_trail_lifetime = 7.0
-mucus_trail_sample_spacing = 1.0
-mucus_trail_limit = 80
-mucus_trail_max_length = 28.8
+valuable_upgrade_costs = PackedInt32Array(120)

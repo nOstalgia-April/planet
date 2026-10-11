@@ -1,5 +1,7 @@
 # 2026-10-05 玩法验证版性能优化记录
 
+2026-10-11：本记录对应早期原型，相关旧实机截图已按用户要求清理。保留性能数值、日志与实验过程用于追溯；核对当前游戏画面需重新运行现行场景截图。
+
 这次先固定压力负载找热点，再修改最重的循环，并分别复测 CPU 工作量和真实绘制帧耗时。第一轮固定压力场景的 CPU 稳态中位耗时从约 **20.46 ms 降到 8.39 ms**；真实绘制从 **80.10 ms/帧降到 56.73 ms/帧**。改成整块星球盘面后的第二轮当前值为 **6.865 ms CPU 工作量、55.099 ms 实际帧中位耗时**，详见第 7 节。两者测量范围不同，不能把 CPU 工作耗时换算成游戏帧率。
 
 ## 1. 先建立可重复的负载
@@ -74,7 +76,7 @@ CPU 表中分项为每模拟步平均工作耗时；整步中位和 95 分位取
 - 真实绘制缓存版：`C:\Users\ROG\Documents\planet\artifacts\performance_render_after.log`
 - 真实绘制最终版：`C:\Users\ROG\Documents\planet\artifacts\performance_render_final.log`
 - 轨迹严格比对：`C:\Users\ROG\Documents\planet\artifacts\performance_equivalence.log`
-- 压力场景截图：`C:\Users\ROG\Documents\planet\artifacts\performance_stress_scene.png`
+- 压力场景旧截图已于 2026-10-11 清理。
 - 绘制实验入口：`C:\Users\ROG\Documents\planet\artifacts\performance_render.gd`，命令行加 `-- --previous` 选择保留在本机的原版轨迹快照。
 
 ## 7. 第二轮历史记录：整块星球盘面与两段黏液处理
@@ -111,7 +113,7 @@ CPU 表中分项为每模拟步平均工作耗时；整步中位和 95 分位取
 - 全盘活动测试：`C:\Users\ROG\Documents\planet\artifacts\full_planet_activity_check.log`
 - 抛落和捕获点测试：`C:\Users\ROG\Documents\planet\artifacts\full_planet_drop_gravity_check.log`
 - 黏液与治理集成测试：`C:\Users\ROG\Documents\planet\artifacts\full_planet_ground_ecology_check.log`
-- 扒起/吸入姿态实机截图：`C:\Users\ROG\Documents\planet\artifacts\full_planet_peel_visual.png`
+- 扒起/吸入姿态旧实机截图已于 2026-10-11 清理。
 
 ## 8. 参考澄清：加宽地壳，覆盖近景地面
 
@@ -198,4 +200,4 @@ P2切回P1时明确以切换瞬间的实际画面为准：将星球屏幕正上�
 
 可加 `--phase=near_capture` 单测吸取。预算和隐藏行为检查使用 `--headless --script res://tests/mucus_capacity_check.gd`、`res://tests/mucus_visibility_check.gd`。
 
-本机证据位于被忽略的 `artifacts/`：`perf_oct06_before.log`、`perf_oct06_fixed_final.log`、`perf_oct06_demo_before.log`、`perf_oct06_demo_after2.log`、`perf_oct06_profile_near_idle.log`、`rendered_after2_2560x1600_*.png`。诊断入口 `perf_oct06_profile_harness.gd` 仅用于定位，正式复测使用 `tests/` 中的持久入口。
+本机证据位于被忽略的 `artifacts/`：`perf_oct06_before.log`、`perf_oct06_fixed_final.log`、`perf_oct06_demo_before.log`、`perf_oct06_demo_after2.log`、`perf_oct06_profile_near_idle.log`。当时的近远景旧截图已于 2026-10-11 清理。诊断入口 `perf_oct06_profile_harness.gd` 仅用于定位，正式复测使用 `tests/` 中的持久入口。

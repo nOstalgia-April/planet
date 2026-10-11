@@ -1,0 +1,187 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://features/territory_preview/flower_claim_preview.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/effects/claimed_crust.tscn" id="2_crust"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/史莱姆花.tscn" id="3_flower"]
+[ext_resource type="PackedScene" path="res://scenes/场景动画/近景背景.tscn" id="4_background"]
+[ext_resource type="Theme" path="res://resources/场景预览主题.tres" id="5_theme"]
+
+[ext_resource type="PackedScene" path="res://scenes/物品动画/黏液花.tscn" id="6_mucus"]
+
+[sub_resource type="StyleBoxFlat" id="Style_panel"]
+content_margin_left = 18.0
+content_margin_right = 18.0
+content_margin_top = 14.0
+content_margin_bottom = 14.0
+bg_color = Color(0.06, 0.045, 0.06, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.82, 0.67, 0.73, 0.2)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_left = 18
+corner_radius_bottom_right = 18
+
+[sub_resource type="StyleBoxEmpty" id="Style_empty"]
+
+[node name="花朵地壳染色预览" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Canvas" type="Node2D" parent="."]
+
+[node name="SkyClip" type="Polygon2D" parent="Canvas"]
+clip_children = 1
+polygon = PackedVector2Array(2294.500, 1846.900, 2292.908, 1911.767, 2288.134, 1976.479, 2280.191, 2040.878, 2269.098, 2104.809, 2254.881, 2168.120, 2237.575, 2230.656, 2217.221, 2292.268, 2193.869, 2352.807, 2167.574, 2412.128, 2138.400, 2470.086, 2106.417, 2526.544, 2071.703, 2581.364, 2034.340, 2634.414, 1994.420, 2685.568, 1952.037, 2734.701, 1907.295, 2781.695, 1860.301, 2826.437, 1811.168, 2868.820, 1760.014, 2908.740, 1706.964, 2946.103, 1652.144, 2980.817, 1595.686, 3012.800, 1537.728, 3041.974, 1478.407, 3068.269, 1417.868, 3091.621, 1356.256, 3111.975, 1293.720, 3129.281, 1230.409, 3143.498, 1166.478, 3154.591, 1102.079, 3162.534, 1037.367, 3167.308, 972.500, 3168.900, 907.633, 3167.308, 842.921, 3162.534, 778.522, 3154.591, 714.591, 3143.498, 651.280, 3129.281, 588.744, 3111.975, 527.132, 3091.621, 466.593, 3068.269, 407.272, 3041.974, 349.314, 3012.800, 292.856, 2980.817, 238.036, 2946.103, 184.986, 2908.740, 133.832, 2868.820, 84.699, 2826.437, 37.705, 2781.695, -7.037, 2734.701, -49.420, 2685.568, -89.340, 2634.414, -126.703, 2581.364, -161.417, 2526.544, -193.400, 2470.086, -222.574, 2412.128, -248.869, 2352.807, -272.221, 2292.268, -292.575, 2230.656, -309.881, 2168.120, -324.098, 2104.809, -335.191, 2040.878, -343.134, 1976.479, -347.908, 1911.767, -349.500, 1846.900, -347.908, 1782.033, -343.134, 1717.321, -335.191, 1652.922, -324.098, 1588.991, -309.881, 1525.680, -292.575, 1463.144, -272.221, 1401.532, -248.869, 1340.993, -222.574, 1281.672, -193.400, 1223.714, -161.417, 1167.256, -126.703, 1112.436, -89.340, 1059.386, -49.420, 1008.232, -7.037, 959.099, 37.705, 912.105, 84.699, 867.363, 133.832, 824.980, 184.986, 785.060, 238.036, 747.697, 292.856, 712.983, 349.314, 681.000, 407.272, 651.826, 466.593, 625.531, 527.132, 602.179, 588.744, 581.825, 651.280, 564.519, 714.591, 550.302, 778.522, 539.209, 842.921, 531.266, 907.633, 526.492, 972.500, 524.900, 1037.367, 526.492, 1102.079, 531.266, 1166.478, 539.209, 1230.409, 550.302, 1293.720, 564.519, 1356.256, 581.825, 1417.868, 602.179, 1478.407, 625.531, 1537.728, 651.826, 1595.686, 681.000, 1652.144, 712.983, 1706.964, 747.697, 1760.014, 785.060, 1811.168, 824.980, 1860.301, 867.363, 1907.295, 912.105, 1952.037, 959.099, 1994.420, 1008.232, 2034.340, 1059.386, 2071.703, 1112.436, 2106.417, 1167.256, 2138.400, 1223.714, 2167.574, 1281.672, 2193.869, 1340.993, 2217.221, 1401.532, 2237.575, 1463.144, 2254.881, 1525.680, 2269.098, 1588.991, 2280.191, 1652.922, 2288.134, 1717.321, 2292.908, 1782.033)
+invert_enabled = true
+invert_border = 5000.0
+
+[node name="背景" parent="Canvas/SkyClip" instance=ExtResource("4_background")]
+
+[node name="染色地壳" parent="Canvas" instance=ExtResource("2_crust")]
+position = Vector2(972.5, 1846.9)
+rotation = 3.14159265359
+display_radius = 1322.0
+
+[node name="花" parent="Canvas" instance=ExtResource("3_flower")]
+texture_filter = 2
+position = Vector2(734.54, 569.34)
+rotation = -0.181
+scale = Vector2(2.12, 2.12)
+
+[node name="黏液花" parent="Canvas" instance=ExtResource("6_mucus")]
+texture_filter = 2
+position = Vector2(1263.34, 582.56)
+rotation = 0.222
+scale = Vector2(1.9, 1.9)
+
+[node name="Controls" type="Control" parent="Canvas"]
+layout_mode = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+theme = ExtResource("5_theme")
+
+[node name="Panel" type="PanelContainer" parent="Canvas/Controls"]
+offset_left = 32.0
+offset_top = 28.0
+offset_right = 1120.0
+offset_bottom = 180.0
+theme_override_styles/panel = SubResource("Style_panel")
+
+[node name="Rows" type="VBoxContainer" parent="Canvas/Controls/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Buttons" type="HBoxContainer" parent="Canvas/Controls/Panel/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Menu" type="Button" parent="Canvas/Controls/Panel/Rows/Buttons"]
+layout_mode = 2
+focus_mode = 0
+text = "主菜单"
+
+[node name="Replay" type="Button" parent="Canvas/Controls/Panel/Rows/Buttons"]
+layout_mode = 2
+focus_mode = 0
+text = "重播染色"
+tooltip_text = "空格 / 点击花朵"
+
+[node name="Mode" type="OptionButton" parent="Canvas/Controls/Panel/Rows/Buttons"]
+layout_mode = 2
+focus_mode = 0
+item_count = 3
+selected = 0
+popup/item_0/text = "双花覆盖"
+popup/item_0/id = 0
+popup/item_1/text = "只看粉花"
+popup/item_1/id = 1
+popup/item_2/text = "只看黏液花"
+popup/item_2/id = 2
+
+[node name="Randomize" type="Button" parent="Canvas/Controls/Panel/Rows/Buttons"]
+layout_mode = 2
+focus_mode = 0
+text = "换一组"
+tooltip_text = "R · 随机大小与形状"
+
+[node name="Order" type="Button" parent="Canvas/Controls/Panel/Rows/Buttons"]
+layout_mode = 2
+focus_mode = 0
+text = "蓝盖粉 ⇄"
+tooltip_text = "交换覆盖顺序并重播"
+
+[node name="Compare" type="Button" parent="Canvas/Controls/Panel/Rows/Buttons"]
+layout_mode = 2
+focus_mode = 0
+text = "查看原色"
+tooltip_text = "C"
+
+[node name="Hide" type="Button" parent="Canvas/Controls/Panel/Rows/Buttons"]
+layout_mode = 2
+focus_mode = 0
+text = "隐藏"
+tooltip_text = "H 恢复界面"
+theme_override_styles/normal = SubResource("Style_empty")
+
+[node name="Sizes" type="HBoxContainer" parent="Canvas/Controls/Panel/Rows"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="PinkLabel" type="Label" parent="Canvas/Controls/Panel/Rows/Sizes"]
+layout_mode = 2
+text = "粉花"
+theme_override_colors/font_color = Color(1, 0.55, 0.7, 1)
+
+[node name="PinkSize" type="HSlider" parent="Canvas/Controls/Panel/Rows/Sizes"]
+custom_minimum_size = Vector2(190, 28)
+layout_mode = 2
+size_flags_vertical = 4
+min_value = 0.45
+max_value = 1.5
+step = 0.05
+value = 0.82
+focus_mode = 0
+tooltip_text = "粉花色块大小"
+
+[node name="BlueLabel" type="Label" parent="Canvas/Controls/Panel/Rows/Sizes"]
+layout_mode = 2
+text = "黏液花"
+theme_override_colors/font_color = Color(0.5, 0.68, 1, 1)
+
+[node name="BlueSize" type="HSlider" parent="Canvas/Controls/Panel/Rows/Sizes"]
+custom_minimum_size = Vector2(190, 28)
+layout_mode = 2
+size_flags_vertical = 4
+min_value = 0.45
+max_value = 1.5
+step = 0.05
+value = 0.94
+focus_mode = 0
+tooltip_text = "黏液花色块大小"
+
+[node name="ProgressLabel" type="Label" parent="Canvas/Controls/Panel/Rows/Sizes"]
+layout_mode = 2
+text = "进度"
+
+[node name="Progress" type="HSlider" parent="Canvas/Controls/Panel/Rows/Sizes"]
+custom_minimum_size = Vector2(240, 28)
+layout_mode = 2
+size_flags_vertical = 4
+max_value = 1.0
+step = 0.001
+value = 1.0
+focus_mode = 0
+
+[connection signal="pressed" from="Canvas/Controls/Panel/Rows/Buttons/Menu" to="." method="_return_to_menu"]
+[connection signal="pressed" from="Canvas/Controls/Panel/Rows/Buttons/Replay" to="." method="replay_claim"]
+[connection signal="pressed" from="Canvas/Controls/Panel/Rows/Buttons/Compare" to="." method="_toggle_comparison"]
+[connection signal="pressed" from="Canvas/Controls/Panel/Rows/Buttons/Randomize" to="." method="randomize_patches"]
+[connection signal="pressed" from="Canvas/Controls/Panel/Rows/Buttons/Order" to="." method="swap_coverage"]
+[connection signal="item_selected" from="Canvas/Controls/Panel/Rows/Buttons/Mode" to="." method="set_preview_mode"]
+[connection signal="value_changed" from="Canvas/Controls/Panel/Rows/Sizes/Progress" to="." method="set_claim_progress"]
+[connection signal="drag_ended" from="Canvas/Controls/Panel/Rows/Sizes/PinkSize" to="." method="_apply_sizes"]
+[connection signal="drag_ended" from="Canvas/Controls/Panel/Rows/Sizes/BlueSize" to="." method="_apply_sizes"]
+[connection signal="pressed" from="Canvas/Controls/Panel/Rows/Buttons/Hide" to="." method="set_controls_visible" binds=[false]]

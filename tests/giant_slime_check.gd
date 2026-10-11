@@ -175,7 +175,7 @@ func _check_live_fusion() -> void:
 		"Four plus eight becomes one giant at the eight-contributor nest."
 	)
 	_check(
-		first.population_units == 12 and first.reward == 28,
+		first.population_units == 12 and first.reward == 14,
 		"Fusion preserves all twelve units and gold value."
 	)
 	_check(
@@ -221,12 +221,12 @@ func _check_live_fusion() -> void:
 		"Runtime entities and weighted nest ledger agree."
 	)
 	demo.run.purchase_technology("base_value")
-	_check(first.reward == 56, "A real fused giant retains gold value after a breakthrough.")
+	_check(first.reward == 28, "A real fused giant retains gold value after a breakthrough.")
 	before = demo.run.candy
 	var occupied: int = demo.run.get_nest(4).alive_slimes
 	demo._capture_at(2.0, first.get_capture_point(), true)
 	_check(
-		demo.run.candy == before + 56 and demo.run.get_nest(4).alive_slimes == occupied - 12,
+		demo.run.candy == before + 28 and demo.run.get_nest(4).alive_slimes == occupied - 12,
 		"One suction collects the real giant and all its occupied slots."
 	)
 	demo.restart_run()
@@ -260,7 +260,7 @@ func _check_all_nests() -> void:
 		golden_sources.size() == 3,
 		"Both existing nests and a newly discovered mucus nest produce gold."
 	)
-	_check(demo._slimes.back().reward == 12, "Global gold research preserves mucus species value.")
+	_check(demo._slimes.back().reward == 6, "Global gold research preserves mucus species value.")
 	demo.restart_run()
 	demo.run.candy = 100000
 	_offscreen_pair(demo, NestState.Species.MUCUS)
@@ -273,18 +273,18 @@ func _check_all_nests() -> void:
 		"All nest species participate and the giant keeps its host species."
 	)
 	_check(
-		giant.fused_value_units == 22 and giant.reward == 44,
+		giant.fused_value_units == 22 and giant.reward == 22,
 		"Mixed ordinary, gold and mucus contributions preserve their exact total value."
 	)
 	demo.run.purchase_technology("base_value")
-	_check(giant.reward == 88, "Mixed fusion value scales once with global base value.")
+	_check(giant.reward == 44, "Mixed fusion value scales once with global base value.")
 	demo.run.purchase_technology("pipe")
 	demo.run.purchase_technology("net_unlock")
 	var before: int = demo.run.candy
 	demo._net_anchor = giant.get_capture_point()
 	demo._resolve_net()
 	_check(
-		demo.run.candy == before + 88 and demo.run.get_nest(4).alive_slimes == 0,
+		demo.run.candy == before + 44 and demo.run.get_nest(4).alive_slimes == 0,
 		"Net collection settles one mixed giant once and releases all twelve slots."
 	)
 	current_scene = null
@@ -312,7 +312,7 @@ func _check_demo_balance() -> void:
 	demo._advance_giant_fusion(1.0)
 	var giant: PrototypeSlime = _giants(demo)[0]
 	_check(
-		giant.population_units == 36 and giant.reward == 72,
+		giant.population_units == 36 and giant.reward == 36,
 		"The real demo creates a thirty-six-unit giant at the configured threshold."
 	)
 	_check(
@@ -540,7 +540,7 @@ func _check_population_settlement() -> void:
 	_check(not run.collect_slime(1, 24, 0), "Zero population cannot produce a reward.")
 	_check(run.candy == 0 and nest.alive_slimes == 12, "Rejected harvests preserve both totals.")
 	_check(run.collect_slime(1, -1, 12), "A weighted harvest releases all population units.")
-	_check(run.candy == 24 and nest.alive_slimes == 0, "Default reward conserves the source value.")
+	_check(run.candy == 12 and nest.alive_slimes == 0, "Default reward conserves the source value.")
 	_check(not run.collect_slime(1, 24, 12), "The same population cannot be collected twice.")
 	run.free()
 
@@ -563,12 +563,12 @@ func _check_live_settlement() -> void:
 	demo._view.zoom_steps(1.0, false)
 	demo.run.candy = 10000
 	demo.run.purchase_technology("base_value")
-	_check(fused.reward == 56, "Eleven ordinary and one gold preserve all value after research.")
+	_check(fused.reward == 28, "Eleven ordinary and one gold preserve all value after research.")
 	demo.run.combo_level = 1
 	var before: int = demo.run.candy
 	demo._capture_at(2.0, fused.get_capture_point(), true)
 	_check(
-		demo.run.candy == before + 56 and demo.run.get_nest(1).alive_slimes == 0,
+		demo.run.candy == before + 28 and demo.run.get_nest(1).alive_slimes == 0,
 		"A single suction settles the complete reward and releases twelve units."
 	)
 	_check(demo.run.combo_count == 1, "A fused harvest is one manual combo action.")
@@ -579,7 +579,7 @@ func _check_live_settlement() -> void:
 	before = demo.run.candy
 	demo._resolve_net()
 	_check(
-		demo.run.candy == before + 52 and demo.run.get_nest(1).alive_slimes == 0,
+		demo.run.candy == before + 26 and demo.run.get_nest(1).alive_slimes == 0,
 		"A net settles weighted and ordinary individuals in one batch."
 	)
 	_check(demo._net_caught_count == 2, "The net holds two bodies regardless of represented units.")

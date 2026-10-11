@@ -1,0 +1,15 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/slime_art.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/史莱姆.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/黏液怪.tscn" id="3"]
+
+[node name="SlimeArt" type="Node2D" node_paths=PackedStringArray("pink", "mucus")]
+script = ExtResource("1")
+pink = NodePath("Pink")
+mucus = NodePath("Mucus")
+
+[node name="Pink" parent="." instance=ExtResource("2")]
+
+[node name="Mucus" parent="." instance=ExtResource("3")]
+visible = false

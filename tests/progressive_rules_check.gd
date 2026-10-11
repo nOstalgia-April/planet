@@ -250,7 +250,7 @@ func _check_continuous_pipe_combo() -> void:
 		for _index: int in range(3):
 			run.collect_slime(1)
 		_check(
-			run.combo_count == 8 and run.candy == 8 * SETTINGS.slime_reward + [1, 3, 4][tier - 1],
+			run.combo_count == 8 and run.candy == 8 * SETTINGS.slime_reward + [0, 1, 2][tier - 1],
 			"Every capture from the sixth onward adds the researched bonus without resetting."
 		)
 		run.advance(2.9)
@@ -263,7 +263,8 @@ func _check_continuous_pipe_combo() -> void:
 		)
 		run.get_nest(1).level = 3
 		run.get_nest(1).is_tamed = true
-		run.get_nest(1).income_remainder = 0.9
+		run.get_nest(1).income_remainder = 0.95
+		run.get_nest(1).income_clock = run.settings.automatic_income_interval - 0.05
 		run.completed_nests = 1
 		var before_income: int = run.candy
 		run.advance(0.05)
@@ -607,13 +608,22 @@ func _check_automatic_income() -> void:
 	)
 	_spawn_requests = 0
 	run.slime_requested.connect(_count_spawn_for_first_nest)
+	var production_amounts: Array[int] = []
+	run.automatic_income_received.connect(
+		func(_nest_id: int, amount: int) -> void: production_amounts.append(amount)
+	)
 	before = run.candy
 	run.advance(0.1)
 	_check(run.candy == before, "Fractional candy is retained until a whole candy accrues.")
 	run.advance(0.3)
 	_check(
-		run.candy == before + 1 and is_equal_approx(nest.income_remainder, 0.2),
-		"Small updates preserve fractional income."
+		run.candy == before and production_amounts.is_empty(),
+		"Small updates never trigger production before three seconds."
+	)
+	run.advance(2.6)
+	_check(
+		run.candy == before + 4 and production_amounts == [4] and nest.income_clock == 0.0,
+		"The first three-second boundary pays once at the original income rate."
 	)
 	var population: int = nest.alive_slimes
 	run.advance(10.0)
@@ -621,17 +631,20 @@ func _check_automatic_income() -> void:
 		_spawn_requests == 0 and nest.alive_slimes == population,
 		"An automated nest never spawns or consumes monsters."
 	)
-	_check(run.candy == before + 31, "Empty automated nests keep producing their configured candy.")
+	_check(
+		run.candy == before + 18 and production_amounts == [4, 5, 4, 5],
+		"A long update settles each completed cycle and leaves the last second pending."
+	)
 	for _stage: int in range(3):
 		run.upgrade_nest(2)
 	_check(
-		run.is_complete and is_equal_approx(run.get_passive_income(), 6.0),
+		run.is_complete and is_equal_approx(run.get_passive_income(), 3.0),
 		"Every automated nest contributes income after completion."
 	)
 	before = run.candy
-	run.advance(2.0)
+	run.advance(3.0)
 	_check(
-		run.candy == before + 12 and _spawn_requests == 0,
+		run.candy == before + 8 and _spawn_requests == 0,
 		"Completion keeps income running and spawning stopped."
 	)
 	before = run.candy
@@ -643,6 +656,7 @@ func _check_automatic_income() -> void:
 			run.candy == 0
 			and run.get_passive_income() == 0.0
 			and run.get_nest(1).income_remainder == 0.0
+			and run.get_nest(1).income_clock == 0.0
 		),
 		"Restart clears production and fractional balances."
 	)

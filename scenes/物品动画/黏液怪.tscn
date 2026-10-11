@@ -1,9 +1,11 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/物品动画/动画物件.gd" id="r001"]
-[ext_resource type="Texture2D" path="res://assets/物品动画/黏液怪/待机/001.png" id="r002"]
-[ext_resource type="Texture2D" path="res://assets/物品动画/黏液怪/待机/002.png" id="r003"]
-[ext_resource type="Texture2D" path="res://assets/物品动画/黏液怪/待机/003.png" id="r004"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高清怪兽/黏液怪/待机/001.png" id="r002"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高清怪兽/黏液怪/待机/002.png" id="r003"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高清怪兽/黏液怪/待机/003.png" id="r004"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高清怪兽/黏液怪/吸入/001.png" id="hd_suction_texture"]
 
 [sub_resource type="Animation" id="r005"]
 resource_name = "待机"
@@ -32,7 +34,7 @@ tracks/1/keys = {
 "times": PackedFloat32Array(0, 0.125, 0.25),
 "transitions": PackedFloat32Array(1, 1, 1),
 "update": 1,
-"values": [Vector2(-50, -72), Vector2(-50, -72), Vector2(-50, -72)]
+"values": [Vector2(-50.018181818, -71.033457249), Vector2(-49.777777778, -72.000000000), Vector2(-50.000000000, -71.627450980)]
 }
 tracks/2/type = "value"
 tracks/2/imported = false
@@ -44,26 +46,60 @@ tracks/2/keys = {
 "times": PackedFloat32Array(0, 0.125, 0.25),
 "transitions": PackedFloat32Array(1, 1, 1),
 "update": 1,
-"values": [Vector2(1, 1), Vector2(1, 1), Vector2(1, 1)]
+"values": [Vector2(0.254545455, 0.252788104), Vector2(0.253968254, 0.256227758), Vector2(0.255696203, 0.254901961)]
+}
+
+[sub_resource type="Animation" id="hd_suction_animation"]
+resource_name = "吸入"
+length = 0.125
+step = 0.125
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [ExtResource("hd_suction_texture")]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [Vector2(-50, -71.62745098)]
+}
+tracks/2/type = "value"
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [Vector2(0.255696203, 0.254901961)]
 }
 
 [sub_resource type="AnimationLibrary" id="r006"]
 _data = {
+&"吸入": SubResource("hd_suction_animation"),
 &"待机": SubResource("r005")
 }
 
 [node name="黏液怪" type="Node2D" node_paths=PackedStringArray("animation_player")]
-texture_filter = 1
+texture_filter = 4
 script = ExtResource("r001")
 default_animation = &"待机"
-animation_order = Array[StringName]([&"待机"])
+animation_order = Array[StringName]([&"待机", &"吸入"])
 animation_player = NodePath("动画播放器")
 
 [node name="画面" type="Node2D" parent="."]
 
 [node name="贴图" type="Sprite2D" parent="画面"]
-position = Vector2(-50, -72)
-scale = Vector2(1, 1)
+position = Vector2(-50.018181818, -71.033457249)
+scale = Vector2(0.254545455, 0.252788104)
 texture = ExtResource("r002")
 centered = false
 

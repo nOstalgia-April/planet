@@ -1,31 +1,6 @@
-[gd_resource type="Theme" load_steps=6 format=3]
+[gd_resource type="Theme" format=3 uid="uid://vtvcqi2sw5n7"]
 
 [ext_resource type="FontVariation" path="res://fonts/game_font.tres" id="1_font"]
-
-[sub_resource type="StyleBoxFlat" id="normal"]
-bg_color = Color(0.08, 0.08, 0.10, 0.96)
-content_margin_left = 22.0
-content_margin_right = 22.0
-content_margin_top = 12.0
-content_margin_bottom = 12.0
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_left = 5
-corner_radius_bottom_right = 5
-
-[sub_resource type="StyleBoxFlat" id="hover"]
-bg_color = Color(0.36, 0.035, 0.10, 1)
-content_margin_left = 22.0
-content_margin_right = 22.0
-content_margin_top = 12.0
-content_margin_bottom = 12.0
-
-[sub_resource type="StyleBoxFlat" id="panel"]
-bg_color = Color(0.035, 0.03, 0.04, 0.98)
-content_margin_left = 24.0
-content_margin_right = 24.0
-content_margin_top = 24.0
-content_margin_bottom = 24.0
 
 [sub_resource type="StyleBoxFlat" id="focus"]
 bg_color = Color(0, 0, 0, 0)
@@ -35,13 +10,38 @@ border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.8, 0.45, 0.55, 1)
 
+[sub_resource type="StyleBoxFlat" id="hover"]
+content_margin_left = 22.0
+content_margin_top = 12.0
+content_margin_right = 22.0
+content_margin_bottom = 12.0
+bg_color = Color(0.36, 0.035, 0.1, 1)
+
+[sub_resource type="StyleBoxFlat" id="normal"]
+content_margin_left = 22.0
+content_margin_top = 12.0
+content_margin_right = 22.0
+content_margin_bottom = 12.0
+bg_color = Color(0.08, 0.08, 0.1, 0.96)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxFlat" id="panel"]
+content_margin_left = 24.0
+content_margin_top = 24.0
+content_margin_right = 24.0
+content_margin_bottom = 24.0
+bg_color = Color(0.035, 0.03, 0.04, 0.98)
+
 [resource]
 default_font = ExtResource("1_font")
 default_font_size = 22
-Button/styles/normal = SubResource("normal")
-Button/styles/hover = SubResource("hover")
-Button/styles/pressed = SubResource("hover")
 Button/styles/focus = SubResource("focus")
-PanelContainer/styles/panel = SubResource("panel")
+Button/styles/hover = SubResource("hover")
+Button/styles/normal = SubResource("normal")
+Button/styles/pressed = SubResource("hover")
 HBoxContainer/constants/separation = 12
+PanelContainer/styles/panel = SubResource("panel")
 VBoxContainer/constants/separation = 12

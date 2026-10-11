@@ -5,6 +5,7 @@ extends Node2D
 @export_range(1.0, 20.0, 0.5) var lifetime: float = 7.0
 @export_range(8.0, 140.0, 0.1) var maximum_length: float = 28.8
 @export_range(0.5, 8.0, 0.1) var sample_spacing: float = 1.0
+@export_range(4.0, 100.0, 0.1) var texture_length: float = 32.0
 @export var edge_color: Color = Color("344991")
 @export var body_color: Color = Color("92b3ef")
 @export var highlight_color: Color = Color("e6f1ff")
@@ -288,9 +289,10 @@ func _build_ribbon() -> void:
 		ages.append(fade)
 		distances.append(painted_distance)
 	_write_strip(_edge, 0, normals, widths, ages, distances, -1.0, 1.0, edge_color)
-	# Offscreen trails retain identical outline/contact geometry and lifetime.
-	# Their two decorative layers and renderer uploads resume upon re-entry.
+	# Offscreen trails retain contact geometry and lifetime without renderer uploads.
 	if not _render_detail:
+		return
+	if _edge.texture != null:
 		return
 	_write_strip(_ground, 1, normals, widths, ages, distances, -0.77, 0.77, body_color)
 	_write_strip(_highlight, 2, normals, widths, ages, distances, -0.42, -0.22, highlight_color)
@@ -314,9 +316,14 @@ func _write_strip(
 	vertices.resize(_ground_points.size() * 2)
 	var colors: PackedColorArray = PackedColorArray()
 	colors.resize(vertices.size())
+	var uvs: PackedVector2Array = PackedVector2Array()
+	if polygon.texture != null:
+		uvs.resize(vertices.size())
 	var triangles: Array[PackedInt32Array] = []
 	for index: int in range(_ground_points.size()):
 		var color: Color = tint
+		if polygon.texture != null:
+			color = Color.WHITE
 		color.a = ages[index] * 0.86
 		if polygon == _ground:
 			color = tint.lerp(Color("b9cff8"), 0.3 + sin(distances[index] * 0.16) * 0.18)
@@ -331,6 +338,11 @@ func _write_strip(
 				sources[vertex_index] = point
 				vertices[vertex_index] = point if _preview else _clip_to_ground(point)
 			colors[vertex_index] = color
+			if polygon.texture != null:
+				uvs[vertex_index] = (
+					Vector2(distances[index] / texture_length, float(side_index))
+					* polygon.texture.get_size()
+				)
 		if index == 0:
 			continue
 		var start: int = (index - 1) * 2
@@ -346,6 +358,8 @@ func _write_strip(
 		polygon.polygon = vertices
 		polygon.vertex_colors = colors
 		polygon.polygons = triangles
+		if polygon.texture != null:
+			polygon.uv = uvs
 	_strip_sources[layer] = sources
 	_strip_vertices[layer] = vertices
 	if polygon == _edge and not vertices.is_empty():

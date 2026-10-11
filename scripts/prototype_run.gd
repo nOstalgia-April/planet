@@ -46,6 +46,16 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	assert(settings.initial_nests == 2, "The opening needs two basic slime nests.")
 	assert(spawn_positions.size() >= settings.initial_nests, "The opening needs two nest sites.")
 	assert(settings.unlocked_species_weights.size() == 2)
+	assert(settings.drill_population_limits.size() == 3)
+	assert(settings.drill_spawn_interval > settings.spawn_interval_jitter)
+	assert(
+		settings.drill_reward_weights.size() == 3 and settings.drill_reward_multipliers.size() == 3
+	)
+	var treasure_weight: int = 0
+	for weight: int in settings.drill_reward_weights:
+		assert(weight >= 0)
+		treasure_weight += weight
+	assert(treasure_weight > 0)
 	assert(settings.nest_roll_interval > 0.0)
 	assert(settings.nest_spawn_cooldown_seconds >= 0.0)
 	assert(settings.nest_initial_delay_seconds >= 0.0)
@@ -71,6 +81,7 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	assert(settings.net_radius > 0.0 and settings.net_cooldown_seconds > 0.0)
 	assert(settings.governance_upgrade_costs.size() == 2)
 	assert(settings.passive_income_per_second >= 0.0)
+	assert(settings.automatic_income_interval > 0.0)
 	assert(settings.base_value_multipliers.size() == settings.base_value_upgrade_costs.size() + 1)
 	assert(settings.base_value_multipliers[0] == 1)
 	assert(settings.combo_reward_percentages.size() == settings.combo_upgrade_costs.size() + 1)
@@ -151,6 +162,11 @@ func collect_slime(nest_id: int, reward: int = -1, population: int = 1) -> bool:
 	if nest == null or population <= 0 or nest.alive_slimes < population:
 		return false
 	nest.alive_slimes -= population
+	if nest.species == NestState.Species.DRILL:
+		candy += get_base_value() * roll_drill_treasure()
+		nest_changed.emit(nest)
+		economy_changed.emit()
+		return true
 	var capture_reward: int = (
 		get_capture_reward(nest.species) * population if reward < 0 else reward
 	)
@@ -172,6 +188,8 @@ func collect_net_batch(
 		var nest: NestState = get_nest(nest_ids[index])
 		var population: int = populations[index] if index < populations.size() else 1
 		if nest == null or population <= 0 or nest.alive_slimes < population:
+			continue
+		if nest.species == NestState.Species.DRILL:
 			continue
 		nest.alive_slimes -= population
 		collected_count += 1
@@ -248,6 +266,7 @@ func upgrade_nest(nest_id: int) -> bool:
 		nest.is_tamed = true
 		nest.spawn_clock = 0.0
 		nest.income_remainder = 0.0
+		nest.income_clock = 0.0
 		completed_nests += 1
 	_check_completion()
 	nest_changed.emit(nest)
@@ -480,6 +499,8 @@ func get_nest_population_limit(nest_id: int) -> int:
 	var nest: NestState = get_nest(nest_id)
 	if nest == null:
 		return 0
+	if nest.species == NestState.Species.DRILL:
+		return settings.drill_population_limits[mini(nest.level, 2)]
 	return settings.nest_population_limits[mini(
 		nest.level, settings.nest_population_limits.size() - 1
 	)]
@@ -489,6 +510,8 @@ func get_nest_spawn_interval(nest_id: int) -> float:
 	var nest: NestState = get_nest(nest_id)
 	if nest == null:
 		return 0.0
+	if nest.species == NestState.Species.DRILL:
+		return settings.drill_spawn_interval + nest.spawn_interval_offset
 	return (
 		settings.spawn_intervals[mini(nest.level, settings.spawn_intervals.size() - 1)]
 		+ nest.spawn_interval_offset
@@ -624,11 +647,13 @@ func _advance_nest_population(nest: NestState, delta: float) -> void:
 		nest.spawn_clock -= interval
 		_roll_nest_spawn_interval(nest)
 		interval = get_nest_spawn_interval(nest.nest_id)
-		var burst_min: int = ceili(float(population_limit) * settings.spawn_burst_ratio_min)
-		var burst_max: int = floori(float(population_limit) * settings.spawn_burst_ratio_max)
-		var burst_count: int = mini(
-			_random.randi_range(burst_min, burst_max), population_limit - nest.alive_slimes
-		)
+		var burst_count: int = 1
+		if nest.species != NestState.Species.DRILL:
+			var burst_min: int = ceili(float(population_limit) * settings.spawn_burst_ratio_min)
+			var burst_max: int = floori(float(population_limit) * settings.spawn_burst_ratio_max)
+			burst_count = mini(
+				_random.randi_range(burst_min, burst_max), population_limit - nest.alive_slimes
+			)
 		for _index: int in range(burst_count):
 			nest.alive_slimes += 1
 			slime_requested.emit(nest.nest_id)
@@ -647,16 +672,26 @@ func _roll_nest_spawn_interval(nest: NestState) -> void:
 
 
 func _advance_automatic_income(nest: NestState, delta: float) -> void:
-	if not nest.is_tamed:
+	if not nest.is_tamed or delta <= 0.0:
 		return
-	nest.income_remainder += get_automatic_income_per_nest() * delta
-	var amount: int = floori(nest.income_remainder)
-	if amount <= 0:
-		return
-	nest.income_remainder -= float(amount)
-	candy += amount
-	automatic_income_received.emit(nest.nest_id, amount)
-	economy_changed.emit()
+	var remaining_delta: float = delta
+	while remaining_delta > 0.0:
+		var step: float = minf(
+			remaining_delta, settings.automatic_income_interval - nest.income_clock
+		)
+		nest.income_clock += step
+		nest.income_remainder += get_automatic_income_per_nest() * step
+		remaining_delta -= step
+		if nest.income_clock < settings.automatic_income_interval:
+			continue
+		nest.income_clock = 0.0
+		var amount: int = floori(nest.income_remainder)
+		if amount <= 0:
+			continue
+		nest.income_remainder -= float(amount)
+		candy += amount
+		automatic_income_received.emit(nest.nest_id, amount)
+		economy_changed.emit()
 
 
 func get_average_governance() -> float:
@@ -680,6 +715,8 @@ func resolve_nest_spawn(position: Vector2, site_available: bool = true) -> bool:
 	var species: NestState.Species = _pending_nest_species as NestState.Species
 	_pending_nest_species = -1
 	if not site_available or is_complete:
+		return false
+	if species == NestState.Species.DRILL and not can_discover_drill_nest():
 		return false
 	_nest_roll_clock = 0.0
 	_nest_spawn_cooldown_remaining = settings.nest_spawn_cooldown_seconds
@@ -738,6 +775,8 @@ func _advance_nest_roll(delta: float) -> void:
 
 func _choose_spawn_species() -> int:
 	var total_weight: float = 0.0
+	var drill_weight: float = settings.drill_discovery_weight if can_discover_drill_nest() else 0.0
+	total_weight += drill_weight
 	for weight: float in settings.unlocked_species_weights:
 		total_weight += weight
 	var roll: float = _random.randf() * total_weight
@@ -745,7 +784,27 @@ func _choose_spawn_species() -> int:
 		roll -= settings.unlocked_species_weights[species]
 		if roll <= 0.0:
 			return species
-	return settings.unlocked_species_weights.size() - 1
+	return NestState.Species.DRILL if drill_weight > 0.0 else NestState.Species.MUCUS
+
+
+func can_discover_drill_nest() -> bool:
+	var count: int = 0
+	for nest: NestState in nests:
+		if nest.species == NestState.Species.DRILL:
+			count += 1
+	return count < settings.drill_nest_limit
+
+
+func roll_drill_treasure() -> int:
+	var total: int = 0
+	for weight: int in settings.drill_reward_weights:
+		total += weight
+	var roll: int = _random.randi_range(0, total - 1)
+	for index: int in range(settings.drill_reward_weights.size()):
+		roll -= settings.drill_reward_weights[index]
+		if roll < 0:
+			return settings.drill_reward_multipliers[index]
+	return settings.drill_reward_multipliers[-1]
 
 
 func _add_nest(species: NestState.Species, position: Vector2) -> void:

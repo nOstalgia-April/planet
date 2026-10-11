@@ -19,6 +19,7 @@ var _hover_close_remaining: float = 0.0
 @onready var _nest_card: Control = $NestCard
 @onready var _technology: PageScript = %Technology
 @onready var _technology_button: Button = %TechnologyButton
+@onready var _technology_badge: Label = %TechnologyButton/AvailableBadge
 @onready var _tool_dock: Control = $ToolDock
 @onready var _quick_tools: HBoxContainer = $ToolDock/Content/QuickTools
 @onready var _restart: Button = %RestartButton
@@ -31,6 +32,7 @@ var _hover_close_remaining: float = 0.0
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_technology.hide()
 	_nest_card.hide()
 	_technology_button.pressed.connect(_show_technology)
@@ -71,10 +73,8 @@ func apply_layout(viewport_size: Vector2) -> Rect2:
 	scale = Vector2.ONE * interface_scale
 	position = Vector2.ZERO
 	size = viewport_size / interface_scale
-	_place($EconomyCard, Rect2(28.0, 24.0, 334.0, 99.0))
-	_place($GameName, Rect2(50.0, 38.0, 290.0, 24.0))
-	_place($Economy, Rect2(49.0, 69.0, 290.0, 38.0))
-	_place($ComboChip, Rect2(29.0, 134.0, 246.0, 58.0))
+	_place($Economy, Rect2(28.0, 24.0, 210.0, 34.0))
+	_place($ComboChip, Rect2(28.0, 72.0, 246.0, 58.0))
 	_place($GoalCard, Rect2(size.x - 365.0, 24.0, 337.0, 108.0))
 	_place($Goal, Rect2(size.x - 343.0, 40.0, 293.0, 74.0))
 	_place($StatusLabel, Rect2(270.0, size.y - 160.0, size.x - 540.0, 30.0))
@@ -89,9 +89,14 @@ func apply_layout(viewport_size: Vector2) -> Rect2:
 	)
 
 
+func get_tool_clearance_rect() -> Rect2:
+	return _tool_dock.get_global_rect().grow(32.0 * scale.x)
+
+
 func refresh_progression(run: PrototypeRun) -> void:
 	_run = run
 	_technology.refresh(run)
+	_technology_badge.visible = _technology.has_available_technology()
 	var active_count: int = 0
 	var partial_count: int = 0
 	var managed_count: int = 0
@@ -247,7 +252,7 @@ func is_over_ui(viewport_position: Vector2) -> bool:
 	if _hovered_tool >= 0 and _quick_hover_rect().has_point(viewport_position):
 		return true
 	var blocking_controls: Array[Control] = [
-		_nest_card, _tool_dock, _restart, $EconomyCard, $GoalCard, $ComboChip
+		_nest_card, _tool_dock, _restart, $Economy, $GoalCard, $ComboChip
 	]
 	for panel: Control in blocking_controls:
 		if panel.is_visible_in_tree() and panel.get_global_rect().has_point(viewport_position):
@@ -273,9 +278,12 @@ func is_over_nest_details(viewport_position: Vector2) -> bool:
 
 
 func close_panels() -> void:
+	var technology_was_open: bool = is_technology_open()
 	_technology.hide()
 	_nest_card.hide()
 	_hide_quick_upgrades()
+	if technology_was_open:
+		get_tree().paused = false
 	interaction_panel_changed.emit()
 
 
@@ -287,6 +295,7 @@ func _show_technology() -> void:
 	_nest_card.hide()
 	_hide_quick_upgrades()
 	_technology.show()
+	get_tree().paused = true
 	_place_shops()
 	interaction_panel_changed.emit()
 

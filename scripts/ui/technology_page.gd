@@ -74,6 +74,13 @@ func refresh(run: PrototypeRun) -> void:
 	graph.queue_redraw()
 
 
+func has_available_technology() -> bool:
+	for node: NodeScript in _nodes.values():
+		if node.state == NodeScript.State.AVAILABLE:
+			return true
+	return false
+
+
 func select_node(id: String) -> void:
 	assert(_nodes.has(id), "Technology selection must name an existing upgrade item.")
 	selected_key = id

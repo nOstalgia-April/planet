@@ -1,0 +1,19 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Shader" path="res://shaders/technology_waves.gdshader" id="1_waves"]
+[ext_resource type="Script" path="res://scripts/ui/technology_backdrop.gd" id="2_pointer"]
+
+[sub_resource type="ShaderMaterial" id="Waves"]
+resource_local_to_scene = true
+shader = ExtResource("1_waves")
+
+[node name="TechnologyBackdrop" type="ColorRect"]
+process_mode = 3
+material = SubResource("Waves")
+script = ExtResource("2_pointer")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

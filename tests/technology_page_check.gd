@@ -29,12 +29,12 @@ func _check_page() -> void:
 	var page: PageScript = preview.page
 	_check(page._nodes.size() == 11, "each upgrade item has exactly one icon")
 	_check(page._nodes["base_value"].level_label.text == "1", "base value starts at level one")
-	preview.run.candy = 80
+	preview.run.candy = 40
 	page.refresh(preview.run)
 	page.select_node("base_value")
 	page.purchase.pressed.emit()
 	_check(
-		preview.run.get_base_value() == 4 and preview.run.candy == 0,
+		preview.run.get_base_value() == 2 and preview.run.candy == 0,
 		"the new central node purchases a real global value breakthrough"
 	)
 	_check(page._nodes["base_value"].level_label.text == "2", "value advances on the same icon")
@@ -66,7 +66,7 @@ func _check_page() -> void:
 	await _click(page._nodes["pipe"])
 	await _click(page.purchase)
 	_check(
-		preview.run.pipe_level == 1 and preview.run.candy == 380,
+		preview.run.pipe_level == 1 and preview.run.candy == 390,
 		"first speed purchase charges its configured cost"
 	)
 	_check(page._nodes["pipe"].level_label.text == "2", "the same icon updates its current level")
@@ -79,7 +79,7 @@ func _check_page() -> void:
 	)
 	await _click(page.purchase)
 	_check(
-		preview.run.pipe_level == 2 and preview.run.candy == 290,
+		preview.run.pipe_level == 2 and preview.run.candy == 345,
 		"the same icon buys the next speed level"
 	)
 	page.select_node("net_unlock")
@@ -91,13 +91,13 @@ func _check_page() -> void:
 	_check(page._note("net_unlock").is_empty(), "net details contain no nest-discovery promise")
 	page.purchase.pressed.emit()
 	_check(
-		preview.run.nests.size() == 2 and preview.run.candy == 260,
+		preview.run.nests.size() == 2 and preview.run.candy == 330,
 		"unlock cannot charge twice or create nests"
 	)
 	page.select_node("net_capacity")
 	page.purchase.pressed.emit()
 	_check(
-		preview.run.get_net_capacity() == 10 and preview.run.candy == 160,
+		preview.run.get_net_capacity() == 10 and preview.run.candy == 280,
 		"capacity purchases work after unlock"
 	)
 	_check_model_branches(preview)
@@ -138,13 +138,14 @@ func _check_page() -> void:
 	current_scene = demo
 	demo.set_process(false)
 	await _settle()
+	await _check_technology_badge(demo)
 	demo.run.candy = 400
 	demo.run.economy_changed.emit()
 	demo._layout._show_technology()
 	demo._layout._technology.select_node("pipe")
 	demo._layout._technology.purchase.pressed.emit()
 	_check(
-		demo.run.pipe_level == 1 and demo.run.candy == 380,
+		demo.run.pipe_level == 1 and demo.run.candy == 390,
 		"the main demo uses the same page and real purchase handler"
 	)
 	_check(demo._layout.is_over_ui(Vector2(500, 400)), "the page blocks background input")
@@ -190,6 +191,56 @@ func _check_page() -> void:
 			"PASS: technology states, real purchases, prerequisites, global research, reset and both resolutions"
 		)
 	quit(0 if _failures == 0 else 1)
+
+
+func _check_technology_badge(demo: DemoScript) -> void:
+	var badge: Label = demo._layout._technology_badge
+	_check(not badge.visible, "empty wallet hides the technology badge")
+	demo.run.candy = demo.run.get_technology_cost("pipe") - 1
+	demo.run.economy_changed.emit()
+	await _settle()
+	_check(not badge.visible, "badge stays hidden below the purchase threshold")
+	demo.run.candy += 1
+	demo.run.economy_changed.emit()
+	await _settle()
+	_check(badge.visible, "exact purchase cost shows the technology badge")
+	if _capture:
+		for resolution: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
+			root.size = resolution
+			await _settle()
+			await _save("technology_badge_%dx%d.png" % [resolution.x, resolution.y])
+	await _click(badge)
+	_check(demo._layout.is_technology_open(), "badge passes clicks to the technology button")
+	demo._layout.close_panels()
+	_check(badge.visible, "viewing the tree does not dismiss an available purchase")
+	demo._layout.quick_upgrade_requested.emit(0)
+	await _settle()
+	_check(not badge.visible, "spending the wallet on a quick upgrade clears the badge")
+	demo.run.candy = demo.run.get_technology_cost("net_unlock")
+	demo.run.economy_changed.emit()
+	await _settle()
+	_check(badge.visible, "newly affordable branch unlock shows the badge again")
+	demo.run.candy = 10000000
+	for id: String in [
+		"pipe",
+		"base_value",
+		"cultivation",
+		"automation",
+		"valuable",
+		"giant",
+		"combo_unlock",
+		"combo_reward",
+		"combo_interval",
+		"net_unlock",
+		"net_capacity"
+	]:
+		while demo.run.purchase_technology(id):
+			pass
+	await _settle()
+	_check(not badge.visible, "fully researched tree hides the badge despite spare candy")
+	demo.restart_run()
+	await _settle()
+	_check(not badge.visible, "restart clears the technology badge")
 
 
 func _check_model_branches(preview: PreviewScript) -> void:
@@ -250,8 +301,8 @@ func _check_model_branches(preview: PreviewScript) -> void:
 	for _index: int in range(6):
 		run.collect_slime(2)
 	_check(
-		run.candy == before + 6 * run.settings.slime_reward + 1,
-		"reward upgrade affects real captures"
+		run.candy == before + 6 * run.settings.slime_reward,
+		"reward upgrade retains its half-candy bonus on real captures"
 	)
 	_check(
 		is_equal_approx(run.combo_remaining, 4.0),

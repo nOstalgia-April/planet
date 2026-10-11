@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/drill_monster.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/地鼠.tscn" id="2"]
+
+[node name="DrillMonster" type="Node2D" node_paths=PackedStringArray("art")]
+script = ExtResource("1")
+art = NodePath("Art")
+
+[node name="Art" parent="." instance=ExtResource("2")]

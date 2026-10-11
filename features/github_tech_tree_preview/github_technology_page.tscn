@@ -1,0 +1,7 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/interactive_technology_page.tscn" id="1_page"]
+[ext_resource type="Script" path="res://features/github_tech_tree_preview/github_technology_page.gd" id="2_script"]
+
+[node name="GithubTechnologyPage" instance=ExtResource("1_page")]
+script = ExtResource("2_script")

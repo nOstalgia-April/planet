@@ -1,0 +1,21 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://features/technology_screen_studies/technology_screen_studies.gd" id="1_studies"]
+[ext_resource type="PackedScene" path="res://scenes/disk_demo.tscn" id="2_game"]
+
+[node name="TechnologyScreenStudies" type="Node"]
+process_mode = 3
+script = ExtResource("1_studies")
+
+[node name="Game" parent="." instance=ExtResource("2_game")]
+process_mode = 1
+
+[node name="PreviewControls" type="CanvasLayer" parent="."]
+layer = 20
+
+[node name="Selector" type="OptionButton" parent="PreviewControls"]
+offset_left = 260.0
+offset_top = 24.0
+offset_right = 500.0
+offset_bottom = 66.0
+tooltip_text = "1–4 切换背景效果，0 对照当前版本"

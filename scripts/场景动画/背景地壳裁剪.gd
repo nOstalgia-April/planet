@@ -3,6 +3,9 @@ extends Polygon2D
 @export var planet_surface: PlanetSurface
 @export var background_canvas: Node2D
 @export var reference_size: Vector2 = Vector2(1920.0, 1080.0)
+@export_range(0.0, 0.02, 0.001) var art_edge_overlap_ratio: float = 0.005
+
+var _cutout_radius: float = -1.0
 
 
 func _ready() -> void:
@@ -17,8 +20,17 @@ func _process(_delta: float) -> void:
 
 
 func _sync_cutout() -> void:
-	var contour: PackedVector2Array = planet_surface.get_surface_polygon()
-	if polygon != contour:
+	# The artwork is circular; gameplay's irregular relief can extend beyond it
+	# and expose the black clear color. Keep the mask just inside the opaque rim.
+	var cutout_radius: float = (
+		planet_surface.radius * PlanetSurface.SURFACE_RADIUS_RATIO * (1.0 - art_edge_overlap_ratio)
+	)
+	if not is_equal_approx(_cutout_radius, cutout_radius):
+		_cutout_radius = cutout_radius
+		var contour: PackedVector2Array = PackedVector2Array()
+		for index in range(PlanetSurface.CONTOUR_STEPS):
+			var angle: float = float(index) * TAU / float(PlanetSurface.CONTOUR_STEPS)
+			contour.append(Vector2.from_angle(angle) * cutout_radius)
 		polygon = contour
 	var surface_transform: Transform2D = planet_surface.get_global_transform_with_canvas()
 	if not transform.is_equal_approx(surface_transform):

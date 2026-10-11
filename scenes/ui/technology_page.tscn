@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/ui/technology_page.gd" id="1_page"]
 [ext_resource type="Script" path="res://scripts/ui/technology_graph.gd" id="2_graph"]
-[ext_resource type="Script" path="res://scripts/ui/technology_backdrop.gd" id="3_background"]
+[ext_resource type="PackedScene" path="res://scenes/ui/technology_backdrop.tscn" id="3_background"]
 [ext_resource type="Script" path="res://scripts/ui/technology_glyph.gd" id="4_glyph"]
 
 [ext_resource type="FontVariation" path="res://fonts/game_font.tres" id="5_font"]
@@ -100,13 +100,12 @@ grow_vertical = 2
 theme = SubResource("Theme")
 script = ExtResource("1_page")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" parent="." instance=ExtResource("3_background")]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
-color = Color(0.044, 0.076, 0.098, 1)
 
 [node name="Margin" type="MarginContainer" parent="."]
 layout_mode = 1
@@ -161,14 +160,6 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 clip_contents = true
-
-[node name="Backdrop" type="Control" parent="Margin/Content/Body/Canvas"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-script = ExtResource("3_background")
 
 [node name="Graph" type="Control" parent="Margin/Content/Body/Canvas"]
 unique_name_in_owner = true

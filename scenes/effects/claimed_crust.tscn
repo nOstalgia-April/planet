@@ -1,0 +1,18 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/场景动画/近景星球.tscn" id="1_planet"]
+[ext_resource type="Script" path="res://scripts/claimed_crust.gd" id="2_script"]
+[ext_resource type="Shader" path="res://shaders/claimed_crust.gdshader" id="3_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_claim"]
+resource_local_to_scene = true
+shader = ExtResource("3_shader")
+
+[node name="染色地壳" instance=ExtResource("1_planet")]
+script = ExtResource("2_script")
+
+[node name="贴图" parent="." index="0"]
+material = SubResource("ShaderMaterial_claim")
+
+[node name="动画播放器" parent="." index="1"]
+autoplay = "待机"

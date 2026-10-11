@@ -24,8 +24,8 @@ func _run_checks() -> void:
 		for _frame: int in range(8):
 			await process_frame
 		_check(
-			is_equal_approx(demo._nest_site_distance, 146.4),
-			"Growth, income and spawn frames reserve the 316-unit footprint at 40% scale plus 20 units."
+			is_equal_approx(demo._nest_site_distance, 150.0),
+			"Growth, income and spawn frames reserve the 325-unit footprint including drill art at 40% scale plus 20 units."
 		)
 		_check(
 			demo._nest_site_angles.size() == 10,
@@ -52,7 +52,7 @@ func _run_checks() -> void:
 				for second: NestState in demo.run.nests:
 					if first.nest_id < second.nest_id:
 						_check(
-							first.position.distance_to(second.position) >= 146.4,
+							first.position.distance_to(second.position) >= 150.0,
 							"Opening and random nests reserve their full growth footprint."
 						)
 			_check_visible_bounds(demo)
