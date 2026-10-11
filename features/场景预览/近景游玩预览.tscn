@@ -20,6 +20,7 @@ near_horizontal_offset_ratio = 0.0065
 
 [node name="PlanetSurface" parent="World" index="0" node_paths=PackedStringArray("planet_art")]
 script = ExtResource("r003")
+nest_edge_inset = 1.0
 planet_art = NodePath("星球画面")
 
 [node name="星球画面" parent="World/PlanetSurface" index="0" unique_id=1645310864 instance=ExtResource("r004")]
