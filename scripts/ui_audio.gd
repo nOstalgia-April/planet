@@ -52,7 +52,9 @@ func _on_node_added(node: Node) -> void:
 	var button: BaseButton = node as BaseButton
 	button.set_meta(HOOKED_META, true)
 	button.mouse_entered.connect(_on_hover.bind(button))
-	button.pressed.connect(_on_pressed.bind(button))
+	# button_down fires on the press itself, before any pressed handler can
+	# start a blocking scene change.
+	button.button_down.connect(_on_button_down.bind(button))
 
 
 func _on_hover(button: BaseButton) -> void:
@@ -60,9 +62,9 @@ func _on_hover(button: BaseButton) -> void:
 		GameAudio.play(HOVER_EVENT)
 
 
-func _on_pressed(button: BaseButton) -> void:
+func _on_button_down(button: BaseButton) -> void:
 	if not button.has_meta(PURCHASE_META):
-		GameAudio.play(CLICK_EVENT)
+		GameAudio.play_now(CLICK_EVENT)
 
 
 func _on_purchase_input(event: InputEvent, button: BaseButton, is_unaffordable: Callable) -> void:

@@ -1,6 +1,6 @@
 # FMOD 可行性验证与最新 Demo：Fred / AI 阅读入口
 
-更新日期：2026-10-10。适用仓库：[planet](https://github.com/nOstalgia-April/planet/tree/main)，分支：`main`。当前完整 Demo 已合入 Fred 今天的 `Oct10-FMOD_Update`，包含背景音乐、按钮与科技反馈、怪物和收集音效，并保留最新玩法与动画。
+更新日期：2026-10-11。适用仓库：[planet](https://github.com/nOstalgia-April/planet/tree/main)，分支：`main`。当前完整 Demo 已合入 Fred 的 `OCT11-AudioUpdate`，包含音乐交叉淡变、按钮按下反馈、星球拖动声、捕网收获声和吸走瞬间的糖果声，并保留钻头怪、宝藏、最新美术、开头动画与交互科技树。
 
 ## 2026-10-10 最新 Demo 与巢穴产怪动画
 
