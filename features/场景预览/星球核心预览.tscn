@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/场景动画/星球核心.tscn" id="1"]
+
+[node name="星球核心预览" type="Node2D"]
+
+[node name="星球核心" parent="." instance=ExtResource("1")]
+position = Vector2(960, 540)
+synchronize_music = false

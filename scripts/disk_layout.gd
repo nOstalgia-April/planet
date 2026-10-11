@@ -1,6 +1,7 @@
 class_name DiskDemoLayout
 extends Control
 
+signal restart_requested
 signal interaction_panel_changed
 signal quick_upgrade_requested(tool: int)
 signal technology_upgrade_requested(id: String)
@@ -8,6 +9,9 @@ signal technology_upgrade_requested(id: String)
 const DESIGN_SIZE: Vector2 = Vector2(1280.0, 800.0)
 const BRANCH_IDS: PackedStringArray = ["pipe", "net", "governance", "combo"]
 const PageScript = preload("res://scripts/ui/technology_page.gd")
+const GameMenu = preload("res://scripts/ui/game_menu.gd")
+
+var _manual_pause: bool = false
 
 var _shop_layout_queued: bool = false
 var _quick_layout_queued: bool = false
@@ -22,7 +26,7 @@ var _hover_close_remaining: float = 0.0
 @onready var _technology_badge: Label = %TechnologyButton/AvailableBadge
 @onready var _tool_dock: Control = $ToolDock
 @onready var _quick_tools: HBoxContainer = $ToolDock/Content/QuickTools
-@onready var _restart: Button = %RestartButton
+@onready var game_menu: GameMenu = $GameMenu
 @onready var _completion: Control = %Completion
 @onready var _quick_buttons: Array[Button] = [%QuickPipeButton, %QuickNetButton]
 @onready var _upgrade_panels: Array[PanelContainer] = [$PipeUpgrade, $NetUpgrade]
@@ -35,6 +39,11 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_technology.hide()
 	_nest_card.hide()
+	_hide_quick_upgrades()
+	game_menu.pause_toggled.connect(_toggle_pause)
+	game_menu.settings_changed.connect(_sync_pause)
+	game_menu.restart_requested.connect(restart_requested.emit)
+	game_menu.menu_requested.connect(_return_to_menu)
 	_technology_button.pressed.connect(_show_technology)
 	_technology.close_requested.connect(close_panels)
 	_technology.technology_upgrade_requested.connect(technology_upgrade_requested.emit)
@@ -55,7 +64,7 @@ func _process(delta: float) -> void:
 func _update_quick_hover(delta: float, pointer: Vector2) -> void:
 	if _hovered_tool < 0:
 		return
-	if is_technology_open() or _completion.is_visible_in_tree():
+	if get_tree().paused or is_technology_open() or _completion.is_visible_in_tree():
 		_hide_quick_upgrades()
 		return
 	if _quick_hover_rect().has_point(pointer):
@@ -75,12 +84,8 @@ func apply_layout(viewport_size: Vector2) -> Rect2:
 	size = viewport_size / interface_scale
 	_place($Economy, Rect2(28.0, 24.0, 210.0, 34.0))
 	_place($ComboChip, Rect2(28.0, 72.0, 246.0, 58.0))
-	_place($GoalCard, Rect2(size.x - 365.0, 24.0, 337.0, 108.0))
-	_place($Goal, Rect2(size.x - 343.0, 40.0, 293.0, 74.0))
 	_place($StatusLabel, Rect2(270.0, size.y - 160.0, size.x - 540.0, 30.0))
-	_place($InputHint, Rect2(size.x * 0.5 - 335.0, size.y - 114.0, 670.0, 22.0))
 	_place(_tool_dock, Rect2(size.x * 0.5 - 299.0, size.y - 91.0, 598.0, 86.0))
-	_place(_restart, Rect2(size.x - 150.0, size.y - 66.0, 122.0, 42.0))
 	_place_shops()
 	_place_quick_upgrades.call_deferred()
 	return Rect2(
@@ -97,19 +102,6 @@ func refresh_progression(run: PrototypeRun) -> void:
 	_run = run
 	_technology.refresh(run)
 	_technology_badge.visible = _technology.has_available_technology()
-	var active_count: int = 0
-	var partial_count: int = 0
-	var managed_count: int = 0
-	for nest: NestState in run.nests:
-		if nest.is_tamed:
-			managed_count += 1
-		elif nest.level == 2:
-			partial_count += 1
-		else:
-			active_count += 1
-	%GovernanceLabel.text = (
-		"活跃 %d  ·  强化培育 %d  ·  自动化 %d" % [active_count, partial_count, managed_count]
-	)
 	var combo_hint: String = (
 		"连续吸入 %d 只后，捕获收益 +%d%%；间隔 %.0f 秒。小数奖励累计到账。"
 		% [
@@ -195,7 +187,7 @@ func _request_quick_upgrade(tool: int) -> void:
 
 
 func _show_quick_upgrade(tool: int) -> void:
-	if is_technology_open() or _completion.is_visible_in_tree():
+	if get_tree().paused or is_technology_open() or _completion.is_visible_in_tree():
 		return
 	_hovered_tool = tool
 	_hover_close_remaining = 0.16
@@ -247,13 +239,15 @@ func _settle_quick_layout() -> void:
 
 
 func is_over_ui(viewport_position: Vector2) -> bool:
-	if _completion.is_visible_in_tree() or is_technology_open():
+	if (
+		game_menu.contains_pointer(viewport_position)
+		or _completion.is_visible_in_tree()
+		or is_technology_open()
+	):
 		return true
 	if _hovered_tool >= 0 and _quick_hover_rect().has_point(viewport_position):
 		return true
-	var blocking_controls: Array[Control] = [
-		_nest_card, _tool_dock, _restart, $Economy, $GoalCard, $ComboChip
-	]
+	var blocking_controls: Array[Control] = [_nest_card, _tool_dock, $Economy, $ComboChip]
 	for panel: Control in blocking_controls:
 		if panel.is_visible_in_tree() and panel.get_global_rect().has_point(viewport_position):
 			return true
@@ -278,13 +272,10 @@ func is_over_nest_details(viewport_position: Vector2) -> bool:
 
 
 func close_panels() -> void:
-	var technology_was_open: bool = is_technology_open()
 	_technology.hide()
 	_nest_card.hide()
 	_hide_quick_upgrades()
-	if technology_was_open:
-		get_tree().paused = false
-	interaction_panel_changed.emit()
+	_sync_pause()
 
 
 func is_technology_open() -> bool:
@@ -295,9 +286,8 @@ func _show_technology() -> void:
 	_nest_card.hide()
 	_hide_quick_upgrades()
 	_technology.show()
-	get_tree().paused = true
 	_place_shops()
-	interaction_panel_changed.emit()
+	_sync_pause()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -306,9 +296,40 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key_event: InputEventKey = event as InputEventKey
 	if not key_event.pressed or key_event.echo or key_event.keycode != KEY_ESCAPE:
 		return
-	if is_technology_open() or _nest_card.is_visible_in_tree():
+	if game_menu.is_open():
+		game_menu.handle_escape()
+	elif is_technology_open() or _nest_card.is_visible_in_tree():
 		close_panels()
-		get_viewport().set_input_as_handled()
+	else:
+		_toggle_pause()
+	get_viewport().set_input_as_handled()
+
+
+func _toggle_pause() -> void:
+	_manual_pause = not _manual_pause
+	_sync_pause()
+
+
+func reset_pause() -> void:
+	_manual_pause = false
+	game_menu.set_open(false)
+	_sync_pause()
+
+
+func _sync_pause() -> void:
+	var paused: bool = _manual_pause or is_technology_open() or game_menu.is_open()
+	get_tree().paused = paused
+	game_menu.visible = not is_technology_open()
+	game_menu.set_paused(paused)
+	if paused:
+		_nest_card.hide()
+		_hide_quick_upgrades()
+	interaction_panel_changed.emit()
+
+
+func _return_to_menu() -> void:
+	get_tree().paused = false
+	get_tree().change_scene_to_file.call_deferred("res://scenes/主菜单/主菜单.tscn")
 
 
 func _queue_shop_layout() -> void:

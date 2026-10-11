@@ -1,0 +1,318 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/game_menu.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/ui/menu_icon_button.gd" id="2"]
+[ext_resource type="Texture2D" path="res://assets/ui/game_menu/pause.tres" id="pause"]
+[ext_resource type="Texture2D" path="res://assets/ui/game_menu/music_on.tres" id="music"]
+[ext_resource type="Texture2D" path="res://assets/ui/game_menu/settings.tres" id="settings"]
+[ext_resource type="Texture2D" path="res://assets/ui/game_menu/close.tres" id="close"]
+[ext_resource type="Font" path="res://fonts/game_font.tres" id="font"]
+
+[sub_resource type="StyleBoxFlat" id="panel"]
+bg_color = Color(0.065, 0.082, 0.24, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.36, 0.39, 0.85, 1)
+corner_radius_top_left = 28
+corner_radius_top_right = 36
+corner_radius_bottom_left = 36
+corner_radius_bottom_right = 28
+content_margin_left = 30.0
+content_margin_right = 30.0
+content_margin_top = 22.0
+content_margin_bottom = 26.0
+shadow_color = Color(0.01, 0.015, 0.06, 0.5)
+shadow_size = 16
+
+[sub_resource type="StyleBoxFlat" id="button"]
+bg_color = Color(0.16, 0.19, 0.42, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+content_margin_left = 16.0
+content_margin_right = 16.0
+content_margin_top = 10.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="hover"]
+bg_color = Color(0.12, 0.23, 0.95, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+content_margin_left = 16.0
+content_margin_right = 16.0
+content_margin_top = 10.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="track"]
+bg_color = Color(0.28, 0.3, 0.5, 1)
+content_margin_top = 3.0
+content_margin_bottom = 3.0
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_left = 3
+corner_radius_bottom_right = 3
+
+[sub_resource type="Theme" id="theme"]
+default_font = ExtResource("font")
+default_font_size = 18
+Label/colors/font_color = Color(0.97, 0.97, 1, 1)
+Button/colors/font_color = Color(1, 1, 1, 1)
+Button/colors/font_hover_color = Color(1, 1, 1, 1)
+Button/colors/font_pressed_color = Color(1, 1, 1, 1)
+Button/colors/font_focus_color = Color(1, 1, 1, 1)
+Button/styles/normal = SubResource("button")
+Button/styles/hover = SubResource("hover")
+Button/styles/pressed = SubResource("hover")
+Button/styles/focus = SubResource("hover")
+HSlider/styles/slider = SubResource("track")
+HSlider/styles/grabber_area = SubResource("hover")
+HSlider/styles/grabber_area_highlight = SubResource("hover")
+
+[node name="GameMenu" type="Control"]
+process_mode = 3
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = SubResource("theme")
+script = ExtResource("1")
+
+[node name="Toolbar" type="HBoxContainer" parent="."]
+layout_mode = 0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -264.0
+offset_top = 24.0
+offset_right = -28.0
+offset_bottom = 88.0
+grow_horizontal = 0
+theme_override_constants/separation = 18
+
+[node name="Pause" type="Button" parent="Toolbar"]
+custom_minimum_size = Vector2(66, 64)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+script = ExtResource("2")
+glyph = ExtResource("pause")
+
+[node name="Music" type="Button" parent="Toolbar"]
+custom_minimum_size = Vector2(66, 64)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+script = ExtResource("2")
+glyph = ExtResource("music")
+
+[node name="Settings" type="Button" parent="Toolbar"]
+custom_minimum_size = Vector2(66, 64)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+script = ExtResource("2")
+glyph = ExtResource("settings")
+
+[node name="PausedLabel" type="Label" parent="Toolbar/Pause"]
+visible = false
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -55.0
+offset_top = 4.0
+offset_right = 55.0
+offset_bottom = 46.0
+theme_override_font_sizes/font_size = 26
+text = "已暂停"
+horizontal_alignment = 1
+mouse_filter = 2
+
+[node name="Modal" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Shade" type="ColorRect" parent="Modal"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.015, 0.02, 0.08, 0.72)
+
+[node name="Center" type="CenterContainer" parent="Modal"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="Modal/Center"]
+custom_minimum_size = Vector2(480, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("panel")
+
+[node name="Content" type="VBoxContainer" parent="Modal/Center/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Header" type="HBoxContainer" parent="Modal/Center/Panel/Content"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Modal/Center/Panel/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 30
+text = "设置"
+
+[node name="CloseSettings" type="Button" parent="Modal/Center/Panel/Content/Header"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(42, 42)
+layout_mode = 2
+tooltip_text = "关闭 · Esc"
+script = ExtResource("2")
+glyph = ExtResource("close")
+glyph_size = 22.0
+
+[node name="SettingsBody" type="VBoxContainer" parent="Modal/Center/Panel/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="MusicRow" type="HBoxContainer" parent="Modal/Center/Panel/Content/SettingsBody"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Label" type="Label" parent="Modal/Center/Panel/Content/SettingsBody/MusicRow"]
+custom_minimum_size = Vector2(56, 0)
+layout_mode = 2
+text = "音乐"
+
+[node name="MusicVolume" type="HSlider" parent="Modal/Center/Panel/Content/SettingsBody/MusicRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(230, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+value = 80.0
+step = 1.0
+
+[node name="MusicValue" type="Label" parent="Modal/Center/Panel/Content/SettingsBody/MusicRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(66, 0)
+layout_mode = 2
+text = "80%"
+horizontal_alignment = 2
+
+[node name="EffectsRow" type="HBoxContainer" parent="Modal/Center/Panel/Content/SettingsBody"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Label" type="Label" parent="Modal/Center/Panel/Content/SettingsBody/EffectsRow"]
+custom_minimum_size = Vector2(56, 0)
+layout_mode = 2
+text = "音效"
+
+[node name="EffectsVolume" type="HSlider" parent="Modal/Center/Panel/Content/SettingsBody/EffectsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(230, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+value = 80.0
+step = 1.0
+
+[node name="EffectsValue" type="Label" parent="Modal/Center/Panel/Content/SettingsBody/EffectsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(66, 0)
+layout_mode = 2
+text = "80%"
+horizontal_alignment = 2
+
+[node name="Fullscreen" type="CheckButton" parent="Modal/Center/Panel/Content/SettingsBody"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "全屏显示"
+
+[node name="ControlsText" type="Label" parent="Modal/Center/Panel/Content/SettingsBody"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_constants/line_spacing = 0
+theme_override_constants/paragraph_spacing = 0
+text = "悬停吸取 · 左键投网 · 1 / 2 切换工具
+近景：右键拖星球 · 滚轮拉远
+全景：右键拖空白 · 点击气泡靠近
+悬停巢穴升级 · Esc 暂停 / 返回"
+
+[node name="Extras" type="HBoxContainer" parent="Modal/Center/Panel/Content/SettingsBody"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Controls" type="Button" parent="Modal/Center/Panel/Content/SettingsBody/Extras"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "操作说明"
+
+[node name="Defaults" type="Button" parent="Modal/Center/Panel/Content/SettingsBody/Extras"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "恢复默认"
+
+[node name="Actions" type="HBoxContainer" parent="Modal/Center/Panel/Content/SettingsBody"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Restart" type="Button" parent="Modal/Center/Panel/Content/SettingsBody/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "重新开始"
+
+[node name="MainMenu" type="Button" parent="Modal/Center/Panel/Content/SettingsBody/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "返回主菜单"
+
+[node name="ResumeGame" type="Button" parent="Modal/Center/Panel/Content/SettingsBody"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "返回游戏"
+theme_override_styles/normal = SubResource("hover")
+
+[node name="Confirmation" type="VBoxContainer" parent="Modal/Center/Panel/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 22
+
+[node name="ConfirmText" type="Label" parent="Modal/Center/Panel/Content/Confirmation"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "重新开始？"
+
+[node name="Actions" type="HBoxContainer" parent="Modal/Center/Panel/Content/Confirmation"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CancelAction" type="Button" parent="Modal/Center/Panel/Content/Confirmation/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "取消"
+
+[node name="ConfirmAction" type="Button" parent="Modal/Center/Panel/Content/Confirmation/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "确定"

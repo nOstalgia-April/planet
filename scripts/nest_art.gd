@@ -1,6 +1,7 @@
 extends Node2D
 
 signal bounds_changed
+signal flower_appeared
 
 const ItemArt = preload("res://scripts/物品动画/动画物件.gd")
 const GroundBend: ShaderMaterial = preload("res://resources/nest_ground_bend.tres")
@@ -40,6 +41,7 @@ var _bottom_padding: float = 0.0
 var _ground_profile: ImageTexture
 var _ground_heights: PackedFloat32Array = PackedFloat32Array()
 var _ground_max_y: float = 0.0
+var _flower_announced: bool = false
 
 
 func _ready() -> void:
@@ -310,6 +312,9 @@ func _show_settled_stage() -> void:
 		var frame: int = 0 if _display_level == 0 else _growth.get_frame_count(clip) - 1
 		_growth.show_frame(clip, frame)
 	_refresh_bounds()
+	if _display_level == 3 and not _flower_announced:
+		_flower_announced = true
+		flower_appeared.emit()
 
 
 func _on_clip_finished(clip: StringName, art: ItemArt) -> void:

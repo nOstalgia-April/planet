@@ -1,4 +1,4 @@
-extends SceneTree
+extends Node
 
 const PlayScene: PackedScene = preload("res://features/场景预览/近景游玩预览.tscn")
 const PlayScript = preload("res://features/场景预览/游玩预览.gd")
@@ -8,29 +8,34 @@ const PlanetArt = preload("res://scripts/场景动画/星球贴图.gd")
 var _failures: Array[String] = []
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	_run.call_deferred()
 
 
 func _run() -> void:
-	root.mode = Window.MODE_WINDOWED
+	get_tree().root.mode = Window.MODE_WINDOWED
 	for resolution: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
-		root.size = resolution
+		get_tree().root.size = resolution
 		var game: PlayScript = PlayScene.instantiate() as PlayScript
-		root.add_child(game)
-		current_scene = game
+		get_tree().root.add_child(game)
+		get_tree().current_scene = game
 		game.set_process(false)
 		game._view.set_process(false)
 		game._layout.set_process(false)
 		game._window_has_focus = true
-		await process_frame
-		await process_frame
+		await get_tree().process_frame
+		await get_tree().process_frame
 		game._apply_layout()
 		var art: PlanetArt = game._planet.get_node("星球画面") as PlanetArt
 		art.animation_player.callback_mode_process = (
 			AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 		)
-		art.animation_player.advance(0.25)
+		art.animation_player.seek(0.65, true)
+		game._planet_art._process(0.0)
+		_check(game._planet_art._overview_frame == 0, "overview loops after its third frame")
+		art.animation_player.seek(0.25, true)
+		game._planet_art._process(0.0)
+		_check(game._planet_art._overview_frame == 1, "overview uses the shared five-FPS clock")
 		_check_reference_framing(art, resolution)
 		var nests: Array[NestView] = game._nest_views.duplicate()
 		var positions: Array[Vector2] = []
@@ -50,16 +55,22 @@ func _run() -> void:
 			)
 		_check_interruptions(game)
 		await _check_bubble_focus(game, resolution)
-		current_scene = null
+		get_tree().current_scene = null
 		game.queue_free()
-		await process_frame
+		await get_tree().process_frame
+	var overview_game: PlayScript = PlayScene.instantiate() as PlayScript
+	overview_game.start_in_overview = true
+	get_tree().root.add_child(overview_game)
+	_check(overview_game._planet_art.overview_mix == 1.0, "overview entry starts with overview art")
+	overview_game.queue_free()
+	await get_tree().process_frame
 	for failure: String in _failures:
 		push_error("FAIL: " + failure)
 	if _failures.is_empty():
 		print(
-			"PASS: shared planet, stable zoom/reversal, bubble navigation to local monster groups, UI/tool input gates and preserved world state at both resolutions."
+			"PASS: aligned planet blend, stable zoom/reversal, bubble navigation, input gates and preserved world state at both resolutions."
 		)
-	quit(0 if _failures.is_empty() else 1)
+	get_tree().quit(0 if _failures.is_empty() else 1)
 
 
 func _check_direction(game: PlayScript, to_near: bool, resolution: Vector2i) -> void:
@@ -83,7 +94,7 @@ func _check_direction(game: PlayScript, to_near: bool, resolution: Vector2i) -> 
 	wheel.global_position = pointer
 	wheel.button_index = MOUSE_BUTTON_WHEEL_UP if to_near else MOUSE_BUTTON_WHEEL_DOWN
 	wheel.pressed = true
-	root.push_input(wheel, true)
+	get_tree().root.push_input(wheel, true)
 	_check(camera.is_transitioning(), "wheel starts an animated transition")
 	_check(camera.transition_seconds <= 1.0, "default transition takes at most one second")
 	_check(
@@ -93,6 +104,8 @@ func _check_direction(game: PlayScript, to_near: bool, resolution: Vector2i) -> 
 	_check(is_equal_approx(camera.near_blend, initial_blend), "wheel preserves initial artwork")
 	await _capture(game, label, 0, resolution)
 	var previous_scale: float = game._world.scale.y
+	var previous_mix: float = game._planet_art.overview_mix
+	var mixed_frames: int = 0
 	for frame: int in range(1, 49):
 		camera._process(camera.transition_seconds / 48.0)
 		var next_scale: float = game._world.scale.y
@@ -107,8 +120,19 @@ func _check_direction(game: PlayScript, to_near: bool, resolution: Vector2i) -> 
 				and art.visible
 				and is_equal_approx(art.modulate.a, 1.0)
 			),
-			"one opaque planet sprite is used throughout the zoom"
+			"one composite planet is used without fading the entire canvas item"
 		)
+		var mix_amount: float = game._planet_art.overview_mix
+		_check(
+			mix_amount <= previous_mix if to_near else mix_amount >= previous_mix,
+			"artwork blend moves monotonically in both directions"
+		)
+		previous_mix = mix_amount
+		if mix_amount > 0.0 and mix_amount < 1.0:
+			mixed_frames += 1
+			_check(camera.zoom_amount < 0.28, "only blend while the planet is near overview size")
+		if camera.zoom_amount >= 0.28:
+			_check(mix_amount == 0.0, "large planet uses only the high-resolution artwork")
 		_check(
 			(
 				art.sprite.texture == original_texture
@@ -159,7 +183,7 @@ func _check_direction(game: PlayScript, to_near: bool, resolution: Vector2i) -> 
 				not game._can_collect(ground, game.run.get_pipe_radius()),
 				"tools cannot collect against a moving projection"
 			)
-		if frame in [12, 24, 30, 36, 48]:
+		if frame in [6, 10, 12, 16, 24, 30, 32, 34, 36, 38, 40, 42, 48]:
 			await _capture(game, label, frame, resolution)
 	# Absorb floating point accumulation without advancing idle rotation.
 	if camera.is_transitioning():
@@ -181,6 +205,11 @@ func _check_direction(game: PlayScript, to_near: bool, resolution: Vector2i) -> 
 		"near and overview textures differ only by uniform zoom and camera translation"
 	)
 	_check(camera.near_blend == (1.0 if to_near else 0.0), "art reaches its exact endpoint")
+	_check(
+		game._planet_art.overview_mix == (0.0 if to_near else 1.0),
+		"the correct texture is fully visible at each endpoint"
+	)
+	_check(mixed_frames >= 10 and mixed_frames <= 16, "texture handoff lasts about 0.22 seconds")
 	_check(game._nests.visible == to_near, "detail layers finish in the intended view")
 	_check(game._near_background.visible == to_near, "near background finishes correctly")
 	_check(game._overview_background.visible != to_near, "overview background finishes correctly")
@@ -213,9 +242,11 @@ func _check_reference_framing(art: PlanetArt, resolution: Vector2i) -> void:
 func _check_interruptions(game: PlayScript) -> void:
 	var camera: PlanetViewController = game._view
 	camera.zoom_steps(-1.0)
-	camera._process(0.35)
+	camera._process(0.62)
 	var midway: Transform2D = game._world.get_global_transform_with_canvas()
 	var blend: float = camera.near_blend
+	var art_mix: float = game._planet_art.overview_mix
+	_check(art_mix > 0.0 and art_mix < 1.0, "reversal is exercised during the texture handoff")
 	camera.zoom_steps(1.0)
 	camera._process(0.0)
 	_check(
@@ -223,9 +254,15 @@ func _check_interruptions(game: PlayScript) -> void:
 		"reverse wheel starts from the displayed transform"
 	)
 	_check(is_equal_approx(camera.near_blend, blend), "reverse wheel preserves the displayed blend")
+	_check(
+		is_equal_approx(game._planet_art.overview_mix, art_mix),
+		"reverse wheel preserves the exact mixed texture"
+	)
 	camera._process(0.1)
 	_check(game._world.scale.y > midway.y.length(), "reverse wheel smoothly zooms back in")
-	camera.configure(game._layout.apply_layout(root.get_visible_rect().size), game._planet.radius)
+	camera.configure(
+		game._layout.apply_layout(get_tree().root.get_visible_rect().size), game._planet.radius
+	)
 	_check(camera.is_transitioning(), "layout refresh preserves the active transition")
 	camera._process(1.0)
 	_check(not camera.is_transitioning() and not camera.is_overview(), "reverse completes in time")
@@ -238,6 +275,7 @@ func _check_interruptions(game: PlayScript) -> void:
 	)
 	camera._process(1.0)
 	_check(camera.zoom_amount == 1.0, "cancelled transition cannot resume after reset")
+	_check(game._planet_art.overview_mix == 0.0, "restart restores only the near artwork")
 	camera.transition_seconds = 0.0
 	camera.zoom_steps(-1.0)
 	_check(
@@ -255,7 +293,7 @@ func _check_bubble_focus(game: PlayScript, resolution: Vector2i) -> void:
 	var actors: Array[PrototypeSlime] = game._slimes.duplicate()
 	var nests: Array[NestView] = game._nest_views.duplicate()
 	var candy: int = game.run.candy
-	var screen: Vector2 = root.get_visible_rect().size
+	var screen: Vector2 = get_tree().root.get_visible_rect().size
 	# Both sides of the angle seam, both species and a side-facing cluster.
 	for angle: float in [0.4, PI - 0.03, -PI + 0.03]:
 		for index: int in range(actors.size()):
@@ -378,7 +416,7 @@ func _check_bubble_focus(game: PlayScript, resolution: Vector2i) -> void:
 
 func _bubble_click(position: Vector2, pressed: bool) -> void:
 	var event: InputEventMouseButton = InputEventMouseButton.new()
-	event.position = root.get_final_transform() * position
+	event.position = get_tree().root.get_final_transform() * position
 	event.global_position = event.position
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
@@ -391,12 +429,17 @@ func _capture(game: PlayScript, direction: String, frame: int, resolution: Vecto
 	if not "--capture" in OS.get_cmdline_user_args() or DisplayServer.get_name() == "headless":
 		return
 	game._overview._process(0.0)
-	await process_frame
+	await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	var path: String = (
-		"res://artifacts/zoom_%s_%02d_%dx%d.png" % [direction, frame, resolution.x, resolution.y]
+		"res://artifacts/planet_blend/zoom_%s_%02d_%dx%d.png"
+		% [direction, frame, resolution.x, resolution.y]
 	)
-	_check(root.get_texture().get_image().save_png(path) == OK, "transition screenshot saved")
+	DirAccess.make_dir_recursive_absolute("res://artifacts/planet_blend")
+	_check(
+		get_tree().root.get_texture().get_image().save_png(path) == OK,
+		"transition screenshot saved"
+	)
 
 
 func _check(condition: bool, message: String) -> void:

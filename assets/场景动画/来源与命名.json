@@ -1,6 +1,5 @@
 {
   "excluded": [
-    "星星（月亮在同一图层）",
     "彩色恢复素材",
     "位置参考合成图"
   ],
@@ -298,6 +297,24 @@
       "source": "封面/IMG_3489.png",
       "target": "assets/场景动画/主菜单/设置.png",
       "sha256": "fc6425bfe3216f32b3c497bf4c5bae7a4efd96d216c0fd97206876c73c608873"
+    },
+    {
+      "source": "全景地球（5帧每秒）/星星/未命名作品-1.png",
+      "target": "assets/场景动画/全景星星/001.png",
+      "fps": 5,
+      "sha256": "65fdd2194b98b61a00ebcd578630c9ce3d19066ed4e063a774720a0e4f116204"
+    },
+    {
+      "source": "全景地球（5帧每秒）/星星/未命名作品-2.png",
+      "target": "assets/场景动画/全景星星/002.png",
+      "fps": 5,
+      "sha256": "44ecf57c6138e5a4be3ac5ece3a435ef8f272398b3f4bc78f326ec014f06505d"
+    },
+    {
+      "source": "全景地球（5帧每秒）/星星/未命名作品-3.png",
+      "target": "assets/场景动画/全景星星/003.png",
+      "fps": 5,
+      "sha256": "20e41af562c50728ba334f3869dcf3df45fcc1d033899c8e3e14e7e78c6fb870"
     }
   ]
 }

@@ -21,10 +21,10 @@ func _check_preview() -> void:
 	await _settle()
 	_check(preview.page.graph.links.size() == 8, "only actual prerequisites have edges")
 	preview.page.select_node("giant")
-	await _click(preview.page.purchase)
+	await _click(preview.page._nodes[preview.page.selected_key])
 	_check(not preview.run.giant_unlocked, "locked research cannot be bought")
 	preview.page.select_node("pipe")
-	await _click(preview.page.purchase)
+	await _click(preview.page._nodes[preview.page.selected_key])
 	_check(preview.run.pipe_level == 1 and preview.run.candy == 390, "real speed purchase")
 	_check(
 		preview.page._nodes["net_unlock"].state == NodeScript.State.AVAILABLE,
@@ -32,7 +32,7 @@ func _check_preview() -> void:
 	)
 	preview.page.select_node("cultivation")
 	var expected_balance: int = preview.run.candy - preview.run.get_technology_cost("cultivation")
-	await _click(preview.page.purchase)
+	await _click(preview.page._nodes[preview.page.selected_key])
 	_check(
 		preview.run.governance_level == 1 and preview.run.candy == expected_balance,
 		"real cultivation"
@@ -56,7 +56,7 @@ func _check_preview() -> void:
 	)
 	var canvas_point: Vector2 = preview.page._canvas.get_global_rect().get_center()
 	await _mouse_button(canvas_point, MOUSE_BUTTON_WHEEL_UP, true)
-	_check(is_equal_approx(preview._zoom.value, 1.1), "wheel synchronizes slider")
+	_check(is_equal_approx(preview._github_page.zoom_factor, 1.1), "wheel changes zoom")
 	var graph_start: Vector2 = preview.page.graph.position
 	await _mouse_button(canvas_point, MOUSE_BUTTON_RIGHT, true)
 	await _motion(canvas_point + Vector2(25.0, 0.0), Vector2(25.0, 0.0))
@@ -69,13 +69,13 @@ func _check_preview() -> void:
 		_check_layout(preview)
 		await _save("github_tech_tree_available_%dx%d.png" % [resolution.x, resolution.y])
 	expected_balance = preview.run.candy - preview.run.get_technology_cost("giant")
-	preview.page.purchase.pressed.emit()
+	preview.page._nodes[preview.page.selected_key].pressed.emit()
 	await _settle()
 	_check(
 		preview.run.giant_unlocked and preview.run.candy == expected_balance,
 		"global research buys once"
 	)
-	preview.page.purchase.pressed.emit()
+	preview.page._nodes[preview.page.selected_key].pressed.emit()
 	await _settle()
 	_check(preview.run.candy == expected_balance, "owned research cannot charge twice")
 	preview.set_preview(3)
@@ -97,15 +97,10 @@ func _check_layout(preview: PreviewScript) -> void:
 					"hit areas separated"
 				)
 	var screen: Rect2 = root.get_visible_rect()
-	_check(screen.encloses(preview.page.purchase.get_global_rect()), "purchase fits screen")
+	_check(screen.encloses(preview.page._nodes[preview.page.selected_key].get_global_rect()), "purchase fits screen")
 	_check(
-		screen.encloses(
-			(
-				(preview.page.get_node("Margin/Content/NavigationControls/Reset") as Control)
-				. get_global_rect()
-			)
-		),
-		"toolbar fits screen"
+		not preview.page.has_node("Margin/Content/NavigationControls"),
+		"toolbar is removed"
 	)
 
 

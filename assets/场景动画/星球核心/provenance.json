@@ -1,0 +1,33 @@
+{
+  "source_directory": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\合成 1(1)\\合成 1",
+  "source_frames": 3600,
+  "unique_frames": 2928,
+  "source_size": [
+    1920,
+    1080
+  ],
+  "alpha_bounds": [
+    784,
+    373,
+    1129,
+    665
+  ],
+  "crop": [
+    780,
+    369,
+    1136,
+    669
+  ],
+  "tile_size": [
+    356,
+    300
+  ],
+  "columns": 8,
+  "rows": 8,
+  "pages": 46,
+  "webp_quality": 55,
+  "godot_lossy_quality": 0.55,
+  "source_bytes": 68925541,
+  "atlas_bytes": 7402050,
+  "timing": "30 fps: 2928 changing frames = 97.6 seconds; current FMOD Mx_GamePlay = 97.627 seconds. Full source with static tail = 120 seconds."
+}

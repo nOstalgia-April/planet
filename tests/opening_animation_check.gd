@@ -72,7 +72,10 @@ func _run() -> void:
 	(menu.get_node("画布/开始") as Button).pressed.emit()
 	await _tree.scene_changed
 	assert(_tree.current_scene.scene_file_path == start_scene)
-	(_tree.current_scene.get_node("预览导航/返回主菜单") as Button).pressed.emit()
+	var game_menu: Control = _tree.current_scene.get_node("HUD/Interface/GameMenu")
+	game_menu.set_open(true)
+	game_menu.get_node("%MainMenu").pressed.emit()
+	game_menu.get_node("%ConfirmAction").pressed.emit()
 	await _tree.scene_changed
 	assert(_tree.current_scene is Menu, "返回菜单不能重播开头动画。")
 	print("PASS: startup, all 45 frames/rates, final-frame hold, menu music, Start and return.")

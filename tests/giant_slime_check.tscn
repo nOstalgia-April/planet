@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://tests/giant_slime_check.gd" id="1"]
+
+[node name="GiantSlimeCheck" type="Node"]
+script = ExtResource("1")

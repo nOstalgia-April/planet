@@ -1,5 +1,7 @@
 extends Node2D
 
+signal flower_appeared(nest_id: int, species: int)
+
 const PipeCursor = preload("res://scripts/pipe_cursor.gd")
 const PlanetViewController = preload("res://scripts/planet_view_controller.gd")
 const GovernedRegion = preload("res://scripts/governed_region.gd")
@@ -16,7 +18,7 @@ const GiantFusion = preload("res://scripts/giant_slime_fusion.gd")
 const GiantHarvestEffect = preload("res://scripts/giant_harvest_effect.gd")
 const MonsterAudio = preload("res://scripts/monster_audio.gd")
 const PlanetAudio = preload("res://scripts/planet_audio.gd")
-const TechnologyPage = preload("res://scripts/ui/technology_page.gd")
+const MonsterDepth = preload("res://scripts/monster_depth.gd")
 
 enum ToolMode { PIPE, NET }
 enum NetPhase { IDLE, CASTING, CLOSING, RESULT }
@@ -69,7 +71,7 @@ var _population_by_species: Dictionary = {}
 @onready var _planet: PlanetSurface = %PlanetSurface
 @onready var _nests: Node2D = %Nests
 @onready var _region_root: Node2D = %Regions
-@onready var _slime_root: Node2D = %Slimes
+@onready var _slime_root: MonsterDepth = %Slimes
 @onready var _effects: Node2D = %Effects
 @onready var _mucus_root: Node2D = %GroundMucus
 @onready var _overview: OverviewEcology = %OverviewEcology
@@ -78,13 +80,6 @@ var _population_by_species: Dictionary = {}
 @onready var _layout: DiskDemoLayout = %Interface
 @onready var _candy_label: Label = %CandyLabel
 @onready var _passive_label: Label = %PassiveLabel
-@onready var _progress_label: Label = %ProgressLabel
-@onready var _progress_bar: ProgressBar = %ProgressBar
-@onready var _tool_level_label: Label = %ToolLevelLabel
-@onready var _tool_stats_label: Label = %ToolStatsLabel
-@onready var _tool_button: Button = %ToolButton
-@onready var _pipe_button: Button = %PipeToolButton
-@onready var _net_button: Button = %NetToolButton
 @onready var _quick_pipe_button: Button = %QuickPipeButton
 @onready var _quick_net_button: Button = %QuickNetButton
 @onready var _nest_title_label: Label = %NestTitleLabel
@@ -127,16 +122,14 @@ func _ready() -> void:
 	_layout.quick_upgrade_requested.connect(_on_quick_upgrade)
 	_layout.technology_upgrade_requested.connect(_on_technology_upgrade)
 	_register_purchase_sounds()
-	_tool_button.pressed.connect(_on_tool_upgrade)
-	_pipe_button.pressed.connect(_select_tool.bind(ToolMode.PIPE))
-	_net_button.pressed.connect(_select_tool.bind(ToolMode.NET))
+	GameCursor.register_vacuum(_pipe)
 	_quick_pipe_button.pressed.connect(_select_tool.bind(ToolMode.PIPE))
 	_quick_net_button.pressed.connect(_select_tool.bind(ToolMode.NET))
 	_nest_button.pressed.connect(_on_nest_upgrade)
 	_layout.interaction_panel_changed.connect(_cancel_view_drag)
+	_layout.restart_requested.connect(restart_run)
 	_view.view_changed.connect(_sync_view_presentation)
 	_view.projection_changed.connect(_sync_view_projection)
-	%RestartButton.pressed.connect(restart_run)
 	%ReplayButton.pressed.connect(restart_run)
 	%CloseVictoryButton.pressed.connect(_close_victory)
 	_overview.configure(_planet, _world)
@@ -312,6 +305,7 @@ func _can_collect(pointer: Vector2, radius: float) -> bool:
 	var viewport_position: Vector2 = _world.get_global_transform_with_canvas() * pointer
 	return (
 		_window_has_focus
+		and not _view.presentation_locked
 		and not _view.is_overview()
 		and not _view.is_transitioning()
 		and get_viewport_rect().has_point(viewport_position)
@@ -364,6 +358,8 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _view.presentation_locked:
+		return
 	if not event is InputEventMouseButton:
 		return
 	var button: InputEventMouseButton = event as InputEventMouseButton
@@ -419,6 +415,8 @@ func _cancel_view_drag() -> void:
 	_was_holding = false
 	_clear_nest_selection()
 	_capture_at(0.0, _tool_pointer, false)
+	_vacuum_audio.stop_now()
+	_pipe.hide()
 
 
 func _on_window_focus_exited() -> void:
@@ -460,7 +458,9 @@ func _fit_activity_hole() -> void:
 	]:
 		hole_radius = maxf(hole_radius, center.distance_to(corner))
 	var near_scale: float = screen_radius / (_planet.radius * _view.near_surface_radius_ratio)
-	_planet.inner_radius_ratio = clampf((hole_radius / near_scale + 1.0) / _planet.radius, 0.60, 0.95)
+	_planet.inner_radius_ratio = clampf(
+		(hole_radius / near_scale + 1.0) / _planet.radius, 0.60, 0.95
+	)
 
 
 func _get_roaming_screen_half_angle() -> float:
@@ -471,9 +471,6 @@ func _sync_view_presentation() -> void:
 	_clear_nest_selection()
 	_capture_at(0.0, _tool_pointer, false)
 	var near_view: bool = not _view.is_overview()
-	%InputHint.text = (
-		"悬停吸取 · 左键投网 · 右键拖动星球 · 滚轮切换视图" if near_view else "点击气泡进入近景 · 右键拖动空白处 · 滚轮返回近景"
-	)
 	if not near_view or _view.is_transitioning():
 		_pipe.hide()
 		_net.hide()
@@ -504,6 +501,7 @@ func _sync_view_projection() -> void:
 
 
 func restart_run() -> void:
+	_layout.reset_pause()
 	_layout.close_panels()
 	_giant_harvest = null
 	if _completion_tween != null:
@@ -582,6 +580,7 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 			previous.release_capture(delta)
 			_stop_giant_harvest()
 	_capture_targets.clear()
+	_slime_root.set_focus(nearest)
 	_vacuum_audio.update(delta, nearest != null, active and _is_on_ground_mucus(target))
 	_pipe.set_capture_engaged(nearest != null)
 	if nearest == null:
@@ -625,10 +624,12 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 
 
 func _capture_seconds_for(slime: PrototypeSlime) -> float:
-	var seconds: float = run.get_pipe_capture_seconds()
+	var base_seconds: float = run.get_pipe_capture_seconds()
+	var seconds: float = slime.get_capture_seconds(base_seconds)
 	# Total time estimate; actual capture handles detachment and suction separately.
-	if slime.detached_remaining <= 0.0 and _is_on_ground_mucus(slime.position):
-		return seconds * 2.0
+	slime.on_mucus = _is_on_ground_mucus(slime.position)
+	if slime.is_anchored():
+		return seconds + base_seconds
 	return seconds
 
 
@@ -886,12 +887,17 @@ func _on_nest_added(nest: NestState) -> void:
 	view.setup(nest.nest_id)
 	view.rotation = _planet.get_nest_rotation(nest.position.angle())
 	view.configure_species(nest.species)
+	view.flower_appeared.connect(_on_flower_appeared)
 	view.presentation_scale = _view.near_nest_scale
 	view.update_state(nest.level, nest.is_tamed, run.settings.nest_upgrade_costs.size())
 	_nest_views.append(view)
 	if not _opening_nests:
 		_monster_audio.nest_appeared(nest.species)
 	_refresh_hud()
+
+
+func _on_flower_appeared(nest_id: int, species: int) -> void:
+	flower_appeared.emit(nest_id, species)
 
 
 func _on_nest_changed(nest: NestState) -> void:
@@ -1077,43 +1083,11 @@ func _refresh_hud() -> void:
 	_refresh_overview()
 	_candy_label.text = str(run.candy)
 	_passive_label.text = "%s DPS" % String.num(run.get_passive_income(), 1).trim_suffix(".0")
-	_progress_label.text = "已自动化 %d / %d" % [run.completed_nests, run.generated_nests]
-	_progress_bar.max_value = maxi(1, run.generated_nests)
-	_progress_bar.value = run.completed_nests
-	_tool_level_label.text = (
-		"Lv. %d" % ((run.pipe_level if _active_tool == ToolMode.PIPE else run.net_level) + 1)
-	)
-	_pipe_button.button_pressed = _active_tool == ToolMode.PIPE
-	_net_button.button_pressed = _active_tool == ToolMode.NET
 	_quick_pipe_button.button_pressed = _active_tool == ToolMode.PIPE
 	_quick_net_button.button_pressed = _active_tool == ToolMode.NET
-	_pipe_button.disabled = false
-	_net_button.disabled = not run.net_unlocked
 	_quick_pipe_button.disabled = false
 	_quick_net_button.disabled = false
 	_layout.refresh_progression(run)
-	var tool_cost: int = (
-		run.get_pipe_upgrade_cost() if _active_tool == ToolMode.PIPE else run.get_net_upgrade_cost()
-	)
-	if _active_tool == ToolMode.PIPE:
-		_tool_stats_label.text = "处理 %.2f 秒 / 只" % run.get_pipe_capture_seconds()
-		if tool_cost >= 0:
-			_tool_stats_label.text += (
-				"\n升级后 %.2f 秒 / 只" % run.settings.pipe_capture_seconds[run.pipe_level + 1]
-			)
-	else:
-		_tool_stats_label.text = "容量 %d 只" % run.get_net_capacity()
-		if tool_cost >= 0:
-			_tool_stats_label.text += (
-				"\n升级后 %d 只" % run.settings.net_capacities[run.net_level + 1]
-			)
-	_tool_button.disabled = tool_cost < 0 or run.candy < tool_cost
-	_tool_button.text = (
-		"已满级"
-		if tool_cost < 0
-		else "%s升级 · %d 糖果" % ["速度" if _active_tool == ToolMode.PIPE else "容量", tool_cost]
-	)
-	_tool_button.tooltip_text = ""
 	var nest: NestState = run.get_nest(selected_nest_id)
 	if nest == null:
 		_nest_title_label.text = "巢穴"
@@ -1163,15 +1137,12 @@ func _refresh_hud() -> void:
 
 
 func _register_purchase_sounds() -> void:
-	var page: TechnologyPage = $HUD/Interface/Technology
-	UiAudio.register_purchase(page.purchase, _is_technology_page_unaffordable.bind(page))
 	for index: int in range(2):
 		var panel: Node = $HUD/Interface/PipeUpgrade if index == 0 else $HUD/Interface/NetUpgrade
 		UiAudio.register_purchase(
 			panel.get_node("Content/Purchase"),
 			_is_technology_unaffordable.bind(DiskDemoLayout.BRANCH_IDS[index])
 		)
-	UiAudio.register_purchase(_tool_button, _is_tool_unaffordable)
 
 
 # Technology purchases play Level Up; the original WAV remains the fallback.
@@ -1185,10 +1156,6 @@ func _play_level_up() -> void:
 func _is_technology_unaffordable(id: String) -> bool:
 	var cost: int = run.get_technology_cost(id)
 	return cost >= 0 and run.candy < cost and run.get_technology_requirement(id).is_empty()
-
-
-func _is_technology_page_unaffordable(page: TechnologyPage) -> bool:
-	return _is_technology_unaffordable(page.selected_key)
 
 
 func _is_tool_unaffordable() -> bool:
@@ -1248,8 +1215,8 @@ func _on_goal_completed() -> void:
 func _show_completion() -> void:
 	_layout.close_panels()
 	_finish_sound.play()
-	_completion_title.text = "整个星球，生生不息"
-	_completion_detail.text = "全部 %d 座巢穴已自动化。\n持续产糖，你仍可捕获剩余生物与研究。" % run.generated_nests
+	_completion_title.text = "星球清扫完成"
+	_completion_detail.text = "场上所有怪物已清除。"
 	_completion.show()
 	%ReplayButton.grab_focus()
 

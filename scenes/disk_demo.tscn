@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3]
+[gd_scene load_steps=26 format=3]
 
 [ext_resource type="Script" path="res://scripts/disk_demo.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/prototype_run.gd" id="2_run"]
@@ -24,6 +24,9 @@
 [ext_resource type="PackedScene" path="res://scenes/world/giant_slime.tscn" id="20_giant"]
 [ext_resource type="PackedScene" path="res://scenes/effects/giant_harvest_effect.tscn" id="21_harvest"]
 [ext_resource type="Texture2D" path="res://assets/ui/candy_coin.png" id="22_coin"]
+[ext_resource type="Script" path="res://scripts/monster_depth.gd" id="23_depth"]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/game_menu.tscn" id="24_menu"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_technology_badge"]
 bg_color = Color(0.96, 0.72, 0.28, 1)
@@ -82,6 +85,7 @@ z_index = 1
 [node name="Slimes" type="Node2D" parent="World"]
 unique_name_in_owner = true
 z_index = 5
+script = ExtResource("23_depth")
 
 [node name="GroundMucus" type="Node2D" parent="World"]
 unique_name_in_owner = true
@@ -203,49 +207,6 @@ mouse_filter = 2
 max_value = 3.0
 show_percentage = false
 
-[node name="GoalCard" type="Panel" parent="HUD/Interface"]
-layout_mode = 0
-mouse_filter = 2
-
-[node name="Goal" type="VBoxContainer" parent="HUD/Interface"]
-layout_mode = 0
-mouse_filter = 2
-theme_override_constants/separation = 8
-
-[node name="GoalRow" type="HBoxContainer" parent="HUD/Interface/Goal"]
-layout_mode = 2
-mouse_filter = 2
-
-[node name="GoalName" type="Label" parent="HUD/Interface/Goal/GoalRow"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 15
-text = "自动化所有巢穴"
-size_flags_horizontal = 3
-
-[node name="ProgressLabel" type="Label" parent="HUD/Interface/Goal/GoalRow"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 15
-text = "治理 0 / 3"
-unique_name_in_owner = true
-
-[node name="ProgressBar" type="ProgressBar" parent="HUD/Interface/Goal"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 7)
-layout_mode = 2
-mouse_filter = 2
-max_value = 3.0
-show_percentage = false
-
-[node name="GovernanceLabel" type="Label" parent="HUD/Interface/Goal"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 12
-text = "活跃 2  ·  强化培育 0  ·  自动化 0"
-unique_name_in_owner = true
-theme_override_colors/font_color = Color(0.47, 0.55, 0.46, 1)
-
 [node name="StatusLabel" type="Label" parent="HUD/Interface"]
 layout_mode = 0
 mouse_filter = 2
@@ -258,18 +219,8 @@ theme_override_colors/font_color = Color(0.98, 0.96, 0.86, 1)
 theme_override_colors/font_outline_color = Color(0.18, 0.25, 0.20, 0.95)
 theme_override_constants/outline_size = 4
 
-[node name="InputHint" type="Label" parent="HUD/Interface"]
-unique_name_in_owner = true
-layout_mode = 0
-mouse_filter = 2
-theme_override_font_sizes/font_size = 12
-text = "悬停吸取  ·  左键投网  ·  右键拖动星球  ·  滚轮切换视图"
-horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.94, 0.94, 0.85, 1)
-theme_override_colors/font_outline_color = Color(0.18, 0.25, 0.20, 0.95)
-theme_override_constants/outline_size = 3
-
 [node name="ToolDock" type="PanelContainer" parent="HUD/Interface"]
+process_mode = 1
 layout_mode = 0
 mouse_filter = 0
 theme_type_variation = &"DockPanel"
@@ -425,14 +376,6 @@ text = "!"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="RestartButton" type="Button" parent="HUD/Interface"]
-layout_mode = 0
-text = "重新开始"
-custom_minimum_size = Vector2(122, 42)
-theme_type_variation = &"QuietButton"
-unique_name_in_owner = true
-theme_override_font_sizes/font_size = 13
-
 [node name="PipeUpgrade" type="PanelContainer" parent="HUD/Interface"]
 visible = false
 layout_mode = 0
@@ -499,46 +442,6 @@ theme_override_font_sizes/font_size = 14
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
-
-[node name="Legacy" type="VBoxContainer" parent="HUD/Interface"]
-layout_mode = 2
-mouse_filter = 2
-visible = false
-
-[node name="Tools" type="HBoxContainer" parent="HUD/Interface/Legacy"]
-layout_mode = 2
-mouse_filter = 2
-
-[node name="PipeToolButton" type="Button" parent="HUD/Interface/Legacy/Tools"]
-layout_mode = 2
-text = "管子"
-toggle_mode = true
-unique_name_in_owner = true
-
-[node name="NetToolButton" type="Button" parent="HUD/Interface/Legacy/Tools"]
-layout_mode = 2
-text = "捕网"
-toggle_mode = true
-unique_name_in_owner = true
-
-[node name="ToolLevelLabel" type="Label" parent="HUD/Interface/Legacy"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 16
-text = ""
-unique_name_in_owner = true
-
-[node name="ToolStatsLabel" type="Label" parent="HUD/Interface/Legacy"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 16
-text = ""
-unique_name_in_owner = true
-
-[node name="ToolButton" type="Button" parent="HUD/Interface/Legacy"]
-layout_mode = 2
-text = ""
-unique_name_in_owner = true
 
 [node name="NestCard" type="PanelContainer" parent="HUD/Interface"]
 visible = false
@@ -681,3 +584,5 @@ size_flags_horizontal = 3
 mouse_filter = 0
 theme_type_variation = &"QuietButton"
 text = "看看星球"
+
+[node name="GameMenu" parent="HUD/Interface" instance=ExtResource("24_menu")]

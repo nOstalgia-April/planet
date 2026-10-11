@@ -242,10 +242,10 @@ func _check_gates(game: Play, pointer: Vector2) -> void:
 	game._update_overview_hover(pointer)
 	_check(game._overview._hovered_bubble == null, "camera drag blocks hover")
 	game._view.end_drag()
-	var menu: Button = game.get_node("预览导航/返回主菜单") as Button
+	var menu: Control = game._layout.game_menu.toolbar
 	_move_pointer(menu.get_global_rect().get_center())
 	game._update_overview_hover(menu.get_global_rect().get_center())
-	_check(game._overview._hovered_bubble == null, "preview buttons block hover")
+	_check(game._overview._hovered_bubble == null, "game menu buttons block hover")
 	_move_pointer(Vector2.ZERO)
 
 

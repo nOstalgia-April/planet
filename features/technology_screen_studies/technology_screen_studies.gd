@@ -8,7 +8,7 @@ const SHADERS: Array[Shader] = [
 	preload("res://features/technology_screen_studies/shaders/02_pigment_flow.gdshader"),
 	preload("res://features/technology_screen_studies/shaders/03_gel_membrane.gdshader"),
 	preload("res://features/technology_screen_studies/shaders/04_color_echo.gdshader"),
-	preload("res://shaders/technology_waves.gdshader")
+	preload("res://shaders/technology_art.gdshader")
 ]
 const STUDY_NAMES: PackedStringArray = ["1  舱内显像", "2  色素输送", "3  胶膜感应", "4  取色余波", "0  当前版本"]
 

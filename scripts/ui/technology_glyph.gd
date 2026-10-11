@@ -3,9 +3,33 @@ extends Control
 @export_range(0, 10) var symbol: int = 0
 @export var ink: Color = Color("31594e")
 @export var inset: Color = Color("fbf7e9")
+@export var use_supplied_art: bool = false
+@export var locked: bool = false
+
+const LOCK_ART: Texture2D = preload("res://assets/ui/technology/lock.tres")
+
+const ART: Array[Texture2D] = [
+	preload("res://assets/ui/technology/pipe.tres"),
+	preload("res://assets/ui/technology/net.tres"),
+	preload("res://assets/ui/technology/cultivation.tres"),
+	preload("res://assets/ui/technology/combo.tres"),
+	preload("res://assets/ui/technology/valuable.tres"),
+	preload("res://assets/ui/technology/interval.tres"),
+	preload("res://assets/ui/technology/reward.tres"),
+	preload("res://assets/ui/technology/automation.tres"),
+	preload("res://assets/ui/technology/net.tres"),
+	preload("res://assets/ui/technology/value.tres"),
+	preload("res://assets/ui/technology/giant.tres")
+]
 
 
 func _draw() -> void:
+	if use_supplied_art:
+		var texture: Texture2D = LOCK_ART if locked else ART[symbol]
+		var factor: float = minf(size.x / texture.get_width(), size.y / texture.get_height())
+		var extent: Vector2 = texture.get_size() * factor
+		draw_texture_rect(texture, Rect2((size - extent) * 0.5, extent), false, ink)
+		return
 	var center: Vector2 = size * 0.5
 	var unit: float = minf(size.x, size.y) / 48.0
 	draw_set_transform(center, 0.0, Vector2.ONE * unit)

@@ -40,28 +40,25 @@ func _run_checks() -> void:
 	demo.run.candy = 0
 	page.selected_key = "valuable"
 	_check(
-		not demo._is_technology_page_unaffordable(page), "A locked research is not unaffordable."
+		not demo._is_technology_unaffordable(page.selected_key), "A locked research is not unaffordable."
 	)
 	demo.run.candy = 1000
 	_check(demo.run.purchase_technology("cultivation"), "Cultivation unlocks global research.")
 	demo.run.candy = 0
-	var click: InputEventMouseButton = InputEventMouseButton.new()
-	click.button_index = MOUSE_BUTTON_LEFT
-	click.pressed = true
 	for id: String in ["valuable", "giant"]:
 		page.selected_key = id
 		page.refresh(demo.run)
 		_check(
-			demo._is_technology_page_unaffordable(page), "Global research checks its cost: " + id
+			demo._is_technology_unaffordable(page.selected_key), "Global research checks its cost: " + id
 		)
-		page.purchase.gui_input.emit(click)
+		page._nodes[id].pressed.emit()
 		demo.run.candy = 1000
 		demo._on_technology_upgrade(id)
 		_check(
 			demo.run.get_technology_level(id) == 1, "Global research purchases successfully: " + id
 		)
 		_check(
-			not demo._is_technology_page_unaffordable(page),
+			not demo._is_technology_unaffordable(page.selected_key),
 			"Completed research is not unaffordable."
 		)
 		demo.run.candy = 0

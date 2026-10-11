@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/场景动画/帧动画.gd" id="r001"]
 
@@ -7,6 +7,8 @@
 [ext_resource type="Texture2D" path="res://assets/场景动画/全景背景/002.png" id="r003"]
 
 [ext_resource type="Texture2D" path="res://assets/场景动画/全景背景/003.png" id="r004"]
+
+[ext_resource type="PackedScene" path="res://scenes/场景动画/全景星星.tscn" id="r007"]
 
 [sub_resource type="Animation" id="r005"]
 resource_name = "待机"
@@ -41,6 +43,12 @@ texture = ExtResource("r002")
 centered = false
 
 [node name="动画播放器" type="AnimationPlayer" parent="."]
+autoplay = "待机"
 libraries = {
 &"": SubResource("r006")
 }
+
+[node name="星星" parent="." instance=ExtResource("r007")]
+
+[node name="动画播放器" parent="星星" index="1"]
+autoplay = "待机"

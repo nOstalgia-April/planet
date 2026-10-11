@@ -310,7 +310,7 @@ func _check_mode_drag_input(demo: DemoScript) -> void:
 
 func _check_ui_and_focus_gates(demo: DemoScript) -> void:
 	var camera: PlanetViewController = demo._view
-	for name: String in ["QuickPipeButton", "QuickNetButton", "TechnologyButton", "RestartButton"]:
+	for name: String in ["QuickPipeButton", "QuickNetButton", "TechnologyButton"]:
 		var button: Button = demo._layout.get_node("%" + name) as Button
 		_mouse_button(button.get_global_rect().get_center(), MOUSE_BUTTON_RIGHT, true)
 		_check(not camera.is_dragging(), "interface button " + name + " rejects drag starts")
@@ -524,7 +524,9 @@ func _check_restart(demo: DemoScript) -> void:
 	var background: Vector2 = _drag_start(demo)
 	_mouse_button(background, MOUSE_BUTTON_RIGHT, true)
 	_check(demo._view.is_dragging(), "restart fixture has an active mode-specific drag")
-	demo.get_node("%RestartButton").pressed.emit()
+	demo._layout.game_menu.set_open(true)
+	demo._layout.game_menu.get_node("%Restart").pressed.emit()
+	demo._layout.game_menu.get_node("%ConfirmAction").pressed.emit()
 	_check(
 		(
 			not demo._view.is_overview()

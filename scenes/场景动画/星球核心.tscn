@@ -1,0 +1,22 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/planet_core_animation.gd" id="1"]
+[ext_resource type="Resource" path="res://assets/场景动画/星球核心/sequence.tres" id="2"]
+[ext_resource type="Shader" path="res://shaders/planet_core_shape.gdshader" id="3"]
+
+[sub_resource type="ShaderMaterial" id="CoreShape"]
+resource_local_to_scene = true
+shader = ExtResource("3")
+shader_parameter/outer_deformation = 0.5
+
+[node name="星球核心" type="Node2D" node_paths=PackedStringArray("sprite")]
+script = ExtResource("1")
+clip = ExtResource("2")
+sprite = NodePath("画面")
+
+[node name="画面" type="Sprite2D" parent="."]
+material = SubResource("CoreShape")
+texture_filter = 2
+centered = false
+region_enabled = true
+region_filter_clip_enabled = true

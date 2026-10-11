@@ -34,6 +34,11 @@ func level_up() -> void:
 		GameAudio.play(LEVEL_UP_EVENT)
 
 
+func insufficient_points() -> void:
+	if _ready_to_play:
+		GameAudio.play(INSUFFICIENT_EVENT)
+
+
 # is_unaffordable: returns true when the button is disabled only for lack of candy.
 func register_purchase(button: BaseButton, is_unaffordable: Callable) -> void:
 	button.set_meta(PURCHASE_META, true)

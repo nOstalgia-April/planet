@@ -80,7 +80,7 @@ func _check_editor() -> void:
 		await _settle()
 		_check_layout(editor)
 		_check(
-			editor.page.purchase.get_global_rect().end.y < editor._save.global_position.y,
+			editor.page._nodes[editor.page.selected_key].get_global_rect().end.y < editor._save.global_position.y,
 			"preview fits above footer"
 		)
 		if capture:

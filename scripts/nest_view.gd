@@ -1,6 +1,8 @@
 class_name NestView
 extends Node2D
 
+signal flower_appeared(nest_id: int, species: int)
+
 const SurfaceProjection = preload("res://scripts/surface_projection.gd")
 const NestArt = preload("res://scripts/nest_art.gd")
 
@@ -36,7 +38,12 @@ func _ready() -> void:
 	set_notify_transform(true)
 	_selection_shape.shape = _selection_shape.shape.duplicate()
 	_art.bounds_changed.connect(_refresh_art)
+	_art.flower_appeared.connect(_on_flower_appeared)
 	_refresh_art()
+
+
+func _on_flower_appeared() -> void:
+	flower_appeared.emit(nest_id, species)
 
 
 func _notification(what: int) -> void:

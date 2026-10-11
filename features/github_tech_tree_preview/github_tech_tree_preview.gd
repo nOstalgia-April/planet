@@ -5,7 +5,6 @@ const GithubPageScript = preload(
 )
 
 @onready var _github_page: GithubPageScript = $TechnologyPage
-@onready var _zoom: HSlider = $TechnologyPage/Margin/Content/NavigationControls/Zoom
 
 
 func _layout() -> void:

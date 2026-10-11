@@ -26,6 +26,7 @@ var detached_remaining: float = 0.0
 var reward: int = 1
 @export_range(1, 200, 1) var population_units: int = 1
 @export_range(1.0, 4.0, 0.1) var giant_body_multiplier: float = 2.3
+@export_range(1.0, 10.0, 0.5) var giant_capture_multiplier: float = 5.0
 var fused_value_units: int = 0
 var on_mucus: bool = false
 
@@ -65,6 +66,7 @@ var _wander_target: Vector2 = Vector2.ZERO
 var _elapsed: float = 0.0
 var _phase: float = 0.0
 var _capture_hold: float = 0.0
+var _detached_for_capture: bool = false
 var _attraction_offset: Vector2 = Vector2.ZERO
 var _attraction_strength: float = 0.0
 var _attraction_hold: float = 0.0
@@ -152,6 +154,7 @@ func setup(
 	_flight_complete = false
 	_fall_elapsed = 0.0
 	_capture_hold = 0.0
+	_detached_for_capture = false
 	clear_attraction()
 	consumed = false
 	capture_progress = 0.0
@@ -254,7 +257,7 @@ func configure_species(kind: Species, valuable: bool, candy_reward: int) -> void
 
 
 func is_anchored() -> bool:
-	return detached_remaining <= 0.0 and not consumed and on_mucus
+	return detached_remaining <= 0.0 and not _detached_for_capture and not consumed and on_mucus
 
 
 func pull_off_mucus(delta: float, target: Vector2, duration: float = -1.0) -> bool:
@@ -266,6 +269,7 @@ func pull_off_mucus(delta: float, target: Vector2, duration: float = -1.0) -> bo
 	if peel_progress < 1.0:
 		return false
 	detached_remaining = 6.0
+	_detached_for_capture = true
 	peel_progress = 0.0
 	return true
 
@@ -275,11 +279,13 @@ func can_emit_ground_mucus() -> bool:
 		species == Species.MUCUS
 		and not consumed
 		and detached_remaining <= 0.0
+		and not _detached_for_capture
 		and _launch_elapsed >= launch_seconds
 	)
 
 
 func launch(direction: Vector2) -> void:
+	_detached_for_capture = false
 	_flying = false
 	_flight_complete = false
 	_fall_elapsed = 0.0
@@ -324,6 +330,7 @@ func refresh_surface_bounds() -> void:
 
 
 func restore_to_surface(drop_position: Vector2) -> void:
+	_detached_for_capture = false
 	position = _project_to_surface(drop_position)
 	_update_surface_rotation()
 	_flying = false
@@ -342,6 +349,7 @@ func restore_to_surface(drop_position: Vector2) -> void:
 
 
 func begin_fall(initial_velocity: Vector2, viewport_bounds: Rect2, settings: DropSettings) -> void:
+	_detached_for_capture = false
 	assert(settings != null and settings.max_step > 0.0)
 	_drop_settings = settings
 	_flying = true
@@ -424,6 +432,7 @@ func _process(delta: float) -> void:
 		_attraction_offset = _attraction_offset.lerp(Vector2.ZERO, recovery)
 		_attraction_strength = lerpf(_attraction_strength, 0.0, recovery)
 	if _capture_hold <= 0.0:
+		_detached_for_capture = false
 		_set_suction_expression(false)
 		if _launch_elapsed < launch_seconds:
 			_advance_launch(delta)
@@ -440,15 +449,22 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
+func get_capture_seconds(base_seconds: float) -> float:
+	return base_seconds * (giant_capture_multiplier if population_units > 1 else 1.0)
+
+
 func apply_capture(delta: float, capture_seconds: float, target: Vector2) -> bool:
 	if consumed:
 		return false
+	_detached_for_capture = true
 	clear_attraction()
 	_launch_elapsed = launch_seconds
 	_capture_hold = 0.12
 	var body_center: Vector2 = get_capture_point()
 	_set_suction_expression(true)
-	capture_progress = minf(1.0, capture_progress + delta / maxf(capture_seconds, 0.05))
+	capture_progress = minf(
+		1.0, capture_progress + delta / maxf(get_capture_seconds(capture_seconds), 0.05)
+	)
 	body_center = body_center.move_toward(target, delta * (24.0 + capture_progress * 46.0))
 	position = body_center - _get_body_center_offset().rotated(rotation)
 	_update_surface_rotation()
@@ -460,6 +476,7 @@ func apply_capture(delta: float, capture_seconds: float, target: Vector2) -> boo
 
 
 func release_capture(delta: float) -> void:
+	_detached_for_capture = false
 	_set_suction_expression(false)
 	_capture_hold = 0.0
 	peel_progress = 0.0

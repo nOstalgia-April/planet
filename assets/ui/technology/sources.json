@@ -1,0 +1,122 @@
+{
+  "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\科技树\\科技树",
+  "layout": "板式2/位置参考.png",
+  "date": "2026-10-12",
+  "handling": "Original PNG files copied unchanged. AtlasTexture regions trim transparent padding at runtime. Icons shared with layout 2 are supplied under 板式1/图标.",
+  "files": {
+    "automation.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-10.png"
+      ],
+      "sha256": "1e764cfdf38ed08c0fd134e9e72ab2eded0b5a09ac377d7a7939ac51c0a76e65"
+    },
+    "background.png": {
+      "original": [
+        "板式2\\未命名作品-1.png"
+      ],
+      "sha256": "7a0911f57c0ea402a0777767f321af618425080b9050c9e8057ab756c9a17a31"
+    },
+    "combo.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-4.png"
+      ],
+      "sha256": "5922c5c955b0d756f8ee555ff75959f5ef03994a3e510652bc97a50eb4d273cd"
+    },
+    "cultivation.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-5.png"
+      ],
+      "sha256": "42efa7b26bb7435080c89befabd8d75b25c0b5bb92d12cfd5893df88d8d7db23"
+    },
+    "exit_hover.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-2 2.png"
+      ],
+      "sha256": "a7ab0296aa9d6451a6c1600b00d995f05a84dd01aba73061b6762695e6309841"
+    },
+    "exit_normal.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-1 2.png"
+      ],
+      "sha256": "8a0521fd870c1ec6bbae4453339bd7245989c1e528ce0003d5e30ae34a5eee6a"
+    },
+    "giant.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-7.png"
+      ],
+      "sha256": "922811a4edf07427af6ea2ce22b05c4172434a6f53730ae1c4efc714bf4077f9"
+    },
+    "halo.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-11.png"
+      ],
+      "sha256": "112d04b1929b7fc8bcafd0582cd01195a7bacc7ba4a006f135ea190702333eda"
+    },
+    "hover_blob.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-1 4.png"
+      ],
+      "sha256": "241be5e9ac4661702aeb2bbe77fce3a3ad53c94f9c5caa167c5f59a3b2da1ed0"
+    },
+    "interval.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-3.png"
+      ],
+      "sha256": "3b59ed7cc3bd5e31da51b44525b8c1c176e33ba5cf3c29aed50eb0144765c4c2"
+    },
+    "lock.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-6.png"
+      ],
+      "sha256": "8fe8f2831a59e15346b955e2764a93fe92701e7b3e46568caeda32403d1ec2d1"
+    },
+    "net.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-9.png"
+      ],
+      "sha256": "6c0da60d0c1a08a940ddccdc4e8f3231d139f39c28cd34ac4e66f7f91137cef8"
+    },
+    "pipe.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-2.png"
+      ],
+      "sha256": "480a25c0342ff5294582cc5100c342aa108bc87f6ec1cde1990f67ea5aabe2f2"
+    },
+    "pointer.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-2 3.png"
+      ],
+      "sha256": "ea4327853d922178cdf055f8339ce23992c7dbdc98ee844c4e2be7087878846c"
+    },
+    "price_brush.png": {
+      "original": [
+        "板式2\\未命名作品-2 2.png"
+      ],
+      "sha256": "2bde92d2e6d672e01200c7d0131a58849886024844af10a8d63302c71ecf6a3d"
+    },
+    "reward.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-1.png"
+      ],
+      "sha256": "9208a06bbf5ca662fa6ab5d3161c7fd69f6a2dda7cab36378d2a6de2aef554f1"
+    },
+    "tooltip.png": {
+      "original": [
+        "板式2\\未命名作品-1 2.png"
+      ],
+      "sha256": "4cf4858ee8a9461c24e9bd021d1e91bdef18071004ec5044904835c8854fc230"
+    },
+    "valuable.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-8.png"
+      ],
+      "sha256": "855e49526da9f56db09ddce609c9532e5ff8d4c17f12fd0009d7d4a44bb8b00c"
+    },
+    "value.png": {
+      "original": [
+        "板式1\\图标\\未命名作品-12.png"
+      ],
+      "sha256": "9821b0b6019623c983ddafa489dfeeadab761a6f9ac11cf18e28c30bb0f3648b"
+    }
+  }
+}

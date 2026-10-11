@@ -12,7 +12,6 @@ enum Phase { LAUNCH, DIVE, TRAVEL, PAUSE, EMERGE, EXPOSED }
 @export var short_travel_seconds: Vector2 = Vector2(1.0, 2.0)
 @export var pause_seconds: Vector2 = Vector2(0.35, 0.7)
 @export_range(1.0, 10.0, 0.1) var exposed_seconds: float = 3.5
-@export_range(0.1, 1.0, 0.01) var art_scale: float = 0.36
 
 var phase: Phase = Phase.LAUNCH
 var phase_remaining: float = 0.0
@@ -175,7 +174,7 @@ func _set_suction_expression(active: bool) -> void:
 
 
 func _sync_art() -> void:
-	var multiplier: float = art_scale * get_presentation_scale()
+	var multiplier: float = get_presentation_scale()
 	var shrink: float = lerpf(1.0, 0.1, capture_progress)
 	art.transform = SurfaceProjection.get_visual_compensation(self).scaled_local(
 		Vector2.ONE * multiplier * shrink

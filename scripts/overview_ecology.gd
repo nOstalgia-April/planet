@@ -14,7 +14,11 @@ const Layout = preload("res://scripts/overview_bubble_layout.gd")
 @export_range(0.05, 0.15, 0.001) var minimum_radius_ratio: float = Layout.REFERENCE_MINIMUM_RATIO
 @export_range(0.16, 0.3, 0.001) var maximum_radius_ratio: float = Layout.REFERENCE_MAXIMUM_RATIO
 @export_range(2, 200, 1) var population_at_maximum: int = 48
+@export_range(2, 100, 1) var population_at_deep_color: int = 10
 @export_range(15.0, 45.0, 1.0) var maximum_cluster_degrees: float = 30.0
+@export_range(2, 8, 1) var maximum_bubbles: int = 5
+@export_range(0.5, 5.0, 0.1) var selection_interval: float = 2.0
+@export_range(1.0, 2.0, 0.05) var retention_weight: float = 1.4
 @export_group("Placement")
 @export_range(0.0, 1.0, 0.05) var maximum_nudge_radii: float = 0.8
 @export_range(0.0, 12.0, 0.5) var bubble_clearance: float = 2.0
@@ -52,6 +56,7 @@ var _layout_dirty: bool = true
 var _layout_origins: PackedVector2Array = PackedVector2Array()
 var _layout_radii: PackedFloat32Array = PackedFloat32Array()
 var _hovered_bubble: Bubble
+var _selection_elapsed: float = INF
 
 @onready var _backdrop_layer: CanvasLayer = $Backdrop
 @onready var _backdrop: ColorRect = $Backdrop/Color
@@ -98,9 +103,18 @@ func update_ecology(
 	_layout.minimum_ratio = minimum_radius_ratio
 	_layout.maximum_ratio = maximum_radius_ratio
 	_layout.population_at_maximum = population_at_maximum
+	_layout.population_at_deep_color = population_at_deep_color
 	_layout.maximum_cluster_span = deg_to_rad(maximum_cluster_degrees)
+	_layout.maximum_bubbles = maximum_bubbles
+	_layout.retention_weight = retention_weight
 	var next: Array[Layout.Cluster] = _layout.build(positions, kinds, clusters, populations)
-	_assign_bubbles(next)
+	var previous: Array[Layout.Cluster] = []
+	for bubble: Bubble in bubbles:
+		previous.append(bubble.cluster)
+	var reselect: bool = _selection_elapsed >= selection_interval
+	_assign_bubbles(_layout.select_representatives(next, previous, reselect))
+	if reselect and not next.is_empty():
+		_selection_elapsed = 0.0
 	clusters = next
 	_layout_dirty = true
 	_target_color = neutral_color
@@ -122,6 +136,7 @@ func _clear_markers() -> void:
 	bubbles.clear()
 	_retiring.clear()
 	clusters.clear()
+	_selection_elapsed = INF
 	bubble_radii = Vector2.ZERO
 	bubble_centers.fill(Vector2.ZERO)
 	_layout_dirty = true
@@ -145,6 +160,7 @@ func _assign_bubbles(next: Array[Layout.Cluster]) -> void:
 			best.species = cluster.species
 			best.angle = cluster.angle
 			best.radius_ratio = cluster.radius_ratio
+			best.density = cluster.density
 			_bubble_root.add_child(best)
 		else:
 			available.erase(best)
@@ -154,6 +170,12 @@ func _assign_bubbles(next: Array[Layout.Cluster]) -> void:
 		if old == _hovered_bubble:
 			_set_hovered_bubble(null)
 		_retiring.append(old)
+	# Fading markers also consume the visual budget. Discard the oldest retirees
+	# when a replacement needs their slot, so crossfades cannot double the count.
+	while bubbles.size() + _retiring.size() > maximum_bubbles:
+		var retired: Bubble = _retiring.pop_front()
+		retired.hide()
+		retired.queue_free()
 
 
 func set_view_opacity(value: float) -> void:
@@ -214,6 +236,7 @@ func get_bubble_at(viewport_position: Vector2) -> Bubble:
 
 
 func _process(delta: float) -> void:
+	_selection_elapsed += delta
 	if _preview:
 		_sync_preview_view()
 		update_hover(get_viewport().get_mouse_position(), get_window().has_focus())
@@ -246,6 +269,7 @@ func _sync_geometry(blend: float, delta: float = 0.0) -> void:
 	for bubble: Bubble in bubbles:
 		bubble.angle = lerp_angle(bubble.angle, bubble.cluster.angle, blend)
 		bubble.radius_ratio = lerpf(bubble.radius_ratio, bubble.cluster.radius_ratio, blend)
+		bubble.density = lerpf(bubble.density, bubble.cluster.density, blend)
 		bubble.opacity = lerpf(bubble.opacity, 1.0, blend)
 		bubble.modulate.a = bubble.opacity
 		_update_preferred(bubble)

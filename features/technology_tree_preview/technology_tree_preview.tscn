@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://features/technology_tree_preview/technology_tree_preview.gd" id="1_preview"]
 [ext_resource type="Script" path="res://scripts/prototype_run.gd" id="2_run"]
 [ext_resource type="Resource" path="res://resources/prototype_settings.tres" id="3_settings"]
-[ext_resource type="PackedScene" path="res://scenes/ui/technology_page.tscn" id="4_page"]
+[ext_resource type="PackedScene" path="res://scenes/ui/interactive_technology_page.tscn" id="4_page"]
 
 [node name="TechnologyTreePreview" type="Control"]
 layout_mode = 3

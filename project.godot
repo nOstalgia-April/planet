@@ -23,8 +23,10 @@ config/icon="res://icon.svg"
 [autoload]
 
 FmodManager="*res://addons/fmod/FmodManager.gd"
+GamePreferences="*res://scripts/game_preferences.gd"
 GameAudio="*res://scripts/fmod_audio.gd"
 UiAudio="*res://scripts/ui_audio.gd"
+GameCursor="*res://scripts/game_cursor.gd"
 
 [display]
 

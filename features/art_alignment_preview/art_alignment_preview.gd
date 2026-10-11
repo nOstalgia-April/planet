@@ -73,10 +73,7 @@ func _ready() -> void:
 		var monster: PrototypeSlime = monster_scene.instantiate() as PrototypeSlime
 		monster.art_settings = settings
 		_slime_root.add_child(monster)
-		if species_index == 2:
-			var drill: DrillView = monster as DrillView
-			drill.art_scale = 1.0
-		else:
+		if species_index != 2:
 			monster.slime_art_scale = 1.0
 		monster.setup(species_index + 1, Vector2.UP * _planet.radius, _planet)
 		monster.configure_species(species_index as PrototypeSlime.Species, false, 2)

@@ -11,7 +11,10 @@ const POINTER_REACH: float = 125.0 / 97.0
 var minimum_ratio: float = REFERENCE_MINIMUM_RATIO
 var maximum_ratio: float = REFERENCE_MAXIMUM_RATIO
 var population_at_maximum: int = 48
+var population_at_deep_color: int = 10
 var maximum_cluster_span: float = deg_to_rad(30.0)
+var maximum_bubbles: int = 5
+var retention_weight: float = 1.4
 
 
 class Cluster:
@@ -25,6 +28,13 @@ class Cluster:
 	var lower: float = 0.0
 	var upper: float = 0.0
 	var radius_ratio: float = 0.0
+	var density: float = 0.0
+
+
+func density_for_count(count: int) -> float:
+	# Ordinary small groups should already read as pink. Color reaches its
+	# deepest reference earlier than size; fusion is not a color prerequisite.
+	return sqrt(clampf(float(count - 1) / float(population_at_deep_color - 1), 0.0, 1.0))
 
 
 func radius_for_count(count: int) -> float:
@@ -70,12 +80,64 @@ func build(
 		seed.lower -= shift
 		seed.upper -= shift
 		seed.radius_ratio = radius_for_count(seed.count)
+		seed.density = density_for_count(seed.count)
 		clusters.append(seed)
 	# Merge before any screen-space repulsion. A bounded geographical span stops
 	# connected chains from accumulating into a false planet-wide marker.
 	while _merge_closest_overlap(clusters, previous):
 		pass
 	return clusters
+
+
+func select_representatives(
+	candidates: Array[Cluster], previous: Array[Cluster], allow_reselection: bool = true
+) -> Array[Cluster]:
+	var remaining: Array[Cluster] = candidates.duplicate()
+	var selected: Array[Cluster] = []
+	# Between selection beats, only follow existing local groups. New production
+	# changes size/color immediately, but cannot repeatedly pop new markers in.
+	if not allow_reselection:
+		for old: Cluster in previous:
+			var best: Cluster
+			var distance: float = maximum_cluster_span
+			for candidate: Cluster in remaining:
+				var separation: float = absf(angle_difference(old.angle, candidate.angle))
+				if candidate.species == old.species and separation < distance:
+					best = candidate
+					distance = separation
+			if best != null and selected.size() < maximum_bubbles:
+				selected.append(best)
+				remaining.erase(best)
+		return selected
+	while selected.size() < maximum_bubbles and not remaining.is_empty():
+		var best: Cluster
+		var best_score: float = -1.0
+		for candidate: Cluster in remaining:
+			var nearest: float = PI
+			var species_present: bool = false
+			for chosen: Cluster in selected:
+				nearest = minf(nearest, absf(angle_difference(candidate.angle, chosen.angle)))
+				species_present = species_present or candidate.species == chosen.species
+			# Reserve representation for each live species, then balance local
+			# population with angular coverage. Hidden groups never inflate density.
+			var score: float = (
+				sqrt(float(candidate.count)) * (0.3 + 0.7 * minf(nearest / (PI * 0.5), 1.0))
+			)
+			for old: Cluster in previous:
+				if (
+					candidate.species == old.species
+					and absf(angle_difference(candidate.angle, old.angle)) < maximum_cluster_span
+				):
+					score *= retention_weight
+					break
+			if not species_present:
+				score += 1000000.0
+			if score > best_score:
+				best = candidate
+				best_score = score
+		selected.append(best)
+		remaining.erase(best)
+	return selected
 
 
 func _merge_closest_overlap(clusters: Array[Cluster], previous: Array[Cluster]) -> bool:
@@ -124,5 +186,6 @@ func _merge_closest_overlap(clusters: Array[Cluster], previous: Array[Cluster]) 
 	a.lower = lower - shift
 	a.upper = upper - shift
 	a.radius_ratio = radius_for_count(a.count)
+	a.density = density_for_count(a.count)
 	clusters.remove_at(best_pair.y)
 	return true

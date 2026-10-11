@@ -1,4 +1,4 @@
-extends SceneTree
+extends Node
 
 const SETTINGS: PrototypeSettings = preload("res://resources/prototype_settings.tres")
 const DemoScene: PackedScene = preload("res://scenes/disk_demo.tscn")
@@ -10,7 +10,7 @@ const HarvestEffect = preload("res://scripts/giant_harvest_effect.gd")
 var _failures: int = 0
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	_run_checks.call_deferred()
 
 
@@ -24,6 +24,8 @@ func _run_checks() -> void:
 	await _check_visibility_and_tools()
 	await _check_live_settlement()
 	await _check_harvest_stream()
+	await _check_capture_timing()
+	await _check_mucus_capture_session()
 	if "--capture" in OS.get_cmdline_user_args():
 		await _capture_showcase()
 	if "--capture-harvest" in OS.get_cmdline_user_args():
@@ -32,7 +34,7 @@ func _run_checks() -> void:
 		print(
 			"PASS: global research, local offscreen fusion, independent giants, overflow, protected tools, weighted rewards, overview and restart"
 		)
-	quit(0 if _failures == 0 else 1)
+	get_tree().quit(0 if _failures == 0 else 1)
 
 
 func _check_global_research() -> void:
@@ -111,8 +113,8 @@ func _check_local_groups() -> void:
 
 func _make_demo(scene: PackedScene = DemoScene) -> DemoScript:
 	var demo: DemoScript = scene.instantiate() as DemoScript
-	root.add_child(demo)
-	current_scene = demo
+	get_tree().root.add_child(demo)
+	get_tree().current_scene = demo
 	demo.set_process(false)
 	demo._view.set_process(false)
 	demo._layout.set_process(false)
@@ -224,7 +226,7 @@ func _check_live_fusion() -> void:
 	_check(first.reward == 28, "A real fused giant retains gold value after a breakthrough.")
 	before = demo.run.candy
 	var occupied: int = demo.run.get_nest(4).alive_slimes
-	demo._capture_at(2.0, first.get_capture_point(), true)
+	demo._capture_at(demo._capture_seconds_for(first) + 0.01, first.get_capture_point(), true)
 	_check(
 		demo.run.candy == before + 28 and demo.run.get_nest(4).alive_slimes == occupied - 12,
 		"One suction collects the real giant and all its occupied slots."
@@ -234,9 +236,9 @@ func _check_live_fusion() -> void:
 		_giants(demo).is_empty() and not demo.run.giant_unlocked,
 		"Restart clears every giant and research."
 	)
-	current_scene = null
+	get_tree().current_scene = null
 	demo.queue_free()
-	await process_frame
+	await get_tree().process_frame
 
 
 func _check_all_nests() -> void:
@@ -287,9 +289,9 @@ func _check_all_nests() -> void:
 		demo.run.candy == before + 44 and demo.run.get_nest(4).alive_slimes == 0,
 		"Net collection settles one mixed giant once and releases all twelve slots."
 	)
-	current_scene = null
+	get_tree().current_scene = null
 	demo.queue_free()
-	await process_frame
+	await get_tree().process_frame
 
 
 func _check_demo_balance() -> void:
@@ -319,9 +321,9 @@ func _check_demo_balance() -> void:
 		demo.run.get_nest(4).alive_slimes == 36 and demo.run.get_nest_population_limit(4) == 30,
 		"The demo host can temporarily exceed its actual thirty-unit cap."
 	)
-	current_scene = null
+	get_tree().current_scene = null
 	demo.queue_free()
-	await process_frame
+	await get_tree().process_frame
 
 
 func _check_visibility_and_tools() -> void:
@@ -364,18 +366,18 @@ func _check_visibility_and_tools() -> void:
 	demo._view.zoom_steps(1.0, false)
 	demo._advance_giant_fusion(1.0)
 	_check(_giants(demo).size() == 1, "Fusion resumes after all protections clear.")
-	current_scene = null
+	get_tree().current_scene = null
 	demo.queue_free()
-	await process_frame
+	await get_tree().process_frame
 
 
 func _capture_showcase() -> void:
-	root.mode = Window.MODE_WINDOWED
+	get_tree().root.mode = Window.MODE_WINDOWED
 	for resolution: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
-		root.size = resolution
+		get_tree().root.size = resolution
 		var demo: DemoScript = _make_demo(PlayScene)
 		demo.run.settings.giant_fusion_threshold = SETTINGS.giant_fusion_threshold
-		await process_frame
+		await get_tree().process_frame
 		_offscreen_pair(demo, NestState.Species.SLIME, Vector2i(8, 28))
 		_enable_fusion(demo)
 		demo.run.upgrade_nest(4)
@@ -395,20 +397,20 @@ func _capture_showcase() -> void:
 		demo._pipe.hide()
 		demo._refresh_hud()
 		for _frame: int in range(4):
-			await process_frame
+			await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		_check(
 			(
-				root.get_texture().get_image().save_png(
+				get_tree().root.get_texture().get_image().save_png(
 					"res://artifacts/giant_slime_%dx%d.png" % [resolution.x, resolution.y]
 				)
 				== OK
 			),
 			"Giant showcase saved."
 		)
-		current_scene = null
+		get_tree().current_scene = null
 		demo.queue_free()
-		await process_frame
+		await get_tree().process_frame
 
 
 func _check_harvest_stream() -> void:
@@ -421,7 +423,7 @@ func _check_harvest_stream() -> void:
 	var pointer: Vector2 = giant.get_capture_point()
 	var before: int = demo.run.candy
 	var occupancy: int = demo.run.get_nest(giant.nest_id).alive_slimes
-	var step: float = demo.run.get_pipe_capture_seconds() / 5.0
+	var step: float = giant.get_capture_seconds(demo.run.get_pipe_capture_seconds()) / 5.0
 	demo._capture_at(step, pointer, true)
 	var stream: HarvestEffect = demo._giant_harvest
 	_check(stream != null and stream.emitted_bursts > 0, "A partial giant capture emits candy.")
@@ -459,12 +461,12 @@ func _check_harvest_stream() -> void:
 	demo._capture_at(step, giant.get_capture_point(), true)
 	_check(demo._giant_harvest != stream, "Resuming uses a fresh visual stream.")
 	var payout: int = giant.reward
-	demo._capture_at(demo.run.get_pipe_capture_seconds(), giant.get_capture_point(), true)
+	demo._capture_at(demo._capture_seconds_for(giant), giant.get_capture_point(), true)
 	_check(
 		demo.run.candy == before + payout and demo._giant_harvest == null,
 		"A resumed harvest still pays the complete amount exactly once."
 	)
-	await create_timer(1.1).timeout
+	await get_tree().create_timer(1.1).timeout
 	_check(not is_instance_valid(stream), "Finished candy flights and their emitter clean up.")
 	demo.restart_run()
 	demo.run.candy = 100000
@@ -479,17 +481,92 @@ func _check_harvest_stream() -> void:
 		demo._giant_harvest == null and demo._effects.get_child_count() == 0,
 		"Restart clears every active spray and flight."
 	)
-	current_scene = null
+	get_tree().current_scene = null
 	demo.queue_free()
-	await process_frame
+	await get_tree().process_frame
+
+
+func _check_capture_timing() -> void:
+	var demo: DemoScript = _make_demo()
+	for base_seconds: float in demo.run.settings.pipe_capture_seconds:
+		for population: int in [1, 12]:
+			var actor: PrototypeSlime = _spawn_weighted(demo, population, population)
+			var expected_seconds: float = base_seconds * (5.0 if population > 1 else 1.0)
+			_check(
+				is_equal_approx(actor.get_capture_seconds(base_seconds), expected_seconds),
+				"Giants take five times the ordinary suction duration at every pipe level."
+			)
+			actor.apply_capture(0.0, base_seconds, actor.get_capture_point())
+			actor.slime_art._active.animation_player.pause()
+			var previous_size: Vector2 = actor.get_visual_rect().size
+			var pointer: Vector2 = actor.get_capture_point()
+			for _step: int in range(9):
+				_check(
+					not actor.apply_capture(expected_seconds / 10.0, base_seconds, pointer),
+					"A capture cannot complete before its full duration."
+				)
+				var current_size: Vector2 = actor.get_visual_rect().size
+				_check(
+					current_size.x < previous_size.x and current_size.y < previous_size.y,
+					"Both dimensions shrink throughout the suction."
+				)
+				previous_size = current_size
+			_check(
+				actor.apply_capture(expected_seconds / 10.0 + 0.0001, base_seconds, pointer),
+				"Capture completes at its full duration."
+			)
+			demo._slimes.erase(actor)
+			actor.queue_free()
+	get_tree().current_scene = null
+	demo.queue_free()
+	await get_tree().process_frame
+
+
+func _check_mucus_capture_session() -> void:
+	var demo: DemoScript = _make_demo()
+	_offscreen_pair(demo, NestState.Species.MUCUS)
+	var actor: PrototypeSlime = demo._slimes.back()
+	var home: Vector2 = demo.run.get_nest(actor.nest_id).position
+	actor.position = home - home.normalized() * 20.0
+	actor.population_units = 12
+	demo.run.get_nest(actor.nest_id).alive_slimes += 11
+	_check(demo._is_on_ground_mucus(actor.position), "The target starts inside real nest mucus.")
+	# Slow suction crosses the old six-second detachment timeout.
+	demo.run.settings.pipe_capture_seconds[0] = 2.0
+	demo._capture_targets.assign([actor])
+	var pointer: Vector2 = actor.get_capture_point()
+	var started_capture: bool = false
+	var previous_peel: float = 0.0
+	for _step: int in range(660):
+		demo._capture_at(1.0 / 60.0, pointer, true)
+		if actor.capture_progress > 0.0:
+			started_capture = true
+		if started_capture:
+			_check(actor.peel_progress == 0.0, "Continuous suction never starts another peel bar.")
+		else:
+			_check(actor.peel_progress >= previous_peel, "The first peel bar never restarts.")
+		previous_peel = actor.peel_progress
+		actor._process(1.0 / 60.0)
+	_check(
+		started_capture and actor.capture_progress > 0.8 and not actor.is_anchored(),
+		"A stationary mouth keeps suction beyond the old detachment timeout."
+	)
+	demo._capture_at(0.0, pointer, false)
+	_check(
+		actor.capture_progress == 0.0 and actor.is_anchored(),
+		"An interrupted capture can reattach after its grace period expires."
+	)
+	get_tree().current_scene = null
+	demo.queue_free()
+	await get_tree().process_frame
 
 
 func _capture_harvest_showcase() -> void:
-	root.mode = Window.MODE_WINDOWED
-	root.size = Vector2i(1280, 800)
+	get_tree().root.mode = Window.MODE_WINDOWED
+	get_tree().root.size = Vector2i(1280, 800)
 	var demo: DemoScript = _make_demo(PlayScene)
 	demo.run.settings.giant_fusion_threshold = SETTINGS.giant_fusion_threshold
-	await process_frame
+	await get_tree().process_frame
 	_offscreen_pair(demo, NestState.Species.SLIME, Vector2i(8, 28))
 	_enable_fusion(demo)
 	demo.run.upgrade_nest(4)
@@ -501,7 +578,7 @@ func _capture_harvest_showcase() -> void:
 	giant._update_surface_rotation()
 	demo._refresh_hud()
 	for _frame: int in range(4):
-		await process_frame
+		await get_tree().process_frame
 	var pointer: Vector2 = giant.get_capture_point()
 	demo._pipe.show()
 	demo._pipe.set_tool_state(pointer, pointer, true)
@@ -516,18 +593,20 @@ func _capture_harvest_showcase() -> void:
 				for candy: CollectionEffect in effect.get_children():
 					candy._tween.custom_step(0.02)
 		if frame >= 8 and frame <= 38:
-			demo._capture_at(demo.run.get_pipe_capture_seconds() / 30.0, pointer, true)
+			demo._capture_at(
+				giant.get_capture_seconds(demo.run.get_pipe_capture_seconds()) / 30.0, pointer, true
+			)
 		elif frame > 38:
 			demo._pipe.set_tool_state(pointer, pointer, false)
-		await process_frame
+		await get_tree().process_frame
 		await RenderingServer.frame_post_draw
-		root.get_texture().get_image().save_png(
+		get_tree().root.get_texture().get_image().save_png(
 			"res://artifacts/giant_harvest_frames/frame_%03d.png" % frame
 		)
 	Engine.time_scale = 1.0
-	current_scene = null
+	get_tree().current_scene = null
 	demo.queue_free()
-	await process_frame
+	await get_tree().process_frame
 
 
 func _check_population_settlement() -> void:
@@ -547,8 +626,8 @@ func _check_population_settlement() -> void:
 
 func _check_live_settlement() -> void:
 	var demo: DemoScript = DemoScene.instantiate() as DemoScript
-	root.add_child(demo)
-	current_scene = demo
+	get_tree().root.add_child(demo)
+	get_tree().current_scene = demo
 	demo.set_process(false)
 	demo._view.set_process(false)
 	demo._layout.set_process(false)
@@ -566,7 +645,7 @@ func _check_live_settlement() -> void:
 	_check(fused.reward == 28, "Eleven ordinary and one gold preserve all value after research.")
 	demo.run.combo_level = 1
 	var before: int = demo.run.candy
-	demo._capture_at(2.0, fused.get_capture_point(), true)
+	demo._capture_at(demo._capture_seconds_for(fused) + 0.01, fused.get_capture_point(), true)
 	_check(
 		demo.run.candy == before + 28 and demo.run.get_nest(1).alive_slimes == 0,
 		"A single suction settles the complete reward and releases twelve units."
@@ -586,9 +665,9 @@ func _check_live_settlement() -> void:
 	_check(demo.run.combo_count == 1, "Net harvesting does not increment the manual combo.")
 	demo.restart_run()
 	_check(demo._slimes.is_empty(), "Restart clears fused and ordinary actors together.")
-	current_scene = null
+	get_tree().current_scene = null
 	demo.queue_free()
-	await process_frame
+	await get_tree().process_frame
 
 
 func _spawn_weighted(demo: DemoScript, population: int, value_units: int) -> PrototypeSlime:

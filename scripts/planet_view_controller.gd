@@ -22,6 +22,7 @@ signal projection_changed
 var zoom_amount: float = 1.0
 var target_zoom: float = 1.0
 var near_blend: float = 1.0
+var presentation_locked: bool = false
 
 var _play_rect: Rect2 = Rect2()
 var _planet_radius: float = 240.0
@@ -55,7 +56,7 @@ func _process(delta: float) -> void:
 			_transition_start_rotation, _transition_target_rotation, smoothstep(0.0, 1.0, progress)
 		)
 		zoom_amount = lerpf(_transition_start_zoom, target_zoom, smoothstep(0.0, 1.0, progress))
-		# Detail layers and backgrounds can fade; the planet keeps one artwork.
+		# Detail/background opacity is separate from the planet's size-based artwork blend.
 		near_blend = lerpf(_transition_start_blend, target_zoom, smoothstep(0.45, 0.85, progress))
 		# A small lens pull accompanies the zoom without a permanent flattening
 		# or a rubbery rebound. Reversal keeps the currently displayed transform.
@@ -76,7 +77,12 @@ func _process(delta: float) -> void:
 		if not is_transitioning():
 			view_changed.emit()
 		return
-	if not is_overview() or _dragging or is_zero_approx(overview_rotation_speed):
+	if (
+		presentation_locked
+		or not is_overview()
+		or _dragging
+		or is_zero_approx(overview_rotation_speed)
+	):
 		return
 	_view_rotation = wrapf(_view_rotation + overview_rotation_speed * maxf(delta, 0.0), -PI, PI)
 	# Overview markers already follow the world transform each frame. Do not
@@ -113,7 +119,7 @@ func reset_view() -> void:
 
 
 func zoom_steps(steps: float, animated: bool = true) -> void:
-	if is_zero_approx(steps):
+	if presentation_locked or is_zero_approx(steps):
 		return
 	var next_view: float = 1.0 if steps > 0.0 else 0.0
 	if is_equal_approx(target_zoom, next_view):
@@ -133,7 +139,7 @@ func zoom_steps(steps: float, animated: bool = true) -> void:
 
 func focus_surface(surface_angle: float, animated: bool = true) -> void:
 	assert(_configured, "Configure the planet view before focusing a surface region.")
-	if not is_overview() or is_transitioning():
+	if presentation_locked or not is_overview() or is_transitioning():
 		return
 	# Use the cluster's world-space heading, independent of bubble avoidance
 	# offsets and overview spin. The selected ground becomes the near horizon center.
@@ -162,7 +168,7 @@ func _start_transition(next_view: float, next_rotation: float, animated: bool) -
 
 func begin_drag(pointer: Vector2) -> void:
 	assert(_configured, "Configure the planet view before starting a drag.")
-	if is_transitioning():
+	if presentation_locked or is_transitioning():
 		return
 	_dragging = true
 	_last_pointer = pointer
@@ -185,6 +191,11 @@ func drag_to(pointer: Vector2) -> void:
 
 func end_drag() -> void:
 	_dragging = false
+
+
+func show_restoration_overview() -> void:
+	# Presentation owns this transition while normal camera input is locked.
+	_start_transition(0.0, 0.0, true)
 
 
 func is_dragging() -> bool:

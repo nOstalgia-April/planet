@@ -1,0 +1,6 @@
+{
+  "source": "用户于 2026-10-12 提供的图标图集与蓝色笔刷附件",
+  "icons.png": "codex-clipboard-6c60be9b-fb2b-42d1-909c-e6e56197d0f9.png",
+  "blue_brush.png": "650180148ba7d6bb367bedf81241285a.png",
+  "usage": "原图保持不变，通过 .tres 中的 AtlasTexture 区域取用；参考图只借鉴右上角三按钮排列。"
+}

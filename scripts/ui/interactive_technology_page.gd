@@ -1,8 +1,8 @@
 extends "res://scripts/ui/technology_page.gd"
 
-signal zoom_changed(value: float)
+const INTERACTIVE_GRAPH_SIZE: Vector2 = Vector2(1280.0, 720.0)
 
-const INTERACTIVE_GRAPH_SIZE: Vector2 = Vector2(1100.0, 660.0)
+static var _last_zoom_factor: float = 1.0
 
 var zoom_factor: float = 1.0
 var _pan: Vector2 = Vector2.ZERO
@@ -11,21 +11,13 @@ var _pointer_start: Vector2 = Vector2.ZERO
 var _node_start: Vector2 = Vector2.ZERO
 var _dragging: bool = false
 var _panning: bool = false
-
-@onready var zoom_slider: HSlider = $Margin/Content/NavigationControls/Zoom
-@onready var _zoom_label: Label = $Margin/Content/NavigationControls/ZoomValue
-
+var _suppress_click: bool = false
 
 func _ready() -> void:
 	super._ready()
-	_canvas.offset_right = -288.0
 	$Margin/Content/Footer/Hint.text = ""
-	$Margin/Content/Body/Detail/Content.add_theme_constant_override("separation", 12)
-	zoom_slider.value_changed.connect(set_zoom)
-	zoom_changed.connect(_sync_zoom)
-	$Margin/Content/NavigationControls/Reset.pressed.connect(reset_layout)
 	visibility_changed.connect(_cancel_pointer)
-	set_zoom(1.0)
+	set_zoom(_last_zoom_factor)
 
 
 func _build_graph() -> void:
@@ -41,27 +33,27 @@ func _node_prerequisites(id: String) -> Dictionary[String, int]:
 func _node_position(id: String) -> Vector2:
 	match id:
 		"base_value":
-			return Vector2(120.0, 540.0)
+			return Vector2(310.0, 555.0)
 		"pipe":
-			return Vector2(465.0, 540.0)
+			return Vector2(610.0, 555.0)
 		"cultivation":
-			return Vector2(870.0, 540.0)
+			return Vector2(940.0, 555.0)
 		"combo_unlock":
-			return Vector2(285.0, 330.0)
+			return Vector2(465.0, 385.0)
 		"net_unlock":
-			return Vector2(565.0, 330.0)
+			return Vector2(693.0, 385.0)
 		"combo_reward":
-			return Vector2(175.0, 105.0)
+			return Vector2(375.0, 202.0)
 		"combo_interval":
-			return Vector2(395.0, 105.0)
+			return Vector2(555.0, 202.0)
 		"net_capacity":
-			return Vector2(565.0, 105.0)
+			return Vector2(693.0, 202.0)
 		"valuable":
-			return Vector2(750.0, 330.0)
+			return Vector2(843.0, 385.0)
 		"giant":
-			return Vector2(1000.0, 330.0)
+			return Vector2(1047.0, 385.0)
 		"automation":
-			return Vector2(870.0, 105.0)
+			return Vector2(940.0, 202.0)
 	return Vector2.ZERO
 
 
@@ -77,13 +69,8 @@ func _fit_graph() -> void:
 
 func set_zoom(value: float) -> void:
 	zoom_factor = clampf(value, 0.65, 1.6)
+	_last_zoom_factor = zoom_factor
 	_fit_graph()
-	zoom_changed.emit(zoom_factor)
-
-
-func _sync_zoom(value: float) -> void:
-	zoom_slider.set_value_no_signal(value)
-	_zoom_label.text = "%d%%" % roundi(value * 100.0)
 
 
 func reset_layout() -> void:
@@ -99,12 +86,21 @@ func _cancel_pointer() -> void:
 	_drag_id = ""
 	_dragging = false
 	_panning = false
+	_suppress_click = false
+	_hide_details()
+
+
+func _activate_node(id: String) -> void:
+	if not _suppress_click:
+		super._activate_node(id)
+	_suppress_click = false
 
 
 func _node_input(event: InputEvent, id: String) -> void:
 	if event is InputEventMouseButton:
 		var button: InputEventMouseButton = event as InputEventMouseButton
 		if button.button_index == MOUSE_BUTTON_LEFT and button.pressed:
+			_suppress_click = false
 			_drag_id = id
 			_pointer_start = button.global_position
 			_node_start = _nodes[id].position
@@ -112,13 +108,16 @@ func _node_input(event: InputEvent, id: String) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	super._input(event)
 	if not is_visible_in_tree():
 		return
 	if event is InputEventMouseButton:
 		var button: InputEventMouseButton = event as InputEventMouseButton
 		if button.button_index == MOUSE_BUTTON_LEFT and not button.pressed:
+			_suppress_click = _dragging
 			if _dragging:
 				select_node(_drag_id)
+				_hide_details()
 			_drag_id = ""
 			_dragging = false
 		if button.button_index == MOUSE_BUTTON_RIGHT:
@@ -148,4 +147,5 @@ func _input(event: InputEvent) -> void:
 					)
 				)
 				graph.queue_redraw()
+				_hide_details()
 				get_viewport().set_input_as_handled()

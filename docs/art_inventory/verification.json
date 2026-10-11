@@ -1,0 +1,12 @@
+{
+  "copied_files_sha256_verified": 4105,
+  "godot_imported_images": 501,
+  "bulk_sequence_imports": 0,
+  "catalog_links_checked": true,
+  "browser_search_and_filter_checked": true,
+  "game_visual_verification": false,
+  "godot_errors": [],
+  "godot_warnings": [
+    "WARNING: Cannot find master strings bank at res://assets/fmod/banks/Master.strings.bank"
+  ]
+}

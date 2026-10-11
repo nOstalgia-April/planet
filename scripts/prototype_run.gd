@@ -166,6 +166,7 @@ func collect_slime(nest_id: int, reward: int = -1, population: int = 1) -> bool:
 		candy += get_base_value() * roll_drill_treasure()
 		nest_changed.emit(nest)
 		economy_changed.emit()
+		_check_completion()
 		return true
 	var capture_reward: int = (
 		get_capture_reward(nest.species) * population if reward < 0 else reward
@@ -173,6 +174,7 @@ func collect_slime(nest_id: int, reward: int = -1, population: int = 1) -> bool:
 	candy += capture_reward + _register_manual_capture(capture_reward)
 	nest_changed.emit(nest)
 	economy_changed.emit()
+	_check_completion()
 	return true
 
 
@@ -206,6 +208,7 @@ func collect_net_batch(
 	for nest: NestState in changed_nests:
 		nest_changed.emit(nest)
 	economy_changed.emit()
+	_check_completion()
 	return reward
 
 
@@ -268,7 +271,6 @@ func upgrade_nest(nest_id: int) -> bool:
 		nest.income_remainder = 0.0
 		nest.income_clock = 0.0
 		completed_nests += 1
-	_check_completion()
 	nest_changed.emit(nest)
 	economy_changed.emit()
 	return true
@@ -469,9 +471,16 @@ func get_nest_upgrade_requirement(nest_id: int) -> String:
 	var nest: NestState = get_nest(nest_id)
 	if nest == null:
 		return "选择一个生态区"
-	if nest.is_tamed or nest.level < governance_level:
+	if nest.is_tamed:
 		return ""
-	return "先研究巢穴培育" if nest.level == 0 else "先研究完全自动化"
+	if get_technology_level("cultivation") == 0:
+		return "先研究巢穴培育"
+	if (
+		nest.level == settings.nest_upgrade_costs.size() - 1
+		and get_technology_level("automation") == 0
+	):
+		return "先研究完全自动化"
+	return ""
 
 
 func get_pipe_upgrade_cost() -> int:
@@ -633,7 +642,7 @@ func _register_manual_capture(reward: int) -> int:
 
 
 func _advance_nest_population(nest: NestState, delta: float) -> void:
-	if nest.is_tamed:
+	if nest.is_tamed or is_complete:
 		nest.spawn_clock = 0.0
 		return
 	var population_limit: int = get_nest_population_limit(nest.nest_id)
@@ -725,8 +734,11 @@ func resolve_nest_spawn(position: Vector2, site_available: bool = true) -> bool:
 
 
 func _check_completion() -> void:
-	if is_complete or nests.is_empty() or completed_nests != nests.size():
+	if is_complete or nests.is_empty():
 		return
+	for nest: NestState in nests:
+		if nest.alive_slimes > 0:
+			return
 	is_complete = true
 	_nest_roll_clock = 0.0
 	_nest_spawn_cooldown_remaining = 0.0

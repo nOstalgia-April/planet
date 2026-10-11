@@ -1,43 +1,68 @@
 extends "res://scripts/disk_demo.gd"
 
+const BlendedPlanetArt = preload("res://scripts/场景动画/双视角星球.gd")
+const PlanetRestoration = preload("res://scripts/planet_restoration.gd")
+
 @export var start_in_overview: bool = false
 
 @onready var _near_background: Node2D = $美术背景/地壳裁剪/画布/近景背景
 @onready var _overview_background: Node2D = $美术背景/地壳裁剪/画布/全景背景
-@onready var _switch_button: Button = $预览导航/切换视角
+@onready var _planet_art: BlendedPlanetArt = $World/PlanetSurface/星球画面
+@onready var _restoration: PlanetRestoration = $PlanetRestoration
 
 
 func _ready() -> void:
+	_restoration.palette_changed.connect(_on_palette_changed)
 	super._ready()
+	flower_appeared.connect(_restoration.reveal_flower)
+	_restoration.presentation_started.connect(_on_restoration_started)
 	_view.view_changed.connect(_sync_art)
 	_view.projection_changed.connect(_sync_art)
-	get_viewport().size_changed.connect(_fit_background)
 	RenderingServer.set_default_clear_color(Color.BLACK)
-	_fit_background()
 	if start_in_overview:
 		_view.zoom_steps(-1.0, false)
 	_sync_art()
 
 
-func _fit_background() -> void:
-	var interface_scale: Vector2 = _layout.scale
-	var menu_button: Button = $预览导航/返回主菜单
-	menu_button.scale = interface_scale
-	menu_button.position = Vector2(28.0, 204.0) * interface_scale
-	_switch_button.scale = interface_scale
-	_switch_button.position = Vector2(174.0, 204.0) * interface_scale
+func restart_run() -> void:
+	_restoration.reset()
+	super.restart_run()
+
+
+func _on_restoration_started() -> void:
+	_layout.close_panels()
+	_clear_nest_selection()
+	_cancel_view_drag()
+	_capture_at(0.0, _tool_pointer, false)
+
+
+func _on_palette_changed(progress: float) -> void:
+	_candy_label.add_theme_color_override(
+		"font_color", Color(0.9187172, 0.95208365, 0.92662764).lerp(Color("364b50"), progress)
+	)
+
+
+func _show_completion() -> void:
+	# A final capture can happen during the flower's growth animation.
+	# Let all earned reveals finish before the victory panel covers the globe.
+	var waiting_for_flower: bool = false
+	for nest: NestState in run.nests:
+		if nest.is_tamed and nest.species not in _restoration.unlocked_species:
+			waiting_for_flower = true
+	if _restoration.phase != PlanetRestoration.Phase.IDLE or waiting_for_flower:
+		_completion_tween = create_tween()
+		_completion_tween.tween_interval(0.25)
+		_completion_tween.tween_callback(_show_completion)
+		return
+	super._show_completion()
 
 
 func _sync_art() -> void:
+	_planet_art.set_zoom(_view.zoom_amount)
 	_near_background.visible = _view.near_blend > 0.0
 	_overview_background.visible = _view.near_blend < 1.0
 	_overview_background.modulate.a = 1.0 - _view.near_blend
-	_switch_button.text = "近景" if _view.is_overview() else "全景"
 
 
 func _switch_view() -> void:
 	_view.zoom_steps(1.0 if _view.is_overview() else -1.0)
-
-
-func _return_to_menu() -> void:
-	get_tree().change_scene_to_file.call_deferred("res://scenes/主菜单/主菜单.tscn")

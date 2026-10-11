@@ -178,7 +178,7 @@ func _branch_purchase(demo: DemoScript, branch: String) -> Button:
 	var id: String = branch.to_lower()
 	var page: PageScript = demo._layout._technology
 	page.select_node(demo.run._resolve_technology_action(id))
-	return page.purchase
+	return page._nodes[page.selected_key]
 
 
 func _check_manual_collection(demo: DemoScript) -> void:
@@ -371,7 +371,7 @@ func _capture_layouts(demo: DemoScript) -> void:
 		await _settle_layout()
 		var screen: Rect2 = Rect2(Vector2.ZERO, root.get_visible_rect().size)
 		for button_name: String in [
-			"QuickPipeButton", "QuickNetButton", "TechnologyButton", "RestartButton"
+			"QuickPipeButton", "QuickNetButton", "TechnologyButton"
 		]:
 			var button: Button = demo.get_node("%" + button_name) as Button
 			_check(

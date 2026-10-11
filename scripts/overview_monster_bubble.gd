@@ -2,11 +2,7 @@
 extends Node2D
 
 const Layout = preload("res://scripts/overview_bubble_layout.gd")
-const BACKGROUNDS: Array[Texture2D] = [
-	preload("res://assets/monster_bubbles/slime_bubble.png"),
-	preload("res://assets/monster_bubbles/mucus_bubble.png"),
-	preload("res://assets/monster_bubbles/green_bubble.png")
-]
+const BACKGROUND: Texture2D = preload("res://assets/monster_bubbles/density_bubble.png")
 const PORTRAITS: Array[Texture2D] = [
 	preload("res://assets/monster_bubbles/slime_portrait.png"),
 	preload("res://assets/monster_bubbles/mucus_portrait.png"),
@@ -19,6 +15,10 @@ const PORTRAIT_BOUNDS: Array[Rect2] = [
 @export_enum("Slime", "Mucus", "Green") var species: int = 0
 @export_range(16.0, 120.0) var preview_radius: float = 60.0
 @export_range(0.5, 0.9, 0.01) var portrait_diameter_ratio: float = 0.76
+@export_group("Density")
+@export_range(0.0, 1.0, 0.01) var preview_density: float = 0.5
+@export var medium_colors: Array[Color] = [Color("ff71a4"), Color("83baff"), Color("a6d98b")]
+@export var dense_colors: Array[Color] = [Color("ff0076"), Color("2466dd"), Color("419944")]
 @export_group("Hover")
 @export_range(1.05, 1.6, 0.01) var hover_magnification: float = 1.28
 @export_range(40.0, 300.0, 5.0) var hover_spring: float = 170.0
@@ -27,6 +27,7 @@ const PORTRAIT_BOUNDS: Array[Rect2] = [
 var cluster: Layout.Cluster
 var angle: float = 0.0
 var radius_ratio: float = 0.0
+var density: float = 0.0
 var radius: float = 0.0
 var opacity: float = 0.0
 var anchor: Vector2 = Vector2.ZERO
@@ -46,6 +47,7 @@ var motion_initialized: bool = false
 func _ready() -> void:
 	set_process(Engine.is_editor_hint())
 	if Engine.is_editor_hint() or get_tree().current_scene == self:
+		density = preview_density
 		var center: Vector2 = (
 			Vector2.ZERO if Engine.is_editor_hint() else get_viewport_rect().size * 0.5
 		)
@@ -55,7 +57,15 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	density = preview_density
 	show_at(Vector2.ZERO, Vector2.DOWN * preview_radius * Layout.POINTER_REACH, preview_radius)
+
+
+func density_color(value: float) -> Color:
+	var amount: float = clampf(value, 0.0, 1.0)
+	if amount <= 0.5:
+		return Color.WHITE.lerp(medium_colors[species], amount * 2.0)
+	return medium_colors[species].lerp(dense_colors[species], (amount - 0.5) * 2.0)
 
 
 func advance_hover(delta: float, hovered: bool) -> void:
@@ -80,10 +90,11 @@ func show_at(center: Vector2, surface_anchor: Vector2, body_radius: float) -> vo
 	anchor = surface_anchor
 	radius = body_radius
 	display_radius = radius * hover_scale
-	_background.texture = BACKGROUNDS[species]
+	_background.texture = BACKGROUND
+	_background.modulate = density_color(density)
 	_background.centered = false
-	# Source circle center is (121,115), radius 97; the green cutout is shifted.
-	var circle_center: Vector2 = Vector2(109, 116) if species == 2 else Vector2(121, 115)
+	# User-provided white silhouette; tint the background only, never the portrait.
+	var circle_center: Vector2 = Vector2(109, 118)
 	_background.offset = -circle_center
 	_background.scale = Vector2.ONE * display_radius / 97.0
 	_background.rotation = (anchor - position).angle() - PI * 0.5

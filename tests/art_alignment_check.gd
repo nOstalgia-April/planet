@@ -124,7 +124,6 @@ func _check_source_sizes(preview: Preview) -> void:
 		_check(is_equal_approx(monster.presentation_scale, preview._source_view_scale), "all species use the same viewing scale")
 		if monster is DrillView:
 			var drill: DrillView = monster as DrillView
-			_check(is_equal_approx(drill.art_scale, 1.0), "drill monster drops gameplay art scale")
 			_check(drill.art.texture_filter == CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS, "drill keeps smooth HD filtering")
 		else:
 			_check(is_equal_approx(monster.slime_art_scale, 1.0), "ordinary monsters drop gameplay art scale")

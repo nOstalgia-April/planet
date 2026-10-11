@@ -14,6 +14,8 @@ const MAX_FADE_STEP: float = 1.0 / 30.0
 @export_range(0.0, 10.0, 0.05) var music_fade_out_seconds: float = 0.3
 
 var banks_loaded: bool = false
+var _effects_elapsed: float = 0.0
+var _effect_descriptions: Array[FmodEventDescription] = []
 
 # Holding the references keeps the banks loaded; dropping them unloads.
 var _banks: Array[FmodBank] = []
@@ -37,6 +39,12 @@ func _ready() -> void:
 			)
 		)
 	banks_loaded = true
+	for bank: FmodBank in _banks:
+		for description: FmodEventDescription in bank.get_description_list():
+			if not description.get_path().begins_with("event:/Mx_"):
+				_effect_descriptions.append(description)
+	GamePreferences.changed.connect(_apply_preferences)
+	_apply_preferences()
 
 
 # Stop the music before dropping the banks at quit; dropping them unloads every event.
@@ -47,6 +55,7 @@ func _exit_tree() -> void:
 			instance.stop(FmodServer.FMOD_STUDIO_STOP_IMMEDIATE)
 			instance.release()
 	_fading_out.clear()
+	_effect_descriptions.clear()
 	_banks.clear()
 	banks_loaded = false
 
@@ -79,6 +88,7 @@ func play(event_path: String, parameters: Dictionary = {}) -> void:
 		return
 	for parameter_name: String in parameters:
 		instance.set_parameter_by_name(parameter_name, float(parameters[parameter_name]))
+	instance.set_volume(GamePreferences.effects_volume)
 	instance.start()
 	instance.release()
 
@@ -95,6 +105,7 @@ func start_loop(event_path: String) -> FmodEvent:
 		return null
 	var instance: FmodEvent = FmodServer.create_event_instance(event_path)
 	if instance != null:
+		instance.set_volume(GamePreferences.effects_volume)
 		instance.start()
 	return instance
 
@@ -131,13 +142,24 @@ func stop_music() -> void:
 	_music_path = ""
 
 
+## Returns -1 when this track is unavailable. FMOD owns looping, pausing and seeking.
+func get_music_position_seconds(event_path: String) -> float:
+	if _music_path != event_path or _music == null or not _music.is_valid():
+		return -1.0
+	return float(_music.get_timeline_position()) / 1000.0
+
+
 func _process(delta: float) -> void:
+	_effects_elapsed += delta
+	if _effects_elapsed >= 0.1:
+		_effects_elapsed = 0.0
+		_apply_effects_volume()
 	# A blocking scene load arrives as one huge delta; cap it so fades stay audible.
 	var step: float = minf(delta, MAX_FADE_STEP)
 	if _music != null and _music_volume < 1.0:
 		_music_volume = minf(1.0, _music_volume + step / maxf(music_fade_in_seconds, 0.01))
 		if _music.is_valid():
-			_music.set_volume(_music_volume)
+			_music.set_volume(_music_volume * _music_gain())
 	for instance: FmodEvent in _fading_out.keys():
 		var volume: float = float(_fading_out[instance]) - step / maxf(music_fade_out_seconds, 0.01)
 		if not instance.is_valid():
@@ -147,5 +169,29 @@ func _process(delta: float) -> void:
 			instance.release()
 			_fading_out.erase(instance)
 		else:
-			instance.set_volume(volume)
+			instance.set_volume(volume * _music_gain())
 			_fading_out[instance] = volume
+
+
+func _music_gain() -> float:
+	return GamePreferences.music_volume if GamePreferences.music_enabled else 0.0
+
+
+func _apply_preferences() -> void:
+	if _music != null and _music.is_valid():
+		_music.set_volume(_music_volume * _music_gain())
+	for instance: FmodEvent in _fading_out:
+		if instance.is_valid():
+			instance.set_volume(float(_fading_out[instance]) * _music_gain())
+	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(GamePreferences.effects_volume, 0.0001)))
+	AudioServer.set_bus_mute(0, is_zero_approx(GamePreferences.effects_volume))
+	_apply_effects_volume()
+
+
+func _apply_effects_volume() -> void:
+	# FMOD can spawn nested events (Vacuum_Loop) without a game-side play call.
+	for description: FmodEventDescription in _effect_descriptions:
+		if description.get_instance_count() == 0:
+			continue
+		for instance: FmodEvent in description.get_instance_list():
+			instance.set_volume(GamePreferences.effects_volume)

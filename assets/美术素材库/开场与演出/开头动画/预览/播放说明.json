@@ -1,0 +1,61 @@
+{
+  "source_frames": 45,
+  "duration_seconds": 10.838888888888889,
+  "video_duration_seconds": 10.833333333333334,
+  "video_size": [
+    1920,
+    1080
+  ],
+  "segments": [
+    {
+      "segment": "p1（4帧每秒",
+      "fps": 4.0,
+      "frames": 4,
+      "start": 0.0,
+      "duration": 1.0
+    },
+    {
+      "segment": "p2（3帧每秒",
+      "fps": 3.0,
+      "frames": 6,
+      "start": 1.0,
+      "duration": 2.0
+    },
+    {
+      "segment": "P3（3帧",
+      "fps": 3.0,
+      "frames": 3,
+      "start": 3.0,
+      "duration": 1.0
+    },
+    {
+      "segment": "P4(4帧",
+      "fps": 4.0,
+      "frames": 3,
+      "start": 4.0,
+      "duration": 0.75
+    },
+    {
+      "segment": "p5（5帧",
+      "fps": 5.0,
+      "frames": 7,
+      "start": 4.75,
+      "duration": 1.4
+    },
+    {
+      "segment": "p6（4_5帧每秒",
+      "fps": 4.5,
+      "frames": 13,
+      "start": 6.15,
+      "duration": 2.888888888888889
+    },
+    {
+      "segment": "p7（5帧",
+      "fps": 5.0,
+      "frames": 9,
+      "start": 9.03888888888889,
+      "duration": 1.8
+    }
+  ],
+  "note": "P6 interpreted as 4.5 fps; original frame order; black backdrop for transparency; no audio or added transitions."
+}

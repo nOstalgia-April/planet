@@ -19,8 +19,8 @@ const ENTRIES: Array[String] = [
 	"res://features/technology_tree_preview/technology_tree_preview.tscn",
 ]
 const RETURN_BUTTONS: Array[NodePath] = [
-	^"预览导航/返回主菜单",
-	^"预览导航/返回主菜单",
+	^"HUD/Interface/GameMenu/Modal/Center/Panel/Content/SettingsBody/Actions/MainMenu",
+	^"HUD/Interface/GameMenu/Modal/Center/Panel/Content/SettingsBody/Actions/MainMenu",
 	^"返回主菜单",
 	^"返回主菜单",
 	^"返回主菜单",
@@ -77,7 +77,7 @@ func _run() -> void:
 	await scene_changed
 	assert(current_scene.scene_file_path == ENTRIES[1], "Start 必须实际切换到近景游玩预览。")
 	var game: PlayPreview = current_scene as PlayPreview
-	(game.get_node("预览导航/返回主菜单") as Button).pressed.emit()
+	_return_from_game(game)
 	await scene_changed
 	assert(current_scene.scene_file_path == ENTRIES[0])
 	await _check_preview_navigation()
@@ -106,7 +106,10 @@ func _check_preview_navigation() -> void:
 		(previews.get_child(index) as Button).pressed.emit()
 		await scene_changed
 		assert(current_scene.scene_file_path == ENTRIES[index + 1], "标题预览按钮必须打开对应页面。")
-		(current_scene.get_node(RETURN_BUTTONS[index]) as Button).pressed.emit()
+		if current_scene is PlayPreview:
+			_return_from_game(current_scene as PlayPreview)
+		else:
+			(current_scene.get_node(RETURN_BUTTONS[index]) as Button).pressed.emit()
 		await scene_changed
 		assert(current_scene.scene_file_path == ENTRIES[0], "每个预览必须能返回主菜单。")
 
@@ -118,12 +121,12 @@ func _check_gameplay(game: PlayPreview) -> void:
 	for nest in game._nest_views:
 		nest_positions.append(nest.position)
 	game.run.candy = 17
-	(game.get_node("预览导航/切换视角") as Button).pressed.emit()
+	game._switch_view()
 	assert(game._view.is_overview() != game.start_in_overview)
 	assert(game.run == original_run and game.run.candy == 17)
 	for index in range(nest_positions.size()):
 		assert(game._nest_views[index].position.is_equal_approx(nest_positions[index]))
-	(game.get_node("预览导航/切换视角") as Button).pressed.emit()
+	game._switch_view()
 	assert(game._view.is_overview() == game.start_in_overview)
 	var surface: Node = game.get_node("World/PlanetSurface")
 	assert(surface.get_child_count() == 1, "近景与全景共用一个星球画面。")
@@ -154,3 +157,9 @@ func _check_animation(preview: ActionPreview) -> void:
 	else:
 		assert(animation.loop_mode == Animation.LOOP_LINEAR)
 		assert(not preview._finished)
+
+
+func _return_from_game(game: PlayPreview) -> void:
+	game._layout.game_menu.set_open(true)
+	game._layout.game_menu.get_node("%MainMenu").pressed.emit()
+	game._layout.game_menu.get_node("%ConfirmAction").pressed.emit()

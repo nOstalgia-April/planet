@@ -17,6 +17,7 @@ func _run_checks() -> void:
 	_check_nest_opening_delay()
 	_check_bursts_and_population_tiers()
 	_check_random_spawn_cooldowns()
+	_check_nest_research_requirements()
 	_check_automatic_income()
 	_check_continuous_pipe_combo()
 	_check_tool_tiers()
@@ -410,7 +411,7 @@ func _check_nest_discovery_cooldown() -> void:
 		run._nest_spawn_cooldown_remaining == 0.0,
 		"The two fixed opening nests do not impose a discovery cooldown."
 	)
-	run.candy = 10000
+	run.candy = 100000
 	run.upgrade_pipe()
 	run.upgrade_net()
 	run.advance(settings.nest_roll_interval)
@@ -440,7 +441,7 @@ func _check_nest_discovery_cooldown() -> void:
 		run._nest_spawn_cooldown_remaining == 0.0 and run._nest_roll_clock == 0.0,
 		"Restart clears success cooldown and recurring roll progress."
 	)
-	run.candy = 10000
+	run.candy = 100000
 	run.upgrade_pipe()
 	run.upgrade_net()
 	_enable_full_governance(run)
@@ -452,6 +453,8 @@ func _check_nest_discovery_cooldown() -> void:
 	for nest: NestState in run.nests:
 		for _stage: int in range(3):
 			run.upgrade_nest(nest.nest_id)
+	_check(not run.is_complete, "Automation alone does not finish a populated planet.")
+	_clear_population(run)
 	_check(
 		run.is_complete and run._nest_spawn_cooldown_remaining == 0.0,
 		"Completion keeps discovery stopped with no leftover success cooldown."
@@ -502,7 +505,7 @@ func _check_nest_discovery_cooldown() -> void:
 
 func _check_governance_roll_weight() -> void:
 	var run: PrototypeRun = _create_run()
-	run.candy = 10000
+	run.candy = 100000
 	run.upgrade_pipe()
 	run.upgrade_net()
 	_enable_full_governance(run)
@@ -527,18 +530,21 @@ func _check_governance_roll_weight() -> void:
 
 func _check_existing_nests_completion() -> void:
 	var locked_run: PrototypeRun = _create_run(SETTINGS.nest_initial_delay_seconds)
-	locked_run.candy = 10000
+	locked_run.candy = 100000
 	_enable_full_governance(locked_run)
 	for nest_id: int in [1, 2]:
 		for _index: int in range(3):
 			locked_run.upgrade_nest(nest_id)
+	_check(not locked_run.is_complete, "Construction on an empty opening is not a capture victory.")
+	locked_run.get_nest(1).alive_slimes = 1
+	locked_run.collect_slime(1)
 	_check(
 		(
 			locked_run.is_complete
 			and not locked_run.net_unlocked
 			and locked_run._nest_initial_delay_remaining == 0.0
 		),
-		"Automating every current nest completes the run without a mandatory tool-unlock quota."
+		"Clearing the last monster completes the run without a mandatory tool-unlock quota."
 	)
 	locked_run.upgrade_net()
 	_check(
@@ -552,7 +558,7 @@ func _check_existing_nests_completion() -> void:
 	settings.nest_roll_chance_min = 1.0
 	settings.nest_roll_chance_max = 1.0
 	run.settings = settings
-	run.candy = 10000
+	run.candy = 100000
 	run.upgrade_pipe()
 	run.upgrade_net()
 	_enable_full_governance(run)
@@ -562,9 +568,11 @@ func _check_existing_nests_completion() -> void:
 	for nest_id: int in [1, 2]:
 		for _index: int in range(3):
 			run.upgrade_nest(nest_id)
+	_check(not run.is_complete, "Final construction preserves the remaining cleanup task.")
+	_clear_population(run)
 	_check(
 		run.is_complete and _goal_count == 1,
-		"The final upgrade completes the current planet immediately, before another roll."
+		"The final capture completes the current planet immediately, before another roll."
 	)
 	_check(
 		not run.resolve_nest_spawn(Vector2(300, 0)),
@@ -585,7 +593,7 @@ func _check_existing_nests_completion() -> void:
 
 func _check_automatic_income() -> void:
 	var run: PrototypeRun = _create_run()
-	run.candy = 10000
+	run.candy = 100000
 	_enable_full_governance(run)
 	var nest: NestState = run.get_nest(1)
 	_check(run.upgrade_nest(1) and run.upgrade_nest(1), "The two cultivation stages remain.")
@@ -637,11 +645,13 @@ func _check_automatic_income() -> void:
 	)
 	for _stage: int in range(3):
 		run.upgrade_nest(2)
+	_clear_population(run)
 	_check(
 		run.is_complete and is_equal_approx(run.get_passive_income(), 3.0),
 		"Every automated nest contributes income after completion."
 	)
 	before = run.candy
+	_spawn_requests = 0
 	run.advance(3.0)
 	_check(
 		run.candy == before + 8 and _spawn_requests == 0,
@@ -661,6 +671,45 @@ func _check_automatic_income() -> void:
 		"Restart clears production and fractional balances."
 	)
 	run.free()
+
+
+func _check_nest_research_requirements() -> void:
+	for species: NestState.Species in NestState.Species.values():
+		var run: PrototypeRun = _create_run()
+		var nest: NestState = run.get_nest(1)
+		nest.species = species
+		run.candy = 100000
+		var before: int = run.candy
+		_check(not run.upgrade_nest(1), "An unresearched nest cannot upgrade.")
+		_check(run.candy == before, "Missing basic research preserves candy.")
+		_check(run.purchase_technology("cultivation"), "Basic nest research is available.")
+		for tier: int in range(1, 3):
+			before = run.candy
+			var cost: int = run.get_nest_upgrade_cost(1)
+			_check(
+				run.get_nest_upgrade_requirement(1).is_empty(), "Basic research opens tier three."
+			)
+			_check(
+				run.upgrade_nest(1) and nest.level == tier,
+				"Basic research allows each early upgrade."
+			)
+			_check(
+				run.candy == before - cost, "Each early upgrade charges its configured price."
+			)
+		before = run.candy
+		_check(not run.get_nest_upgrade_requirement(1).is_empty(), "The final tier needs automation.")
+		_check(not run.upgrade_nest(1), "Basic research cannot unlock the final tier.")
+		_check(
+			run.candy == before and nest.level == 2 and not nest.is_tamed,
+			"A locked final upgrade preserves candy and the tier-three nest."
+		)
+		_check(run.purchase_technology("automation"), "Automation research is available.")
+		before = run.candy
+		var final_cost: int = run.get_nest_upgrade_cost(1)
+		_check(run.get_nest_upgrade_requirement(1).is_empty(), "Automation opens the final tier.")
+		_check(run.upgrade_nest(1) and nest.is_tamed, "Automation permits the final upgrade.")
+		_check(run.candy == before - final_cost, "The final upgrade charges its configured price.")
+		run.free()
 
 
 func _enable_full_governance(run: PrototypeRun) -> void:
@@ -709,3 +758,9 @@ func _count_goal(run: PrototypeRun) -> void:
 func _check(condition: bool, message: String) -> void:
 	if not condition:
 		_failures.append(message)
+
+
+func _clear_population(run: PrototypeRun) -> void:
+	for nest: NestState in run.nests:
+		if nest.alive_slimes > 0:
+			run.collect_slime(nest.nest_id, 0, nest.alive_slimes)

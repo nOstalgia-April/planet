@@ -124,11 +124,6 @@ func _check_layout(demo: DemoScript) -> void:
 			page._canvas.get_global_rect().encloses(node.get_global_rect()),
 			"all nodes fit the canvas"
 		)
-	for node: NodeScript in page._nodes.values():
-		_check(
-			not node.get_global_rect().intersects(page.purchase.get_global_rect()),
-			"graph nodes and purchase action do not overlap"
-		)
 
 
 func _settle() -> void:

@@ -3,11 +3,14 @@
 [ext_resource type="PackedScene" path="res://scenes/disk_demo.tscn" id="r001"]
 [ext_resource type="Script" uid="uid://b1p6pbrpgvgjq" path="res://features/场景预览/游玩预览.gd" id="r002"]
 [ext_resource type="Script" uid="uid://b1tdehrfyqgii" path="res://features/场景预览/星球地表.gd" id="r003"]
-[ext_resource type="PackedScene" path="res://scenes/场景动画/近景星球.tscn" id="r004"]
+[ext_resource type="PackedScene" path="res://scenes/场景动画/双视角星球.tscn" id="r004"]
 [ext_resource type="PackedScene" path="res://scenes/场景动画/近景背景.tscn" id="r006"]
 [ext_resource type="PackedScene" path="res://scenes/场景动画/全景背景.tscn" id="r007"]
 [ext_resource type="Theme" uid="uid://vtvcqi2sw5n7" path="res://resources/场景预览主题.tres" id="r008"]
 [ext_resource type="PackedScene" path="res://scenes/场景动画/背景地壳裁剪.tscn" id="r009"]
+[ext_resource type="PackedScene" path="res://scenes/场景动画/星球核心.tscn" id="r010"]
+[ext_resource type="PackedScene" path="res://scenes/effects/planet_restoration.tscn" id="restoration"]
+[ext_resource type="PackedScene" path="res://scenes/场景动画/亮色背景.tscn" id="bright"]
 
 [node name="近景游玩预览" unique_id=41260423 instance=ExtResource("r001")]
 script = ExtResource("r002")
@@ -26,6 +29,11 @@ planet_art = NodePath("星球画面")
 [node name="星球画面" parent="World/PlanetSurface" index="0" unique_id=1645310864 instance=ExtResource("r004")]
 rotation = 1.5707964
 
+[node name="星球核心" parent="World/PlanetSurface/星球画面" instance=ExtResource("r010")]
+rotation = -1.5707964
+scale = Vector2(0.690323, 0.690323)
+z_index = 1
+
 [node name="Interface" parent="HUD" index="0"]
 layout_mode = 3
 anchors_preset = 0
@@ -38,15 +46,6 @@ theme_override_colors/font_color = Color(0.3507027, 0.3507027, 0.3507027, 1)
 
 [node name="ComboChip" parent="HUD/Interface" index="1"]
 visible = true
-
-[node name="PipeUpgrade" parent="HUD/Interface" index="8"]
-visible = true
-
-[node name="NetUpgrade" parent="HUD/Interface" index="9"]
-visible = true
-
-[node name="Legacy" parent="HUD/Interface" index="11"]
-layout_mode = 0
 
 [node name="美术背景" type="CanvasLayer" parent="." index="6" unique_id=1470940560]
 layer = -10
@@ -62,25 +61,11 @@ background_canvas = NodePath("画布")
 [node name="全景背景" parent="美术背景/地壳裁剪/画布" index="1" unique_id=1684970854 instance=ExtResource("r007")]
 visible = false
 
-[node name="预览导航" type="CanvasLayer" parent="." index="7" unique_id=2002926281]
+[node name="亮色背景" parent="美术背景/地壳裁剪/画布" instance=ExtResource("bright")]
+modulate = Color(1, 1, 1, 0)
 
-[node name="返回主菜单" type="Button" parent="预览导航" index="0" unique_id=1695117549]
-offset_left = 28.0
-offset_top = 138.0
-offset_right = 160.0
-offset_bottom = 188.0
-focus_mode = 0
-theme = ExtResource("r008")
-text = "主菜单"
-
-[node name="切换视角" type="Button" parent="预览导航" index="1" unique_id=360654719]
-offset_left = 174.0
-offset_top = 138.0
-offset_right = 306.0
-offset_bottom = 188.0
-focus_mode = 0
-theme = ExtResource("r008")
-text = "全景"
-
-[connection signal="pressed" from="预览导航/返回主菜单" to="." method="_return_to_menu"]
-[connection signal="pressed" from="预览导航/切换视角" to="." method="_switch_view"]
+[node name="PlanetRestoration" parent="." node_paths=PackedStringArray("view", "art", "bright_background", "core") instance=ExtResource("restoration")]
+view = NodePath("../PlanetViewController")
+art = NodePath("../World/PlanetSurface/星球画面")
+bright_background = NodePath("../美术背景/地壳裁剪/画布/亮色背景")
+core = NodePath("../World/PlanetSurface/星球画面/星球核心")

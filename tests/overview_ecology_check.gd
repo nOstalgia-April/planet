@@ -1,4 +1,4 @@
-extends SceneTree
+extends Node
 
 const Layout = preload("res://scripts/overview_bubble_layout.gd")
 const Bubble = preload("res://scripts/overview_monster_bubble.gd")
@@ -10,17 +10,17 @@ var _positions: PackedVector2Array = PackedVector2Array()
 var _kinds: PackedInt32Array = PackedInt32Array()
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	_run_checks.call_deferred()
 
 
 func _run_checks() -> void:
 	_check_distribution()
-	root.mode = Window.MODE_WINDOWED
-	root.size = Vector2i(1280, 800)
+	get_tree().root.mode = Window.MODE_WINDOWED
+	get_tree().root.size = Vector2i(1280, 800)
 	var demo: DemoScript = DemoScene.instantiate() as DemoScript
-	root.add_child(demo)
-	current_scene = demo
+	get_tree().root.add_child(demo)
+	get_tree().current_scene = demo
 	demo.set_process(false)
 	demo._layout.set_process(false)
 	demo._view.set_process(false)
@@ -28,7 +28,7 @@ func _run_checks() -> void:
 	demo._view.zoom_steps(-1.0, false)
 	demo._overview.set_process(false)
 	for dimensions: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
-		root.size = dimensions
+		get_tree().root.size = dimensions
 		await _settle()
 		demo._apply_layout()
 		demo._overview.set_process(false)
@@ -36,8 +36,8 @@ func _run_checks() -> void:
 			(demo.get_node("HUD") as CanvasLayer).layer > 0, "the HUD is above world-space bubbles"
 		)
 		_check(
-			(demo.get_node("预览导航") as CanvasLayer).layer > 0,
-			"preview navigation is above world-space bubbles"
+			demo._layout.game_menu.get_canvas_layer_node().layer > 0,
+			"game menu is above world-space bubbles"
 		)
 		_clear_samples()
 		_patch(-1.2, 48, 0)
@@ -101,6 +101,53 @@ func _run_checks() -> void:
 		_present(demo)
 		_check_geometry(demo)
 		await _capture("overview_bubbles_ring_%dx%d.png" % [dimensions.x, dimensions.y])
+		var retained_bubbles: Array[Bubble] = demo._overview.bubbles.duplicate()
+		demo._overview._selection_elapsed = 0.0
+		for frame: int in range(10):
+			demo._overview.update_ecology(
+				_positions, _kinds, true, get_tree().root.get_visible_rect().size
+			)
+			demo._overview._process(0.1)
+			_check_geometry(demo)
+			for marker: Bubble in retained_bubbles:
+				_check(
+					demo._overview.bubbles.has(marker),
+					"repeated ecology refreshes reuse living markers"
+				)
+		# Replacing all five selected regions must also cap fading old bubbles.
+		_clear_samples()
+		_patch(-2.6, 1, 0)
+		_patch(-1.5, 3, 0)
+		_patch(-0.3, 10, 0)
+		_patch(0.6, 5, 1)
+		_patch(2.6, 5, 0)
+		demo._overview._selection_elapsed = demo._overview.selection_interval
+		demo._overview.update_ecology(
+			_positions, _kinds, true, get_tree().root.get_visible_rect().size
+		)
+		_check(
+			demo._overview.bubbles.size() + demo._overview._retiring.size() <= 5,
+			"replacement never doubles the visible marker budget"
+		)
+		demo._overview._process(2.0)
+		_check_geometry(demo)
+		await _capture("ordinary_density_palette_%dx%d.png" % [dimensions.x, dimensions.y])
+		# A distant new group waits; removing live groups still updates immediately.
+		_clear_samples()
+		_patch(1.5, 10, 1)
+		demo._overview._selection_elapsed = 0.0
+		demo._overview.update_ecology(
+			_positions, _kinds, true, get_tree().root.get_visible_rect().size
+		)
+		_check(
+			demo._overview.bubbles.is_empty(),
+			"new distant groups do not pop in between selection beats"
+		)
+		demo._overview._process(2.0)
+		demo._overview.update_ecology(
+			_positions, _kinds, true, get_tree().root.get_visible_rect().size
+		)
+		_check(demo._overview.bubbles.size() == 1, "new group appears on the next selection beat")
 		_clear_samples()
 		_patch(PI * 0.5, 48, 0)
 		_present(demo)
@@ -137,20 +184,32 @@ func _run_checks() -> void:
 	for node: Node in demo.get_node("Audio").get_children():
 		if node is AudioStreamPlayer:
 			node.stop()
-	current_scene = null
+	get_tree().current_scene = null
 	demo.queue_free()
-	await process_frame
+	await get_tree().process_frame
 	for failure: String in _failures:
 		push_error("FAIL: " + failure)
 	if _failures.is_empty():
 		print(
-			"PASS: local density, reference sizes, bounded merge/split, seam, mixed species, rotation, UI layer order, two resolutions and empty/near cleanup"
+			"PASS: five-marker budget including retirement, stable selection cadence, density palette, local aggregation, rotation, UI layer order, two resolutions and cleanup"
 		)
-	quit(0 if _failures.is_empty() else 1)
+	get_tree().quit(0 if _failures.is_empty() else 1)
 
 
 func _check_distribution() -> void:
 	var layout: Layout = Layout.new()
+	_check(
+		layout.density_for_count(3) > 0.45,
+		"three ordinary monsters already have a clear species color"
+	)
+	_check(
+		layout.density_for_count(10) == 1.0,
+		"ten ordinary monsters reach the deepest color without fusion"
+	)
+	_check(
+		layout.radius_for_count(10) < layout.maximum_ratio,
+		"color saturation does not inflate marker size"
+	)
 	_check(
 		is_equal_approx(layout.radius_for_count(1), 52.0 / 556.0),
 		"minimum matches the reference circular body"
@@ -208,6 +267,44 @@ func _check_distribution() -> void:
 	for sector: int in range(48):
 		_patch((float(sector) + 0.5) * TAU / 48.0, 4, 0)
 	var chain: Array[Layout.Cluster] = layout.build(_positions, _kinds, [])
+	var representatives: Array[Layout.Cluster] = layout.select_representatives(chain, [])
+	_check(
+		representatives.size() == 5, "full-ring population displays at most five representatives"
+	)
+	var retained: Array[Layout.Cluster] = layout.select_representatives(chain, representatives)
+	for group: Layout.Cluster in representatives:
+		_check(retained.has(group), "unchanged populations keep their representatives")
+		_check(
+			group.density == layout.density_for_count(group.count),
+			"hidden populations do not inflate marker density"
+		)
+	var minority: Layout.Cluster = Layout.Cluster.new()
+	minority.species = 1
+	minority.count = 1
+	minority.angle = 0.5
+	chain.append(minority)
+	_check(
+		layout.select_representatives(chain, representatives).has(minority),
+		"minority species retains a marker despite dense competing patches"
+	)
+	_check(
+		not layout.select_representatives(chain, representatives, false).has(minority),
+		"new markers wait for the selection beat"
+	)
+	chain.erase(minority)
+	var color_preview: Bubble = Bubble.new()
+	_check(
+		color_preview.density_color(0.0) == Color.WHITE, "lowest density uses the white reference"
+	)
+	_check(
+		color_preview.density_color(0.5).is_equal_approx(Color("ff71a4")),
+		"middle density matches the pink reference"
+	)
+	_check(
+		color_preview.density_color(1.0) == Color("ff0076"),
+		"highest density matches the deep pink reference"
+	)
+	color_preview.free()
 	var total: int = 0
 	for group: Layout.Cluster in chain:
 		total += group.count
@@ -232,7 +329,11 @@ func _check_distribution() -> void:
 
 func _check_geometry(demo: DemoScript) -> void:
 	var overview: OverviewEcology = demo._overview
-	var screen: Rect2 = Rect2(Vector2.ZERO, root.get_visible_rect().size)
+	_check(
+		overview.bubbles.size() + overview._retiring.size() <= 5,
+		"live and fading bubbles together stay within five"
+	)
+	var screen: Rect2 = Rect2(Vector2.ZERO, get_tree().root.get_visible_rect().size)
 	for bubble: Bubble in overview.bubbles:
 		_check(
 			screen.encloses(overview._bubble_rect(bubble.position, bubble.radius)),
@@ -276,14 +377,17 @@ func _patch(angle: float, count: int, species: int) -> void:
 
 
 func _present(demo: DemoScript) -> void:
-	demo._overview.update_ecology(_positions, _kinds, true, root.get_visible_rect().size)
+	# Each fixture represents a fresh selection beat; separate temporal checks
+	# exercise the production/capture updates between beats separately.
+	demo._overview._selection_elapsed = demo._overview.selection_interval
+	demo._overview.update_ecology(_positions, _kinds, true, get_tree().root.get_visible_rect().size)
 	demo._overview.set_process(false)
 	demo._overview._process(2.0)
 
 
 func _settle() -> void:
 	for frame: int in range(4):
-		await process_frame
+		await get_tree().process_frame
 
 
 func _capture(filename: String) -> void:
@@ -291,7 +395,12 @@ func _capture(filename: String) -> void:
 		return
 	await RenderingServer.frame_post_draw
 	_check(
-		root.get_texture().get_image().save_png("res://artifacts/" + filename) == OK,
+		(
+			get_tree().root.get_texture().get_image().save_png(
+				"res://artifacts/density_20261011_" + filename
+			)
+			== OK
+		),
 		"saved " + filename
 	)
 

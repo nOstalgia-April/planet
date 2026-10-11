@@ -1,11 +1,27 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=25 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/technology_page.gd" id="1_page"]
 [ext_resource type="Script" path="res://scripts/ui/technology_graph.gd" id="2_graph"]
-[ext_resource type="PackedScene" path="res://scenes/ui/technology_backdrop.tscn" id="3_background"]
+[ext_resource type="Texture2D" path="res://assets/ui/technology/background.png" id="3_background"]
 [ext_resource type="Script" path="res://scripts/ui/technology_glyph.gd" id="4_glyph"]
 
 [ext_resource type="FontVariation" path="res://fonts/game_font.tres" id="5_font"]
+
+[ext_resource type="Texture2D" path="res://assets/ui/technology/tooltip.tres" id="6_tooltip"]
+[ext_resource type="Texture2D" path="res://assets/ui/technology/exit_normal.tres" id="7_exit"]
+[ext_resource type="Texture2D" path="res://assets/ui/technology/exit_hover.tres" id="8_hover"]
+[ext_resource type="PackedScene" path="res://scenes/ui/technology_backdrop.tscn" id="9_backdrop"]
+[ext_resource type="Shader" path="res://shaders/technology_art.gdshader" id="10_art"]
+[ext_resource type="Texture2D" path="res://assets/ui/candy_coin.png" id="11_coin"]
+[ext_resource type="Shader" path="res://shaders/technology_tooltip_ink.gdshader" id="12_tooltip_ink"]
+
+[sub_resource type="ShaderMaterial" id="TooltipInk"]
+shader = ExtResource("12_tooltip_ink")
+
+[sub_resource type="ShaderMaterial" id="Artwork"]
+resource_local_to_scene = true
+shader = ExtResource("10_art")
+shader_parameter/artwork = ExtResource("3_background")
 
 [sub_resource type="StyleBoxFlat" id="Panel"]
 content_margin_left = 22.0
@@ -28,7 +44,7 @@ content_margin_left = 16.0
 content_margin_top = 10.0
 content_margin_right = 16.0
 content_margin_bottom = 10.0
-bg_color = Color(0.88, 0.73, 0.39, 1)
+bg_color = Color(0.24, 0.02, 0.10, 1)
 corner_radius_top_left = 7
 corner_radius_top_right = 7
 corner_radius_bottom_left = 7
@@ -39,7 +55,7 @@ content_margin_left = 16.0
 content_margin_top = 10.0
 content_margin_right = 16.0
 content_margin_bottom = 10.0
-bg_color = Color(0.98, 0.85, 0.53, 1)
+bg_color = Color(0.43, 0.0, 0.14, 1)
 corner_radius_top_left = 7
 corner_radius_top_right = 7
 corner_radius_bottom_left = 7
@@ -74,9 +90,9 @@ corner_radius_bottom_right = 7
 default_font = ExtResource("5_font")
 default_font_size = 16
 Label/colors/font_color = Color(0.88, 0.92, 0.9, 1)
-Button/colors/font_color = Color(0.10, 0.15, 0.17, 1)
-Button/colors/font_hover_color = Color(0.10, 0.15, 0.17, 1)
-Button/colors/font_pressed_color = Color(0.10, 0.15, 0.17, 1)
+Button/colors/font_color = Color(0.95, 0.84, 0.90, 1)
+Button/colors/font_hover_color = Color(1, 1, 1, 1)
+Button/colors/font_pressed_color = Color(1, 1, 1, 1)
 Button/colors/font_disabled_color = Color(0.56, 0.65, 0.67, 1)
 Button/styles/normal = SubResource("Button")
 Button/styles/hover = SubResource("Hover")
@@ -90,6 +106,35 @@ OptionButton/colors/font_color = Color(0.85, 0.9, 0.86, 1)
 PopupMenu/styles/panel = SubResource("Panel")
 PopupMenu/colors/font_color = Color(0.85, 0.9, 0.86, 1)
 
+[sub_resource type="StyleBoxTexture" id="Tooltip"]
+texture = ExtResource("6_tooltip")
+texture_margin_left = 38.0
+texture_margin_top = 35.0
+texture_margin_right = 48.0
+texture_margin_bottom = 40.0
+content_margin_left = 28.0
+content_margin_top = 24.0
+content_margin_right = 30.0
+content_margin_bottom = 32.0
+
+[sub_resource type="StyleBoxTexture" id="Exit"]
+texture = ExtResource("7_exit")
+texture_margin_left = 15.0
+texture_margin_right = 15.0
+content_margin_left = 20.0
+content_margin_top = 12.0
+content_margin_right = 20.0
+content_margin_bottom = 12.0
+
+[sub_resource type="StyleBoxTexture" id="ExitHover"]
+texture = ExtResource("8_hover")
+texture_margin_left = 15.0
+texture_margin_right = 15.0
+content_margin_left = 20.0
+content_margin_top = 12.0
+content_margin_right = 20.0
+content_margin_bottom = 12.0
+
 [node name="TechnologyPage" type="Control"]
 layout_mode = 3
 anchors_preset = 15
@@ -100,58 +145,34 @@ grow_vertical = 2
 theme = SubResource("Theme")
 script = ExtResource("1_page")
 
-[node name="Background" parent="." instance=ExtResource("3_background")]
+[node name="Background" parent="." instance=ExtResource("9_backdrop")]
+material = SubResource("Artwork")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 
-[node name="Margin" type="MarginContainer" parent="."]
+[node name="Margin" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 20
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 16
+mouse_filter = 2
 
-[node name="Content" type="VBoxContainer" parent="Margin"]
-layout_mode = 2
-theme_override_constants/separation = 14
-
-[node name="Header" type="HBoxContainer" parent="Margin/Content"]
-layout_mode = 2
-theme_override_constants/separation = 24
-
-[node name="Title" type="Label" parent="Margin/Content/Header"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 27
-text = "科技树"
-
-[node name="Wallet" type="Label" parent="Margin/Content/Header"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.96, 0.81, 0.44, 1)
-theme_override_font_sizes/font_size = 22
-text = "0 糖果"
-
-[node name="Close" type="Button" parent="Margin/Content/Header"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.67, 0.77, 0.78, 1)
-theme_override_colors/font_hover_color = Color(0.95, 0.96, 0.9, 1)
-theme_override_styles/normal = SubResource("Empty")
-theme_override_styles/hover = SubResource("Empty")
-theme_override_styles/pressed = SubResource("Empty")
-text = "返回  ×"
-tooltip_text = "关闭 · Esc"
+[node name="Content" type="Control" parent="Margin"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
 
 [node name="Body" type="Control" parent="Margin/Content"]
-layout_mode = 2
-size_flags_vertical = 3
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
 
 [node name="Canvas" type="Control" parent="Margin/Content/Body"]
 unique_name_in_owner = true
@@ -160,132 +181,156 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 clip_contents = true
+mouse_filter = 1
 
 [node name="Graph" type="Control" parent="Margin/Content/Body/Canvas"]
 unique_name_in_owner = true
 layout_mode = 0
 offset_right = 1280.0
-offset_bottom = 660.0
+offset_bottom = 720.0
 mouse_filter = 2
 script = ExtResource("2_graph")
 
 [node name="Detail" type="PanelContainer" parent="Margin/Content/Body"]
-custom_minimum_size = Vector2(272, 0)
-layout_mode = 1
-anchor_left = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -272.0
-grow_horizontal = 0
-theme_override_styles/panel = SubResource("Panel")
+visible = false
+material = SubResource("TooltipInk")
+layout_mode = 0
+offset_right = 320.0
+mouse_filter = 2
+z_index = 5
+theme_override_styles/panel = SubResource("Tooltip")
 
 [node name="Content" type="VBoxContainer" parent="Margin/Content/Body/Detail"]
 layout_mode = 2
-theme_override_constants/separation = 16
+mouse_filter = 2
+theme_override_constants/separation = 9
 
-[node name="DetailIcon" type="Control" parent="Margin/Content/Body/Detail/Content"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(54, 54)
+[node name="Identity" type="HBoxContainer" parent="Margin/Content/Body/Detail/Content"]
 layout_mode = 2
-size_flags_horizontal = 0
+mouse_filter = 2
+theme_override_constants/separation = 10
+
+[node name="DetailIcon" type="Control" parent="Margin/Content/Body/Detail/Content/Identity"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(28, 32)
+layout_mode = 2
 mouse_filter = 2
 script = ExtResource("4_glyph")
-
-[node name="Identity" type="VBoxContainer" parent="Margin/Content/Body/Detail/Content"]
-layout_mode = 2
-theme_override_constants/separation = 6
+use_supplied_art = true
+ink = Color(1, 1, 1, 1)
 
 [node name="DetailTitle" type="Label" parent="Margin/Content/Body/Detail/Content/Identity"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_filter = 2
 theme_override_font_sizes/font_size = 24
-text = "吸取速率"
 
-[node name="DetailLevel" type="Label" parent="Margin/Content/Body/Detail/Content/Identity"]
+[node name="DetailLevel" type="Label" parent="Margin/Content/Body/Detail/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.60, 0.70, 0.73, 1)
-theme_override_font_sizes/font_size = 14
-
-[node name="DetailState" type="Label" parent="Margin/Content/Body/Detail/Content"]
-unique_name_in_owner = true
-layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.74, 0.66, 0.71, 1)
 theme_override_font_sizes/font_size = 14
 
 [node name="DetailEffect" type="Label" parent="Margin/Content/Body/Detail/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 19
+mouse_filter = 2
+theme_override_font_sizes/font_size = 17
 autowrap_mode = 3
+
+[node name="DetailGain" type="RichTextLabel" parent="Margin/Content/Body/Detail/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
 
 [node name="DetailNote" type="Label" parent="Margin/Content/Body/Detail/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.59, 0.69, 0.72, 1)
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.84, 0.74, 0.80, 1)
 theme_override_font_sizes/font_size = 14
 autowrap_mode = 3
 
 [node name="RequirementHeading" type="Label" parent="Margin/Content/Body/Detail/Content"]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
-theme_override_colors/font_color = Color(0.55, 0.64, 0.67, 1)
-theme_override_font_sizes/font_size = 13
-text = "前置科技"
+mouse_filter = 2
+text = "需要"
 
 [node name="Requirements" type="VBoxContainer" parent="Margin/Content/Body/Detail/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="Spacer" type="Control" parent="Margin/Content/Body/Detail/Content"]
-layout_mode = 2
-size_flags_vertical = 3
 mouse_filter = 2
 
-[node name="Cost" type="Label" parent="Margin/Content/Body/Detail/Content"]
+[node name="DetailPurchase" type="HBoxContainer" parent="Margin/Content/Body/Detail/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.96, 0.81, 0.44, 1)
-theme_override_font_sizes/font_size = 23
+mouse_filter = 2
+theme_override_constants/separation = 9
 
-[node name="Purchase" type="Button" parent="Margin/Content/Body/Detail/Content"]
+[node name="DetailState" type="Label" parent="Margin/Content/Body/Detail/Content/DetailPurchase"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
-text = "研究"
+mouse_filter = 2
+theme_override_font_sizes/font_size = 22
+
+[node name="DetailCoin" type="TextureRect" parent="Margin/Content/Body/Detail/Content/DetailPurchase"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("11_coin")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="DetailCost" type="Label" parent="Margin/Content/Body/Detail/Content/DetailPurchase"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 22
+
+[node name="Header" type="VBoxContainer" parent="Margin/Content"]
+layout_mode = 0
+anchor_top = 0.24
+anchor_bottom = 0.24
+offset_left = 54.0
+offset_right = 180.0
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="Close" type="Button" parent="Margin/Content/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("Exit")
+theme_override_styles/hover = SubResource("ExitHover")
+theme_override_styles/pressed = SubResource("ExitHover")
+text = "← 离开"
+tooltip_text = "Esc"
+
+[node name="Wallet" type="Label" parent="Margin/Content/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.89, 0.95, 1)
+theme_override_font_sizes/font_size = 18
+text = "0 糖果"
+horizontal_alignment = 1
 
 [node name="Footer" type="HBoxContainer" parent="Margin/Content"]
-layout_mode = 2
-theme_override_constants/separation = 24
-
-[node name="Purchased" type="Label" parent="Margin/Content/Footer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.57, 0.76, 0.68, 1)
-theme_override_font_sizes/font_size = 13
-text = "✓ 已研究"
-
-[node name="Available" type="Label" parent="Margin/Content/Footer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.96, 0.81, 0.44, 1)
-theme_override_font_sizes/font_size = 13
-text = "✦ 可购买"
-
-[node name="Unaffordable" type="Label" parent="Margin/Content/Footer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.61, 0.73, 0.80, 1)
-theme_override_font_sizes/font_size = 13
-text = "◇ 待积累"
-
-[node name="Locked" type="Label" parent="Margin/Content/Footer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.52, 0.61, 0.64, 1)
-theme_override_font_sizes/font_size = 13
-text = "○ 前置未满足"
+visible = false
+layout_mode = 0
+mouse_filter = 2
 
 [node name="Hint" type="Label" parent="Margin/Content/Footer"]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.42, 0.54, 0.58, 1)
-theme_override_font_sizes/font_size = 13
-text = "点击节点查看"
-horizontal_alignment = 2
+mouse_filter = 2
