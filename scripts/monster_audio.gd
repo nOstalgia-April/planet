@@ -34,8 +34,27 @@ const COMBO_FOR_MAX_PITCH: int = 10
 @export_range(0.1, 5.0, 0.1) var chatter_max_per_second: float = 1.2
 @export_range(0.0, 2.0, 0.05) var chatter_min_gap_seconds: float = 0.25
 
+# Spawn bursts: a nest can spit out up to ~18 monsters in one frame. Instead of
+# stacking one Trigger per monster, each burst plays a few staggered voices, and
+# a global cap keeps several nests bursting together from piling up.
+@export_range(1, 8, 1) var burst_max_voices: int = 3
+@export_range(0.0, 0.3, 0.01) var burst_stagger_seconds: float = 0.08
+@export_range(1, 16, 1) var trigger_max_per_window: int = 4
+@export_range(0.1, 2.0, 0.05) var trigger_window_seconds: float = 0.5
+# No two Trigger voices start closer than this; a voice pushed back further
+# than trigger_max_delay_seconds is dropped instead of arriving late.
+@export_range(0.0, 0.2, 0.01) var trigger_min_gap_seconds: float = 0.05
+@export_range(0.05, 1.0, 0.05) var trigger_max_delay_seconds: float = 0.3
+
 var _ready_to_play: bool = false
 var _chatter_cooldowns: Dictionary = {}
+var _clock: float = 0.0
+# species -> monsters spawned since the last frame.
+var _pending_spawns: Dictionary = {}
+# Staggered Trigger voices waiting to play: {"time": float, "species": int}.
+var _scheduled_triggers: Array[Dictionary] = []
+# Play times of recent Trigger voices, oldest first, for the global cap.
+var _recent_triggers: Array[float] = []
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
@@ -56,9 +75,57 @@ func nest_appeared(species: int) -> void:
 	_play_species(species, "nest_appear")
 
 
-# A monster leaves its nest hole.
+# A monster leaves its nest hole. Spawns are collected and played as bursts.
 func monster_spawned(species: int) -> void:
-	_play_species(species, "trigger")
+	if _ready_to_play and SPECIES_EVENTS.has(species):
+		_pending_spawns[species] = int(_pending_spawns.get(species, 0)) + 1
+
+
+func _process(delta: float) -> void:
+	_clock += delta
+	if not _pending_spawns.is_empty():
+		_schedule_spawn_bursts()
+	if not _scheduled_triggers.is_empty():
+		_play_due_triggers()
+
+
+func _schedule_spawn_bursts() -> void:
+	for species: int in _pending_spawns:
+		var voices: int = mini(int(_pending_spawns[species]), burst_max_voices)
+		for index: int in range(voices):
+			# Slight jitter keeps a burst from sounding like a metronome.
+			var jitter: float = (
+				0.0 if index == 0 else _rng.randf_range(0.0, burst_stagger_seconds * 0.3)
+			)
+			_scheduled_triggers.append(
+				{"time": _clock + index * burst_stagger_seconds + jitter, "species": species}
+			)
+	_pending_spawns.clear()
+
+
+func _play_due_triggers() -> void:
+	while (
+		not _recent_triggers.is_empty()
+		and _clock - _recent_triggers[0] >= trigger_window_seconds
+	):
+		_recent_triggers.pop_front()
+	var waiting: Array[Dictionary] = []
+	for trigger: Dictionary in _scheduled_triggers:
+		var due: float = float(trigger["time"])
+		if due > _clock:
+			waiting.append(trigger)
+		elif _recent_triggers.size() >= trigger_max_per_window:
+			continue  # Over the global cap: drop rather than pile up later.
+		elif (
+			not _recent_triggers.is_empty()
+			and _clock - _recent_triggers.back() < trigger_min_gap_seconds
+		):
+			if _clock - due < trigger_max_delay_seconds:
+				waiting.append(trigger)
+		else:
+			_recent_triggers.append(_clock)
+			_play_species(int(trigger["species"]), "trigger")
+	_scheduled_triggers = waiting
 
 
 # A monster was sucked up by the pipe: the pop and its candy sound together.

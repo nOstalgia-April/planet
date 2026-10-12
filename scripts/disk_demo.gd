@@ -20,6 +20,14 @@ const MonsterAudio = preload("res://scripts/monster_audio.gd")
 const PlanetAudio = preload("res://scripts/planet_audio.gd")
 const MonsterDepth = preload("res://scripts/monster_depth.gd")
 
+# Music stages drive the global FMOD parameter GameStage (0 / 1 / 2); its Seek
+# modulator in FMOD turns each step into a crossfade between the music layers.
+const MUSIC_STAGE_PARAMETER: String = "GameStage"
+# Stage 2 starts with the third base value breakthrough (900 candy, 5 -> 10).
+const MUSIC_MID_BASE_VALUE_LEVEL: int = 3
+# Stage 3 starts once full automation is researched (7500 candy).
+const MUSIC_LATE_GOVERNANCE_LEVEL: int = 3
+
 enum ToolMode { PIPE, NET }
 enum NetPhase { IDLE, CASTING, CLOSING, RESULT }
 
@@ -64,6 +72,7 @@ var _monster_audio: MonsterAudio
 var _planet_audio: PlanetAudio
 var _opening_nests: bool = false
 var _population_by_species: Dictionary = {}
+var _music_stage: int = 0
 
 @onready var run: PrototypeRun = $Run
 @onready var _world: Node2D = $World
@@ -101,6 +110,8 @@ func _ready() -> void:
 	assert(giant_slime_scene != null, "Fusion requires the reusable giant slime scene.")
 	assert(giant_harvest_scene != null, "Giant capture requires its harvest effect scene.")
 	GameAudio.play_music("event:/Mx_GamePlay")
+	# Leaving the game in the overview must not leave near-view sounds muted.
+	tree_exiting.connect(GameAudio.set_near_view_gain.bind(1.0))
 	_vacuum_audio = VacuumAudio.new()
 	_vacuum_audio.name = "VacuumAudio"
 	$Audio.add_child(_vacuum_audio)
@@ -112,6 +123,7 @@ func _ready() -> void:
 	$Audio.add_child(_planet_audio)
 	get_viewport().physics_object_picking = true
 	run.economy_changed.connect(_queue_hud_refresh)
+	run.economy_changed.connect(_update_music_stage)
 	run.base_value_changed.connect(_refresh_monster_rewards)
 	run.nest_added.connect(_on_nest_added)
 	run.nest_spawn_requested.connect(_on_nest_spawn_requested)
@@ -154,6 +166,7 @@ func _process(delta: float) -> void:
 	_layout.refresh_timers(run)
 	_advance_ground_mucus(delta)
 	_advance_monster_chatter(delta)
+	GameAudio.set_near_view_gain(_view.near_blend)
 	_planet_audio.update_rotation(delta, _view.is_dragging(), _world.rotation)
 	var world_position: Vector2 = _world.to_local(get_global_mouse_position())
 	var holding: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
@@ -548,9 +561,23 @@ func restart_run() -> void:
 	_opening_nests = true
 	run.start_run(spawn_positions)
 	_opening_nests = false
+	_music_stage = 0
+	GameAudio.set_global(MUSIC_STAGE_PARAMETER, 0.0)
 	_tool_pointer = _world.to_local(get_global_mouse_position())
 	_pipe.position = _tool_pointer
 	_refresh_hud()
+
+
+# Stages only move forward within a run; restart_run resets them.
+func _update_music_stage() -> void:
+	var stage: int = 0
+	if run.base_value_level >= MUSIC_MID_BASE_VALUE_LEVEL:
+		stage = 1
+	if run.governance_level >= MUSIC_LATE_GOVERNANCE_LEVEL:
+		stage = 2
+	if stage > _music_stage:
+		_music_stage = stage
+		GameAudio.set_global(MUSIC_STAGE_PARAMETER, float(stage))
 
 
 func _capture_at(delta: float, target: Vector2, active: bool) -> void:

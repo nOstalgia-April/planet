@@ -9,6 +9,16 @@ const BANK_ROOT: String = "res://bank/Desktop"
 const BANK_NAMES: PackedStringArray = ["Master.strings.bank", "Master.bank", "ProjectVacuum.bank"]
 
 const MAX_FADE_STEP: float = 1.0 / 30.0
+# Near-view gameplay sounds. They keep running in the planet overview but are
+# silenced there; music, UI and Earth_Rotate stay audible in both views.
+const NEAR_VIEW_PREFIXES: PackedStringArray = [
+	"event:/Monsters/",
+	"event:/Vacuum_",
+	"event:/Slime_",
+	"event:/SuckUp_Pop",
+	"event:/Candy_",
+	"event:/Drill_Crawl",
+]
 
 @export_range(0.0, 10.0, 0.05) var music_fade_in_seconds: float = 0.3
 @export_range(0.0, 10.0, 0.05) var music_fade_out_seconds: float = 0.3
@@ -16,6 +26,10 @@ const MAX_FADE_STEP: float = 1.0 / 30.0
 var banks_loaded: bool = false
 var _effects_elapsed: float = 0.0
 var _effect_descriptions: Array[FmodEventDescription] = []
+# Parallel to _effect_descriptions: whether each one is a near-view sound.
+var _effect_is_near_view: Array[bool] = []
+# 1 in the near view, 0 in the overview; follows the camera transition.
+var _near_view_gain: float = 1.0
 
 # Holding the references keeps the banks loaded; dropping them unloads.
 var _banks: Array[FmodBank] = []
@@ -41,8 +55,10 @@ func _ready() -> void:
 	banks_loaded = true
 	for bank: FmodBank in _banks:
 		for description: FmodEventDescription in bank.get_description_list():
-			if not description.get_path().begins_with("event:/Mx_"):
+			var path: String = description.get_path()
+			if not path.begins_with("event:/Mx_"):
 				_effect_descriptions.append(description)
+				_effect_is_near_view.append(_is_near_view(path))
 	GamePreferences.changed.connect(_apply_preferences)
 	_apply_preferences()
 
@@ -56,6 +72,7 @@ func _exit_tree() -> void:
 			instance.release()
 	_fading_out.clear()
 	_effect_descriptions.clear()
+	_effect_is_near_view.clear()
 	_banks.clear()
 	banks_loaded = false
 
@@ -88,9 +105,19 @@ func play(event_path: String, parameters: Dictionary = {}) -> void:
 		return
 	for parameter_name: String in parameters:
 		instance.set_parameter_by_name(parameter_name, float(parameters[parameter_name]))
-	instance.set_volume(GamePreferences.effects_volume)
+	instance.set_volume(_effects_gain(_is_near_view(event_path)))
 	instance.start()
 	instance.release()
+
+
+# Called every frame by the game scene with its near/overview blend. Silent
+# near-view events still play, so their FMOD logic (commands, parameters) runs.
+func set_near_view_gain(gain: float) -> void:
+	gain = clampf(gain, 0.0, 1.0)
+	if is_equal_approx(gain, _near_view_gain):
+		return
+	_near_view_gain = gain
+	_apply_effects_volume()
 
 
 func set_global(parameter_name: String, value: float) -> void:
@@ -105,7 +132,7 @@ func start_loop(event_path: String) -> FmodEvent:
 		return null
 	var instance: FmodEvent = FmodServer.create_event_instance(event_path)
 	if instance != null:
-		instance.set_volume(GamePreferences.effects_volume)
+		instance.set_volume(_effects_gain(_is_near_view(event_path)))
 		instance.start()
 	return instance
 
@@ -190,8 +217,21 @@ func _apply_preferences() -> void:
 
 func _apply_effects_volume() -> void:
 	# FMOD can spawn nested events (Vacuum_Loop) without a game-side play call.
-	for description: FmodEventDescription in _effect_descriptions:
+	for index: int in range(_effect_descriptions.size()):
+		var description: FmodEventDescription = _effect_descriptions[index]
 		if description.get_instance_count() == 0:
 			continue
+		var gain: float = _effects_gain(_effect_is_near_view[index])
 		for instance: FmodEvent in description.get_instance_list():
-			instance.set_volume(GamePreferences.effects_volume)
+			instance.set_volume(gain)
+
+
+func _effects_gain(near_view: bool) -> float:
+	return GamePreferences.effects_volume * (_near_view_gain if near_view else 1.0)
+
+
+func _is_near_view(event_path: String) -> bool:
+	for prefix: String in NEAR_VIEW_PREFIXES:
+		if event_path.begins_with(prefix):
+			return true
+	return false
