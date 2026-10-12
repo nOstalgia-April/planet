@@ -4,17 +4,14 @@
 [ext_resource type="Script" path="res://scripts/ui/technology_glyph.gd" id="2_glyph"]
 [ext_resource type="Texture2D" path="res://assets/ui/candy_coin.png" id="3_coin"]
 [ext_resource type="Texture2D" path="res://assets/ui/technology/hover_blob.tres" id="4_ink"]
-[ext_resource type="Shader" path="res://shaders/technology_node_ink.gdshader" id="5_ink"]
-
-[sub_resource type="ShaderMaterial" id="InkMaterial"]
-resource_local_to_scene = true
-shader = ExtResource("5_ink")
+[ext_resource type="Texture2D" path="res://assets/ui/technology/halo.tres" id="5_halo"]
+[ext_resource type="Material" path="res://resources/candy_grain_outline.tres" id="6_outline"]
 
 [sub_resource type="StyleBoxEmpty" id="Empty"]
 
 [node name="TechnologyNode" type="Button"]
 offset_right = 120.0
-offset_bottom = 146.0
+offset_bottom = 118.0
 mouse_default_cursor_shape = 2
 theme_override_styles/normal = SubResource("Empty")
 theme_override_styles/hover = SubResource("Empty")
@@ -22,9 +19,19 @@ theme_override_styles/pressed = SubResource("Empty")
 theme_override_styles/focus = SubResource("Empty")
 script = ExtResource("1_node")
 
-[node name="InkPlate" type="TextureRect" parent="."]
+[node name="Halo" type="TextureRect" parent="."]
 show_behind_parent = true
-material = SubResource("InkMaterial")
+offset_left = 10.0
+offset_top = -2.0
+offset_right = 110.0
+offset_bottom = 98.0
+mouse_filter = 2
+texture = ExtResource("5_halo")
+expand_mode = 1
+
+[node name="FocusInk" type="TextureRect" parent="."]
+visible = false
+show_behind_parent = true
 offset_left = -6.0
 offset_top = -8.0
 offset_right = 126.0
@@ -44,7 +51,14 @@ script = ExtResource("2_glyph")
 
 [node name="Title" type="Label" parent="."]
 visible = false
+offset_left = -35.0
+offset_top = -40.0
+offset_right = 155.0
+offset_bottom = -12.0
 mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.94, 0.97, 1)
+theme_override_font_sizes/font_size = 20
+horizontal_alignment = 1
 
 [node name="Level" type="Label" parent="."]
 offset_left = 65.0
@@ -60,14 +74,16 @@ horizontal_alignment = 2
 text = "0/1"
 
 [node name="Price" type="HBoxContainer" parent="."]
-offset_top = 120.0
+offset_top = 92.0
 offset_right = 120.0
-offset_bottom = 144.0
+offset_bottom = 116.0
 mouse_filter = 2
 alignment = 1
 theme_override_constants/separation = 4
 
 [node name="Coin" type="TextureRect" parent="Price"]
+texture_filter = 4
+material = ExtResource("6_outline")
 custom_minimum_size = Vector2(21, 21)
 layout_mode = 2
 mouse_filter = 2

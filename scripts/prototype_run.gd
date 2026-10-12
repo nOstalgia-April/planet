@@ -47,6 +47,7 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	assert(spawn_positions.size() >= settings.initial_nests, "The opening needs two nest sites.")
 	assert(settings.unlocked_species_weights.size() == 2)
 	assert(settings.drill_population_limits.size() == 3)
+	assert(settings.drill_discovery_decay > 0.0 and settings.drill_discovery_decay < 1.0)
 	assert(settings.drill_spawn_interval > settings.spawn_interval_jitter)
 	assert(
 		settings.drill_reward_weights.size() == 3 and settings.drill_reward_multipliers.size() == 3
@@ -273,6 +274,7 @@ func upgrade_nest(nest_id: int) -> bool:
 		completed_nests += 1
 	nest_changed.emit(nest)
 	economy_changed.emit()
+	_check_completion()
 	return true
 
 
@@ -401,70 +403,59 @@ func get_technology_description(id: String) -> String:
 			var next_level: int = mini(
 				base_value_level + 1, settings.base_value_multipliers.size() - 1
 			)
-			var next_value: int = (
+			return _upgrade_percent(
+				"糖果收益",
+				get_base_value(),
 				settings.slime_reward * settings.base_value_multipliers[next_level]
-			)
-			return (
-				"史莱姆 %d → %d 糖果\n黏液怪 %d → %d 糖果"
-				% [get_base_value(), next_value, get_base_value() * 2, next_value * 2]
 			)
 		"pipe":
 			var next_level: int = mini(pipe_level + 1, settings.pipe_capture_seconds.size() - 1)
-			return (
-				"每只 %s 秒 → %s 秒"
-				% [
-					String.num(get_pipe_capture_seconds(), 3),
-					String.num(settings.pipe_capture_seconds[next_level], 3)
-				]
+			return _upgrade_percent(
+				"吸取速率",
+				1.0 / get_pipe_capture_seconds(),
+				1.0 / settings.pipe_capture_seconds[next_level]
 			)
 		"net_unlock":
-			return "解锁捕网 · 每次 %d 只" % settings.net_capacities[0]
+			return "解锁捕网，一次捕获范围内的多个个体。"
 		"net_capacity":
 			var next_level: int = mini(net_level + 1, settings.net_capacities.size() - 1)
-			return (
-				"一次 %d 只 → %d 只"
-				% [settings.net_capacities[net_level], settings.net_capacities[next_level]]
-			)
+			return _upgrade_percent("捕网容量", get_net_capacity(), settings.net_capacities[next_level])
 		"cultivation":
-			return "开放各巢穴的培育建设"
+			return "可在巢穴中进行培育升级。"
 		"automation":
-			return "开放各巢穴的自动化建设"
+			return "可将巢穴改为自动产糖，建成后停止产怪。"
 		"combo_unlock":
-			return (
-				"连续吸入 %d 只后，捕获收益 +%d%%"
-				% [settings.combo_target, settings.combo_reward_percentages[1]]
-			)
+			return "连续吸入后，捕获收益 +%d%%。" % settings.combo_reward_percentages[1]
 		"combo_reward":
-			var next_level: int = mini(combo_level + 1, settings.combo_upgrade_costs.size())
-			return (
-				"连击收益 +%d%% → +%d%%"
-				% [get_combo_reward_percent(), settings.combo_reward_percentages[next_level]]
+			var next_level: int = mini(
+				combo_level + 1, settings.combo_reward_percentages.size() - 1
+			)
+			return _upgrade_percent(
+				"连击总收益",
+				100 + get_combo_reward_percent(),
+				100 + settings.combo_reward_percentages[next_level]
 			)
 		"combo_interval":
 			var next_level: int = mini(
 				combo_interval_level + 1, settings.combo_interval_bonus_seconds.size() - 1
 			)
-			return (
-				"续接间隔 %s → %s 秒"
-				% [
-					String.num(get_combo_window_seconds(), 1),
-					String.num(
-						(
-							settings.combo_window_seconds
-							+ settings.combo_interval_bonus_seconds[next_level]
-						),
-						1
-					)
-				]
+			return _upgrade_percent(
+				"连击续接时间",
+				get_combo_window_seconds(),
+				settings.combo_window_seconds + settings.combo_interval_bonus_seconds[next_level]
 			)
 		"valuable":
-			return (
-				"所有巢穴每 %d 只新生个体出现 1 只金色个体 · 糖果 ×%d"
-				% [settings.valuable_spawn_every, settings.valuable_reward_multiplier]
-			)
+			return "新生个体中出现高价值个体，其收益 +%d%%。" % ((settings.valuable_reward_multiplier - 1) * 100)
 		"giant":
-			return "屏幕外活动范围重叠的巢穴，每 %d 只未融合个体合成一只巨型，收获全部糖果。" % settings.giant_fusion_threshold
+			return "屏幕外相邻巢穴的个体可融合为巨型，保留全部糖果收益。"
 	return ""
+
+
+# Compare the next tier with the current tier; rates use the inverse of duration.
+func _upgrade_percent(label: String, current: float, next: float) -> String:
+	if is_equal_approx(current, next):
+		return ""
+	return "%s +%s%%" % [label, String.num((next / current - 1.0) * 100.0, 1).trim_suffix(".0")]
 
 
 func get_nest_upgrade_requirement(nest_id: int) -> String:
@@ -737,7 +728,7 @@ func _check_completion() -> void:
 	if is_complete or nests.is_empty():
 		return
 	for nest: NestState in nests:
-		if nest.alive_slimes > 0:
+		if not nest.is_tamed or nest.alive_slimes > 0:
 			return
 	is_complete = true
 	_nest_roll_clock = 0.0
@@ -787,7 +778,7 @@ func _advance_nest_roll(delta: float) -> void:
 
 func _choose_spawn_species() -> int:
 	var total_weight: float = 0.0
-	var drill_weight: float = settings.drill_discovery_weight if can_discover_drill_nest() else 0.0
+	var drill_weight: float = get_drill_discovery_weight()
 	total_weight += drill_weight
 	for weight: float in settings.unlocked_species_weights:
 		total_weight += weight
@@ -800,11 +791,21 @@ func _choose_spawn_species() -> int:
 
 
 func can_discover_drill_nest() -> bool:
+	return get_drill_nest_count() < settings.drill_nest_limit
+
+
+func get_drill_discovery_weight() -> float:
+	if not can_discover_drill_nest():
+		return 0.0
+	return settings.drill_discovery_weight * pow(settings.drill_discovery_decay, get_drill_nest_count())
+
+
+func get_drill_nest_count() -> int:
 	var count: int = 0
 	for nest: NestState in nests:
 		if nest.species == NestState.Species.DRILL:
 			count += 1
-	return count < settings.drill_nest_limit
+	return count
 
 
 func roll_drill_treasure() -> int:

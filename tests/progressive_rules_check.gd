@@ -24,6 +24,7 @@ func _run_checks() -> void:
 	_check_continuous_discovery()
 	_check_nest_discovery_cooldown()
 	_check_governance_roll_weight()
+	_check_completion_requires_automation()
 	_check_existing_nests_completion()
 	if _failures.is_empty():
 		print(
@@ -528,6 +529,50 @@ func _check_governance_roll_weight() -> void:
 	run.free()
 
 
+func _check_completion_requires_automation() -> void:
+	for species: int in [NestState.Species.SLIME, NestState.Species.MUCUS, NestState.Species.DRILL]:
+		var run: PrototypeRun = _create_run()
+		_goal_count = 0
+		run.goal_completed.connect(_count_goal.bind(run))
+		run.get_nest(1).species = species as NestState.Species
+		run.get_nest(1).alive_slimes = 1
+		_check(run.collect_slime(1), "The opening's last monster can be captured.")
+		_check(
+			not run.is_complete and _goal_count == 0,
+			"Clearing any species before automation never completes the run."
+		)
+		run.advance(10.0)
+		_check(run.get_nest(1).alive_slimes > 0, "An early clear must allow monsters to respawn.")
+		_clear_population(run)
+		run.candy = 100000
+		_enable_full_governance(run)
+		run.upgrade_net()
+		run.get_nest(2).alive_slimes = 1
+		_check(run.collect_net_batch([2]) > 0, "The net clears the last ordinary monster.")
+		_check(
+			not run.is_complete and _goal_count == 0,
+			"Automation research alone does not permit a net-clear victory."
+		)
+		for _stage: int in range(3):
+			run.upgrade_nest(1)
+		for _stage: int in range(2):
+			run.upgrade_nest(2)
+		run.get_nest(2).alive_slimes = 1
+		run.collect_slime(2)
+		_check(
+			not run.is_complete and _goal_count == 0,
+			"One unfinished nest prevents victory even when the field is empty."
+		)
+		run.upgrade_nest(2)
+		_check(
+			run.is_complete and _goal_count == 1,
+			"Automating the last empty nest completes the run exactly once."
+		)
+		run.advance(100.0)
+		_check(_goal_count == 1, "Later updates never repeat victory.")
+		run.free()
+
+
 func _check_existing_nests_completion() -> void:
 	var locked_run: PrototypeRun = _create_run(SETTINGS.nest_initial_delay_seconds)
 	locked_run.candy = 100000
@@ -535,16 +580,13 @@ func _check_existing_nests_completion() -> void:
 	for nest_id: int in [1, 2]:
 		for _index: int in range(3):
 			locked_run.upgrade_nest(nest_id)
-	_check(not locked_run.is_complete, "Construction on an empty opening is not a capture victory.")
-	locked_run.get_nest(1).alive_slimes = 1
-	locked_run.collect_slime(1)
 	_check(
 		(
 			locked_run.is_complete
 			and not locked_run.net_unlocked
 			and locked_run._nest_initial_delay_remaining == 0.0
 		),
-		"Clearing the last monster completes the run without a mandatory tool-unlock quota."
+		"Automating every empty nest completes the run without a mandatory tool-unlock quota."
 	)
 	locked_run.upgrade_net()
 	_check(

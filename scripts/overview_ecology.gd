@@ -9,6 +9,7 @@ const Layout = preload("res://scripts/overview_bubble_layout.gd")
 @export var slime_color: Color = Color("f43187")
 @export var mucus_color: Color = Color("397cf5")
 @export var neutral_color: Color = Color("625e69")
+@export var external_backdrop_palette: bool = false
 @export_range(1.0, 12.0, 0.5) var transition_speed: float = 7.0
 @export_group("Distribution")
 @export_range(0.05, 0.15, 0.001) var minimum_radius_ratio: float = Layout.REFERENCE_MINIMUM_RATIO
@@ -242,7 +243,8 @@ func _process(delta: float) -> void:
 		update_hover(get_viewport().get_mouse_position(), get_window().has_focus())
 	var blend: float = 1.0 - exp(-delta * transition_speed)
 	backdrop_color = backdrop_color.lerp(_target_color, blend)
-	_backdrop.color = backdrop_color.darkened(0.84)
+	if not external_backdrop_palette:
+		_backdrop.color = backdrop_color.darkened(0.84)
 	_sync_geometry(blend, delta)
 	for old: Bubble in _retiring.duplicate():
 		old.opacity = lerpf(old.opacity, 0.0, blend)

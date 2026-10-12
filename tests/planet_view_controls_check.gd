@@ -299,23 +299,24 @@ func _check_mode_drag_input(demo: DemoScript) -> void:
 	)
 	_mouse_motion(rejected, MOUSE_BUTTON_MASK_RIGHT)
 	_check(camera.is_dragging(), "an accepted drag continues across the other visual region")
-	var button: Button = demo._layout.get_node("%QuickPipeButton") as Button
+	var button: Button = demo._layout._tool_dock.pipe_button
 	var button_center: Vector2 = button.get_global_rect().get_center()
 	_mouse_motion(button_center, MOUSE_BUTTON_MASK_RIGHT)
 	_check(camera.is_dragging(), "an active drag continues across interface controls")
 	_mouse_button(button_center, MOUSE_BUTTON_RIGHT, false)
 	_check(not camera.is_dragging(), "releasing over interface controls always ends the drag")
-	demo._layout._hide_quick_upgrades()
+	demo._layout._tool_dock.suppress(true)
 
 
 func _check_ui_and_focus_gates(demo: DemoScript) -> void:
 	var camera: PlanetViewController = demo._view
-	for name: String in ["QuickPipeButton", "QuickNetButton", "TechnologyButton"]:
-		var button: Button = demo._layout.get_node("%" + name) as Button
+	for button: Button in [demo._quick_pipe_button, demo._quick_net_button, demo._layout._technology_button]:
+		if not button.is_visible_in_tree():
+			continue
 		_mouse_button(button.get_global_rect().get_center(), MOUSE_BUTTON_RIGHT, true)
-		_check(not camera.is_dragging(), "interface button " + name + " rejects drag starts")
+		_check(not camera.is_dragging(), "interface button " + button.name + " rejects drag starts")
 		_mouse_button(button.get_global_rect().get_center(), MOUSE_BUTTON_RIGHT, false)
-	demo._layout.get_node("%TechnologyButton").pressed.emit()
+	demo._layout._technology_button.pressed.emit()
 	_mouse_button(_drag_start(demo), MOUSE_BUTTON_RIGHT, true)
 	_check(not camera.is_dragging(), "an open technology panel blocks mode-specific rotation")
 	_mouse_button(_drag_start(demo), MOUSE_BUTTON_RIGHT, false)

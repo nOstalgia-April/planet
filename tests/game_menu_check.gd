@@ -43,7 +43,7 @@ func _run() -> void:
 		_check(
 			not layout.has_node("Legacy") and not layout.has_node("Goal"), "obsolete HUD removed"
 		)
-		_check(not layout.get_node("PipeUpgrade").visible, "upgrade popup starts hidden")
+		_check(not layout._tool_dock.upgrades[0].visible, "upgrade popup starts hidden")
 		await _capture("play", resolution)
 		await _click(menu.get_node("Toolbar/Pause"))
 		_check(get_tree().paused, "pause button stops scene tree")

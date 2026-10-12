@@ -1,0 +1,293 @@
+[gd_scene load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/bottom_dock.gd" id="script"]
+[ext_resource type="Shader" path="res://shaders/dock_upgrade.gdshader" id="shader"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock/pipe_slot.tres" id="pipe_slot"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock/net_slot.tres" id="net_slot"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock/technology.tres" id="technology"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock/upgrade.tres" id="upgrade"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock/vacuum.tres" id="vacuum"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock/badge.tres" id="badge"]
+[ext_resource type="Texture2D" path="res://assets/ui/technology/net.tres" id="net"]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/dock_selection.tscn" id="selection"]
+
+[ext_resource type="Shader" path="res://shaders/dock_backing.gdshader" id="backing_shader"]
+
+[sub_resource type="ShaderMaterial" id="backing_material"]
+shader = ExtResource("backing_shader")
+
+[sub_resource type="ShaderMaterial" id="material"]
+shader = ExtResource("shader")
+
+[sub_resource type="StyleBoxFlat" id="tooltip_panel"]
+bg_color = Color(0.04, 0.035, 0.045, 0.98)
+content_margin_left = 12.0
+content_margin_top = 9.0
+content_margin_right = 12.0
+content_margin_bottom = 9.0
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+
+[sub_resource type="Theme" id="dock_theme"]
+TooltipPanel/styles/panel = SubResource("tooltip_panel")
+TooltipLabel/colors/font_color = Color(1, 1, 1, 1)
+TooltipLabel/font_sizes/font_size = 14
+
+[node name="ToolDock" type="Control"]
+process_mode = 1
+layout_mode = 0
+mouse_filter = 2
+script = ExtResource("script")
+theme = SubResource("dock_theme")
+
+[node name="Pipe" type="Control" parent="."]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 190.0
+offset_bottom = 76.0
+mouse_filter = 2
+
+[node name="Reveal" type="Control" parent="Pipe"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = -30.0
+offset_right = 178.0
+offset_bottom = 36.0
+mouse_filter = 2
+clip_contents = true
+
+[node name="Purchase" type="Button" parent="Pipe/Reveal"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 166.0
+offset_bottom = 36.0
+focus_mode = 0
+
+[node name="Backing" type="TextureRect" parent="Pipe/Reveal/Purchase"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 166.0
+offset_bottom = 72.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("upgrade")
+material = SubResource("material")
+
+[node name="Caption" type="Label" parent="Pipe/Reveal/Purchase"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 7.0
+offset_right = 158.0
+offset_bottom = 34.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1,1,1,1)
+theme_override_font_sizes/font_size = 14
+text = "2 级 · 10 糖果"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="Pipe"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 190.0
+offset_bottom = 76.0
+toggle_mode = true
+
+[node name="Backing" type="TextureRect" parent="Pipe/Button"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 190.0
+offset_bottom = 76.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("pipe_slot")
+material = SubResource("backing_material")
+
+[node name="Icon" type="TextureRect" parent="Pipe/Button"]
+layout_mode = 0
+offset_left = 38.0
+offset_top = 21.0
+offset_right = 72.0
+offset_bottom = 55.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("vacuum")
+stretch_mode = 5
+
+[node name="Detail" type="Label" parent="Pipe/Button"]
+layout_mode = 0
+offset_left = 87.0
+offset_top = 28.0
+offset_right = 171.0
+offset_bottom = 48.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1,1,1,1)
+theme_override_font_sizes/font_size = 13
+
+[node name="Status" type="Label" parent="Pipe/Button"]
+visible = false
+layout_mode = 0
+offset_left = 87.0
+offset_top = 40.0
+offset_right = 171.0
+offset_bottom = 58.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+
+[node name="Selected" parent="Pipe/Button" instance=ExtResource("selection")]
+layout_mode = 0
+texture = ExtResource("pipe_slot")
+selected = false
+
+[node name="Net" type="Control" parent="."]
+layout_mode = 0
+offset_left = 410.0
+offset_top = 0.0
+offset_right = 600.0
+offset_bottom = 76.0
+mouse_filter = 2
+
+[node name="Reveal" type="Control" parent="Net"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = -30.0
+offset_right = 178.0
+offset_bottom = 36.0
+mouse_filter = 2
+clip_contents = true
+
+[node name="Purchase" type="Button" parent="Net/Reveal"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 166.0
+offset_bottom = 36.0
+focus_mode = 0
+
+[node name="Backing" type="TextureRect" parent="Net/Reveal/Purchase"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 166.0
+offset_bottom = 72.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("upgrade")
+material = SubResource("material")
+
+[node name="Caption" type="Label" parent="Net/Reveal/Purchase"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 7.0
+offset_right = 158.0
+offset_bottom = 34.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1,1,1,1)
+theme_override_font_sizes/font_size = 14
+text = "2 级 · 10 糖果"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="Net"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 190.0
+offset_bottom = 76.0
+toggle_mode = true
+
+[node name="Backing" type="TextureRect" parent="Net/Button"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 190.0
+offset_bottom = 76.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("net_slot")
+material = SubResource("backing_material")
+
+[node name="Icon" type="TextureRect" parent="Net/Button"]
+layout_mode = 0
+offset_left = 38.0
+offset_top = 21.0
+offset_right = 72.0
+offset_bottom = 55.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("net")
+stretch_mode = 5
+
+[node name="Detail" type="Label" parent="Net/Button"]
+layout_mode = 0
+offset_left = 87.0
+offset_top = 28.0
+offset_right = 171.0
+offset_bottom = 48.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1,1,1,1)
+theme_override_font_sizes/font_size = 13
+
+[node name="Status" type="Label" parent="Net/Button"]
+visible = false
+layout_mode = 0
+offset_left = 87.0
+offset_top = 40.0
+offset_right = 171.0
+offset_bottom = 58.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+
+[node name="Selected" parent="Net/Button" instance=ExtResource("selection")]
+layout_mode = 0
+texture = ExtResource("net_slot")
+selected = false
+
+[node name="Technology" type="Button" parent="."]
+layout_mode = 0
+offset_left = 195.0
+offset_top = 0.0
+offset_right = 405.0
+offset_bottom = 76.0
+tooltip_text = "科技树"
+
+[node name="Backing" type="TextureRect" parent="Technology"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 210.0
+offset_bottom = 76.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("technology")
+material = SubResource("backing_material")
+
+[node name="Caption" type="Label" parent="Technology"]
+layout_mode = 0
+offset_right = 210.0
+offset_bottom = 76.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "科技"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Badge" type="TextureRect" parent="Technology"]
+layout_mode = 0
+offset_left = 192.0
+offset_top = -8.0
+offset_right = 215.0
+offset_bottom = 16.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("badge")
+visible = false

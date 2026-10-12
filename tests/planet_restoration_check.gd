@@ -192,11 +192,11 @@ func _check_victory() -> void:
 	run.get_nest(1).alive_slimes = 1
 	run.collect_slime(1)
 	_check(
-		run.is_complete and run.completed_nests == 0 and _goals == 2,
-		"last drill capture wins without an automation quota"
+		not run.is_complete and run.completed_nests == 0 and _goals == 1,
+		"last drill capture cannot win before all nests are automated"
 	)
 	run.advance(20.0)
-	_check(run.get_species_population(0) == 0, "untamed nests stop production after victory")
+	_check(run.get_species_population(0) > 0, "untamed nests keep producing after an early clear")
 	run.start_run(positions)
 	_check(not run.is_complete and run.completed_nests == 0, "restart resets victory")
 	run.free()

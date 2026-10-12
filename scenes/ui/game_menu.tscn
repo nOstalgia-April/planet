@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/game_menu.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/menu_icon_button.gd" id="2"]
@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" path="res://assets/ui/game_menu/settings.tres" id="settings"]
 [ext_resource type="Texture2D" path="res://assets/ui/game_menu/close.tres" id="close"]
 [ext_resource type="Font" path="res://fonts/game_font.tres" id="font"]
+[ext_resource type="PackedScene" path="res://scenes/ui/menu_brush.tscn" id="brush"]
 
 [sub_resource type="StyleBoxFlat" id="panel"]
 bg_color = Color(0.065, 0.082, 0.24, 0.98)
@@ -103,6 +104,8 @@ mouse_default_cursor_shape = 2
 script = ExtResource("2")
 glyph = ExtResource("pause")
 
+[node name="Brush" parent="Toolbar/Pause" instance=ExtResource("brush")]
+
 [node name="Music" type="Button" parent="Toolbar"]
 custom_minimum_size = Vector2(66, 64)
 layout_mode = 2
@@ -110,12 +113,16 @@ mouse_default_cursor_shape = 2
 script = ExtResource("2")
 glyph = ExtResource("music")
 
+[node name="Brush" parent="Toolbar/Music" instance=ExtResource("brush")]
+
 [node name="Settings" type="Button" parent="Toolbar"]
 custom_minimum_size = Vector2(66, 64)
 layout_mode = 2
 mouse_default_cursor_shape = 2
 script = ExtResource("2")
 glyph = ExtResource("settings")
+
+[node name="Brush" parent="Toolbar/Settings" instance=ExtResource("brush")]
 
 [node name="PausedLabel" type="Label" parent="Toolbar/Pause"]
 visible = false
@@ -181,6 +188,8 @@ tooltip_text = "关闭 · Esc"
 script = ExtResource("2")
 glyph = ExtResource("close")
 glyph_size = 22.0
+
+[node name="Brush" parent="Modal/Center/Panel/Content/Header/CloseSettings" instance=ExtResource("brush")]
 
 [node name="SettingsBody" type="VBoxContainer" parent="Modal/Center/Panel/Content"]
 unique_name_in_owner = true

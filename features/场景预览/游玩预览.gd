@@ -2,6 +2,7 @@ extends "res://scripts/disk_demo.gd"
 
 const BlendedPlanetArt = preload("res://scripts/场景动画/双视角星球.gd")
 const PlanetRestoration = preload("res://scripts/planet_restoration.gd")
+const PopulationPalette = preload("res://scripts/population_palette.gd")
 
 @export var start_in_overview: bool = false
 
@@ -9,6 +10,7 @@ const PlanetRestoration = preload("res://scripts/planet_restoration.gd")
 @onready var _overview_background: Node2D = $美术背景/地壳裁剪/画布/全景背景
 @onready var _planet_art: BlendedPlanetArt = $World/PlanetSurface/星球画面
 @onready var _restoration: PlanetRestoration = $PlanetRestoration
+@onready var _population_palette: PopulationPalette = $PopulationPalette
 
 
 func _ready() -> void:
@@ -27,6 +29,7 @@ func _ready() -> void:
 func restart_run() -> void:
 	_restoration.reset()
 	super.restart_run()
+	_population_palette.reset()
 
 
 func _on_restoration_started() -> void:

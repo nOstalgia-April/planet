@@ -193,7 +193,7 @@ func _check_page() -> void:
 
 
 func _check_technology_badge(demo: DemoScript) -> void:
-	var badge: Label = demo._layout._technology_badge
+	var badge: TextureRect = demo._layout._technology_badge
 	_check(not badge.visible, "empty wallet hides the technology badge")
 	demo.run.candy = demo.run.get_technology_cost("pipe") - 1
 	demo.run.economy_changed.emit()
@@ -202,7 +202,11 @@ func _check_technology_badge(demo: DemoScript) -> void:
 	demo.run.candy += 1
 	demo.run.economy_changed.emit()
 	await _settle()
-	_check(badge.visible, "exact purchase cost shows the technology badge")
+	_check(not badge.visible, "owned pipe upgrades do not show the discovery badge")
+	demo.run.candy = demo.run.get_technology_cost("cultivation")
+	demo.run.economy_changed.emit()
+	await _settle()
+	_check(badge.visible, "first-time cultivation unlock shows the badge")
 	if _capture:
 		for resolution: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
 			root.size = resolution
@@ -212,6 +216,7 @@ func _check_technology_badge(demo: DemoScript) -> void:
 	_check(demo._layout.is_technology_open(), "badge passes clicks to the technology button")
 	demo._layout.close_panels()
 	_check(badge.visible, "viewing the tree does not dismiss an available purchase")
+	demo.run.candy = demo.run.get_technology_cost("pipe")
 	demo._layout.quick_upgrade_requested.emit(0)
 	await _settle()
 	_check(not badge.visible, "spending the wallet on a quick upgrade clears the badge")

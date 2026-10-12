@@ -1,6 +1,7 @@
 extends PrototypeSlime
 
 const ItemArt = preload("res://scripts/物品动画/动画物件.gd")
+const CAPTURE_SECONDS: float = 0.5
 static var _visible_texture_bounds: Dictionary[Texture2D, Rect2] = {}
 enum Phase { LAUNCH, DIVE, TRAVEL, PAUSE, EMERGE, EXPOSED }
 
@@ -71,6 +72,10 @@ func can_capture() -> bool:
 
 func can_net_capture() -> bool:
 	return false
+
+
+func get_capture_seconds(_base_seconds: float) -> float:
+	return CAPTURE_SECONDS
 
 
 func can_fuse() -> bool:

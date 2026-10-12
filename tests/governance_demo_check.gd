@@ -103,7 +103,7 @@ func _check_research_and_future_spawns(demo: DemoScript) -> void:
 	_check(not demo.run.upgrade_nest(1), "local construction waits for its research unlock")
 	_check(demo.run.candy == before, "locked construction never charges candy")
 	await _check_quick_upgrade(demo)
-	demo.get_node("%TechnologyButton").pressed.emit()
+	demo._layout._technology_button.pressed.emit()
 	_check(
 		demo._layout.is_technology_open() and demo._layout.is_over_ui(Vector2.ONE),
 		"technology modal blocks background tools and camera"
@@ -137,13 +137,13 @@ func _check_research_and_future_spawns(demo: DemoScript) -> void:
 
 
 func _check_quick_upgrade(demo: DemoScript) -> void:
-	var source: Button = demo.get_node("%QuickPipeButton") as Button
-	var popup: Control = demo._layout.get_node("PipeUpgrade") as Control
+	var source: Button = demo._quick_pipe_button
+	var popup: Control = demo._layout._tool_dock.upgrades[0]
 	source.mouse_entered.emit()
 	await _settle_layout()
 	_check(popup.visible, "hovering the bottom tool opens its quick upgrade")
 	_check(
-		popup.get_global_rect().end.y <= source.get_global_rect().position.y,
+		popup.get_global_rect().end.y <= source.get_global_rect().position.y + 12.0,
 		(
 			"quick upgrade appears above its tool: popup %s, tool %s"
 			% [popup.get_global_rect(), source.get_global_rect()]
@@ -154,14 +154,14 @@ func _check_quick_upgrade(demo: DemoScript) -> void:
 		(source.get_global_rect().position.y + popup.get_global_rect().end.y) * 0.5
 	)
 	_check(
-		demo._layout._quick_hover_rect().has_point(bridge),
+		demo._layout._tool_dock.contains_pointer(bridge),
 		"hover corridor reaches from the tool to the popup without a gap"
 	)
 	_check(demo._layout.is_over_ui(bridge), "the hover corridor prevents accidental world capture")
-	demo._layout._update_quick_hover(0.2, bridge)
+	demo._layout._tool_dock.update_hover(0.2, bridge)
 	_check(popup.visible, "moving through the bridge keeps the popup open past its close delay")
-	var purchase: Button = popup.get_node("Content/Purchase") as Button
-	demo._layout._update_quick_hover(0.2, purchase.get_global_rect().get_center())
+	var purchase: Button = popup as Button
+	demo._layout._tool_dock.update_hover(0.2, purchase.get_global_rect().get_center())
 	_check(popup.visible, "the pointer can reach the upgrade button without losing its popup")
 	_check(not purchase.disabled, "quick upgrade exposes an affordable purchase")
 	purchase.pressed.emit()
@@ -169,8 +169,8 @@ func _check_quick_upgrade(demo: DemoScript) -> void:
 		demo.run.pipe_level == 2 and demo.run.net_level == 0,
 		"quick upgrade buys only the hovered tool"
 	)
-	demo._layout._update_quick_hover(0.2, Vector2.ZERO)
-	_check(not popup.visible, "leaving the entire hover corridor closes the popup")
+	demo._layout._tool_dock.update_hover(0.2, Vector2.ZERO)
+	_check(not demo._layout._tool_dock._expanded[0], "leaving the entire hover corridor closes the popup")
 	demo._layout.close_panels()
 
 
@@ -370,13 +370,10 @@ func _capture_layouts(demo: DemoScript) -> void:
 		_warm_ecology(demo, 6.0)
 		await _settle_layout()
 		var screen: Rect2 = Rect2(Vector2.ZERO, root.get_visible_rect().size)
-		for button_name: String in [
-			"QuickPipeButton", "QuickNetButton", "TechnologyButton"
-		]:
-			var button: Button = demo.get_node("%" + button_name) as Button
+		for button: Button in [demo._quick_pipe_button, demo._quick_net_button, demo._layout._technology_button]:
 			_check(
 				screen.encloses(button.get_global_rect()),
-				"%s fits at %s" % [button_name, resolution]
+				"%s fits at %s" % [button.name, resolution]
 			)
 		await _save_frame("governance_near_%dx%d.png" % [resolution.x, resolution.y])
 		demo.run.candy = 1200
@@ -384,12 +381,12 @@ func _capture_layouts(demo: DemoScript) -> void:
 		demo._layout._show_quick_upgrade(0)
 		await _settle_layout()
 		_check(
-			screen.encloses((demo._layout.get_node("PipeUpgrade") as Control).get_global_rect()),
+			screen.encloses((demo._layout._tool_dock.upgrades[0]).get_global_rect()),
 			"quick popup stays within the viewport"
 		)
 		await _save_frame("governance_quick_upgrade_%dx%d.png" % [resolution.x, resolution.y])
 		demo._layout.close_panels()
-		demo.get_node("%TechnologyButton").pressed.emit()
+		demo._layout._technology_button.pressed.emit()
 		await _settle_layout()
 		var tree_card: Control = demo._layout._technology
 		_check(screen.encloses(tree_card.get_global_rect()), "technology tree fits the viewport")

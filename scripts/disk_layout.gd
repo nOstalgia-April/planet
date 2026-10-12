@@ -5,41 +5,40 @@ signal restart_requested
 signal interaction_panel_changed
 signal quick_upgrade_requested(tool: int)
 signal technology_upgrade_requested(id: String)
+signal view_switch_requested
 
 const DESIGN_SIZE: Vector2 = Vector2(1280.0, 800.0)
 const BRANCH_IDS: PackedStringArray = ["pipe", "net", "governance", "combo"]
 const PageScript = preload("res://scripts/ui/technology_page.gd")
+const DockScript = preload("res://scripts/ui/bottom_dock.gd")
 const GameMenu = preload("res://scripts/ui/game_menu.gd")
+const VIEW_ZOOM_OUT: Texture2D = preload("res://assets/ui/game_menu/view_switch.tres")
+const VIEW_ZOOM_IN: Texture2D = preload("res://assets/ui/game_menu/zoom_in.tres")
 
 var _manual_pause: bool = false
 
 var _shop_layout_queued: bool = false
-var _quick_layout_queued: bool = false
 var _nest_anchor: Rect2 = Rect2()
 var _run: PrototypeRun
-var _hovered_tool: int = -1
-var _hover_close_remaining: float = 0.0
 
 @onready var _nest_card: Control = $NestCard
 @onready var _technology: PageScript = %Technology
-@onready var _technology_button: Button = %TechnologyButton
-@onready var _technology_badge: Label = %TechnologyButton/AvailableBadge
-@onready var _tool_dock: Control = $ToolDock
-@onready var _quick_tools: HBoxContainer = $ToolDock/Content/QuickTools
+@onready var _tool_dock: DockScript = $ToolDock
+@onready var _technology_button: Button = $ToolDock/Technology
+@onready var _technology_badge: TextureRect = $ToolDock/Technology/Badge
 @onready var game_menu: GameMenu = $GameMenu
 @onready var _completion: Control = %Completion
-@onready var _quick_buttons: Array[Button] = [%QuickPipeButton, %QuickNetButton]
-@onready var _upgrade_panels: Array[PanelContainer] = [$PipeUpgrade, $NetUpgrade]
 @onready var _combo_label: Label = %ComboLabel
 @onready var _combo_timer: ProgressBar = %ComboTimerBar
-@onready var _net_timer_label: Label = %QuickNetButton.get_node("Visual/Text/Detail")
+@onready var _view_shortcut: Control = $ViewShortcut
+@onready var _view_switch: TextureButton = $ViewShortcut/Button
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_technology.hide()
 	_nest_card.hide()
-	_hide_quick_upgrades()
+	_tool_dock.suppress(true)
 	game_menu.pause_toggled.connect(_toggle_pause)
 	game_menu.settings_changed.connect(_sync_pause)
 	game_menu.restart_requested.connect(restart_requested.emit)
@@ -49,30 +48,34 @@ func _ready() -> void:
 	_technology.technology_upgrade_requested.connect(technology_upgrade_requested.emit)
 	%CloseNestButton.pressed.connect(close_panels)
 	_nest_card.minimum_size_changed.connect(_queue_shop_layout)
-	for index: int in range(2):
-		_upgrade_panels[index].minimum_size_changed.connect(_queue_quick_layout)
-		_quick_buttons[index].mouse_entered.connect(_show_quick_upgrade.bind(index))
-		_quick_buttons[index].focus_entered.connect(_show_quick_upgrade.bind(index))
-		var purchase: Button = _upgrade_panels[index].get_node("Content/Purchase") as Button
-		purchase.pressed.connect(_request_quick_upgrade.bind(index))
+	_tool_dock.upgrade_requested.connect(quick_upgrade_requested.emit)
+	_view_switch.pressed.connect(view_switch_requested.emit)
 
 
-func _process(delta: float) -> void:
-	_update_quick_hover(delta, get_viewport().get_mouse_position())
+func _process(_delta: float) -> void:
+	_view_shortcut.visible = not is_view_switch_blocked()
+	_tool_dock.suppress(
+		get_tree().paused or is_technology_open() or _completion.is_visible_in_tree()
+	)
 
 
-func _update_quick_hover(delta: float, pointer: Vector2) -> void:
-	if _hovered_tool < 0:
-		return
-	if get_tree().paused or is_technology_open() or _completion.is_visible_in_tree():
-		_hide_quick_upgrades()
-		return
-	if _quick_hover_rect().has_point(pointer):
-		_hover_close_remaining = 0.16
-	else:
-		_hover_close_remaining -= delta
-		if _hover_close_remaining <= 0.0:
-			_hide_quick_upgrades()
+func _show_quick_upgrade(tool: int) -> void:
+	_tool_dock.show_upgrade(tool)
+
+
+func set_near_view(value: bool, transitioning: bool = false) -> void:
+	_tool_dock.set_view_state(value, transitioning)
+	_view_switch.texture_normal = VIEW_ZOOM_OUT if value else VIEW_ZOOM_IN
+	_view_switch.tooltip_text = "切换至%s · Tab" % ("远景" if value else "近景")
+
+
+func is_view_switch_blocked() -> bool:
+	return get_tree().paused or is_technology_open() or _completion.is_visible_in_tree()
+
+
+func set_view_switch_enabled(value: bool) -> void:
+	_view_switch.disabled = not value
+	_view_shortcut.modulate.a = 1.0 if value else 0.4
 
 
 func apply_layout(viewport_size: Vector2) -> Rect2:
@@ -84,10 +87,10 @@ func apply_layout(viewport_size: Vector2) -> Rect2:
 	size = viewport_size / interface_scale
 	_place($Economy, Rect2(28.0, 24.0, 210.0, 34.0))
 	_place($ComboChip, Rect2(28.0, 72.0, 246.0, 58.0))
+	_place(_view_shortcut, Rect2(24.0, size.y * 0.5 - 44.0, 64.0, 88.0))
 	_place($StatusLabel, Rect2(270.0, size.y - 160.0, size.x - 540.0, 30.0))
-	_place(_tool_dock, Rect2(size.x * 0.5 - 299.0, size.y - 91.0, 598.0, 86.0))
+	_place(_tool_dock, Rect2(size.x * 0.5 - 300.0, size.y - 82.0, 600.0, 76.0))
 	_place_shops()
-	_place_quick_upgrades.call_deferred()
 	return Rect2(
 		Vector2(48.0, 72.0) * interface_scale,
 		Vector2(size.x - 96.0, size.y - 144.0) * interface_scale
@@ -101,7 +104,7 @@ func get_tool_clearance_rect() -> Rect2:
 func refresh_progression(run: PrototypeRun) -> void:
 	_run = run
 	_technology.refresh(run)
-	_technology_badge.visible = _technology.has_available_technology()
+	_technology_badge.visible = _technology.has_unlocked_candidate()
 	var combo_hint: String = (
 		"连续吸入 %d 只后，捕获收益 +%d%%；间隔 %.0f 秒。小数奖励累计到账。"
 		% [
@@ -111,8 +114,7 @@ func refresh_progression(run: PrototypeRun) -> void:
 		]
 	)
 	$ComboChip.tooltip_text = combo_hint
-	for index: int in range(2):
-		_refresh_quick_tool(index)
+	_tool_dock.refresh(run)
 	refresh_timers(run)
 	_queue_shop_layout()
 
@@ -132,110 +134,7 @@ func refresh_timers(run: PrototypeRun) -> void:
 		_combo_label.text = "连吸 0 / %d" % run.settings.combo_target
 	_combo_timer.max_value = run.get_combo_window_seconds()
 	_combo_timer.value = run.combo_remaining
-	if not run.net_unlocked:
-		_net_timer_label.text = "尚未解锁"
-	elif run.net_cooldown_remaining > 0.0:
-		_net_timer_label.text = "冷却 %.1f 秒" % run.net_cooldown_remaining
-	else:
-		_net_timer_label.text = "就绪 · %d 只" % run.get_net_capacity()
-
-
-func _refresh_quick_tool(index: int) -> void:
-	var id: String = BRANCH_IDS[index]
-	var button: Button = _quick_buttons[index]
-	var text_root: VBoxContainer = button.get_node("Visual/Text") as VBoxContainer
-	var detail: Label = text_root.get_node("Detail") as Label
-	detail.text = (
-		"%s 秒 / 只" % String.num(_run.get_pipe_capture_seconds(), 3)
-		if index == 0
-		else "容量 %d 只" % _run.get_net_capacity()
-	)
-	if index == 1 and not _run.net_unlocked:
-		detail.text = "尚未解锁"
-	var ink: Color = Color("fbf7e9") if button.button_pressed else Color("31594e")
-	for label: Label in text_root.get_children():
-		label.add_theme_color_override("font_color", ink)
-	(button.get_node("Visual/Shortcut") as Label).add_theme_color_override("font_color", ink)
-	button.get_node("Visual/Icon").ink = ink
-	button.get_node("Visual/Icon").queue_redraw()
-	var popup: PanelContainer = _upgrade_panels[index]
-	var level: int = _run.get_technology_level(id)
-	(popup.get_node("Content/Title") as Label).text = (
-		"%s · Lv.%d" % ["吸取管" if index == 0 else "捕网", level + 1]
-	)
-	if index == 1 and not _run.net_unlocked:
-		(popup.get_node("Content/Title") as Label).text = "解锁捕网"
-	(popup.get_node("Content/Effect") as Label).text = _run.get_technology_description(id)
-	var purchase: Button = popup.get_node("Content/Purchase") as Button
-	var cost: int = _run.get_technology_cost(id)
-	var requirement: String = _run.get_technology_requirement(id)
-	purchase.disabled = cost < 0 or _run.candy < cost or not requirement.is_empty()
-	purchase.text = "已升至最高级" if cost < 0 else "升级 · %d 糖果" % cost
-	if index == 1 and not _run.net_unlocked:
-		purchase.text = "解锁 · %d 糖果" % cost
-	purchase.tooltip_text = ""
-	if cost >= 0 and _run.candy < cost:
-		purchase.tooltip_text = "还需 %d 糖果" % (cost - _run.candy)
-	if not requirement.is_empty():
-		purchase.text = requirement
-		purchase.tooltip_text = requirement
-
-
-func _request_quick_upgrade(tool: int) -> void:
-	quick_upgrade_requested.emit(tool)
-	_hover_close_remaining = 0.16
-
-
-func _show_quick_upgrade(tool: int) -> void:
-	if get_tree().paused or is_technology_open() or _completion.is_visible_in_tree():
-		return
-	_hovered_tool = tool
-	_hover_close_remaining = 0.16
-	for index: int in range(2):
-		_upgrade_panels[index].visible = index == tool
-	_place_quick_upgrades()
-
-
-func _hide_quick_upgrades() -> void:
-	_hovered_tool = -1
-	for panel: PanelContainer in _upgrade_panels:
-		panel.hide()
-
-
-func _quick_hover_rect() -> Rect2:
-	if _hovered_tool < 0:
-		return Rect2()
-	var button_rect: Rect2 = _quick_buttons[_hovered_tool].get_global_rect()
-	var popup_rect: Rect2 = _upgrade_panels[_hovered_tool].get_global_rect()
-	return button_rect.merge(popup_rect).grow(5.0)
-
-
-func _place_quick_upgrades() -> void:
-	for index: int in range(2):
-		var button_rect: Rect2 = (
-			get_global_transform_with_canvas().affine_inverse()
-			* _quick_buttons[index].get_global_rect()
-		)
-		_place(
-			_upgrade_panels[index],
-			Rect2(button_rect.get_center().x - 145.0, button_rect.position.y - 157.0, 290.0, 146.0)
-		)
-		# Wrapped labels settle after the panel acquires its final width.
-		_upgrade_panels[index].position.y = (
-			button_rect.position.y - _upgrade_panels[index].size.y - 11.0
-		)
-
-
-func _queue_quick_layout() -> void:
-	if _quick_layout_queued:
-		return
-	_quick_layout_queued = true
-	_settle_quick_layout.call_deferred()
-
-
-func _settle_quick_layout() -> void:
-	_quick_layout_queued = false
-	_place_quick_upgrades()
+	_tool_dock.refresh_timers(run)
 
 
 func is_over_ui(viewport_position: Vector2) -> bool:
@@ -245,9 +144,9 @@ func is_over_ui(viewport_position: Vector2) -> bool:
 		or is_technology_open()
 	):
 		return true
-	if _hovered_tool >= 0 and _quick_hover_rect().has_point(viewport_position):
+	if _tool_dock.contains_pointer(viewport_position):
 		return true
-	var blocking_controls: Array[Control] = [_nest_card, _tool_dock, $Economy, $ComboChip]
+	var blocking_controls: Array[Control] = [_nest_card, $Economy, $ComboChip, _view_shortcut]
 	for panel: Control in blocking_controls:
 		if panel.is_visible_in_tree() and panel.get_global_rect().has_point(viewport_position):
 			return true
@@ -274,7 +173,7 @@ func is_over_nest_details(viewport_position: Vector2) -> bool:
 func close_panels() -> void:
 	_technology.hide()
 	_nest_card.hide()
-	_hide_quick_upgrades()
+	_tool_dock.suppress(true)
 	_sync_pause()
 
 
@@ -284,7 +183,7 @@ func is_technology_open() -> bool:
 
 func _show_technology() -> void:
 	_nest_card.hide()
-	_hide_quick_upgrades()
+	_tool_dock.suppress(true)
 	_technology.show()
 	_place_shops()
 	_sync_pause()
@@ -311,6 +210,7 @@ func _toggle_pause() -> void:
 
 
 func reset_pause() -> void:
+	_tool_dock.reset_notifications()
 	_manual_pause = false
 	game_menu.set_open(false)
 	_sync_pause()
@@ -323,7 +223,7 @@ func _sync_pause() -> void:
 	game_menu.set_paused(paused)
 	if paused:
 		_nest_card.hide()
-		_hide_quick_upgrades()
+		_tool_dock.suppress(true)
 	interaction_panel_changed.emit()
 
 

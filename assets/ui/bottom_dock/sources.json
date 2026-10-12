@@ -1,0 +1,17 @@
+{
+  "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\主页面底端ui(1)\\主页面底端ui",
+  "files": {
+    "technology": "未命名作品-1.png",
+    "upgrade": "未命名作品-1 2.png",
+    "vacuum": "未命名作品-1 3.png",
+    "badge": "未命名作品-2.png",
+    "speed": "未命名作品-2 2.png",
+    "net_slot": "未命名作品-3.png",
+    "pipe_slot": "未命名作品-4.png"
+  },
+  "reused_icons": {
+    "unlock": "assets/ui/technology/lock.tres",
+    "capacity": "assets/ui/technology/net.tres",
+    "capacity_arrow": "upper arrow in assets/ui/technology/value.png"
+  }
+}

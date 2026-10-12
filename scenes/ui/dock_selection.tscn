@@ -1,0 +1,19 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/dock_selection.gd" id="script"]
+[ext_resource type="Shader" path="res://shaders/dock_selection.gdshader" id="shader"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock/pipe_slot.tres" id="texture"]
+
+[sub_resource type="ShaderMaterial" id="material"]
+shader = ExtResource("shader")
+shader_parameter/reveal = 0.0
+
+[node name="Selected" type="TextureRect"]
+offset_right = 190.0
+offset_bottom = 76.0
+mouse_filter = 2
+texture = ExtResource("texture")
+material = SubResource("material")
+expand_mode = 1
+self_modulate = Color(1, 0.4, 0.6, 1)
+script = ExtResource("script")

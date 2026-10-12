@@ -34,8 +34,6 @@ func _ready() -> void:
 	_layout.set_process(false)
 	set_process(false)
 	_layout.hide()
-	$预览导航/切换视角.hide()
-	$预览导航/返回主菜单.hide()
 	_pipe.hide()
 	_net.hide()
 	for nest: NestView in _nest_views:
@@ -347,3 +345,8 @@ func _reset_settings() -> void:
 		monster.art_settings = settings
 	_select_target(_target.selected)
 	_refresh_samples()
+
+
+func _return_to_menu() -> void:
+	get_tree().paused = false
+	get_tree().change_scene_to_file.call_deferred("res://scenes/主菜单/主菜单.tscn")

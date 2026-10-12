@@ -19,6 +19,7 @@ const GiantHarvestEffect = preload("res://scripts/giant_harvest_effect.gd")
 const MonsterAudio = preload("res://scripts/monster_audio.gd")
 const PlanetAudio = preload("res://scripts/planet_audio.gd")
 const MonsterDepth = preload("res://scripts/monster_depth.gd")
+const ViewGestureFilter = preload("res://scripts/view_gesture_filter.gd")
 
 enum ToolMode { PIPE, NET }
 enum NetPhase { IDLE, CASTING, CLOSING, RESULT }
@@ -64,6 +65,7 @@ var _monster_audio: MonsterAudio
 var _planet_audio: PlanetAudio
 var _opening_nests: bool = false
 var _population_by_species: Dictionary = {}
+var _view_gestures: ViewGestureFilter = ViewGestureFilter.new()
 
 @onready var run: PrototypeRun = $Run
 @onready var _world: Node2D = $World
@@ -80,8 +82,8 @@ var _population_by_species: Dictionary = {}
 @onready var _layout: DiskDemoLayout = %Interface
 @onready var _candy_label: Label = %CandyLabel
 @onready var _passive_label: Label = %PassiveLabel
-@onready var _quick_pipe_button: Button = %QuickPipeButton
-@onready var _quick_net_button: Button = %QuickNetButton
+@onready var _quick_pipe_button: Button = $HUD/Interface/ToolDock/Pipe/Button
+@onready var _quick_net_button: Button = $HUD/Interface/ToolDock/Net/Button
 @onready var _nest_title_label: Label = %NestTitleLabel
 @onready var _nest_level_label: Label = %NestLevelLabel
 @onready var _nest_benefit_label: Label = %NestBenefitLabel
@@ -128,6 +130,7 @@ func _ready() -> void:
 	_nest_button.pressed.connect(_on_nest_upgrade)
 	_layout.interaction_panel_changed.connect(_cancel_view_drag)
 	_layout.restart_requested.connect(restart_run)
+	_layout.view_switch_requested.connect(_toggle_view_shortcut)
 	_view.view_changed.connect(_sync_view_presentation)
 	_view.projection_changed.connect(_sync_view_projection)
 	%ReplayButton.pressed.connect(restart_run)
@@ -142,6 +145,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_layout.set_view_switch_enabled(_can_toggle_view())
 	var pointer: Vector2 = get_viewport().get_mouse_position()
 	_update_nest_hover(pointer)
 	_update_overview_hover(pointer)
@@ -342,6 +346,28 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# Handle Tab before GUI focus traversal can consume it.
+	if event is InputEventKey:
+		var key: InputEventKey = event as InputEventKey
+		if key.keycode == KEY_TAB and not key.get_modifiers_mask():
+			if _can_change_view():
+				if key.pressed and not key.echo:
+					_toggle_view_shortcut()
+				get_viewport().set_input_as_handled()
+			return
+	if event is InputEventPanGesture or event is InputEventMagnifyGesture:
+		var gesture: InputEventGesture = event as InputEventGesture
+		var allowed: bool = (
+			_can_toggle_view()
+			and get_viewport_rect().has_point(gesture.position)
+			and not _layout.is_over_ui(gesture.position)
+		)
+		var steps: float = _view_gestures.feed(gesture, allowed)
+		if not is_zero_approx(steps):
+			_request_view_steps(steps)
+		if allowed:
+			get_viewport().set_input_as_handled()
+		return
 	if not _view.is_dragging():
 		return
 	if event is InputEventMouseMotion:
@@ -358,7 +384,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _view.presentation_locked:
+	if not _can_change_view():
 		return
 	if not event is InputEventMouseButton:
 		return
@@ -399,15 +425,41 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	elif button.pressed and button.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 		var steps: float = 1.0 if button.button_index == MOUSE_BUTTON_WHEEL_UP else -1.0
-		if _view.is_overview() != (steps < 0.0):
-			_view_blocks_tool_until_release = true
-			_clear_nest_selection()
-			_capture_at(0.0, _tool_pointer, false)
-		_view.zoom_steps(steps * button.factor)
+		_view_gestures.suppress()
+		_request_view_steps(steps * button.factor)
 		get_viewport().set_input_as_handled()
 
 
+func _can_change_view() -> bool:
+	return (
+		_window_has_focus and not _view.presentation_locked and not _layout.is_view_switch_blocked()
+	)
+
+
+func _can_toggle_view() -> bool:
+	return _can_change_view() and not _view.is_transitioning() and not _view.is_dragging()
+
+
+func _toggle_view_shortcut() -> void:
+	if not _can_toggle_view():
+		return
+	_view_gestures.suppress()
+	_request_view_steps(1.0 if _view.is_overview() else -1.0)
+
+
+func _request_view_steps(steps: float) -> void:
+	if is_zero_approx(steps):
+		return
+	if _view.is_overview() != (steps < 0.0):
+		_view_blocks_tool_until_release = true
+		_clear_nest_selection()
+		_capture_at(0.0, _tool_pointer, false)
+	_view.zoom_steps(steps)
+	_layout.set_view_switch_enabled(_can_toggle_view())
+
+
 func _cancel_view_drag() -> void:
+	_view_gestures.suppress()
 	_overview.update_hover(Vector2.ZERO, false)
 	_view.end_drag()
 	_planet_audio.update_rotation(0.0, false, _world.rotation)
@@ -471,6 +523,7 @@ func _sync_view_presentation() -> void:
 	_clear_nest_selection()
 	_capture_at(0.0, _tool_pointer, false)
 	var near_view: bool = not _view.is_overview()
+	_layout.set_near_view(near_view, _view.is_transitioning())
 	if not near_view or _view.is_transitioning():
 		_pipe.hide()
 		_net.hide()
@@ -503,6 +556,7 @@ func _sync_view_projection() -> void:
 func restart_run() -> void:
 	_layout.reset_pause()
 	_layout.close_panels()
+	_view_gestures.reset()
 	_giant_harvest = null
 	if _completion_tween != null:
 		_completion_tween.kill()
@@ -610,7 +664,7 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 	if nearest.species == PrototypeSlime.Species.DRILL:
 		_play_drill_treasure(run.candy - before, nearest.get_capture_point())
 	else:
-		_play_collection_reward(run.candy - before, nearest.get_capture_point())
+		_play_collection_reward(run.candy - before, nearest.get_capture_point(), nearest.body_color)
 	_capture_targets.clear()
 	_slimes.erase(nearest)
 	nearest.hide()
@@ -741,10 +795,13 @@ func _refresh_overview() -> void:
 	)
 
 
-func _play_collection_reward(reward: int, source_position: Vector2) -> void:
+func _play_collection_reward(
+	reward: int, source_position: Vector2, color: Color = Color("d7e8bb")
+) -> void:
 	if _view.is_overview():
 		return
 	var effect: CollectionEffect = collection_scene.instantiate() as CollectionEffect
+	effect.color = color
 	_effects.add_child(effect)
 	effect.top_level = true
 	effect.global_transform = Transform2D.IDENTITY
@@ -761,6 +818,7 @@ func _update_giant_harvest(slime: PrototypeSlime) -> void:
 		_effects.add_child(_giant_harvest)
 		_giant_harvest.top_level = true
 		_giant_harvest.global_transform = Transform2D.IDENTITY
+	_giant_harvest.color = slime.body_color
 	var destination: Vector2 = (
 		_candy_label.get_global_transform_with_canvas() * (_candy_label.size * 0.5)
 	)
@@ -1098,49 +1156,29 @@ func _refresh_hud() -> void:
 		return
 	_nest_title_label.text = ("%s巢穴 %02d" % [["史莱姆", "黏液怪", "钻头怪"][nest.species], nest.nest_id])
 	if nest.is_tamed:
-		_nest_level_label.text = "完全自动化 · 剩余生物 %d" % nest.alive_slimes
-		_nest_benefit_label.text = "停止产怪 · 每秒 %.1f 糖果" % run.get_automatic_income_per_nest()
+		_nest_level_label.text = "完全自动化"
+		_nest_benefit_label.text = "停止产怪 · 自动产糖"
 		_nest_button.text = "自动产糖中"
 		_nest_button.disabled = true
 		return
 	var stage_names: Array[String] = ["野生", "培育中", "强化培育"]
-	_nest_level_label.text = (
-		"%s · 生物 %d / %d"
-		% [stage_names[nest.level], nest.alive_slimes, run.get_nest_population_limit(nest.nest_id)]
-	)
+	_nest_level_label.text = stage_names[nest.level]
 	var next_level: int = nest.level + 1
 	if next_level == run.settings.nest_upgrade_costs.size():
-		_nest_benefit_label.text = "停止产怪 · 每秒 %.1f 糖果" % run.get_automatic_income_per_nest()
+		_nest_benefit_label.text = "下一阶段：完全自动化\n停止产怪 · 自动产糖"
 	else:
-		_nest_benefit_label.text = (
-			"间隔 %.0f → %.0f 秒（±%.0f 秒）\n上限 %d → %d 只"
-			% [
-				run.settings.spawn_intervals[nest.level],
-				run.settings.spawn_intervals[next_level],
-				run.settings.spawn_interval_jitter,
-				run.get_nest_population_limit(nest.nest_id),
-				run.settings.nest_population_limits[next_level]
-			]
-		)
-		if nest.species == NestState.Species.DRILL:
-			_nest_benefit_label.text = (
-				"每次 1 只 · 冒头时可吸取\n上限 %d → %d 只"
-				% [
-					run.get_nest_population_limit(nest.nest_id),
-					run.settings.drill_population_limits[next_level]
-				]
-			)
+		_nest_benefit_label.text = "下一阶段：%s" % stage_names[next_level]
 	var nest_cost: int = run.get_nest_upgrade_cost(selected_nest_id)
 	var requirement: String = run.get_nest_upgrade_requirement(selected_nest_id)
-	_nest_button.text = "治理 · %d 糖果" % nest_cost if requirement.is_empty() else requirement
+	_nest_button.text = "升级 · %d 糖果" % nest_cost if requirement.is_empty() else requirement
 	_nest_button.disabled = run.candy < nest_cost or not requirement.is_empty()
 
 
 func _register_purchase_sounds() -> void:
 	for index: int in range(2):
-		var panel: Node = $HUD/Interface/PipeUpgrade if index == 0 else $HUD/Interface/NetUpgrade
+		var purchase: Button = _layout._tool_dock.upgrades[index]
 		UiAudio.register_purchase(
-			panel.get_node("Content/Purchase"),
+			purchase,
 			_is_technology_unaffordable.bind(DiskDemoLayout.BRANCH_IDS[index])
 		)
 
@@ -1166,7 +1204,13 @@ func _on_tool_upgrade() -> void:
 	var upgraded: bool = run.upgrade_pipe() if _active_tool == ToolMode.PIPE else run.upgrade_net()
 	if upgraded:
 		_play_level_up()
-		_show_status("管子处理更快了" if _active_tool == ToolMode.PIPE else "捕网容量增加了")
+		_show_status(
+			(
+				"吸取 %d 级" % (run.pipe_level + 1)
+				if _active_tool == ToolMode.PIPE
+				else "捕网 %d 级" % (run.net_level + 1)
+			)
+		)
 
 
 func _on_nest_upgrade() -> void:
@@ -1177,7 +1221,7 @@ func _on_nest_upgrade() -> void:
 			_show_status("巢穴已自动产糖")
 		else:
 			_upgrade_sound.play()
-			_show_status("巢穴培育升级")
+			_show_status("巢穴 · %s" % ["野生", "培育中", "强化培育"][nest.level])
 
 
 func _on_quick_upgrade(tool: int) -> void:
@@ -1191,6 +1235,10 @@ func _on_technology_upgrade(technology_id: String) -> void:
 		_play_level_up()
 		if unlocking_net:
 			_show_status("捕网已解锁")
+		elif technology_id == "pipe":
+			_show_status("吸取 %d 级" % (run.pipe_level + 1))
+		elif technology_id in ["net", "net_capacity"]:
+			_show_status("捕网 %d 级" % (run.net_level + 1))
 		else:
 			_show_status("科技升级完成")
 

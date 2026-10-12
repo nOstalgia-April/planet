@@ -6,6 +6,7 @@ extends Node2D
 @export_range(0.0, 160.0, 2.0) var spray_width: float = 90.0
 @export_range(0.2, 1.5, 0.05) var flight_seconds: float = 0.65
 @export_range(0.4, 2.0, 0.05) var candy_size: float = 1.2
+@export var color: Color = Color("d7e8bb")
 
 var emitted_bursts: int = 0
 var _finished: bool = false
@@ -30,6 +31,7 @@ func update_capture(origin: Vector2, destination: Vector2, progress: float) -> v
 			add_child(candy)
 			candy.duration = flight_seconds
 			candy.size = candy_size
+			candy.color = color
 			var phase: float = float(emitted_bursts * candies_per_burst + index) * 2.399963
 			var spray: Vector2 = Vector2(cos(phase), -absf(sin(phase))) * spray_width
 			candy.play(origin, destination, 0, spray)

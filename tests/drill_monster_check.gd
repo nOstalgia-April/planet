@@ -17,7 +17,7 @@ func _run_checks() -> void:
 	await _check_live()
 	if _failures.is_empty():
 		print(
-			"PASS: drill discovery cap, 1/2/4 population, single spawns, travel, capture gating, treasure, art and restart"
+			"PASS: declining drill discovery, four-nest cap, 1/2/4 population, travel, capture gating, treasure, art and restart"
 		)
 	else:
 		for failure: String in _failures:
@@ -40,14 +40,33 @@ func _check_economy() -> void:
 		run.resolve_nest_spawn(Vector2(200, 0)),
 		"Drill nest resolves through the existing discovery path."
 	)
+	var previous_weight: float = run.settings.drill_discovery_weight
+	for count: int in range(1, run.settings.drill_nest_limit):
+		var weight: float = run.get_drill_discovery_weight()
+		_check(
+			weight > 0.0 and weight < previous_weight,
+			"Each existing drill nest lowers discovery weight."
+		)
+		previous_weight = weight
+		var can_roll: bool = false
+		for index: int in range(1000):
+			can_roll = can_roll or run._choose_spawn_species() == NestState.Species.DRILL
+		_check(can_roll, "Additional drill nests remain discoverable below the cap.")
+		run._pending_nest_species = NestState.Species.DRILL
+		_check(
+			run.resolve_nest_spawn(Vector2(0, 200 + count * 20)),
+			"Multiple drill nests can resolve."
+		)
+	_check(run.get_drill_nest_count() == 4, "The default run allows four drill nests.")
+	_check(run.get_drill_discovery_weight() == 0.0, "Discovery stops at the configured cap.")
 	for index: int in range(1000):
 		_check(
 			run._choose_spawn_species() != NestState.Species.DRILL,
-			"One drill nest blocks further normal discovery."
+			"Capped species is excluded from rolls."
 		)
 	run._pending_nest_species = NestState.Species.DRILL
 	_check(
-		not run.resolve_nest_spawn(Vector2(0, 200)), "Resolution also enforces the one-nest cap."
+		not run.resolve_nest_spawn(Vector2(0, 200)), "Resolution also enforces the configured cap."
 	)
 	var nest: NestState = run.get_nest(3)
 	for level: int in range(3):
@@ -170,8 +189,27 @@ func _check_live() -> void:
 	)
 	if "--capture" in OS.get_cmdline_user_args():
 		await _capture(demo, actor)
+	for level: int in range(SETTINGS.pipe_capture_seconds.size()):
+		demo.run.pipe_level = level
+		_check(
+			is_equal_approx(demo._capture_seconds_for(actor), 0.5),
+			"Drill capture estimate stays at 0.5 seconds at every pipe level."
+		)
+		demo._capture_at(0.25, actor.get_capture_point(), true)
+		_check(
+			not actor.consumed and is_equal_approx(actor.capture_progress, 0.5),
+			"Real pipe reaches half progress after 0.25 seconds at every upgrade level."
+		)
+		_check(actor.art._suction, "Half-captured drill shows its suction expression.")
+		demo._capture_at(0.0, actor.get_capture_point(), false)
+		_check(
+			actor.capture_progress == 0.0 and not actor.art._suction,
+			"Release resets progress and restores the drill expression."
+		)
 	var before: int = demo.run.candy
-	demo._capture_at(0.7, actor.get_capture_point(), true)
+	demo._capture_at(0.49, actor.get_capture_point(), true)
+	_check(not actor.consumed, "Even the fastest pipe cannot capture drill before 0.5 seconds.")
+	demo._capture_at(0.011, actor.get_capture_point(), true)
 	_check(
 		demo._slimes.is_empty() and nest.alive_slimes == 0,
 		"The real pipe catches exposed drill and frees its nest slot."
@@ -222,7 +260,7 @@ func _capture(demo: DemoScript, actor: Drill) -> void:
 			)
 	nest_view.update_state(0, false, 3)
 	nest_view._art.set_stage(0, false)
-	for phase_name: String in ["launch", "dive", "tunnel", "exposed"]:
+	for phase_name: String in ["launch", "dive", "tunnel", "exposed", "suction"]:
 		match phase_name:
 			"launch":
 				actor.launch(Vector2.RIGHT)
@@ -233,11 +271,17 @@ func _capture(demo: DemoScript, actor: Drill) -> void:
 				actor._advance_phase()
 			"exposed":
 				actor._enter_phase(Drill.Phase.EXPOSED, actor.exposed_seconds, &"夹夹")
+			"suction":
+				actor.apply_capture(
+					0.25, demo.run.get_pipe_capture_seconds(), actor.get_capture_point()
+				)
 		actor.art.animation_player.advance(0.4)
 		actor._sync_art()
 		await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		root.get_texture().get_image().save_png("res://artifacts/drill_phase_%s.png" % phase_name)
+	actor.capture_progress = 0.0
+	actor.release_capture(0.0)
 
 
 func _check(condition: bool, message: String) -> void:
