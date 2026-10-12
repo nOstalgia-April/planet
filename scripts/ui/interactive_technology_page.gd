@@ -1,17 +1,12 @@
 extends "res://scripts/ui/technology_page.gd"
-
 const INTERACTIVE_GRAPH_SIZE: Vector2 = Vector2(1280.0, 720.0)
-
 static var _last_zoom_factor: float = 1.0
-
 var zoom_factor: float = 1.0
-var _pan: Vector2 = Vector2.ZERO
 var _drag_id: String = ""
 var _pointer_start: Vector2 = Vector2.ZERO
-var _node_start: Vector2 = Vector2.ZERO
 var _dragging: bool = false
-var _panning: bool = false
 var _suppress_click: bool = false
+
 
 func _ready() -> void:
 	super._ready()
@@ -33,27 +28,27 @@ func _node_prerequisites(id: String) -> Dictionary[String, int]:
 func _node_position(id: String) -> Vector2:
 	match id:
 		"base_value":
-			return Vector2(310.0, 555.0)
+			return Vector2(710.0, 550.0)
 		"pipe":
-			return Vector2(610.0, 555.0)
+			return Vector2(460.0, 550.0)
 		"cultivation":
-			return Vector2(940.0, 555.0)
+			return Vector2(960.0, 550.0)
 		"combo_unlock":
-			return Vector2(465.0, 385.0)
+			return Vector2(340.0, 350.0)
 		"net_unlock":
-			return Vector2(693.0, 385.0)
+			return Vector2(580.0, 350.0)
 		"combo_reward":
-			return Vector2(375.0, 202.0)
+			return Vector2(260.0, 150.0)
 		"combo_interval":
-			return Vector2(555.0, 202.0)
+			return Vector2(420.0, 150.0)
 		"net_capacity":
-			return Vector2(693.0, 202.0)
+			return Vector2(580.0, 150.0)
 		"valuable":
-			return Vector2(843.0, 385.0)
+			return Vector2(800.0, 350.0)
 		"giant":
-			return Vector2(1047.0, 385.0)
+			return Vector2(1120.0, 350.0)
 		"automation":
-			return Vector2(940.0, 202.0)
+			return Vector2(960.0, 150.0)
 	return Vector2.ZERO
 
 
@@ -62,9 +57,17 @@ func _fit_graph() -> void:
 	var factor: float = minf(
 		available.x / INTERACTIVE_GRAPH_SIZE.x, available.y / INTERACTIVE_GRAPH_SIZE.y
 	)
-	graph.scale = Vector2.ONE * maxf(0.1, factor) * zoom_factor
+	var target_scale: float = maxf(0.1, factor) * zoom_factor
+	# With panning disabled, stop enlarging before any node or price leaves the canvas.
+	var center: Vector2 = INTERACTIVE_GRAPH_SIZE * 0.5
+	for node: NodeScript in _nodes.values():
+		var bounds: Rect2 = node.get_rect().grow(8.0)
+		var extent: Vector2 = (bounds.position - center).abs().max((bounds.end - center).abs())
+		target_scale = minf(target_scale, available.x / (extent.x * 2.0))
+		target_scale = minf(target_scale, available.y / (extent.y * 2.0))
+	graph.scale = Vector2.ONE * target_scale
 	graph.size = INTERACTIVE_GRAPH_SIZE
-	graph.position = (_canvas.size - INTERACTIVE_GRAPH_SIZE * graph.scale) * 0.5 + _pan
+	graph.position = (_canvas.size - INTERACTIVE_GRAPH_SIZE * graph.scale) * 0.5
 
 
 func set_zoom(value: float) -> void:
@@ -75,7 +78,6 @@ func set_zoom(value: float) -> void:
 
 func reset_layout() -> void:
 	_cancel_pointer()
-	_pan = Vector2.ZERO
 	for id: String in _nodes:
 		_nodes[id].position = _node_position(id) - NodeScript.ICON_CENTER
 	set_zoom(1.0)
@@ -85,7 +87,6 @@ func reset_layout() -> void:
 func _cancel_pointer() -> void:
 	_drag_id = ""
 	_dragging = false
-	_panning = false
 	_suppress_click = false
 	_hide_details()
 
@@ -103,7 +104,6 @@ func _node_input(event: InputEvent, id: String) -> void:
 			_suppress_click = false
 			_drag_id = id
 			_pointer_start = button.global_position
-			_node_start = _nodes[id].position
 			_dragging = false
 
 
@@ -120,8 +120,6 @@ func _input(event: InputEvent) -> void:
 				_hide_details()
 			_drag_id = ""
 			_dragging = false
-		if button.button_index == MOUSE_BUTTON_RIGHT:
-			_panning = button.pressed and _canvas.get_global_rect().has_point(button.position)
 		if button.pressed and _canvas.get_global_rect().has_point(button.position):
 			if button.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
 				var step: float = 0.1 if button.button_index == MOUSE_BUTTON_WHEEL_UP else -0.1
@@ -129,23 +127,11 @@ func _input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 	elif event is InputEventMouseMotion:
 		var motion: InputEventMouseMotion = event as InputEventMouseMotion
-		if _panning:
-			_pan += _canvas.get_global_transform_with_canvas().affine_inverse().basis_xform(
-				motion.relative
-			)
-			_fit_graph()
-			get_viewport().set_input_as_handled()
-		elif not _drag_id.is_empty():
+		if not _drag_id.is_empty():
 			var displacement: Vector2 = motion.position - _pointer_start
+			# Keep drag gestures from purchasing; node and canvas positions stay fixed.
 			if displacement.length() > 8.0:
 				_dragging = true
 			if _dragging:
-				_nodes[_drag_id].position = (
-					_node_start
-					+ graph.get_global_transform_with_canvas().affine_inverse().basis_xform(
-						displacement
-					)
-				)
-				graph.queue_redraw()
 				_hide_details()
 				get_viewport().set_input_as_handled()

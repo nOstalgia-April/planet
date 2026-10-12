@@ -6,6 +6,14 @@ extends Node2D
 @export_range(8.0, 140.0, 0.1) var maximum_length: float = 28.8
 @export_range(0.5, 8.0, 0.1) var sample_spacing: float = 1.0
 @export_range(4.0, 100.0, 0.1) var texture_length: float = 32.0
+@export_range(1.0, 4.0, 0.1) var spread_multiplier: float = 2.7
+@export_range(0.1, 4.0, 0.1) var spread_seconds: float = 1.2
+# Continuous middle of the artist's separate ground layer (original pixels).
+const SOURCE_LEFT: int = 80
+const SOURCE_RIGHT: int = 398
+const SOURCE_CENTER_Y: float = 167.5
+const SOURCE_HALF_HEIGHT: float = 23.5
+static var _source_edges: PackedVector2Array = PackedVector2Array()
 @export var edge_color: Color = Color("344991")
 @export var body_color: Color = Color("92b3ef")
 @export var highlight_color: Color = Color("e6f1ff")
@@ -42,6 +50,16 @@ var _render_detail: bool = true
 
 
 func _ready() -> void:
+	if _source_edges.is_empty() and _edge.texture != null:
+		var source: Image = _edge.texture.get_image()
+		for x: int in range(SOURCE_LEFT, SOURCE_RIGHT + 1):
+			var top: int = 191
+			var bottom: int = 144
+			for y: int in range(144, 192):
+				if source.get_pixel(x, y).a >= 0.18:
+					top = mini(top, y)
+					bottom = maxi(bottom, y)
+			_source_edges.append(Vector2(top + 0.5, bottom + 0.5))
 	# The ribbons already have soft vertex opacity; per-triangle antialiasing adds
 	# overlapping feather geometry along every internal strip edge.
 	_edge.antialiased = false
@@ -278,14 +296,16 @@ func _build_ribbon() -> void:
 				tangent = Vector2.RIGHT
 		if index > 0:
 			length += _ground_points[index].distance_to(previous)
-		var fade: float = smoothstep(0.0, 1.5, lifetime - (_clock - _sample_times[index]))
-		var taper: float = lerpf(0.12, 1.0, smoothstep(0.0, half_width * 3.0, length))
+		var age: float = _clock - _sample_times[index]
+		var fade: float = smoothstep(0.0, 1.5, lifetime - age)
+		var spread: float = lerpf(1.0, spread_multiplier, smoothstep(0.0, spread_seconds, age))
+		var taper: float = lerpf(0.18, 1.0, smoothstep(0.0, half_width * 1.6, length))
 		var painted_distance: float = length + _distance_offset
 		var painted_edge: float = (
-			1.0 + sin(painted_distance * 0.38) * 0.07 + sin(painted_distance * 0.91) * 0.025
+			1.0 + sin(painted_distance * 0.36) * 0.18 + sin(painted_distance * 0.79) * 0.09
 		)
 		normals.append(Vector2(-tangent.y, tangent.x))
-		widths.append(half_width * taper * painted_edge * sqrt(fade))
+		widths.append(half_width * spread * taper * painted_edge * sqrt(fade))
 		ages.append(fade)
 		distances.append(painted_distance)
 	_write_strip(_edge, 0, normals, widths, ages, distances, -1.0, 1.0, edge_color)
@@ -332,6 +352,15 @@ func _write_strip(
 			color.a *= smoothstep(-0.3, 0.7, sin(distances[index] * 0.19)) * 0.85
 		for side_index: int in range(2):
 			var side: float = left if side_index == 0 else right
+			var source_uv: Vector2 = Vector2.ZERO
+			if polygon.texture != null:
+				var along: float = 1.0 - absf(1.0 - fposmod(distances[index] / texture_length, 2.0))
+				var source_x: float = lerpf(float(SOURCE_LEFT), float(SOURCE_RIGHT), along)
+				var column: int = clampi(roundi(source_x) - SOURCE_LEFT, 0, _source_edges.size() - 1)
+				var source_y: float = _source_edges[column][side_index]
+				source_uv = Vector2(source_x + 0.5, source_y)
+				side = (source_y - SOURCE_CENTER_Y) / SOURCE_HALF_HEIGHT
+				side += sin(distances[index] * 0.27) * 0.16
 			var vertex_index: int = index * 2 + side_index
 			var point: Vector2 = _ground_points[index] + normals[index] * widths[index] * side
 			if vertex_index >= previous_size or sources[vertex_index] != point:
@@ -339,10 +368,7 @@ func _write_strip(
 				vertices[vertex_index] = point if _preview else _clip_to_ground(point)
 			colors[vertex_index] = color
 			if polygon.texture != null:
-				uvs[vertex_index] = (
-					Vector2(distances[index] / texture_length, float(side_index))
-					* polygon.texture.get_size()
-				)
+				uvs[vertex_index] = source_uv
 		if index == 0:
 			continue
 		var start: int = (index - 1) * 2

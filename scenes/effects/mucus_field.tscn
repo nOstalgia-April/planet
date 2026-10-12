@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/mucus_field.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/ecology/crawl_mucus_strip.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/ecology/mucus_cutout/008.png" id="2"]
 [ext_resource type="Shader" path="res://shaders/mucus_trail.gdshader" id="3"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_trail"]

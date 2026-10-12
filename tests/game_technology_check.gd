@@ -1,9 +1,10 @@
 extends Node
 
-const DemoScene: PackedScene = preload("res://scenes/disk_demo.tscn")
+const DemoScene: PackedScene = preload("res://features/场景预览/近景游玩预览.tscn")
 const DemoScript = preload("res://scripts/disk_demo.gd")
 const NodeScript = preload("res://scripts/ui/technology_node.gd")
 const InteractivePageScript = preload("res://scripts/ui/interactive_technology_page.gd")
+const OUTPUT: String = "res://artifacts/technology_concise_20261013"
 
 var _failures: int = 0
 @onready var root: Window = get_tree().root
@@ -16,6 +17,7 @@ func _ready() -> void:
 
 
 func _check_game() -> void:
+	DirAccess.make_dir_recursive_absolute(OUTPUT)
 	var demo: DemoScript = DemoScene.instantiate() as DemoScript
 	root.add_child(demo)
 	demo.set_process(false)
@@ -43,7 +45,7 @@ func _check_game() -> void:
 	)
 	_check(not page._nodes["net_unlock"].glyph.locked, "prerequisite reveals the real net icon")
 	_check(page._detail_level.text == "2/7", "tooltip level updates after purchase")
-	_check(page._detail_gain.get_parsed_text().contains("当前 %s 秒" % String.num(demo.run.get_pipe_capture_seconds(), 3)), "tooltip current value follows the purchased upgrade")
+	_check(page._detail_gain.get_parsed_text() == "吸取速率 +40.6%", "tooltip percentage follows the purchased upgrade")
 	_check(page._nodes["net_unlock"].level_label.visible, "revealed node shows its level")
 	_check(page._nodes["net_unlock"].get_node("Price").visible, "revealed node shows its price")
 	page.select_node("net_unlock")
@@ -63,7 +65,7 @@ func _check_game() -> void:
 			(
 				root.get_texture().get_image().save_png(
 					(
-						"res://artifacts/technology_layout2_game_%dx%d.png"
+						OUTPUT + "/game_%dx%d.png"
 						% [resolution.x, resolution.y]
 					)
 				)
@@ -75,6 +77,25 @@ func _check_game() -> void:
 		await _save_art("hover_value_%dx%d" % [resolution.x, resolution.y])
 		await _hover(page.get_node("%Wallet") as Control)
 		await _save_art("overview_%dx%d" % [resolution.x, resolution.y])
+		await _hover(page._nodes["automation"])
+		await _save_art("automation_hover_%dx%d" % [resolution.x, resolution.y])
+		var close: Button = page.get_node("%Close") as Button
+		var brush: TextureRect = close.get_node("Brush") as TextureRect
+		close.release_focus()
+		await _hover(page._wallet)
+		_check(not brush.visible, "exit graffiti is hidden without hover or focus")
+		await _hover(close)
+		_check(brush.visible, "exit hover reveals the shared graffiti background")
+		var brush_palette: ShaderMaterial = brush.material as ShaderMaterial
+		var background_palette: ShaderMaterial = page.get_node("Background").material as ShaderMaterial
+		_check(brush_palette.get_shader_parameter("palette_mid") == background_palette.get_shader_parameter("palette_mid"), "exit graffiti uses the current technology palette")
+		await _save_art("exit_hover_%dx%d" % [resolution.x, resolution.y])
+		page.set_zoom(1.6)
+		await _settle()
+		_check_layout(page)
+		await _save_art("maximum_zoom_%dx%d" % [resolution.x, resolution.y])
+		page.set_zoom(1.0)
+		await _settle()
 	page.select_node("giant")
 	var before: int = demo.run.candy
 	var cost: int = demo.run.get_technology_cost("giant")
@@ -116,6 +137,16 @@ func _check_game() -> void:
 
 func _check_layout(page: InteractivePageScript) -> void:
 	var canvas: Rect2 = page._canvas.get_global_rect()
+	var endpoint: NodeScript = page._nodes["automation"]
+	_check(endpoint.glyph.size == page._nodes["pipe"].glyph.size and endpoint._halo.size == page._nodes["pipe"]._halo.size, "automation uses the same icon and halo size as other nodes")
+	_check(endpoint.title_label.visible, "automation is emphasized by its name")
+	_check(endpoint.position.x == page._nodes["cultivation"].position.x, "automation aligns with the cultivation trunk")
+	_check(endpoint.position.y < page._nodes["valuable"].position.y and endpoint.position.y < page._nodes["giant"].position.y, "automation crowns the right-hand branches")
+	var screen: Rect2 = root.get_visible_rect()
+	var background: Control = page.get_node("Background") as Control
+	_check(background.get_global_rect().is_equal_approx(screen), "dark red background fills the screen")
+	var close: Rect2 = (page.get_node("%Close") as Control).get_global_rect()
+	_check(screen.encloses(close) and close.get_center().x > screen.end.x * 0.9 and close.get_center().y < screen.end.y * 0.15, "exit stays in the top right")
 	for node: NodeScript in page._nodes.values():
 		_check(canvas.encloses(node.get_global_rect()), "node fits game canvas: " + node.name)
 		for other: NodeScript in page._nodes.values():
@@ -153,9 +184,19 @@ func _check_game_navigation(demo: DemoScript) -> void:
 	await get_tree().process_frame
 	await _send_mouse(motion.position, MOUSE_BUTTON_LEFT, false)
 	_check(
-		node.get_global_rect().get_center().distance_to(center + Vector2(32.0, 24.0)) < 1.0,
-		"drag tracks the pointer through the scaled game HUD"
+		node.get_global_rect().get_center().distance_to(center) < 1.0,
+		"left dragging cannot reposition technology nodes"
 	)
+	var graph_position: Vector2 = page.graph.position
+	var blank: Vector2 = page._canvas.get_global_rect().position + Vector2(240.0, 120.0)
+	await _send_mouse(blank, MOUSE_BUTTON_RIGHT, true)
+	motion.position = blank + Vector2(120.0, 80.0)
+	motion.global_position = motion.position
+	motion.relative = Vector2(120.0, 80.0)
+	motion.button_mask = MOUSE_BUTTON_MASK_RIGHT
+	root.push_input(motion, true)
+	await _send_mouse(motion.position, MOUSE_BUTTON_RIGHT, false)
+	_check(page.graph.position.is_equal_approx(graph_position), "right dragging cannot pan the tree")
 	await _send_mouse(page._canvas.get_global_rect().get_center(), MOUSE_BUTTON_WHEEL_UP, true)
 	_check(is_equal_approx(page.zoom_factor, 1.1), "wheel continues to zoom without a slider")
 	_check(demo.run.candy == balance, "navigation never spends candy")
@@ -186,9 +227,11 @@ func _check_art_states(demo: DemoScript, page: InteractivePageScript) -> void:
 	var speed: NodeScript = page._nodes["pipe"]
 	var balance: int = demo.run.candy
 	await _hover(speed)
+	_check(speed._focus_ink.visible and not speed._halo.visible, "hover switches the pink halo to black focus ink")
+	_check(speed.glyph.ink == Color.WHITE, "technology icons retain their original white ink")
 	_check(page._detail.visible, "hover opens the information card")
 	_check(page._detail_level.text == "1/7", "tooltip shows current and maximum level beneath title")
-	_check(page._detail_gain.get_parsed_text().contains("−0.15 秒"), "speed gain shows the real decrease in capture time")
+	_check(page._detail_gain.get_parsed_text() == "吸取速率 +33.3%", "speed gain compares capture rates as a percentage")
 	_check(page._detail_state.text == "购买", "tooltip places the purchase action at the bottom")
 	_check(page.get_node("%DetailCoin").modulate == Color.WHITE, "tooltip preserves the candy artwork color")
 	_check(demo.run.candy == balance, "hover never spends currency")
@@ -199,7 +242,8 @@ func _check_art_states(demo: DemoScript, page: InteractivePageScript) -> void:
 	_check(page._nodes["net_unlock"].state == NodeScript.State.LOCKED, "locked node stays inspectable")
 	var locked_node: NodeScript = page._nodes["net_unlock"]
 	_check(locked_node.glyph.locked, "locked technology replaces its art with a lock")
-	_check(locked_node.glyph.ink == Color("929292"), "lock is neutral gray")
+	_check(locked_node.glyph.ink == Color.WHITE, "locked nodes keep the white and pink visual language")
+	_check(speed._halo.visible and not speed._focus_ink.visible, "moving to another node restores its pink halo")
 	_check(not locked_node.level_label.visible and not locked_node.get_node("Price").visible, "locked technology hides its level and price")
 	_check(page._detail_title.text == "未解锁" and not page._detail_effect.visible, "locked hover only exposes prerequisites")
 	_check(not page._detail_level.visible and not page._detail_gain.visible and not page.get_node("%DetailPurchase").visible, "locked tooltip hides level, gain and price")
@@ -216,6 +260,10 @@ func _check_art_states(demo: DemoScript, page: InteractivePageScript) -> void:
 	await _hover(page.get_node("%Wallet") as Control)
 	_check(not page._detail.visible, "leaving node hides the information card")
 	_check(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "technology page restores illustrated pointer")
+	speed.grab_focus()
+	await _settle()
+	_check(speed._focus_ink.visible and not speed._halo.visible, "keyboard focus also uses black ink")
+	speed.release_focus()
 	demo.run.candy = balance
 	demo.run.economy_changed.emit()
 	await _settle()
@@ -286,7 +334,7 @@ func _hover(control: Control) -> void:
 
 func _save_art(label: String) -> void:
 	await RenderingServer.frame_post_draw
-	_check(root.get_texture().get_image().save_png("res://artifacts/technology_layout2_" + label + ".png") == OK, "art capture saved")
+	_check(root.get_texture().get_image().save_png(OUTPUT + "/" + label + ".png") == OK, "art capture saved")
 
 
 func _send_mouse(point: Vector2, button: MouseButton, pressed: bool) -> void:

@@ -3,8 +3,8 @@ extends Node
 # Drives the FMOD vacuum events from pipe capture state. Vacuum_Loop is started
 # and stopped inside FMOD by Vacuum_On / Vacuum_Off, so it is never played here.
 
-const VACUUM_ON_EVENT: String = "event:/Vacuum_On"
-const VACUUM_OFF_EVENT: String = "event:/Vacuum_Off"
+const VACUUM_ON_EVENT: String = "event:/Vacuum/Vacuum_On"
+const VACUUM_OFF_EVENT: String = "event:/Vacuum/Vacuum_Off"
 const SLIME_ENTER_EVENT: String = "event:/Slime_Enter"
 const SLIME_EXIT_EVENT: String = "event:/Slime_Exit"
 const IN_SLIME_PARAMETER: String = "InSlime"

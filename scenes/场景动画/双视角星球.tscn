@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/场景动画/近景星球.tscn" id="1"]
 [ext_resource type="Script" path="res://scripts/场景动画/双视角星球.gd" id="2"]
@@ -12,6 +12,10 @@
 [ext_resource type="Texture2D" path="res://assets/场景动画/星球复色/彩色地球/未命名作品-1.png" id="color1"]
 [ext_resource type="Texture2D" path="res://assets/场景动画/星球复色/彩色地球/未命名作品-2.png" id="color2"]
 [ext_resource type="Texture2D" path="res://assets/场景动画/星球复色/彩色地球/未命名作品-3.png" id="color3"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/星球复色/近景高清/pink.png" id="near_pink"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/星球复色/近景高清/blue.png" id="near_blue"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/星球复色/近景高清/green.png" id="near_green"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/星球复色/近景高清/restored.png" id="near_restored"]
 
 [sub_resource type="ShaderMaterial" id="Blend"]
 resource_local_to_scene = true
@@ -21,6 +25,8 @@ shader = ExtResource("3")
 script = ExtResource("2")
 overview_frames = Array[Texture2D]([ExtResource("4"), ExtResource("5"), ExtResource("6")])
 color_layers = Array[Texture2D]([ExtResource("pink"), ExtResource("blue"), ExtResource("green")])
+near_color_layers = Array[Texture2D]([ExtResource("near_pink"), ExtResource("near_blue"), ExtResource("near_green")])
+near_restored_texture = ExtResource("near_restored")
 restored_frames = Array[Texture2D]([ExtResource("color1"), ExtResource("color2"), ExtResource("color3")])
 
 [node name="贴图" parent="." index="0"]

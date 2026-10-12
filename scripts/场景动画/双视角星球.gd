@@ -4,6 +4,8 @@ extends "res://scripts/场景动画/星球贴图.gd"
 @export var overview_frames: Array[Texture2D] = []
 @export var restored_frames: Array[Texture2D] = []
 @export var color_layers: Array[Texture2D] = []
+@export var near_color_layers: Array[Texture2D] = []
+@export var near_restored_texture: Texture2D
 @export var overview_center_uv: Vector2 = Vector2(0.495104, 0.510278)
 @export var overview_radius_width_ratio: float = 0.19375
 @export_range(-180.0, 180.0, 0.1) var overview_heading_degrees: float = 90.0
@@ -24,9 +26,14 @@ func _ready() -> void:
 	_blend_material = sprite.material as ShaderMaterial
 	assert(_blend_material != null)
 	assert(color_layers.size() == 3 and restored_frames.size() == 3)
+	assert(near_color_layers.size() == 3 and near_restored_texture != null)
 	_blend_material.set_shader_parameter("pink_land", color_layers[0])
 	_blend_material.set_shader_parameter("blue_land", color_layers[1])
 	_blend_material.set_shader_parameter("green_land", color_layers[2])
+	_blend_material.set_shader_parameter("near_pink_land", near_color_layers[0])
+	_blend_material.set_shader_parameter("near_blue_land", near_color_layers[1])
+	_blend_material.set_shader_parameter("near_green_land", near_color_layers[2])
+	_blend_material.set_shader_parameter("near_restored_texture", near_restored_texture)
 	var near_size: Vector2 = sprite.texture.get_size()
 	var overview_size: Vector2 = overview_frames[0].get_size()
 	_blend_material.set_shader_parameter("near_center_uv", center_uv)

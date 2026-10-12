@@ -1,0 +1,36 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/ui/game_menu/view_switch.tres" id="icon"]
+
+[node name="ViewShortcut" type="Control"]
+layout_mode = 0
+offset_right = 64.0
+offset_bottom = 88.0
+mouse_filter = 2
+
+[node name="Button" type="TextureButton" parent="."]
+layout_mode = 0
+offset_left = 6.0
+offset_top = 4.0
+offset_right = 58.0
+offset_bottom = 56.0
+tooltip_text = "切换近景 / 远景 · Tab"
+mouse_default_cursor_shape = 2
+focus_mode = 0
+texture_normal = ExtResource("icon")
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Key" type="Label" parent="."]
+layout_mode = 0
+offset_top = 60.0
+offset_right = 64.0
+offset_bottom = 88.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.05, 0.04, 0.12, 0.75)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 20
+text = "Tab"
+horizontal_alignment = 1
+vertical_alignment = 1

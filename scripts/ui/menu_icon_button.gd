@@ -1,10 +1,10 @@
 extends Button
 
-const BRUSH: Texture2D = preload("res://assets/ui/game_menu/brush.tres")
-
 @export var glyph: Texture2D
 @export var glyph_size: float = 34.0
 var highlighted: bool = false
+
+@onready var _brush: TextureRect = $Brush
 
 
 func _ready() -> void:
@@ -17,8 +17,7 @@ func _ready() -> void:
 
 
 func _draw() -> void:
-	if highlighted or is_hovered() or has_focus():
-		draw_texture_rect(BRUSH, Rect2(Vector2.ZERO, size), false)
+	_brush.visible = highlighted or is_hovered() or has_focus()
 	if glyph != null:
 		var extent: Vector2 = glyph.get_size()
 		extent *= glyph_size / maxf(extent.x, extent.y)

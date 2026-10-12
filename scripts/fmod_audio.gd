@@ -13,7 +13,7 @@ const MAX_FADE_STEP: float = 1.0 / 30.0
 # silenced there; music, UI and Earth_Rotate stay audible in both views.
 const NEAR_VIEW_PREFIXES: PackedStringArray = [
 	"event:/Monsters/",
-	"event:/Vacuum_",
+	"event:/Vacuum/",
 	"event:/Slime_",
 	"event:/SuckUp_Pop",
 	"event:/Candy_",

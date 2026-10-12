@@ -99,7 +99,7 @@ func _check_tree(demo: DemoScript, resolution: Vector2i) -> void:
 	)
 	demo._layout._request_quick_upgrade(1)
 	_check(demo.run.net_unlocked, "the second quick upgrade still unlocks the net")
-	demo._layout._hide_quick_upgrades()
+	demo._layout._tool_dock.suppress(true)
 	demo._view.zoom_steps(-1.0, false)
 	demo._drive_tool(0.0, pointer, false)
 	_check(

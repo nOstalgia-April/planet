@@ -86,6 +86,14 @@ func has_available_technology() -> bool:
 	return false
 
 
+# Only first-time research needs a discovery badge; owned technologies can still upgrade.
+func has_unlocked_candidate() -> bool:
+	for id: String in TECHNOLOGIES:
+		if _current_level(id) == 0 and _state_for(id) == NodeScript.State.AVAILABLE:
+			return true
+	return false
+
+
 func select_node(id: String) -> void:
 	assert(_nodes.has(id), "Technology selection must name an existing upgrade item.")
 	if _hovered_key != id:
@@ -216,24 +224,22 @@ func _refresh_details() -> void:
 	_detail_level.text = "%d/%d" % [_current_level(id), _max_level(id)]
 	_detail_level.visible = not _detail_icon.locked
 	_detail_state.text = ["已满级", "购买", "糖果不足", ""][node.state]
-	_detail_state.add_theme_color_override(
-		"font_color", NodeScript.PRICE_COLORS[node.state]
+	_detail_state.add_theme_color_override("font_color", NodeScript.PRICE_COLORS[node.state])
+	var description: String = _run.get_technology_description(id)
+	var quantitative: bool = (
+		id in ["base_value", "pipe", "net_capacity", "combo_reward", "combo_interval"]
 	)
-	_detail_effect.text = _effect(id)
-	_detail_effect.visible = not _detail_icon.locked
-	var values: PackedStringArray = _upgrade_values(id)
-	_detail_gain.text = (
-		"[font_size=26]%s[/font_size] [color=#bda9b4][font_size=15](%s)[/font_size][/color]"
-		% [values[0], values[1]]
-	)
-	_detail_gain.visible = not _detail_icon.locked
+	_detail_effect.text = description if not quantitative else ""
+	_detail_effect.visible = not _detail_icon.locked and not _detail_effect.text.is_empty()
+	_detail_gain.text = "[font_size=22]%s[/font_size]" % description if quantitative else ""
+	_detail_gain.visible = not _detail_icon.locked and not description.is_empty() and quantitative
 	%DetailPurchase.visible = not _detail_icon.locked
 	%DetailCoin.visible = node.state != NodeScript.State.PURCHASED
 	%DetailCost.visible = node.state != NodeScript.State.PURCHASED
 	%DetailCost.text = str(_cost(id))
 	%DetailCost.add_theme_color_override("font_color", NodeScript.PRICE_COLORS[node.state])
-	_detail_note.text = _note(id)
-	_detail_note.visible = not _detail_icon.locked and not _detail_note.text.is_empty()
+	_detail_note.text = ""
+	_detail_note.hide()
 	for child: Node in _requirements.get_children():
 		_requirements.remove_child(child)
 		child.queue_free()
@@ -251,107 +257,8 @@ func _refresh_details() -> void:
 			label.text += " · %d级" % (required_level + 1)
 		label.add_theme_font_size_override("font_size", 14)
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		label.add_theme_color_override(
-			"font_color", Color("d5b7c9")
-		)
+		label.add_theme_color_override("font_color", Color("d5b7c9"))
 		_requirements.add_child(label)
-
-
-func _effect(id: String) -> String:
-	match id:
-		"base_value":
-			return "提高每只史莱姆的糖果收益。"
-		"pipe":
-			return "缩短吸入每只个体所需的时间。"
-		"net_unlock", "net_capacity":
-			return "提高捕网一次可捕获的数量。" if id == "net_capacity" else "解锁范围捕获工具。"
-		"cultivation":
-			return "开放各巢穴的培育建设。"
-		"automation":
-			return "开放各巢穴的自动产糖建设。"
-		"combo_unlock", "combo_reward":
-			return "连续吸入 %d 只后，后续捕获获得额外糖果。" % _run.settings.combo_target
-		"combo_interval":
-			return "延长两次吸入之间的连击续接时间。"
-		"valuable":
-			return "每 %d 只新生个体出现 1 只金色个体。" % _run.settings.valuable_spawn_every
-		"giant":
-			return "屏幕外、活动范围重叠的巢穴可融合个体，保留全部糖果收益。"
-	return ""
-
-
-func _upgrade_values(id: String) -> PackedStringArray:
-	var owned: bool = _state_for(id) == NodeScript.State.PURCHASED
-	var settings: PrototypeSettings = _run.settings
-	match id:
-		"base_value":
-			var current: int = _run.get_base_value()
-			var next_level: int = mini(_run.base_value_level + 1, settings.base_value_multipliers.size() - 1)
-			var next: int = settings.slime_reward * settings.base_value_multipliers[next_level]
-			return [
-				"%d 糖果" % current if owned else "+%d 糖果" % (next - current),
-				"当前 %d" % current
-			]
-		"pipe":
-			var current: float = _run.get_pipe_capture_seconds()
-			var next_level: int = mini(_run.pipe_level + 1, settings.pipe_capture_seconds.size() - 1)
-			var next: float = settings.pipe_capture_seconds[next_level]
-			return [
-				"%s 秒" % String.num(current, 3) if owned else "−%s 秒" % String.num(current - next, 3),
-				"当前 %s 秒" % String.num(current, 3)
-			]
-		"net_unlock", "net_capacity":
-			var current: int = _run.get_net_capacity()
-			var next_level: int = mini(_run.net_level + 1, settings.net_capacities.size() - 1)
-			var next: int = settings.net_capacities[next_level if id == "net_capacity" else 0]
-			return [
-				"%d 只" % current if owned else "+%d 只" % (next - current),
-				"当前 %d 只" % current
-			]
-		"combo_unlock", "combo_reward":
-			var current: int = _run.get_combo_reward_percent()
-			var next_level: int = mini(_run.combo_level + 1, settings.combo_reward_percentages.size() - 1)
-			var next: int = settings.combo_reward_percentages[next_level]
-			return [
-				"+%d%%" % current if owned else "+%d%%" % (next - current),
-				"当前 +%d%%" % current
-			]
-		"combo_interval":
-			var current: float = _run.get_combo_window_seconds()
-			var next_level: int = mini(
-				_run.combo_interval_level + 1, settings.combo_interval_bonus_seconds.size() - 1
-			)
-			var next: float = settings.combo_window_seconds + settings.combo_interval_bonus_seconds[next_level]
-			return [
-				"%s 秒" % String.num(current, 1) if owned else "+%s 秒" % String.num(next - current, 1),
-				"当前 %s 秒" % String.num(current, 1)
-			]
-		"valuable":
-			return ["糖果 ×%d" % settings.valuable_reward_multiplier, "已解锁" if owned else "未解锁"]
-		"giant":
-			return ["%d → 1" % settings.giant_fusion_threshold, "已解锁" if owned else "未解锁"]
-	return ["已解锁" if owned else "解锁", "已生效" if owned else "未解锁"]
-
-
-func _note(id: String) -> String:
-	match id:
-		"base_value":
-			return "黏液怪收益为 2 倍；全场个体与自动产糖同步提高。"
-		"cultivation":
-			return "在具体巢穴投入 %d 糖果建设。" % _run.settings.nest_upgrade_costs[0]
-		"automation":
-			return (
-				"建成后停止产怪，每巢每秒 %.1f 糖果，随基础价值成长。清除场上所有怪物即可获胜。" % _run.get_automatic_income_per_nest()
-			)
-		"combo_unlock", "combo_reward", "combo_interval":
-			return "仅吸管触发；小数奖励累计到账。"
-		"net_unlock":
-			return "冷却 %s 秒。" % String.num(_run.settings.net_cooldown_seconds, 1)
-		"valuable":
-			return "研究后出生的个体生效，包含新出现的巢穴。"
-		"giant":
-			return "全场生效，仍占原有名额；已有巨型不再融合。"
-	return ""
 
 
 func _purchase_selected() -> void:
