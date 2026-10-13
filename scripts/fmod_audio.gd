@@ -16,6 +16,8 @@ const MAX_FADE_STEP: float = 1.0 / 30.0
 var banks_loaded: bool = false
 var _effects_elapsed: float = 0.0
 var _effect_descriptions: Array[FmodEventDescription] = []
+var _master_bus: FmodBus
+var _editor_muted: bool = false
 
 # Holding the references keeps the banks loaded; dropping them unloads.
 var _banks: Array[FmodBank] = []
@@ -28,6 +30,12 @@ var _fading_out: Dictionary = {}
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_editor_muted = "--debug-mute-audio" in OS.get_cmdline_args()
+	if EngineDebugger.is_active():
+		EngineDebugger.register_message_capture(&"planet_audio", _capture_editor_message)
+		EngineDebugger.send_message("planet_audio:ready", [])
+	GamePreferences.changed.connect(_apply_preferences)
+	_apply_preferences()
 	for bank_name: String in BANK_NAMES:
 		if not FileAccess.file_exists(BANK_ROOT.path_join(bank_name)):
 			push_warning("FMOD bank missing, FMOD audio disabled: %s" % bank_name)
@@ -39,16 +47,18 @@ func _ready() -> void:
 			)
 		)
 	banks_loaded = true
+	_master_bus = FmodServer.get_bus("bus:/")
 	for bank: FmodBank in _banks:
 		for description: FmodEventDescription in bank.get_description_list():
 			if not description.get_path().begins_with("event:/Mx_"):
 				_effect_descriptions.append(description)
-	GamePreferences.changed.connect(_apply_preferences)
 	_apply_preferences()
 
 
 # Stop the music before dropping the banks at quit; dropping them unloads every event.
 func _exit_tree() -> void:
+	if EngineDebugger.is_active():
+		EngineDebugger.unregister_message_capture(&"planet_audio")
 	stop_music()
 	for instance: FmodEvent in _fading_out:
 		if instance.is_valid():
@@ -56,6 +66,7 @@ func _exit_tree() -> void:
 			instance.release()
 	_fading_out.clear()
 	_effect_descriptions.clear()
+	_master_bus = null
 	_banks.clear()
 	banks_loaded = false
 
@@ -88,7 +99,7 @@ func play(event_path: String, parameters: Dictionary = {}) -> void:
 		return
 	for parameter_name: String in parameters:
 		instance.set_parameter_by_name(parameter_name, float(parameters[parameter_name]))
-	instance.set_volume(GamePreferences.effects_volume)
+	instance.set_volume(_effects_gain())
 	instance.start()
 	instance.release()
 
@@ -105,7 +116,7 @@ func start_loop(event_path: String) -> FmodEvent:
 		return null
 	var instance: FmodEvent = FmodServer.create_event_instance(event_path)
 	if instance != null:
-		instance.set_volume(GamePreferences.effects_volume)
+		instance.set_volume(_effects_gain())
 		instance.start()
 	return instance
 
@@ -174,7 +185,33 @@ func _process(delta: float) -> void:
 
 
 func _music_gain() -> float:
-	return GamePreferences.music_volume if GamePreferences.music_enabled else 0.0
+	return GamePreferences.music_volume if GamePreferences.audio_enabled else 0.0
+
+
+func _effects_gain() -> float:
+	return GamePreferences.effects_volume if GamePreferences.audio_enabled else 0.0
+
+
+# Editor mute is temporary and independent of the player's saved audio switch.
+func set_editor_muted(muted: bool) -> void:
+	_editor_muted = muted
+	_apply_master_mute()
+
+
+func _capture_editor_message(message: String, data: Array) -> bool:
+	if message != "set_editor_muted":
+		return false
+	if data.size() != 1 or not data[0] is bool:
+		return false
+	set_editor_muted(data[0])
+	return true
+
+
+func _apply_master_mute() -> void:
+	var muted: bool = _editor_muted or not GamePreferences.audio_enabled
+	if _master_bus != null:
+		_master_bus.set_mute(muted)
+	AudioServer.set_bus_mute(0, muted or is_zero_approx(GamePreferences.effects_volume))
 
 
 func _apply_preferences() -> void:
@@ -184,7 +221,7 @@ func _apply_preferences() -> void:
 		if instance.is_valid():
 			instance.set_volume(float(_fading_out[instance]) * _music_gain())
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(GamePreferences.effects_volume, 0.0001)))
-	AudioServer.set_bus_mute(0, is_zero_approx(GamePreferences.effects_volume))
+	_apply_master_mute()
 	_apply_effects_volume()
 
 
@@ -194,4 +231,4 @@ func _apply_effects_volume() -> void:
 		if description.get_instance_count() == 0:
 			continue
 		for instance: FmodEvent in description.get_instance_list():
-			instance.set_volume(GamePreferences.effects_volume)
+			instance.set_volume(_effects_gain())

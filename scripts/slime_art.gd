@@ -1,50 +1,48 @@
 extends Node2D
 
 const ItemArt = preload("res://scripts/物品动画/动画物件.gd")
-const GOLD_SHADER: Shader = preload("res://shaders/slime_gold.gdshader")
 static var _texture_bounds: Dictionary[Texture2D, Rect2] = {}
 
 @export var pink: ItemArt
 @export var mucus: ItemArt
+@export var valuable_pink: ItemArt
+@export var valuable_mucus: ItemArt
 
 var _active: ItemArt
 var _sprite: Sprite2D
-var _gold_material: ShaderMaterial
 
 
 func _ready() -> void:
-	_gold_material = ShaderMaterial.new()
-	_gold_material.shader = GOLD_SHADER
 	pink.clip_finished.connect(_finish_jump)
+	valuable_pink.clip_finished.connect(_finish_jump)
 	configure_species(0)
 
 
-func configure_species(species: int) -> void:
-	pink.hide()
-	mucus.hide()
-	pink.animation_player.stop()
-	mucus.animation_player.stop()
-	_active = mucus if species == 1 else pink
+func configure_species(species: int, valuable: bool = false) -> void:
+	for art: ItemArt in [pink, mucus, valuable_pink, valuable_mucus]:
+		art.hide()
+		art.animation_player.stop()
+	if valuable:
+		_active = valuable_mucus if species == 1 else valuable_pink
+	else:
+		_active = mucus if species == 1 else pink
 	_sprite = _active.get_node("画面/贴图") as Sprite2D
 	_active.show()
 	_active.animation_player.speed_scale = 1.0
 	_active.play_clip(&"待机")
-	_sprite.material = _gold_material
 
 
 func play_launch(seconds: float) -> void:
-	if _active == pink:
-		pink.animation_player.speed_scale = pink.animation_player.get_animation(&"跳跃").length / seconds
-		pink.play_clip(&"跳跃")
+	if _active == pink or _active == valuable_pink:
+		_active.animation_player.speed_scale = (
+			_active.animation_player.get_animation(&"跳跃").length / seconds
+		)
+		_active.play_clip(&"跳跃")
 
 
 func restore_idle() -> void:
 	_active.animation_player.speed_scale = 1.0
 	_active.play_clip(&"待机")
-
-
-func set_gold(value: bool) -> void:
-	_gold_material.set_shader_parameter("gold", value)
 
 
 func set_suction(active: bool) -> void:
@@ -64,5 +62,5 @@ func get_art_bounds() -> Rect2:
 
 
 func _finish_jump(clip: StringName) -> void:
-	if clip == &"跳跃" and _active == pink:
+	if clip == &"跳跃" and (_active == pink or _active == valuable_pink):
 		restore_idle()

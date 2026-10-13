@@ -1,0 +1,18 @@
+[gd_resource type="SpriteFrames" load_steps=13 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/muscle/enter/001.png" id="enter_0"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/muscle/enter/002.png" id="enter_1"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/muscle/enter/003.png" id="enter_2"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/muscle/enter/004.png" id="enter_3"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/muscle/enter/005.png" id="enter_4"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/muscle/enter/006.png" id="enter_5"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/muscle/enter/007.png" id="enter_6"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/muscle/idle/001.png" id="idle_0"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/muscle/idle/002.png" id="idle_1"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/muscle/idle/003.png" id="idle_2"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/muscle/idle/004.png" id="idle_3"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/muscle/idle/005.png" id="idle_4"]
+
+[resource]
+animations = [{"frames": [{"duration": 1.0, "texture": ExtResource("enter_0")}, {"duration": 1.0, "texture": ExtResource("enter_1")}, {"duration": 1.0, "texture": ExtResource("enter_2")}, {"duration": 1.0, "texture": ExtResource("enter_3")}, {"duration": 1.0, "texture": ExtResource("enter_4")}, {"duration": 1.0, "texture": ExtResource("enter_5")}, {"duration": 1.0, "texture": ExtResource("enter_6")}], "loop": false, "name": &"enter", "speed": 8.0},
+{"frames": [{"duration": 1.0, "texture": ExtResource("idle_0")}, {"duration": 1.0, "texture": ExtResource("idle_1")}, {"duration": 1.0, "texture": ExtResource("idle_2")}, {"duration": 1.0, "texture": ExtResource("idle_3")}, {"duration": 1.0, "texture": ExtResource("idle_4")}], "loop": true, "name": &"idle", "speed": 5.0}]

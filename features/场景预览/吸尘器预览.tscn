@@ -1,12 +1,45 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="PackedScene" path="res://features/场景预览/动作预览.tscn" id="r001"]
 
 [ext_resource type="PackedScene" path="res://scenes/场景动画/吸尘器.tscn" id="r002"]
 
+[ext_resource type="Script" path="res://features/场景预览/吸尘器换肤预览.gd" id="skin_preview"]
+
 [node name="吸尘器预览" node_paths=PackedStringArray("view") instance=ExtResource("r001")]
+script = ExtResource("skin_preview")
 view = NodePath("画面")
 
 [node name="画面" parent="." instance=ExtResource("r002")]
 position = Vector2(960, 450)
 scale = Vector2(1.55, 1.55)
+
+[node name="皮肤" type="HBoxContainer" parent="."]
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -180.0
+offset_top = 40.0
+offset_right = 180.0
+offset_bottom = 90.0
+alignment = 1
+
+[node name="默认" type="Button" parent="皮肤"]
+layout_mode = 2
+text = "默认"
+
+[node name="粉色" type="Button" parent="皮肤"]
+layout_mode = 2
+text = "粉色"
+
+[node name="蓝色" type="Button" parent="皮肤"]
+layout_mode = 2
+text = "蓝色"
+
+[node name="彩色" type="Button" parent="皮肤"]
+layout_mode = 2
+text = "彩色"
+
+[connection signal="pressed" from="皮肤/默认" to="." method="_select_skin" binds=[0]]
+[connection signal="pressed" from="皮肤/粉色" to="." method="_select_skin" binds=[1]]
+[connection signal="pressed" from="皮肤/蓝色" to="." method="_select_skin" binds=[2]]
+[connection signal="pressed" from="皮肤/彩色" to="." method="_select_skin" binds=[3]]

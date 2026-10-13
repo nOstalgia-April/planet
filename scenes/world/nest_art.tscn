@@ -47,6 +47,7 @@ visible = false
 
 [node name="地鼠花" parent="." instance=ExtResource("9_drill")]
 visible = false
+scale = Vector2(0.55, 0.55)
 
 [node name="地鼠产怪" parent="." instance=ExtResource("10_drill")]
 visible = false

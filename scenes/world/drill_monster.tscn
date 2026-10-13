@@ -1,10 +1,15 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/drill_monster.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/物品动画/地鼠.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/高价值地鼠.tscn" id="3"]
 
-[node name="DrillMonster" type="Node2D" node_paths=PackedStringArray("art")]
+[node name="DrillMonster" type="Node2D" node_paths=PackedStringArray("ordinary_art", "valuable_art")]
 script = ExtResource("1")
-art = NodePath("Art")
+ordinary_art = NodePath("Art")
+valuable_art = NodePath("ValuableArt")
 
 [node name="Art" parent="." instance=ExtResource("2")]
+
+[node name="ValuableArt" parent="." instance=ExtResource("3")]
+visible = false

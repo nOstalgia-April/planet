@@ -14,3 +14,4 @@ var spawn_interval_offset: float = 0.0
 var income_remainder: float = 0.0
 var income_clock: float = 0.0
 var is_tamed: bool = false
+var is_discovering: bool = false

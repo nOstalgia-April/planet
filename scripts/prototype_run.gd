@@ -29,6 +29,7 @@ var net_cooldown_remaining: float = 0.0
 var nests: Array[NestState] = []
 var generated_nests: int = 0
 var completed_nests: int = 0
+var unlocked_colors: Array[int] = []
 var is_complete: bool = false
 var generation_stage: int = 0
 
@@ -47,7 +48,7 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	assert(spawn_positions.size() >= settings.initial_nests, "The opening needs two nest sites.")
 	assert(settings.unlocked_species_weights.size() == 2)
 	assert(settings.drill_population_limits.size() == 3)
-	assert(settings.drill_discovery_decay > 0.0 and settings.drill_discovery_decay < 1.0)
+	assert(settings.drill_discovery_weight >= 0.0)
 	assert(settings.drill_spawn_interval > settings.spawn_interval_jitter)
 	assert(
 		settings.drill_reward_weights.size() == 3 and settings.drill_reward_multipliers.size() == 3
@@ -131,6 +132,7 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	nests.clear()
 	generated_nests = 0
 	completed_nests = 0
+	unlocked_colors.clear()
 	is_complete = false
 	generation_stage = 0
 	economy_changed.emit()
@@ -158,13 +160,16 @@ func advance(delta: float) -> void:
 	_advance_nest_roll(delta)
 
 
-func collect_slime(nest_id: int, reward: int = -1, population: int = 1) -> bool:
+func collect_slime(
+	nest_id: int, reward: int = -1, population: int = 1, valuable: bool = false
+) -> bool:
 	var nest: NestState = get_nest(nest_id)
 	if nest == null or population <= 0 or nest.alive_slimes < population:
 		return false
 	nest.alive_slimes -= population
 	if nest.species == NestState.Species.DRILL:
-		candy += get_base_value() * roll_drill_treasure()
+		var multiplier: int = settings.valuable_reward_multiplier if valuable else 1
+		candy += get_base_value() * roll_drill_treasure() * multiplier
 		nest_changed.emit(nest)
 		economy_changed.emit()
 		_check_completion()
@@ -190,7 +195,7 @@ func collect_net_batch(
 			break
 		var nest: NestState = get_nest(nest_ids[index])
 		var population: int = populations[index] if index < populations.size() else 1
-		if nest == null or population <= 0 or nest.alive_slimes < population:
+		if nest == null or population != 1 or nest.alive_slimes < population:
 			continue
 		if nest.species == NestState.Species.DRILL:
 			continue
@@ -400,6 +405,34 @@ func get_technology_description(id: String) -> String:
 	id = _resolve_technology_action(id)
 	match id:
 		"base_value":
+			return "让每次捕获都带回更多糖果。"
+		"pipe":
+			return "更快吸入眼前的怪物，接连收走整群。"
+		"net_unlock":
+			return "解锁捕网，一次捕获成群的史莱姆。"
+		"net_capacity":
+			return "让一张捕网装下更多目标，收走更大的群落。"
+		"cultivation":
+			return "解锁巢穴培育升级，让巢穴能容纳更多怪物。"
+		"automation":
+			return "解锁巢穴的自动化改造，让糖果自己送上门。改造后持续产糖，停止产怪。"
+		"combo_unlock":
+			return "连续吸入触发连击，让后续吸取赚到额外糖果。"
+		"combo_reward":
+			return "让连击期间的每次吸取带回更多额外糖果。"
+		"combo_interval":
+			return "多留一点寻找下个目标的时间，让连击更容易接下去。"
+		"valuable":
+			return "让新生怪物中出现高价值个体，捕获它们可赚取多倍糖果。"
+		"giant":
+			return "屏幕外相邻巢穴的个体可合成巨型，让你一次收割整群的糖果。巨型只能用吸管收割，收益全部保留。"
+	return ""
+
+
+func get_technology_gain(id: String) -> String:
+	id = _resolve_technology_action(id)
+	match id:
+		"base_value":
 			var next_level: int = mini(
 				base_value_level + 1, settings.base_value_multipliers.size() - 1
 			)
@@ -416,23 +449,35 @@ func get_technology_description(id: String) -> String:
 				1.0 / settings.pipe_capture_seconds[next_level]
 			)
 		"net_unlock":
-			return "解锁捕网，一次捕获范围内的多个个体。"
+			return (
+				"每网最多 %d 只 · 冷却 %s 秒"
+				% [
+					settings.net_capacities[net_level],
+					String.num(settings.net_cooldown_seconds, 1).trim_suffix(".0")
+				]
+			)
 		"net_capacity":
 			var next_level: int = mini(net_level + 1, settings.net_capacities.size() - 1)
-			return _upgrade_percent("捕网容量", get_net_capacity(), settings.net_capacities[next_level])
-		"cultivation":
-			return "可在巢穴中进行培育升级。"
-		"automation":
-			return "可将巢穴改为自动产糖，建成后停止产怪。"
+			return _upgrade_percent(
+				"捕网容量", settings.net_capacities[net_level], settings.net_capacities[next_level]
+			)
 		"combo_unlock":
-			return "连续吸入后，捕获收益 +%d%%。" % settings.combo_reward_percentages[1]
+			return (
+				"连吸 %d 次后收益 +%d%%\n续接时间 %s 秒"
+				% [
+					settings.combo_target,
+					settings.combo_reward_percentages[maxi(1, combo_level)],
+					String.num(get_combo_window_seconds(), 1).trim_suffix(".0")
+				]
+			)
 		"combo_reward":
+			var current_level: int = maxi(1, combo_level)
 			var next_level: int = mini(
-				combo_level + 1, settings.combo_reward_percentages.size() - 1
+				current_level + 1, settings.combo_reward_percentages.size() - 1
 			)
 			return _upgrade_percent(
 				"连击总收益",
-				100 + get_combo_reward_percent(),
+				100 + settings.combo_reward_percentages[current_level],
 				100 + settings.combo_reward_percentages[next_level]
 			)
 		"combo_interval":
@@ -445,9 +490,7 @@ func get_technology_description(id: String) -> String:
 				settings.combo_window_seconds + settings.combo_interval_bonus_seconds[next_level]
 			)
 		"valuable":
-			return "新生个体中出现高价值个体，其收益 +%d%%。" % ((settings.valuable_reward_multiplier - 1) * 100)
-		"giant":
-			return "屏幕外相邻巢穴的个体可融合为巨型，保留全部糖果收益。"
+			return "高价值个体收益 ×%d" % settings.valuable_reward_multiplier
 	return ""
 
 
@@ -633,7 +676,7 @@ func _register_manual_capture(reward: int) -> int:
 
 
 func _advance_nest_population(nest: NestState, delta: float) -> void:
-	if nest.is_tamed or is_complete:
+	if nest.is_tamed or nest.is_discovering or is_complete:
 		nest.spawn_clock = 0.0
 		return
 	var population_limit: int = get_nest_population_limit(nest.nest_id)
@@ -709,7 +752,9 @@ func get_nest_roll_chance() -> float:
 	)
 
 
-func resolve_nest_spawn(position: Vector2, site_available: bool = true) -> bool:
+func resolve_nest_spawn(
+	position: Vector2, site_available: bool = true, defer_population: bool = false
+) -> bool:
 	if _pending_nest_species < 0:
 		return false
 	var species: NestState.Species = _pending_nest_species as NestState.Species
@@ -720,12 +765,28 @@ func resolve_nest_spawn(position: Vector2, site_available: bool = true) -> bool:
 		return false
 	_nest_roll_clock = 0.0
 	_nest_spawn_cooldown_remaining = settings.nest_spawn_cooldown_seconds
-	_add_nest(species, position)
+	_add_nest(species, position, defer_population)
 	return true
 
 
+func finish_nest_discovery(nest_id: int) -> void:
+	var nest: NestState = get_nest(nest_id)
+	assert(nest != null)
+	nest.is_discovering = false
+	nest.spawn_clock = 0.0
+
+
+func record_flower(nest_id: int) -> void:
+	var nest: NestState = get_nest(nest_id)
+	assert(nest != null and nest.is_tamed, "Only an automated nest can reveal a flower.")
+	if nest.species in unlocked_colors:
+		return
+	unlocked_colors.append(nest.species)
+	_check_completion()
+
+
 func _check_completion() -> void:
-	if is_complete or nests.is_empty():
+	if is_complete or nests.is_empty() or unlocked_colors.size() != NestState.Species.size():
 		return
 	for nest: NestState in nests:
 		if not nest.is_tamed or nest.alive_slimes > 0:
@@ -777,17 +838,32 @@ func _advance_nest_roll(delta: float) -> void:
 
 
 func _choose_spawn_species() -> int:
+	# Count actual placements, including opening and automated nests. Failed sites
+	# consume no quota. Fill the largest deficit against the next nest's target mix.
+	var weights: PackedFloat32Array = settings.unlocked_species_weights.duplicate()
+	weights.append(get_drill_discovery_weight())
+	var counts: PackedInt32Array = PackedInt32Array([0, 0, 0])
+	for nest: NestState in nests:
+		counts[nest.species] += 1
 	var total_weight: float = 0.0
-	var drill_weight: float = get_drill_discovery_weight()
-	total_weight += drill_weight
-	for weight: float in settings.unlocked_species_weights:
-		total_weight += weight
-	var roll: float = _random.randf() * total_weight
-	for species: int in range(settings.unlocked_species_weights.size()):
-		roll -= settings.unlocked_species_weights[species]
-		if roll <= 0.0:
-			return species
-	return NestState.Species.DRILL if drill_weight > 0.0 else NestState.Species.MUCUS
+	var eligible_count: int = 0
+	for species: int in range(weights.size()):
+		if weights[species] > 0.0:
+			total_weight += weights[species]
+			eligible_count += counts[species]
+	var largest_deficit: float = -INF
+	var candidates: Array[int] = []
+	for species: int in range(weights.size()):
+		if weights[species] <= 0.0:
+			continue
+		var target: float = float(eligible_count + 1) * weights[species] / total_weight
+		var deficit: float = target - counts[species]
+		if is_equal_approx(deficit, largest_deficit):
+			candidates.append(species)
+		elif deficit > largest_deficit:
+			largest_deficit = deficit
+			candidates.assign([species])
+	return candidates[_random.randi_range(0, candidates.size() - 1)]
 
 
 func can_discover_drill_nest() -> bool:
@@ -797,7 +873,7 @@ func can_discover_drill_nest() -> bool:
 func get_drill_discovery_weight() -> float:
 	if not can_discover_drill_nest():
 		return 0.0
-	return settings.drill_discovery_weight * pow(settings.drill_discovery_decay, get_drill_nest_count())
+	return settings.drill_discovery_weight
 
 
 func get_drill_nest_count() -> int:
@@ -820,11 +896,14 @@ func roll_drill_treasure() -> int:
 	return settings.drill_reward_multipliers[-1]
 
 
-func _add_nest(species: NestState.Species, position: Vector2) -> void:
+func _add_nest(
+	species: NestState.Species, position: Vector2, defer_population: bool = false
+) -> void:
 	var nest: NestState = NestState.new()
 	nest.nest_id = generated_nests + 1
 	nest.species = species
 	nest.position = position
+	nest.is_discovering = defer_population
 	_roll_nest_spawn_interval(nest)
 	nests.append(nest)
 	generated_nests += 1

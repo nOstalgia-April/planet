@@ -16,6 +16,7 @@ signal projection_changed
 @export_range(1.0, 1.4, 0.01) var overview_outer_radius_ratio: float = 1.10
 @export_range(0.0, 80.0, 1.0) var overview_shadow_offset: float = 24.0
 @export_range(-0.3, 0.3, 0.005) var overview_rotation_speed: float = 0.035
+@export_range(0.05, 0.3, 0.01) var overview_drag_deadzone_ratio: float = 0.15
 @export_range(0.0, 1.0, 0.05) var transition_seconds: float = 0.8
 @export_range(0.0, 0.05, 0.005) var transition_pull: float = 0.02
 
@@ -23,6 +24,7 @@ var zoom_amount: float = 1.0
 var target_zoom: float = 1.0
 var near_blend: float = 1.0
 var presentation_locked: bool = false
+var presentation_magnification: float = 1.0
 
 var _play_rect: Rect2 = Rect2()
 var _planet_radius: float = 240.0
@@ -38,6 +40,9 @@ var _transition_start_rotation: float = 0.0
 var _transition_target_rotation: float = 0.0
 var _lens_pull: float = 0.0
 var _transition_start_pull: float = 0.0
+var _transition_start_magnification: float = 1.0
+var _transition_target_magnification: float = 1.0
+var _discovery_turn: bool = false
 
 
 func _ready() -> void:
@@ -52,10 +57,20 @@ func _process(delta: float) -> void:
 	if is_transitioning():
 		_transition_elapsed = minf(_transition_elapsed + maxf(delta, 0.0), _transition_duration)
 		var progress: float = _transition_elapsed / _transition_duration
+		var rotation_weight: float = smoothstep(0.0, 1.0, progress)
+		if _discovery_turn:
+			rotation_weight = Tween.interpolate_value(
+				0.0, 1.0, progress, 1.0, Tween.TRANS_QUINT, Tween.EASE_IN_OUT
+			)
 		_view_rotation = lerp_angle(
-			_transition_start_rotation, _transition_target_rotation, smoothstep(0.0, 1.0, progress)
+			_transition_start_rotation, _transition_target_rotation, rotation_weight
 		)
 		zoom_amount = lerpf(_transition_start_zoom, target_zoom, smoothstep(0.0, 1.0, progress))
+		presentation_magnification = lerpf(
+			_transition_start_magnification,
+			_transition_target_magnification,
+			smoothstep(0.0, 1.0, progress)
+		)
 		# Detail/background opacity is separate from the planet's size-based artwork blend.
 		near_blend = lerpf(_transition_start_blend, target_zoom, smoothstep(0.45, 0.85, progress))
 		# A small lens pull accompanies the zoom without a permanent flattening
@@ -107,6 +122,7 @@ func reset_view() -> void:
 	zoom_amount = 1.0
 	target_zoom = 1.0
 	near_blend = 1.0
+	presentation_magnification = 1.0
 	_transition_duration = 0.0
 	_lens_pull = 0.0
 	_view_rotation = 0.0
@@ -146,21 +162,35 @@ func focus_surface(surface_angle: float, animated: bool = true) -> void:
 	_start_transition(1.0, wrapf(Vector2.UP.angle() - surface_angle, -PI, PI), animated)
 
 
-func _start_transition(next_view: float, next_rotation: float, animated: bool) -> void:
+func _start_transition(
+	next_view: float,
+	next_rotation: float,
+	animated: bool,
+	minimum_seconds: float = 0.0,
+	magnification: float = 1.0
+) -> void:
 	end_drag()
+	_discovery_turn = false
 	target_zoom = next_view
 	_transition_start_rotation = world.rotation
 	_transition_target_rotation = next_rotation
 	_transition_start_zoom = zoom_amount
 	_transition_start_blend = near_blend
 	_transition_start_pull = _lens_pull
+	_transition_start_magnification = presentation_magnification
+	_transition_target_magnification = magnification
 	_transition_elapsed = 0.0
-	_transition_duration = transition_seconds * absf(target_zoom - zoom_amount) if animated else 0.0
+	_transition_duration = (
+		maxf(minimum_seconds, transition_seconds * absf(target_zoom - zoom_amount))
+		if animated
+		else 0.0
+	)
 	if is_zero_approx(_transition_duration):
 		_transition_duration = 0.0
 		_view_rotation = _transition_target_rotation
 		zoom_amount = target_zoom
 		near_blend = target_zoom
+		presentation_magnification = magnification
 		_lens_pull = 0.0
 		_apply_view()
 	view_changed.emit()
@@ -171,22 +201,37 @@ func begin_drag(pointer: Vector2) -> void:
 	if presentation_locked or is_transitioning():
 		return
 	_dragging = true
+	_view_rotation = world.rotation
 	_last_pointer = pointer
 
 
 func drag_to(pointer: Vector2) -> void:
 	if not _dragging:
 		return
-	var horizontal_distance: float = pointer.x - _last_pointer.x
-	_last_pointer = pointer
-	if is_zero_approx(horizontal_distance):
-		return
 	var screen_radius: float = _planet_radius * world.scale.x * projection_root.scale.x
-	_view_rotation += horizontal_distance / screen_radius
+	var rotation_delta: float = (
+		_overview_drag_angle(_last_pointer, pointer, screen_radius)
+		if is_overview()
+		else (pointer.x - _last_pointer.x) / screen_radius
+	)
+	_last_pointer = pointer
+	if is_zero_approx(rotation_delta):
+		return
+	_view_rotation = wrapf(_view_rotation + rotation_delta, -PI, PI)
 	# Rotation leaves projection size and ecology geometry unchanged. Avoid
 	# rerunning mode/layout work for every mouse-motion event while dragging.
 	world.rotation = _view_rotation
 	view_rotated.emit()
+
+
+func _overview_drag_angle(previous: Vector2, pointer: Vector2, screen_radius: float) -> float:
+	var center: Vector2 = world.get_global_transform_with_canvas().origin
+	var closest: Vector2 = Geometry2D.get_closest_point_to_segment(center, previous, pointer)
+	# Re-anchor through the center, where the pointer has no stable heading.
+	# Check the whole segment so sparse motion events cannot cause a half-turn jump.
+	if closest.distance_to(center) < screen_radius * overview_drag_deadzone_ratio:
+		return 0.0
+	return (previous - center).angle_to(pointer - center)
 
 
 func end_drag() -> void:
@@ -196,6 +241,29 @@ func end_drag() -> void:
 func show_restoration_overview() -> void:
 	# Presentation owns this transition while normal camera input is locked.
 	_start_transition(0.0, 0.0, true)
+
+
+func turn_to_discovery(surface_angle: float, seconds: float) -> void:
+	assert(_configured and presentation_locked)
+	_start_transition(
+		zoom_amount, wrapf(Vector2.UP.angle() - surface_angle, -PI, PI), seconds > 0.0, seconds
+	)
+	_discovery_turn = true
+
+
+func zoom_discovery(magnification: float, seconds: float) -> void:
+	assert(_configured and presentation_locked)
+	_start_transition(1.0, world.rotation, seconds > 0.0, seconds, magnification)
+	_transition_duration = seconds
+
+
+func clear_discovery_camera() -> void:
+	presentation_magnification = 1.0
+	_transition_duration = 0.0
+	target_zoom = zoom_amount
+	_lens_pull = 0.0
+	_apply_view()
+	view_changed.emit()
 
 
 func is_dragging() -> bool:
@@ -234,7 +302,7 @@ func _apply_view() -> void:
 	var radius: float = _planet_radius * near_surface_radius_ratio
 	# Near view crops the top of a larger circle. Both endpoints keep identical
 	# proportions, so every texture landmark is related by uniform magnification.
-	var near_screen_radius: float = viewport_size.x * near_radius_ratio
+	var near_screen_radius: float = viewport_size.x * near_radius_ratio * presentation_magnification
 	var near_scale: float = near_screen_radius / radius
 	var near_center: Vector2 = Vector2(
 		_play_rect.get_center().x + viewport_size.x * near_horizontal_offset_ratio,

@@ -3,6 +3,7 @@ extends "res://scripts/disk_demo.gd"
 const BlendedPlanetArt = preload("res://scripts/场景动画/双视角星球.gd")
 const PlanetRestoration = preload("res://scripts/planet_restoration.gd")
 const PopulationPalette = preload("res://scripts/population_palette.gd")
+const NestDiscovery = preload("res://scripts/nest_discovery_presentation.gd")
 
 @export var start_in_overview: bool = false
 
@@ -11,6 +12,7 @@ const PopulationPalette = preload("res://scripts/population_palette.gd")
 @onready var _planet_art: BlendedPlanetArt = $World/PlanetSurface/星球画面
 @onready var _restoration: PlanetRestoration = $PlanetRestoration
 @onready var _population_palette: PopulationPalette = $PopulationPalette
+@onready var _nest_discovery: NestDiscovery = $NestDiscoveryPresentation
 
 
 func _ready() -> void:
@@ -18,6 +20,8 @@ func _ready() -> void:
 	super._ready()
 	flower_appeared.connect(_restoration.reveal_flower)
 	_restoration.presentation_started.connect(_on_restoration_started)
+	_nest_discovery.presentation_started.connect(_on_restoration_started)
+	_nest_discovery.emergence_progressed.connect(_on_emergence_progressed)
 	_view.view_changed.connect(_sync_art)
 	_view.projection_changed.connect(_sync_art)
 	RenderingServer.set_default_clear_color(Color.BLACK)
@@ -27,9 +31,22 @@ func _ready() -> void:
 
 
 func restart_run() -> void:
+	_nest_discovery.cancel()
 	_restoration.reset()
 	super.restart_run()
 	_population_palette.reset()
+	_nest_discovery.reset()
+
+
+func _present_discovered_nest(species: NestState.Species, position: Vector2) -> void:
+	_nest_discovery.request_discovery(species, position)
+
+
+func _on_emergence_progressed(nest_id: int, progress: float) -> void:
+	_nest_views[nest_id - 1].set_emergence_progress(progress)
+	for area: NestMucusArea in _nest_mucus_areas:
+		if area.source_nest_id == nest_id:
+			area.modulate.a = smoothstep(0.15, 0.8, progress)
 
 
 func _on_restoration_started() -> void:

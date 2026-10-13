@@ -1,5 +1,5 @@
 extends "res://scripts/ui/technology_page.gd"
-const INTERACTIVE_GRAPH_SIZE: Vector2 = Vector2(1280.0, 720.0)
+const INTERACTIVE_GRAPH_SIZE: Vector2 = Vector2(1080.0, 660.0)
 static var _last_zoom_factor: float = 1.0
 var zoom_factor: float = 1.0
 var _drag_id: String = ""
@@ -28,27 +28,27 @@ func _node_prerequisites(id: String) -> Dictionary[String, int]:
 func _node_position(id: String) -> Vector2:
 	match id:
 		"base_value":
-			return Vector2(710.0, 550.0)
+			return Vector2(530.0, 540.0)
 		"pipe":
-			return Vector2(460.0, 550.0)
+			return Vector2(280.0, 540.0)
 		"cultivation":
-			return Vector2(960.0, 550.0)
+			return Vector2(780.0, 540.0)
 		"combo_unlock":
-			return Vector2(340.0, 350.0)
+			return Vector2(160.0, 300.0)
 		"net_unlock":
-			return Vector2(580.0, 350.0)
+			return Vector2(400.0, 300.0)
 		"combo_reward":
-			return Vector2(260.0, 150.0)
+			return Vector2(80.0, 80.0)
 		"combo_interval":
-			return Vector2(420.0, 150.0)
+			return Vector2(240.0, 80.0)
 		"net_capacity":
-			return Vector2(580.0, 150.0)
+			return Vector2(400.0, 80.0)
 		"valuable":
-			return Vector2(800.0, 350.0)
+			return Vector2(620.0, 300.0)
 		"giant":
-			return Vector2(1120.0, 350.0)
+			return Vector2(940.0, 300.0)
 		"automation":
-			return Vector2(960.0, 150.0)
+			return Vector2(780.0, 80.0)
 	return Vector2.ZERO
 
 
@@ -108,7 +108,6 @@ func _node_input(event: InputEvent, id: String) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	super._input(event)
 	if not is_visible_in_tree():
 		return
 	if event is InputEventMouseButton:

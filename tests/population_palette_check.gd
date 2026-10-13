@@ -37,15 +37,22 @@ func _run() -> void:
 	_check(palette.dominant_species == 1, "An empty planet retains its last palette.")
 	palette.reset()
 	palette.advance_population(Vector3(80, 60, 4), 2.5)
+	_check(palette.dominant_species == 0, "Four drill units no longer outweigh eighty pink units.")
+	palette.advance_population(Vector3(80, 60, 7), 2.5)
 	_check(
 		palette.dominant_species == 2,
-		"Two full second-stage drill nests outweigh eighty pink and sixty blue units."
+		"Seven drill units outweigh eighty pink and sixty blue units at ten points each."
 	)
 	palette.reset()
 	palette.advance_population(Vector3(120, 90, 6), 2.5)
 	_check(
+		palette.dominant_species == 0,
+		"Six drill units no longer outweigh one hundred twenty pink units."
+	)
+	palette.advance_population(Vector3(120, 90, 10), 2.5)
+	_check(
 		palette.dominant_species == 2,
-		"Three full second-stage drill nests outweigh one hundred twenty pink and ninety blue units."
+		"Ten drill units outweigh one hundred twenty pink and ninety blue units."
 	)
 	palette.advance_population(Vector3(120, 90, 0), 2.5)
 	_check(palette.dominant_species != 2, "Capturing drill population releases green dominance.")
@@ -53,10 +60,10 @@ func _run() -> void:
 	_check(palette.dominant_species == 0, "Restart resets the palette to pink.")
 	_demo.run.nests[0].alive_slimes = 60
 	_demo.run.nests[1].species = NestState.Species.DRILL
-	_demo.run.nests[1].alive_slimes = 4
+	_demo.run.nests[1].alive_slimes = 5
 	palette._process(2.5)
 	_check(
-		palette.population_counts == Vector3(60, 0, 4),
+		palette.population_counts == Vector3(60, 0, 5),
 		"Live nest totals retain fusion units and underground drill population."
 	)
 	_check(palette.dominant_species == 2, "Live population drives the same palette rule.")
@@ -72,6 +79,7 @@ func _run() -> void:
 		(exit_material.get_shader_parameter("palette_dark") as Color).is_equal_approx(palette.settings.green[0]),
 		"Technology exit graffiti follows the active background theme."
 	)
+	await _check_technology_accent(palette)
 	if "--capture" in OS.get_cmdline_user_args():
 		await _capture_themes()
 	_demo.queue_free()
@@ -114,6 +122,69 @@ func _check_transition_and_pause(palette: Palette) -> void:
 	palette.reset()
 
 
+func _check_technology_accent(palette: Palette) -> void:
+	var background: ShaderMaterial = palette.technology_background.material as ShaderMaterial
+	_check(
+		background.get_shader_parameter("population_palette_enabled") == true,
+		"The production technology background enables dynamic recoloring."
+	)
+	var capture: bool = "--capture-technology" in OS.get_cmdline_user_args()
+	var directory: String = (
+		"res://artifacts/technology_accent_%d" % int(Time.get_unix_time_from_system())
+	)
+	if capture:
+		DirAccess.make_dir_recursive_absolute(directory)
+		print("Technology accent captures: ", directory)
+	for species: int in range(3):
+		palette.reset()
+		palette.emphasize_species(species, 10.0)
+		palette.advance_population(Vector3(200, 0, 0), palette.settings.transition_seconds)
+		_check(palette.dominant_species == 0, "Temporary emphasis preserves population dominance.")
+		var expected: PackedColorArray = palette.settings.colors_for(species)
+		for index: int in range(Palette.PARAMETERS.size()):
+			var applied: Color = background.get_shader_parameter(Palette.PARAMETERS[index])
+			_check(
+				applied.is_equal_approx(expected[index]),
+				"Technology background follows every temporary accent color."
+			)
+		_demo._layout._show_technology()
+		var frozen: Color = background.get_shader_parameter("palette_mid")
+		var remaining: float = palette.accent_remaining
+		palette.set_process(true)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		_check(
+			is_equal_approx(palette.accent_remaining, remaining)
+			and (background.get_shader_parameter("palette_mid") as Color).is_equal_approx(frozen),
+			"Opening technology preserves the active accent while gameplay is paused."
+		)
+		palette.set_process(false)
+		if capture:
+			_demo.run.candy = 1000
+			if _demo.run.governance_level == 0:
+				_demo.run.purchase_technology("cultivation")
+			_demo.run.economy_changed.emit()
+			_demo._layout._technology._show_details("giant")
+			_check(
+				_demo._layout._technology._detail_effect.text.contains("巨型只能用吸管收割"),
+				"The visible giant research explains its capture restriction."
+			)
+			for dimensions: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
+				get_window().size = dimensions
+				_demo._apply_layout()
+				await _save(directory, "%d_technology_%d" % [species, dimensions.x])
+		_demo._layout.close_panels()
+		palette.advance_population(Vector3(200, 0, 0), 10.0)
+		_check(
+			palette.accent_species == -1
+			and (background.get_shader_parameter("palette_mid") as Color).is_equal_approx(
+				palette.settings.pink[1]
+			),
+			"Technology returns to the population color after temporary emphasis expires."
+		)
+	palette.reset()
+
+
 func _capture_themes() -> void:
 	var directory: String = "res://artifacts/population_palette_20261013"
 	DirAccess.make_dir_recursive_absolute(directory)
@@ -124,13 +195,20 @@ func _capture_themes() -> void:
 		for kind: int in [NestState.Species.MUCUS, NestState.Species.DRILL, NestState.Species.DRILL]:
 			_demo.run._pending_nest_species = kind
 			_demo._on_nest_spawn_requested(kind as NestState.Species)
+			for _frame: int in range(240):
+				var delta: float = 0.05 * Engine.time_scale
+				_demo._view._process(delta)
+				_demo._nest_discovery._process(delta)
+				if not _demo._view.presentation_locked:
+					break
+		palette.reset()
 		_check(
 			_demo.run.nests.size() == 5,
 			"The production scene fits two drill nests alongside existing species."
 		)
 		for nest: NestState in _demo.run.nests:
 			nest.level = 1 if nest.species == species else 0
-			if species == 1 and nest.species == 1:
+			if species in [1, 2] and nest.species == species:
 				nest.level = 2
 			_demo._on_nest_changed(nest)
 			_demo.run._advance_nest_population(nest, 120.0)

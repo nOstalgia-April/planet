@@ -21,6 +21,10 @@ func _ready() -> void:
 
 
 # Progress drives presentation only. The run still settles one completed harvest.
+func begin_capture(progress: float) -> void:
+	emitted_bursts = int(floor(clampf(progress, 0.0, 1.0) * bursts_per_harvest))
+
+
 func update_capture(origin: Vector2, destination: Vector2, progress: float) -> void:
 	if _finished:
 		return

@@ -37,13 +37,13 @@ window/size/window_height_override=1080
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/fmod/plugin.cfg")
-
 [editor]
 
 export/convert_text_resources_to_binary=false
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/fmod/plugin.cfg", "res://addons/planet_audio_mute/plugin.cfg")
 
 [gui]
 

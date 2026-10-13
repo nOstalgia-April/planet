@@ -5,7 +5,7 @@ const LINE_COLOR: Color = Color("f0a0c5")
 const LINE_WIDTH: float = 1.5
 const DASH_LENGTH: float = 4.0
 const DASH_GAP: float = 5.0
-const TOP_CLEARANCE: float = 42.0
+const TOP_CLEARANCE: float = 74.0
 const PRICE_CLEARANCE: float = 4.0
 
 var nodes: Dictionary[String, NodeScript] = {}
@@ -26,7 +26,11 @@ func _draw() -> void:
 		)
 		var points: PackedVector2Array = _curve_points(start, end, float(index) * 1.7)
 		var color: Color = LINE_COLOR
-		color.a = 0.42 if destination.state == NodeScript.State.LOCKED else 0.78
+		color.a = 0.22 if destination.state == NodeScript.State.LOCKED else 0.38
+		if destination.state == NodeScript.State.AVAILABLE:
+			color.a = 0.65
+		if destination.selected or source.selected:
+			color.a = 0.85
 		_draw_dashes(points, color)
 
 

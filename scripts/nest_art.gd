@@ -42,6 +42,7 @@ var _ground_profile: ImageTexture
 var _ground_heights: PackedFloat32Array = PackedFloat32Array()
 var _ground_max_y: float = 0.0
 var _flower_announced: bool = false
+var _emergence_progress: float = 1.0
 
 
 func _ready() -> void:
@@ -110,6 +111,11 @@ func play_production() -> void:
 
 func get_art_bounds() -> Rect2:
 	return _bounds
+
+
+func set_emergence_progress(progress: float) -> void:
+	_emergence_progress = clampf(progress, 0.0, 1.0)
+	_bend_material.set_shader_parameter("emergence_progress", _emergence_progress)
 
 
 func uses_ground_bend() -> bool:
@@ -194,6 +200,9 @@ func _refresh_bend_material() -> void:
 	_bend_material.set_shader_parameter("sprite_rect_origin", _sprite.get_rect().position)
 	_bend_material.set_shader_parameter("ground_curve", _ground_curve)
 	_bend_material.set_shader_parameter("contact_y", _bounds.end.y)
+	_bend_material.set_shader_parameter("emergence_height", _bounds.size.y)
+	_bend_material.set_shader_parameter("emergence_width", _bounds.size.x)
+	_bend_material.set_shader_parameter("emergence_center_x", _bounds.get_center().x)
 	_bend_material.set_shader_parameter("bend_height", maxf(1.0, _bounds.size.y * _bend_height_ratio))
 	_bend_material.set_shader_parameter("bottom_padding", _bottom_padding)
 	_bend_material.set_shader_parameter("foot_profile", _get_foot_profile(_sprite.texture))

@@ -1,16 +1,17 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/nest_mucus_area.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/ecology/mucus_cutout/008.png" id="2"]
+[ext_resource type="Shader" path="res://shaders/mucus_trail.gdshader" id="3"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_mucus"]
+shader = ExtResource("3")
 
 [node name="NestMucusArea" type="Node2D"]
 script = ExtResource("1")
 z_index = -1
 
 [node name="Outline" type="Polygon2D" parent="."]
-color = Color(0.22, 0.33, 0.6, 0.60)
-
-[node name="Ground" type="Polygon2D" parent="."]
-color = Color(0.5, 0.65, 0.92, 0.55)
-
-[node name="Sheen" type="Polygon2D" parent="."]
-color = Color(0.83, 0.91, 1, 0.60)
+material = SubResource("ShaderMaterial_mucus")
+texture = ExtResource("2")
+color = Color(1, 1, 1, 0.86)

@@ -183,6 +183,9 @@ func _update_overview_hover(pointer: Vector2) -> void:
 
 
 func _drive_tool(delta: float, pointer: Vector2, holding: bool) -> void:
+	_pipe.set_combo_active(
+		run.combo_count >= run.settings.combo_target and run.combo_remaining > 0.0
+	)
 	var just_pressed: bool = holding and not _was_holding
 	_tool_pointer = pointer
 	_pipe.visible = _active_tool == ToolMode.PIPE and _can_collect(pointer, run.get_pipe_radius())
@@ -235,7 +238,10 @@ func _advance_net(delta: float) -> void:
 		NetPhase.CLOSING:
 			_net_elapsed += delta
 			for slime: PrototypeSlime in _slimes:
-				if slime.get_capture_point().distance_to(_net_anchor) <= net_radius:
+				if (
+					slime.can_net_capture()
+					and slime.get_capture_point().distance_to(_net_anchor) <= net_radius
+				):
 					slime.apply_attraction(delta, _net_anchor, _net_elapsed / _net.close_seconds)
 			_net.show_open(_net_anchor, net_radius, _net_elapsed / _net.close_seconds)
 			if _net_elapsed >= _net.close_seconds:
@@ -576,6 +582,7 @@ func restart_run() -> void:
 	_capture_targets.clear()
 	_vacuum_audio.stop_now()
 	_pipe.reset_transport()
+	_pipe.reset_skin()
 	selected_nest_id = -1
 	_was_holding = false
 	_view_blocks_tool_until_release = false
@@ -617,12 +624,12 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 		if (
 			is_instance_valid(previous)
 			and previous.can_capture()
-			and previous.get_capture_point().distance_squared_to(target) <= radius_squared
+			and previous.get_capture_distance_squared(target) <= radius_squared
 		):
 			nearest = previous
 	if active and nearest == null:
 		for candidate: PrototypeSlime in _slimes:
-			var distance: float = candidate.get_capture_point().distance_squared_to(target)
+			var distance: float = candidate.get_capture_distance_squared(target)
 			if candidate.can_capture() and distance <= nearest_distance:
 				nearest = candidate
 				nearest_distance = distance
@@ -630,41 +637,47 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 	# must not be redrawn or copied into a new population array every tool tick.
 	for previous: PrototypeSlime in _capture_targets:
 		if is_instance_valid(previous) and previous != nearest:
-			previous.capture_progress = 0.0
+			if previous.population_units == 1:
+				previous.capture_progress = 0.0
 			previous.release_capture(delta)
 			_stop_giant_harvest()
 	_capture_targets.clear()
 	_slime_root.set_focus(nearest)
 	_vacuum_audio.update(delta, nearest != null, active and _is_on_ground_mucus(target))
-	_pipe.set_capture_engaged(nearest != null)
+	_pipe.set_capture_engaged(nearest != null and nearest.species != PrototypeSlime.Species.DRILL)
 	if nearest == null:
 		_stop_giant_harvest()
 		return
 	_capture_targets.append(nearest)
 	nearest.on_mucus = _is_on_ground_mucus(nearest.position)
 	var capture_delta: float = delta
-	var peel_seconds: float = run.get_pipe_capture_seconds()
+	var base_seconds: float = run.get_pipe_capture_seconds()
+	var peel_seconds: float = nearest.get_capture_seconds(base_seconds)
 	if nearest.is_anchored():
 		capture_delta = maxf(0.0, delta - (1.0 - nearest.peel_progress) * peel_seconds)
 	if not nearest.pull_off_mucus(delta, target, peel_seconds):
 		return
-	var completed: bool = nearest.apply_capture(capture_delta, peel_seconds, target)
+	var previous_capture_progress: float = nearest.capture_progress
+	var completed: bool = nearest.apply_capture(capture_delta, base_seconds, target)
 	if nearest.population_units > 1:
-		_update_giant_harvest(nearest)
+		_update_giant_harvest(nearest, previous_capture_progress)
 	if not completed:
 		return
 	_stop_giant_harvest()
 	var before: int = run.candy
 	var accepted: bool = run.collect_slime(
-		nearest.nest_id, nearest.reward, nearest.population_units
+		nearest.nest_id, nearest.reward, nearest.population_units, nearest.high_value
 	)
 	assert(accepted, "Collected monster must belong to its source population.")
-	_pipe.play_capture()
-	_pipe.set_capture_engaged(false)
 	if nearest.species == PrototypeSlime.Species.DRILL:
 		_play_drill_treasure(run.candy - before, nearest.get_capture_point())
 	else:
+		_pipe.show_capture_skin(
+			nearest.species, run.combo_count >= run.settings.combo_target and run.combo_remaining > 0.0
+		)
+		_pipe.play_capture()
 		_play_collection_reward(run.candy - before, nearest.get_capture_point(), nearest.body_color)
+	_pipe.set_capture_engaged(false)
 	_capture_targets.clear()
 	_slimes.erase(nearest)
 	nearest.hide()
@@ -680,10 +693,12 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 func _capture_seconds_for(slime: PrototypeSlime) -> float:
 	var base_seconds: float = run.get_pipe_capture_seconds()
 	var seconds: float = slime.get_capture_seconds(base_seconds)
+	if slime.population_units > 1:
+		seconds *= 1.0 - slime.capture_progress
 	# Total time estimate; actual capture handles detachment and suction separately.
 	slime.on_mucus = _is_on_ground_mucus(slime.position)
 	if slime.is_anchored():
-		return seconds + base_seconds
+		return seconds + slime.get_capture_seconds(base_seconds) * (1.0 - slime.peel_progress)
 	return seconds
 
 
@@ -812,12 +827,13 @@ func _play_collection_reward(
 	effect.play(origin, destination, reward)
 
 
-func _update_giant_harvest(slime: PrototypeSlime) -> void:
+func _update_giant_harvest(slime: PrototypeSlime, previous_progress: float) -> void:
 	if _giant_harvest == null:
 		_giant_harvest = giant_harvest_scene.instantiate() as GiantHarvestEffect
 		_effects.add_child(_giant_harvest)
 		_giant_harvest.top_level = true
 		_giant_harvest.global_transform = Transform2D.IDENTITY
+		_giant_harvest.begin_capture(previous_progress)
 	_giant_harvest.color = slime.body_color
 	var destination: Vector2 = (
 		_candy_label.get_global_transform_with_canvas() * (_candy_label.size * 0.5)
@@ -919,7 +935,11 @@ func _on_nest_spawn_requested(species: NestState.Species) -> void:
 		if roll <= 0.0:
 			selected = points[index]
 			break
-	run.resolve_nest_spawn(selected)
+	_present_discovered_nest(species, selected)
+
+
+func _present_discovered_nest(_species: NestState.Species, position: Vector2) -> void:
+	run.resolve_nest_spawn(position)
 
 
 func _on_nest_added(nest: NestState) -> void:
@@ -949,12 +969,15 @@ func _on_nest_added(nest: NestState) -> void:
 	view.presentation_scale = _view.near_nest_scale
 	view.update_state(nest.level, nest.is_tamed, run.settings.nest_upgrade_costs.size())
 	_nest_views.append(view)
+	if nest.is_discovering:
+		view.begin_emergence()
 	if not _opening_nests:
 		_monster_audio.nest_appeared(nest.species)
 	_refresh_hud()
 
 
 func _on_flower_appeared(nest_id: int, species: int) -> void:
+	run.record_flower(nest_id)
 	flower_appeared.emit(nest_id, species)
 
 
@@ -981,8 +1004,7 @@ func _on_slime_requested(nest_id: int) -> void:
 	_spawn_directions[nest_id] = direction_index + 1
 	var species: PrototypeSlime.Species = nest.species as PrototypeSlime.Species
 	var valuable: bool = (
-		nest.species != NestState.Species.DRILL
-		and run.valuable_level > 0
+		run.valuable_level > 0
 		and direction_index % run.settings.valuable_spawn_every == 0
 	)
 	var reward: int = run.get_capture_reward(nest.species, valuable)
@@ -1088,7 +1110,8 @@ func _select_nest(nest_id: int) -> void:
 
 func _update_nest_hover(viewport_position: Vector2) -> void:
 	if (
-		_view.is_overview()
+		_view.presentation_locked
+		or _view.is_overview()
 		or _view.is_transitioning()
 		or _view.is_dragging()
 		or _layout.is_technology_open()
