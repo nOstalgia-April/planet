@@ -114,13 +114,37 @@ func _run() -> void:
 		"restored globe uses the shared five-FPS animation clock"
 	)
 	_check(
-		_game._restoration.bright_background.modulate.a == 1.0,
-		"all colors enable bright background"
+		_game._restoration.bright_background.modulate.a == 0.0,
+		"all colors retain the colored background while an existing nest is not automated"
 	)
 	_check(_game._restoration.core.modulate.a == 0.0, "old core does not obscure restored globe")
 	var rotation: float = _game._world.rotation
 	_game._view._process(1.0)
 	_check(not is_equal_approx(rotation, _game._world.rotation), "completed globe rotates")
+	await _capture("three_colors_before_automation")
+	_game.run.get_nest(2).alive_slimes = 1
+	for _stage: int in range(3):
+		_check(_game.run.upgrade_nest(2), "last existing nest can become automated")
+	_check(not _game.run.is_complete, "background automation fixture still has a monster")
+	_game._restoration._process(0.0)
+	_game._restoration._process(0.8)
+	_game._view._process(1.0)
+	_game._restoration._process(0.0)
+	_check(
+		_game._restoration.phase == Restoration.Phase.BACKGROUND,
+		"all current nests automated starts the background transition without a new color"
+	)
+	_game._restoration._process(0.5)
+	_check(
+		is_equal_approx(_game._restoration.bright_background.modulate.a, 0.5),
+		"background fades to white after full automation"
+	)
+	_game._restoration._process(0.5)
+	_game._restoration._process(1.2)
+	_check(
+		_game._restoration.bright_background.modulate.a == 1.0,
+		"all current nests automated enables white even with monsters remaining"
+	)
 	await _capture("complete")
 	_game._view.zoom_steps(1.0, false)
 	await _capture("complete_near")
@@ -148,13 +172,36 @@ func _run() -> void:
 		_game._planet_art.color_progress == Vector3.ZERO, "restart cancels partially painted color"
 	)
 	await _capture("restart")
+	# Full automation is sufficient even when only one species exists.
+	_game.run.candy = 100000
+	_game.run.purchase_technology("cultivation")
+	_game.run.purchase_technology("automation")
+	for nest: NestState in _game.run.nests:
+		nest.alive_slimes = 1
+		for _stage: int in range(3):
+			_game.run.upgrade_nest(nest.nest_id)
+	_game._restoration.reveal_flower(1, 0)
+	_game._restoration._process(0.8)
+	_game._view._process(1.0)
+	_game._restoration._process(0.0)
+	_game._restoration._process(2.4)
+	_game._restoration._process(1.2)
+	_game._restoration._process(1.0)
+	_game._restoration._process(1.2)
+	_check(
+		(
+			_game._restoration.unlocked_species == [0]
+			and _game._restoration.bright_background.modulate.a == 1.0
+		),
+		"all current nests automated enables white without unlocking all three colors"
+	)
 	_game.queue_free()
 	await get_tree().process_frame
 	for failure: String in _failures:
 		push_error(failure)
 	if _failures.is_empty():
 		print(
-			"PASS: monster-clear victory, actual flower trigger, color queue, input lock, final animation/background, rotation and restart."
+			"PASS: monster-clear victory, flower trigger, color queue, automation-gated white background, rotation and restart."
 		)
 	get_tree().quit(0 if _failures.is_empty() else 1)
 
@@ -174,6 +221,10 @@ func _check_victory() -> void:
 	run.purchase_technology("automation")
 	run.get_nest(1).alive_slimes = 2
 	run.get_nest(2).alive_slimes = 3
+	# This fixture isolates automation and cleanup after the three color unlocks.
+	run.unlocked_colors.assign([0, 1, 2])
+	# Isolate population victory from the independently tracked flower colors.
+	run.unlocked_colors.assign([0, 1, 2])
 	for nest: NestState in run.nests:
 		for _stage: int in range(3):
 			run.upgrade_nest(nest.nest_id)
@@ -181,8 +232,10 @@ func _check_victory() -> void:
 	run.collect_slime(1, -1, 2)
 	_check(not run.is_complete, "other nests and fused population still count")
 	run.net_unlocked = true
-	run.collect_net_batch([2], [], [3])
-	_check(run.is_complete and _goals == 1, "final net capture wins exactly once")
+	_check(run.collect_net_batch([2], [], [3]) == 0, "net cannot harvest the final fused body")
+	_check(not run.is_complete, "an immune giant still prevents victory")
+	run.collect_slime(2, -1, 3)
+	_check(run.is_complete and _goals == 1, "final giant suction wins exactly once")
 	run.advance(200.0)
 	_check(
 		run.get_species_population(0) == 0 and _goals == 1, "victory does not spawn monsters again"
@@ -207,7 +260,7 @@ func _capture(label: String) -> void:
 		return
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(
-		"res://artifacts/restoration_20261011_" + label + ".png"
+		"res://artifacts/restoration_20261014_automation_" + label + ".png"
 	)
 	print("CAPTURE ", label, " ", Time.get_datetime_string_from_system())
 

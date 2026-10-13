@@ -4,4 +4,5 @@
 
 [resource]
 script = ExtResource("1")
+monster_scales = Array[float]([1.0, 1.0, 0.55])
 nest_scales = Array[float]([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])

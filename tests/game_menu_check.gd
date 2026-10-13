@@ -2,7 +2,7 @@ extends Node
 
 const PLAY: PackedScene = preload("res://features/场景预览/近景游玩预览.tscn")
 const Play = preload("res://features/场景预览/游玩预览.gd")
-const OUTPUT: String = "res://artifacts/game_menu_20261012"
+const OUTPUT: String = "res://artifacts/ui_affordability_20261013/menu"
 
 var _game: Play
 var _failures: Array[String] = []
@@ -16,12 +16,13 @@ var _old_fullscreen: bool
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	get_tree().root.set_flag(Window.FLAG_MOUSE_PASSTHROUGH, true)
 	_had_config = FileAccess.file_exists(GamePreferences.SAVE_PATH)
 	if _had_config:
 		_saved_config = FileAccess.get_file_as_string(GamePreferences.SAVE_PATH)
 	_old_music = GamePreferences.music_volume
 	_old_effects = GamePreferences.effects_volume
-	_old_enabled = GamePreferences.music_enabled
+	_old_enabled = GamePreferences.audio_enabled
 	_old_fullscreen = GamePreferences.fullscreen
 	_run.call_deferred()
 
@@ -85,6 +86,8 @@ func _run() -> void:
 		_check(is_zero_approx(effect.get_volume()), "existing effect can be muted")
 		_check(AudioServer.is_bus_mute(0), "fallback effects also mute")
 		GameAudio.stop_loop(effect)
+		GamePreferences.set_effects_volume(0.24)
+		effect = GameAudio.start_loop("event:/Earth_Rotate")
 		await _click(menu.get_node("%Controls"))
 		await _capture("controls", resolution)
 		await _key(KEY_ESCAPE)
@@ -96,15 +99,55 @@ func _run() -> void:
 		_check(not menu.is_open() and not get_tree().paused, "escape closes settings and resumes")
 		await _click(menu.get_node("Toolbar/Music"))
 		_check(
-			not GamePreferences.music_enabled and is_zero_approx(GameAudio._music.get_volume()),
+			not GamePreferences.audio_enabled and is_zero_approx(GameAudio._music.get_volume()),
 			"toolbar mutes music"
 		)
+		_check(is_zero_approx(effect.get_volume()), "toolbar mutes an existing FMOD effect")
+		_check(
+			GameAudio._master_bus.get_mute(),
+			"toolbar mutes all FMOD output including nested events"
+		)
+		_check(AudioServer.is_bus_mute(0), "toolbar mutes native effects")
+		_check(menu.get_node("%EffectsValue").text == "已关闭", "settings shows muted effects")
+		_check(
+			(
+				is_equal_approx(GamePreferences.music_volume, 0.37)
+				and is_equal_approx(GamePreferences.effects_volume, 0.24)
+			),
+			"mute preserves both volume settings"
+		)
+		config.load(GamePreferences.SAVE_PATH)
+		_check(not config.get_value("audio", "enabled", true), "global mute persists")
+		await _leave_music(menu)
 		await _capture("music_muted", resolution)
 		await _click(menu.get_node("Toolbar/Music"))
 		_check(
-			GamePreferences.music_enabled and GameAudio._music.get_volume() > 0.0,
+			GamePreferences.audio_enabled and GameAudio._music.get_volume() > 0.0,
 			"toolbar restores music volume"
 		)
+		_check(
+			is_equal_approx(effect.get_volume(), 0.24),
+			"toolbar restores the previous effects volume"
+		)
+		_check(not GameAudio._master_bus.get_mute(), "toolbar restores FMOD output")
+		_check(not AudioServer.is_bus_mute(0), "toolbar restores native effects")
+		GameAudio.set_editor_muted(true)
+		_check(GameAudio._master_bus.get_mute(), "editor mute reaches FMOD")
+		GamePreferences.set_music_volume(0.41)
+		GamePreferences.set_effects_volume(0.29)
+		_check(GameAudio._master_bus.get_mute(), "volume sliders cannot override editor mute")
+		_check(AudioServer.is_bus_mute(0), "volume sliders preserve native editor mute")
+		GamePreferences.toggle_audio()
+		GameAudio.set_editor_muted(false)
+		_check(GameAudio._master_bus.get_mute(), "editor unmute preserves the game's own mute")
+		GameAudio.set_editor_muted(true)
+		GamePreferences.toggle_audio()
+		_check(GameAudio._master_bus.get_mute(), "game unmute preserves editor mute")
+		GameAudio.set_editor_muted(false)
+		_check(not GameAudio._master_bus.get_mute(), "clearing both switches restores FMOD")
+		GameAudio.stop_loop(effect)
+		await _leave_music(menu)
+		await _capture("music_enabled", resolution)
 		await _click(layout._technology_button)
 		if not layout.is_technology_open():
 			print(
@@ -187,7 +230,7 @@ func _run() -> void:
 func _restore_preferences() -> void:
 	GamePreferences.music_volume = _old_music
 	GamePreferences.effects_volume = _old_effects
-	GamePreferences.music_enabled = _old_enabled
+	GamePreferences.audio_enabled = _old_enabled
 	GamePreferences.set_fullscreen(_old_fullscreen)
 	if _had_config:
 		var file: FileAccess = FileAccess.open(GamePreferences.SAVE_PATH, FileAccess.WRITE)
@@ -219,6 +262,18 @@ func _click(control: Control) -> void:
 		get_tree().root.push_input(event, true)
 		await get_tree().process_frame
 	await _settle()
+
+
+func _leave_music(menu: Control) -> void:
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = Vector2(5, 120)
+	get_tree().root.push_input(motion, true)
+	await _settle()
+	_check(
+		not menu.get_node("Toolbar/Music/Brush").visible,
+		"music background clears after clicking and leaving"
+	)
+	_check(not menu.get_node("Toolbar/Music").has_focus(), "mouse exit clears music click focus")
 
 
 func _settle() -> void:

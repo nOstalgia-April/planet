@@ -1,7 +1,7 @@
 extends Node2D
 
 const SurfaceProjection = preload("res://scripts/surface_projection.gd")
-const FrameArt = preload("res://scripts/场景动画/帧动画.gd")
+const VacuumSkin = preload("res://scripts/vacuum_skin.gd")
 const REFERENCE_RADIUS: float = 24.0
 
 enum TransportState { IDLE, SINGLE, CONTINUOUS }
@@ -20,9 +20,11 @@ var _time: float = 0.0
 var _mouth_local: Vector2 = Vector2.ZERO
 var _capture_engaged: bool = false
 var _pending_transport: bool = false
+var _last_capture_skin: VacuumSkin.SkinKind = VacuumSkin.SkinKind.DEFAULT
+var _combo_active: bool = false
 
 @onready var _art_root: Node2D = $ArtRoot
-@onready var _art: FrameArt = $ArtRoot/吸尘器
+@onready var _art: VacuumSkin = $ArtRoot/吸尘器
 
 
 func _ready() -> void:
@@ -59,6 +61,28 @@ func play_capture() -> void:
 	else:
 		# Coalesce fast captures into another full cycle without rewinding this one.
 		_pending_transport = true
+
+
+func show_capture_skin(species: PrototypeSlime.Species, combo_active: bool) -> void:
+	match species:
+		PrototypeSlime.Species.SLIME:
+			_last_capture_skin = VacuumSkin.SkinKind.PINK
+		PrototypeSlime.Species.MUCUS:
+			_last_capture_skin = VacuumSkin.SkinKind.BLUE
+		PrototypeSlime.Species.DRILL:
+			_last_capture_skin = VacuumSkin.SkinKind.DEFAULT
+	set_combo_active(combo_active)
+
+
+func set_combo_active(value: bool) -> void:
+	_combo_active = value
+	_art.request_skin(VacuumSkin.SkinKind.RAINBOW if _combo_active else _last_capture_skin)
+
+
+func reset_skin() -> void:
+	_last_capture_skin = VacuumSkin.SkinKind.DEFAULT
+	_combo_active = false
+	_art.reset_skin()
 
 
 func reset_transport() -> void:

@@ -1,0 +1,22 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/史莱姆/阴影/原始阴影.png" id="1"]
+[ext_resource type="Shader" path="res://shaders/pink_ground_shadow.gdshader" id="2"]
+
+[sub_resource type="AtlasTexture" id="ShadowTexture"]
+atlas = ExtResource("1")
+region = Rect2(202, 414, 330, 76)
+filter_clip = true
+
+[sub_resource type="ShaderMaterial" id="ShadowMaterial"]
+shader = ExtResource("2")
+
+[node name="PinkGroundShadow" type="Node2D"]
+
+[node name="Ink" type="Sprite2D" parent="."]
+self_modulate = Color(1, 1, 1, 0.58)
+texture_filter = 2
+material = SubResource("ShadowMaterial")
+position = Vector2(1, -2.25)
+scale = Vector2(0.25, 0.25)
+texture = SubResource("ShadowTexture")

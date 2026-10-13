@@ -39,6 +39,8 @@ var _effect_descriptions: Array[FmodEventDescription] = []
 var _effect_is_near_view: Array[bool] = []
 # 1 in the near view, 0 in the overview; follows the camera transition.
 var _near_view_gain: float = 1.0
+var _master_bus: FmodBus
+var _editor_muted: bool = false
 
 # Holding the references keeps the banks loaded; dropping them unloads.
 var _banks: Array[FmodBank] = []
@@ -59,6 +61,12 @@ var _fading_out: Dictionary = {}
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_editor_muted = "--debug-mute-audio" in OS.get_cmdline_args()
+	if EngineDebugger.is_active():
+		EngineDebugger.register_message_capture(&"planet_audio", _capture_editor_message)
+		EngineDebugger.send_message("planet_audio:ready", [])
+	GamePreferences.changed.connect(_apply_preferences)
+	_apply_preferences()
 	for bank_name: String in BANK_NAMES:
 		if not FileAccess.file_exists(BANK_ROOT.path_join(bank_name)):
 			push_warning("FMOD bank missing, FMOD audio disabled: %s" % bank_name)
@@ -70,6 +78,7 @@ func _ready() -> void:
 			)
 		)
 	banks_loaded = true
+	_master_bus = FmodServer.get_bus("bus:/")
 	for description: Dictionary in FmodServer.get_global_parameter_desc_list():
 		_global_parameters[description["name"]] = true
 	for bank: FmodBank in _banks:
@@ -78,12 +87,13 @@ func _ready() -> void:
 			if not path.begins_with("event:/Mx_"):
 				_effect_descriptions.append(description)
 				_effect_is_near_view.append(_is_near_view(path))
-	GamePreferences.changed.connect(_apply_preferences)
 	_apply_preferences()
 
 
 # Stop the music before dropping the banks at quit; dropping them unloads every event.
 func _exit_tree() -> void:
+	if EngineDebugger.is_active():
+		EngineDebugger.unregister_message_capture(&"planet_audio")
 	stop_music()
 	_end_transition()
 	_discard_pending_music()
@@ -94,6 +104,7 @@ func _exit_tree() -> void:
 	_fading_out.clear()
 	_effect_descriptions.clear()
 	_effect_is_near_view.clear()
+	_master_bus = null
 	_banks.clear()
 	banks_loaded = false
 
@@ -222,7 +233,7 @@ func play_transition(event_path: String, next_music_path: String = "") -> void:
 	_transition = FmodServer.create_event_instance(event_path)
 	if _transition == null:
 		return
-	_transition.set_volume(GamePreferences.effects_volume)
+	_transition.set_volume(_effects_gain(false))
 	_transition.start()
 	_transition_elapsed = 0.0
 	_transition_length = FmodServer.get_event(event_path).get_length() / 1000.0
@@ -323,7 +334,29 @@ func _end_transition() -> void:
 
 
 func _music_gain() -> float:
-	return GamePreferences.music_volume if GamePreferences.music_enabled else 0.0
+	return GamePreferences.music_volume if GamePreferences.audio_enabled else 0.0
+
+
+# Editor mute is temporary and independent of the player's saved audio switch.
+func set_editor_muted(muted: bool) -> void:
+	_editor_muted = muted
+	_apply_master_mute()
+
+
+func _capture_editor_message(message: String, data: Array) -> bool:
+	if message != "set_editor_muted":
+		return false
+	if data.size() != 1 or not data[0] is bool:
+		return false
+	set_editor_muted(data[0])
+	return true
+
+
+func _apply_master_mute() -> void:
+	var muted: bool = _editor_muted or not GamePreferences.audio_enabled
+	if _master_bus != null:
+		_master_bus.set_mute(muted)
+	AudioServer.set_bus_mute(0, muted or is_zero_approx(GamePreferences.effects_volume))
 
 
 func _apply_preferences() -> void:
@@ -333,7 +366,7 @@ func _apply_preferences() -> void:
 		if instance.is_valid():
 			instance.set_volume(float(_fading_out[instance]) * _music_gain())
 	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(GamePreferences.effects_volume, 0.0001)))
-	AudioServer.set_bus_mute(0, is_zero_approx(GamePreferences.effects_volume))
+	_apply_master_mute()
 	_apply_effects_volume()
 
 
@@ -349,6 +382,8 @@ func _apply_effects_volume() -> void:
 
 
 func _effects_gain(near_view: bool) -> float:
+	if not GamePreferences.audio_enabled:
+		return 0.0
 	return GamePreferences.effects_volume * (_near_view_gain if near_view else 1.0)
 
 

@@ -20,6 +20,7 @@ const NestArt = preload("res://scripts/nest_art.gd")
 
 var nest_id: int = -1
 var species: int = 0
+var emergence_progress: float = 1.0
 
 var _level: int = 0
 var _max_level: int = 3
@@ -32,6 +33,7 @@ var _ground_rect: Rect2
 
 @onready var _selection_shape: CollisionShape2D = $SelectionArea/CollisionShape2D
 @onready var _art: NestArt = $NestArt
+@onready var _emergence_dust: CPUParticles2D = $EmergenceDust
 
 
 func _ready() -> void:
@@ -83,6 +85,17 @@ func pulse_automatic() -> void:
 
 func pulse_spawn() -> void:
 	_art.play_spawn()
+
+
+func begin_emergence() -> void:
+	set_emergence_progress(0.0)
+	_emergence_dust.restart()
+	_emergence_dust.emitting = true
+
+
+func set_emergence_progress(progress: float) -> void:
+	emergence_progress = clampf(progress, 0.0, 1.0)
+	_art.set_emergence_progress(emergence_progress)
 
 
 func get_collection_point() -> Vector2:

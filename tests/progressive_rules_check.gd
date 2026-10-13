@@ -455,6 +455,7 @@ func _check_nest_discovery_cooldown() -> void:
 		for _stage: int in range(3):
 			run.upgrade_nest(nest.nest_id)
 	_check(not run.is_complete, "Automation alone does not finish a populated planet.")
+	run.unlocked_colors.assign([0, 1, 2])
 	_clear_population(run)
 	_check(
 		run.is_complete and run._nest_spawn_cooldown_remaining == 0.0,
@@ -532,6 +533,8 @@ func _check_governance_roll_weight() -> void:
 func _check_completion_requires_automation() -> void:
 	for species: int in [NestState.Species.SLIME, NestState.Species.MUCUS, NestState.Species.DRILL]:
 		var run: PrototypeRun = _create_run()
+		# Isolate the automation gate after all colors have already been unlocked.
+		run.unlocked_colors.assign([0, 1, 2])
 		_goal_count = 0
 		run.goal_completed.connect(_count_goal.bind(run))
 		run.get_nest(1).species = species as NestState.Species
@@ -575,6 +578,7 @@ func _check_completion_requires_automation() -> void:
 
 func _check_existing_nests_completion() -> void:
 	var locked_run: PrototypeRun = _create_run(SETTINGS.nest_initial_delay_seconds)
+	locked_run.unlocked_colors.assign([0, 1, 2])
 	locked_run.candy = 100000
 	_enable_full_governance(locked_run)
 	for nest_id: int in [1, 2]:
@@ -586,7 +590,7 @@ func _check_existing_nests_completion() -> void:
 			and not locked_run.net_unlocked
 			and locked_run._nest_initial_delay_remaining == 0.0
 		),
-		"Automating every empty nest completes the run without a mandatory tool-unlock quota."
+		"With colors unlocked, automating every empty nest needs no additional tool-unlock quota."
 	)
 	locked_run.upgrade_net()
 	_check(
@@ -595,6 +599,7 @@ func _check_existing_nests_completion() -> void:
 	)
 	locked_run.free()
 	var run: PrototypeRun = _create_run()
+	run.unlocked_colors.assign([0, 1, 2])
 	var settings: PrototypeSettings = SETTINGS.duplicate() as PrototypeSettings
 	settings.nest_initial_delay_seconds = 0.0
 	settings.nest_roll_chance_min = 1.0
@@ -687,6 +692,7 @@ func _check_automatic_income() -> void:
 	)
 	for _stage: int in range(3):
 		run.upgrade_nest(2)
+	run.unlocked_colors.assign([0, 1, 2])
 	_clear_population(run)
 	_check(
 		run.is_complete and is_equal_approx(run.get_passive_income(), 3.0),

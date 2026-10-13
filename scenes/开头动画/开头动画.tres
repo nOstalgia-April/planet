@@ -1,4 +1,4 @@
-[gd_resource type="Animation" load_steps=46 format=3]
+[gd_resource type="Animation" load_steps=60 format=3]
 
 [ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p1/001.png" id="frame_001"]
 [ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p1/002.png" id="frame_002"]
@@ -46,9 +46,24 @@
 [ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p7/008.png" id="frame_044"]
 [ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p7/009.png" id="frame_045"]
 
+[ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p8/001.png" id="frame_046"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p8/002.png" id="frame_047"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p8/003.png" id="frame_048"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p8/004.png" id="frame_049"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p8/005.png" id="frame_050"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p8/006.png" id="frame_051"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p8/007.png" id="frame_052"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p8/008.png" id="frame_053"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p8/009.png" id="frame_054"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p8/010.png" id="frame_055"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p8/011.png" id="frame_056"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p8/012.png" id="frame_057"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p8/013.png" id="frame_058"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p8/014.png" id="frame_059"]
+
 [resource]
 resource_name = "开头"
-length = 10.838888889
+length = 13.638888889
 step = 0.05
 tracks/0/type = "value"
 tracks/0/imported = false
@@ -57,8 +72,8 @@ tracks/0/path = NodePath("画面:texture")
 tracks/0/interp = 0
 tracks/0/loop_wrap = false
 tracks/0/keys = {
-"times": PackedFloat32Array(0.000000000, 0.250000000, 0.500000000, 0.750000000, 1.000000000, 1.333333333, 1.666666667, 2.000000000, 2.333333333, 2.666666667, 3.000000000, 3.333333333, 3.666666667, 4.000000000, 4.250000000, 4.500000000, 4.750000000, 4.950000000, 5.150000000, 5.350000000, 5.550000000, 5.750000000, 5.950000000, 6.150000000, 6.372222222, 6.594444444, 6.816666667, 7.038888889, 7.261111111, 7.483333333, 7.705555556, 7.927777778, 8.150000000, 8.372222222, 8.594444444, 8.816666667, 9.038888889, 9.238888889, 9.438888889, 9.638888889, 9.838888889, 10.038888889, 10.238888889, 10.438888889, 10.638888889),
-"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"times": PackedFloat32Array(0.000000000, 0.250000000, 0.500000000, 0.750000000, 1.000000000, 1.333333333, 1.666666667, 2.000000000, 2.333333333, 2.666666667, 3.000000000, 3.333333333, 3.666666667, 4.000000000, 4.250000000, 4.500000000, 4.750000000, 4.950000000, 5.150000000, 5.350000000, 5.550000000, 5.750000000, 5.950000000, 6.150000000, 6.372222222, 6.594444444, 6.816666667, 7.038888889, 7.261111111, 7.483333333, 7.705555556, 7.927777778, 8.150000000, 8.372222222, 8.594444444, 8.816666667, 9.038888889, 9.238888889, 9.438888889, 9.638888889, 9.838888889, 10.038888889, 10.238888889, 10.438888889, 10.638888889, 10.838888889, 11.038888889, 11.238888889, 11.438888889, 11.638888889, 11.838888889, 12.038888889, 12.238888889, 12.438888889, 12.638888889, 12.838888889, 13.038888889, 13.238888889, 13.438888889),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
 "update": 1,
-"values": [ExtResource("frame_001"), ExtResource("frame_002"), ExtResource("frame_003"), ExtResource("frame_004"), ExtResource("frame_005"), ExtResource("frame_006"), ExtResource("frame_007"), ExtResource("frame_008"), ExtResource("frame_009"), ExtResource("frame_010"), ExtResource("frame_011"), ExtResource("frame_012"), ExtResource("frame_013"), ExtResource("frame_014"), ExtResource("frame_015"), ExtResource("frame_016"), ExtResource("frame_017"), ExtResource("frame_018"), ExtResource("frame_019"), ExtResource("frame_020"), ExtResource("frame_021"), ExtResource("frame_022"), ExtResource("frame_023"), ExtResource("frame_024"), ExtResource("frame_025"), ExtResource("frame_026"), ExtResource("frame_027"), ExtResource("frame_028"), ExtResource("frame_029"), ExtResource("frame_030"), ExtResource("frame_031"), ExtResource("frame_032"), ExtResource("frame_033"), ExtResource("frame_034"), ExtResource("frame_035"), ExtResource("frame_036"), ExtResource("frame_037"), ExtResource("frame_038"), ExtResource("frame_039"), ExtResource("frame_040"), ExtResource("frame_041"), ExtResource("frame_042"), ExtResource("frame_043"), ExtResource("frame_044"), ExtResource("frame_045")]
+"values": [ExtResource("frame_001"), ExtResource("frame_002"), ExtResource("frame_003"), ExtResource("frame_004"), ExtResource("frame_005"), ExtResource("frame_006"), ExtResource("frame_007"), ExtResource("frame_008"), ExtResource("frame_009"), ExtResource("frame_010"), ExtResource("frame_011"), ExtResource("frame_012"), ExtResource("frame_013"), ExtResource("frame_014"), ExtResource("frame_015"), ExtResource("frame_016"), ExtResource("frame_017"), ExtResource("frame_018"), ExtResource("frame_019"), ExtResource("frame_020"), ExtResource("frame_021"), ExtResource("frame_022"), ExtResource("frame_023"), ExtResource("frame_024"), ExtResource("frame_025"), ExtResource("frame_026"), ExtResource("frame_027"), ExtResource("frame_028"), ExtResource("frame_029"), ExtResource("frame_030"), ExtResource("frame_031"), ExtResource("frame_032"), ExtResource("frame_033"), ExtResource("frame_034"), ExtResource("frame_035"), ExtResource("frame_036"), ExtResource("frame_037"), ExtResource("frame_038"), ExtResource("frame_039"), ExtResource("frame_040"), ExtResource("frame_041"), ExtResource("frame_042"), ExtResource("frame_043"), ExtResource("frame_044"), ExtResource("frame_045"), ExtResource("frame_046"), ExtResource("frame_047"), ExtResource("frame_048"), ExtResource("frame_049"), ExtResource("frame_050"), ExtResource("frame_051"), ExtResource("frame_052"), ExtResource("frame_053"), ExtResource("frame_054"), ExtResource("frame_055"), ExtResource("frame_056"), ExtResource("frame_057"), ExtResource("frame_058"), ExtResource("frame_059")]
 }

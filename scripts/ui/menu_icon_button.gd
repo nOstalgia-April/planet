@@ -11,9 +11,14 @@ func _ready() -> void:
 	for state: String in ["normal", "hover", "pressed", "focus", "disabled"]:
 		add_theme_stylebox_override(state, StyleBoxEmpty.new())
 	mouse_entered.connect(queue_redraw)
-	mouse_exited.connect(queue_redraw)
+	mouse_exited.connect(_on_mouse_exited)
 	focus_entered.connect(queue_redraw)
 	focus_exited.connect(queue_redraw)
+
+
+func _on_mouse_exited() -> void:
+	release_focus()
+	queue_redraw()
 
 
 func _draw() -> void:

@@ -33,15 +33,21 @@ func _run() -> void:
 		var resting: Rect2 = actor.get_visual_rect()
 		actor.apply_attraction(0.02, actor.get_capture_point(), 0.7)
 		_check(actor.get_source_texture() == ordinary, "attraction alone keeps ordinary expression")
-		actor.apply_capture(0.2, 1.0, actor.get_capture_point())
+		actor.apply_capture(0.1 if kind == 2 else 0.2, 1.0, actor.get_capture_point())
 		actor.refresh_presentation()
 		_check(
 			actor.get_source_texture().resource_path.contains("/吸入/"),
 			"actual suction shows crying expression"
 		)
-		_check(
-			actor.get_visual_rect().size.x < resting.size.x, "suction retains gameplay shrinking"
-		)
+		if kind == 2:
+			_check(
+				actor.get_visual_rect().size.distance_to(resting.size) < 0.02,
+				"drill suction keeps its exposed visible size"
+			)
+		else:
+			_check(
+				actor.get_visual_rect().size.x < resting.size.x, "suction retains gameplay shrinking"
+			)
 		_check(
 			actor.get_visual_rect().has_point(actor.get_capture_point()),
 			"capture point stays inside crying art"
@@ -53,6 +59,12 @@ func _run() -> void:
 		)
 		actor.apply_capture(0.02, 1.0, actor.get_capture_point())
 		actor._process(0.2)
+		if kind == 2:
+			_check(
+				actor.get_source_texture().resource_path.contains("/吸入/"),
+				"drill suction remains locked across slow frames until explicit release"
+			)
+			actor.release_capture(0.02)
 		_check(
 			not actor.get_source_texture().resource_path.contains("/吸入/"),
 			"lost suction recovers expression"
@@ -60,11 +72,12 @@ func _run() -> void:
 		actor.configure_species(kind as PrototypeSlime.Species, true, 6)
 		actor.apply_capture(0.02, 1.0, actor.get_capture_point())
 		actor.refresh_presentation()
-		if kind < 2:
-			_check(
-				actor.slime_art._gold_material.get_shader_parameter("gold"),
-				"crying keeps valuable color"
-			)
+		_check(
+			actor.high_value
+			and actor.get_source_texture().resource_path.contains("高价值怪物")
+			and actor.get_source_texture().resource_path.contains("/吸入/"),
+			"valuable suction keeps supplied upgraded artwork"
+		)
 		actor.queue_free()
 		await process_frame
 	var giant: PrototypeSlime = GiantScene.instantiate() as PrototypeSlime
@@ -88,12 +101,19 @@ func _run() -> void:
 
 
 func _check_frame_geometry() -> void:
+	_check_scene_geometry("res://assets/物品动画/高清怪兽/来源与缩放.json", false)
+	_check_scene_geometry("res://assets/物品动画/高价值怪物/来源与缩放.json", true)
+
+
+func _check_scene_geometry(manifest_path: String, valuable: bool) -> void:
 	var manifest: Dictionary = JSON.parse_string(
-		FileAccess.get_file_as_string("res://assets/物品动画/高清怪兽/来源与缩放.json")
+		FileAccess.get_file_as_string(manifest_path)
 	)
 	var views: Dictionary[String, ItemArt] = {}
-	for species: String in ["史莱姆", "黏液怪", "地鼠"]:
-		var scene: PackedScene = load("res://scenes/物品动画/%s.tscn" % species) as PackedScene
+	var species_names: Array[String] = ["史莱姆", "黏液怪", "地鼠"]
+	for species: String in species_names:
+		var scene_path: String = "res://scenes/物品动画/%s%s.tscn" % ["高价值" if valuable else "", species]
+		var scene: PackedScene = load(scene_path) as PackedScene
 		var art: ItemArt = scene.instantiate() as ItemArt
 		root.add_child(art)
 		views[species] = art
@@ -106,18 +126,21 @@ func _check_frame_geometry() -> void:
 		art.show_frame(StringName(binding["动作"]), int(binding["帧"]))
 		var sprite: Sprite2D = art.get_node("画面/贴图") as Sprite2D
 		_check(
-			sprite.texture.resource_path == binding["高清路径"], "animation actually binds its HD frame"
+			sprite.texture.resource_path == binding["项目路径" if valuable else "高清路径"],
+			"animation actually binds its supplied frame"
 		)
 		_check(sprite.texture.get_image().has_mipmaps(), "HD texture imports mipmaps")
 		if binding.get("按主体校准", false):
 			continue
-		var original: Texture2D = load(binding["旧路径"]) as Texture2D
+		var original: Texture2D = load(binding["普通路径" if valuable else "旧路径"]) as Texture2D
+		var old_position: Array = binding["普通位置" if valuable else "旧位置"]
+		var old_scale: Array = binding["普通缩放" if valuable else "旧缩放"]
 		var expected: Rect2 = Rect2(original.get_image().get_used_rect())
 		expected.position = (
-			Vector2(binding["旧位置"][0], binding["旧位置"][1])
-			+ expected.position * Vector2(binding["旧缩放"][0], binding["旧缩放"][1])
+			Vector2(old_position[0], old_position[1])
+			+ expected.position * Vector2(old_scale[0], old_scale[1])
 		)
-		expected.size *= Vector2(binding["旧缩放"][0], binding["旧缩放"][1])
+		expected.size *= Vector2(old_scale[0], old_scale[1])
 		var actual: Rect2 = sprite.transform * Rect2(sprite.texture.get_image().get_used_rect())
 		_check(
 			actual.position.distance_to(expected.position) < 0.02,

@@ -1,0 +1,314 @@
+[gd_scene load_steps=49 format=3]
+
+[ext_resource type="Script" path="res://scripts/物品动画/动画物件.gd" id="script"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠/描边土堆移动/001.png" id="tex0"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠/描边土堆移动/002.png" id="tex1"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠/描边土堆移动/003.png" id="tex2"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠/描边土堆移动/004.png" id="tex3"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠/描边土堆移动/005.png" id="tex4"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠/描边土堆移动/006.png" id="tex5"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠/描边土堆移动/007.png" id="tex6"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠/描边土堆移动/008.png" id="tex7"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠/描边土堆移动/009.png" id="tex8"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/地鼠/描边土堆移动/010.png" id="tex9"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/待机/001.png" id="tex41"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/待机/002.png" id="tex42"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/待机/003.png" id="tex43"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/待机/004.png" id="tex44"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/待机/005.png" id="tex45"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/待机/006.png" id="tex46"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/夹夹/001.png" id="tex47"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/夹夹/002.png" id="tex48"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/夹夹/003.png" id="tex49"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/夹夹/004.png" id="tex50"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/夹夹/005.png" id="tex51"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/夹夹/006.png" id="tex52"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/夹夹/007.png" id="tex53"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/跳出/001.png" id="tex54"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/跳出/002.png" id="tex55"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/跳出/003.png" id="tex56"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/跳出/004.png" id="tex57"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/跳出/005.png" id="tex58"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/跳出/006.png" id="tex59"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/跳出/007.png" id="tex60"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/跳出/008.png" id="tex61"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/跳出/009.png" id="tex62"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/钻地/001.png" id="tex63"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/钻地/002.png" id="tex64"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/钻地/003.png" id="tex65"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/钻地/004.png" id="tex66"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/钻地/005.png" id="tex67"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/钻地/006.png" id="tex68"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/钻地/007.png" id="tex69"]
+
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/吸入/001.png" id="tex70"]
+
+[sub_resource type="Animation" id="anim0"]
+resource_name = "鼓包"
+length = 1.25
+step = 0.125
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/keys = {
+"times": PackedFloat32Array(0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0, 1.125),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("tex0"), ExtResource("tex1"), ExtResource("tex2"), ExtResource("tex3"), ExtResource("tex4"), ExtResource("tex5"), ExtResource("tex6"), ExtResource("tex7"), ExtResource("tex8"), ExtResource("tex9")]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/keys = {
+"times": PackedFloat32Array(0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0, 1.125),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-77.5, -63), Vector2(-77.5, -63), Vector2(-77.5, -63), Vector2(-77.5, -63), Vector2(-77.5, -63), Vector2(-77.5, -63), Vector2(-77.5, -63), Vector2(-77.5, -63), Vector2(-77.5, -63), Vector2(-77.5, -63)]
+}
+tracks/2/type = "value"
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/keys = {
+"times": PackedFloat32Array(0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0, 1.125),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 1)]
+}
+
+
+[sub_resource type="Animation" id="anim1"]
+resource_name = "跳出"
+length = 1.0
+step = 0.1111111111111111
+tracks/0/type = "value"
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/keys = {
+"times": PackedFloat32Array(0.0, 0.1111111111111111, 0.2222222222222222, 0.3333333333333333, 0.4444444444444444, 0.5555555555555556, 0.6666666666666666, 0.7777777777777778, 0.8888888888888888),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("tex54"), ExtResource("tex55"), ExtResource("tex56"), ExtResource("tex57"), ExtResource("tex58"), ExtResource("tex59"), ExtResource("tex60"), ExtResource("tex61"), ExtResource("tex62")]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/keys = {
+"times": PackedFloat32Array(0.0, 0.1111111111111111, 0.2222222222222222, 0.3333333333333333, 0.4444444444444444, 0.5555555555555556, 0.6666666666666666, 0.7777777777777778, 0.8888888888888888),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-63.373477038, -93.300970874), Vector2(-63.373477038, -94.949101796), Vector2(-63.697260274, -93.193548387), Vector2(-63.697260274, -104.036011131), Vector2(-63.628608924, -94), Vector2(-63.5, -93.271398747), Vector2(-48.351990983, -86.66220735), Vector2(-71.630305287, -96.513233602), Vector2(-98.901937046, -94.380331754)]
+}
+tracks/2/type = "value"
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/keys = {
+"times": PackedFloat32Array(0.0, 0.1111111111111111, 0.2222222222222222, 0.3333333333333333, 0.4444444444444444, 0.5555555555555556, 0.6666666666666666, 0.7777777777777778, 0.8888888888888888),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(0.096532334, 0.097087379), Vector2(0.096532334, 0.098802395), Vector2(0.096803653, 0.096774194), Vector2(0.096803653, 0.108033242), Vector2(0.097112861, 0.097107438), Vector2(0.097264438, 0.097077244), Vector2(0.060856499, 0.088071349), Vector2(0.102755026, 0.100115075), Vector2(0.167070218, 0.1007109)]
+}
+
+
+[sub_resource type="Animation" id="anim2"]
+resource_name = "夹夹"
+length = 1.5
+step = 0.125
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/keys = {
+"times": PackedFloat32Array(0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0, 1.125, 1.25, 1.375),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("tex47"), ExtResource("tex48"), ExtResource("tex49"), ExtResource("tex50"), ExtResource("tex51"), ExtResource("tex52"), ExtResource("tex53"), ExtResource("tex42"), ExtResource("tex43"), ExtResource("tex44"), ExtResource("tex45"), ExtResource("tex46")]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/keys = {
+"times": PackedFloat32Array(0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0, 1.125, 1.25, 1.375),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-57.453026634, -93.545616114), Vector2(-57.467271663, -93.991071429), Vector2(-57.131075949, -93.514765101), Vector2(-57.131075949, -93.89660804), Vector2(-56.495505618, -93.767814727), Vector2(-57.131075949, -93.82471555), Vector2(-57.453026634, -94.057810651), Vector2(-57.799016204, -93.751908397), Vector2(-57.043306636, -93.649285714), Vector2(-57.453026634, -93.225907591), Vector2(-57.241949153, -93.323809524), Vector2(-57.453026634, -93.517166867)]
+}
+tracks/2/type = "value"
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/keys = {
+"times": PackedFloat32Array(0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0, 1.125, 1.25, 1.375),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(0.098547215, 0.097748815), Vector2(0.0985363, 0.098214286), Vector2(0.098164557, 0.097818792), Vector2(0.098164557, 0.098115578), Vector2(0.097331461, 0.097980998), Vector2(0.098164557, 0.098040455), Vector2(0.098547215, 0.098284024), Vector2(0.098668981, 0.097964377), Vector2(0.097540046, 0.097857143), Vector2(0.098547215, 0.097414741), Vector2(0.097881356, 0.097619048), Vector2(0.098547215, 0.097719088)]
+}
+
+
+[sub_resource type="Animation" id="anim3"]
+resource_name = "钻地"
+length = 1.875
+step = 0.125
+tracks/0/type = "value"
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/keys = {
+"times": PackedFloat32Array(0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("tex54"), ExtResource("tex55"), ExtResource("tex56"), ExtResource("tex58"), ExtResource("tex59"), ExtResource("tex60"), ExtResource("tex61"), ExtResource("tex62"), ExtResource("tex63"), ExtResource("tex64"), ExtResource("tex65"), ExtResource("tex66"), ExtResource("tex67"), ExtResource("tex68"), ExtResource("tex69")]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/keys = {
+"times": PackedFloat32Array(0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-63.988753515, -93.300970874), Vector2(-64.104029991, -92.071856287), Vector2(-64.42739726, -93.193548387), Vector2(-60.881889763, -34.999999752), Vector2(-54.999999956, -98.363256791), Vector2(-65.356874529, -99.117056876), Vector2(-72.138495905, -96.513233602), Vector2(-99.607748184, -94.380331754), Vector2(-324.698663426, -159.708283313), Vector2(-192.148102815, -167.490066225), Vector2(-183.740899358, -165.371757925), Vector2(-195.417556346, -168), Vector2(-196, -168.353319058), Vector2(-196.465753425, -166.529085873), Vector2(-196.496863237, -165.967741935)]
+}
+tracks/2/type = "value"
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/keys = {
+"times": PackedFloat32Array(0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(0.097469541, 0.097087379), Vector2(0.098406748, 0.095808383), Vector2(0.098630137, 0.096774194), Vector2(0.094488189, 0.036157025), Vector2(0.085106383, 0.099164927), Vector2(0.096919609, 0.104793757), Vector2(0.103499628, 0.100115075), Vector2(0.168280872, 0.1007109), Vector2(0.167679222, 0.097238896), Vector2(0.095471236, 0.097130243), Vector2(0.091006424, 0.095100865), Vector2(0.097271649, 0.098635887), Vector2(0.097197898, 0.098501071), Vector2(0.098630137, 0.096952909), Vector2(0.097867001, 0.096774194)]
+}
+
+
+[sub_resource type="Animation" id="anim4"]
+resource_name = "吸入"
+length = 0.125
+step = 0.125
+tracks/0/type = "value"
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/keys = {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [ExtResource("tex70")]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/keys = {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [Vector2(-190.065049042, -142.235476956)]
+}
+tracks/2/type = "value"
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/keys = {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [Vector2(0.098786408, 0.085580913)]
+}
+
+
+[sub_resource type="Animation" id="anim5"]
+resource_name = "待机"
+length = 0.75
+step = 0.125
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/path = NodePath("画面/贴图:texture")
+tracks/0/interp = 0
+tracks/0/keys = {
+"times": PackedFloat32Array(0.0, 0.125, 0.25, 0.375, 0.5, 0.625),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("tex41"), ExtResource("tex42"), ExtResource("tex43"), ExtResource("tex44"), ExtResource("tex45"), ExtResource("tex46")]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("画面/贴图:position")
+tracks/1/interp = 0
+tracks/1/keys = {
+"times": PackedFloat32Array(0.0, 0.125, 0.25, 0.375, 0.5, 0.625),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(-57.453026634, -94.057810651), Vector2(-57.799016204, -93.751908397), Vector2(-57.043306636, -93.649285714), Vector2(-57.453026634, -93.225907591), Vector2(-57.241949153, -93.323809524), Vector2(-57.453026634, -93.517166867)]
+}
+tracks/2/type = "value"
+tracks/2/path = NodePath("画面/贴图:scale")
+tracks/2/interp = 0
+tracks/2/keys = {
+"times": PackedFloat32Array(0.0, 0.125, 0.25, 0.375, 0.5, 0.625),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [Vector2(0.098547215, 0.098284024), Vector2(0.098668981, 0.097964377), Vector2(0.097540046, 0.097857143), Vector2(0.098547215, 0.097414741), Vector2(0.097881356, 0.097619048), Vector2(0.098547215, 0.097719088)]
+}
+
+
+[sub_resource type="AnimationLibrary" id="library"]
+_data = {
+&"鼓包": SubResource("anim0"),
+&"跳出": SubResource("anim1"),
+&"夹夹": SubResource("anim2"),
+&"钻地": SubResource("anim3"),
+&"吸入": SubResource("anim4"),
+&"待机": SubResource("anim5")
+}
+
+[node name="高价值地鼠" type="Node2D" node_paths=PackedStringArray("animation_player")]
+texture_filter = 4
+script = ExtResource("script")
+default_animation = &"待机"
+animation_order = Array[StringName]([&"鼓包", &"跳出", &"夹夹", &"钻地", &"吸入", &"待机"])
+animation_player = NodePath("动画播放器")
+
+[node name="画面" type="Node2D" parent="."]
+
+[node name="贴图" type="Sprite2D" parent="画面"]
+position = Vector2(-77.5, -63)
+scale = Vector2(1, 1)
+texture = ExtResource("tex0")
+centered = false
+
+[node name="动画播放器" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("library")
+}

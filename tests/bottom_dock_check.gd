@@ -3,7 +3,7 @@ extends Node
 const PLAY: PackedScene = preload("res://features/场景预览/近景游玩预览.tscn")
 const Play = preload("res://features/场景预览/游玩预览.gd")
 const Dock = preload("res://scripts/ui/bottom_dock.gd")
-const OUTPUT: String = "res://artifacts/bottom_dock_hover_20261013"
+const OUTPUT: String = "res://artifacts/dock_cooldown_20261013"
 
 var _failures: int = 0
 var _game: Play
@@ -29,6 +29,17 @@ func _check_game() -> void:
 		not (_dock.pipe_button.get_node("Status") as Label).visible,
 		"opening tool has no upgrade progress"
 	)
+	await _hover(_dock.pipe_button.get_global_rect().get_center())
+	_check(
+		_dock._expanded[0] and _dock.upgrades[0].disabled, "unaffordable hover previews next level"
+	)
+	await _capture("unaffordable_hover")
+	await _click(_dock.upgrades[0])
+	_check(
+		_game.run.pipe_level == 0 and _game.run.candy == 0, "unaffordable preview cannot purchase"
+	)
+	await _hover(Vector2(5, 120))
+	_check(not _dock._expanded[0], "unaffordable preview retracts after leaving")
 	await _capture("opening")
 	await _wallet(_game.run.get_technology_cost("pipe"))
 	_check(_dock._expanded[0], "first affordable speed upgrade announces itself")
@@ -53,10 +64,10 @@ func _check_game() -> void:
 	await _hover(_dock.upgrades[0].get_global_rect().get_center())
 	_check(_dock._expanded[0], "moving from tool to purchase keeps it open")
 	await _hover(Vector2(5, 120))
-	_check(not _dock._expanded[0], "leaving acknowledged upgrade retracts it")
+	_check(_dock._expanded[0], "affordable upgrade remains after leaving")
 	await _wallet(0)
 	await _wallet(_game.run.get_technology_cost("pipe"))
-	_check(not _dock._expanded[0], "wallet oscillation does not reannounce")
+	_check(_dock._expanded[0], "wallet refill restores affordable upgrade")
 	await _hover(_dock.pipe_button.get_global_rect().get_center())
 	_check(_dock._expanded[0], "hover reopens an acknowledged upgrade")
 	await _click(_dock.upgrades[0])
@@ -88,14 +99,25 @@ func _check_game() -> void:
 		),
 		"unaffordable tool has one centered line"
 	)
+	await _hover(_dock.net_button.get_global_rect().get_center())
+	_check(
+		_dock._expanded[1] and _dock.upgrades[1].disabled,
+		"discovered locked net previews its cost without funds"
+	)
+	await _capture("insufficient_hover")
+	await _hover(Vector2(5, 120))
 	await _capture("insufficient")
 	await _wallet(100)
-	_check(not _dock._expanded[1], "same unlock never reannounces on wallet refill")
+	_check(_dock._expanded[1], "affordable unlock remains available on wallet refill")
 	await _hover(_dock.net_button.get_global_rect().get_center())
 	await _click(_dock.upgrades[1])
 	_check(_game.run.net_unlocked, "unlock button unlocks real tool")
 	_check(
-		(_dock.upgrades[1].get_node("Caption") as Label).text == "2 级 · 50 糖果",
+		(
+			(_dock.upgrades[1].get_node("Caption/Level") as Label).text == "2 级 ·"
+			and (_dock.upgrades[1].get_node("Caption/Cost") as Label).text == "50"
+			and (_dock.upgrades[1].get_node("Caption/Coin") as TextureRect).texture != null
+		),
 		"purchase names next level and cost"
 	)
 	await _click(_dock.net_button)
@@ -117,6 +139,7 @@ func _check_game() -> void:
 	get_viewport().get_texture().get_image().save_png(OUTPUT + "/selection_transition.png")
 	await _settle()
 	_check(is_equal_approx(selection._reveal, 1.0), "selection settles into a complete border")
+	await _check_cooldown_shortcuts()
 	var before_capacity: int = _game.run.get_net_capacity()
 	await _click(_dock.upgrades[1])
 	_check(_game.run.get_net_capacity() > before_capacity, "capacity button upgrades real capacity")
@@ -125,6 +148,9 @@ func _check_game() -> void:
 		"net shortcut shows purchased level"
 	)
 	await _wallet(10000)
+	await _click(_dock.upgrades[0])
+	await _hover(Vector2(5, 120))
+	_check(_dock._expanded[0], "successive affordable level remains visible after purchase")
 	await _hover(Vector2(5, 120))
 	await _hover(_dock.pipe_button.get_global_rect().get_center())
 	await _capture("owned")
@@ -252,6 +278,59 @@ func _check_game() -> void:
 	get_tree().quit(0 if _failures == 0 else 1)
 
 
+func _check_cooldown_shortcuts() -> void:
+	await _click(_dock.shortcuts[0])
+	_check(_game._active_tool == 0, "clicking 1 selects vacuum")
+	_check(_game.run.begin_net_cast(), "net cooldown starts through the model")
+	_dock.refresh_timers(_game.run)
+	await _hover(Vector2(5, 120))
+	await _capture("cooldown_empty")
+	_game.run.advance(_game.run.settings.net_cooldown_seconds * 0.5)
+	_dock.refresh_timers(_game.run)
+	await _capture("cooldown_half")
+	_check(
+		_dock.net_cooldown.visible and _game._active_tool == 0,
+		"net cooldown remains visible while vacuum is selected"
+	)
+	await _click(_dock.shortcuts[1])
+	_check(_game._active_tool == 1, "clicking 2 selects net during cooldown")
+	_check(not _game.run.can_cast_net(), "switching tools preserves cooldown")
+	_game._layout._toggle_pause()
+	var remaining: float = _game.run.net_cooldown_remaining
+	await _settle()
+	_check(
+		(
+			is_equal_approx(_game.run.net_cooldown_remaining, remaining)
+			and not _dock.net_cooldown.can_process()
+		),
+		"pause freezes cooldown and feedback"
+	)
+	_game._layout._toggle_pause()
+	_game.run.advance(remaining)
+	_dock.refresh_timers(_game.run)
+	await get_tree().create_timer(0.1).timeout
+	_check(_dock.net_cooldown.visible, "ready transition flashes")
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(OUTPUT + "/ready_flash.png")
+	await get_tree().create_timer(0.7).timeout
+	_check(not _dock.net_cooldown.visible, "ready flash ends without repeating")
+	_dock.refresh_timers(_game.run)
+	_check(not _dock.net_cooldown.visible, "idle refresh does not restart flashing")
+	for key: Key in [KEY_1, KEY_2]:
+		var event: InputEventKey = InputEventKey.new()
+		event.keycode = key
+		event.pressed = true
+		get_tree().root.push_input(event, true)
+		await get_tree().process_frame
+		_check(_game._active_tool == (0 if key == KEY_1 else 1), "number keys switch tools")
+	_game.run.begin_net_cast()
+	_dock.refresh_timers(_game.run)
+	_dock.reset_notifications()
+	_check(not _dock.net_cooldown.visible, "reset removes pending cooldown feedback")
+	_game.run.net_cooldown_remaining = 0.0
+	_dock.refresh(_game.run)
+
+
 func _wallet(amount: int) -> void:
 	_game.run.candy = amount
 	_game.run.economy_changed.emit()
@@ -294,7 +373,7 @@ func _capture(label: String) -> void:
 		get_tree().root.size = resolution
 		await _settle()
 		if hovered_surface >= 0:
-			if hovered_surface >= 3:
+			if hovered_surface >= 3 and hovered_surface <= 4:
 				await _hover(_dock.buttons[hovered_surface - 3].get_global_rect().get_center())
 			await _hover(_dock.surfaces[hovered_surface].get_global_rect().get_center())
 		if label.begins_with("nest_"):

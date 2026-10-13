@@ -1,6 +1,11 @@
 @tool
 extends Node2D
 
+const MucusTrail = preload("res://scripts/mucus_field.gd")
+# Continuous interior across the trail's source columns; omit its torn alpha border.
+const SOURCE_INTERIOR_TOP: float = 165.0
+const SOURCE_INTERIOR_BOTTOM: float = 175.0
+
 @export_range(8.0, 240.0, 0.1) var coverage_radius: float = 44.8:
 	set(value):
 		coverage_radius = value
@@ -13,8 +18,6 @@ var home_position: Vector2 = Vector2.ZERO
 var _patches: Array[PackedVector2Array] = []
 
 @onready var _outline: Polygon2D = $Outline
-@onready var _ground: Polygon2D = $Ground
-@onready var _sheen: Polygon2D = $Sheen
 
 
 func _ready() -> void:
@@ -48,29 +51,6 @@ func contains_ground_point(point: Vector2) -> bool:
 func refresh_surface() -> void:
 	_patches = _clip_to_crust(_make_pool(1.0))
 	_write_layer(_outline, _patches)
-	_write_layer(_ground, _clip_to_crust(_make_pool(0.98)))
-	var highlights: Array[PackedVector2Array] = []
-	var inward_angle: float = (-home_position).angle() if surface != null else PI / 2.0
-	for band: int in range(2):
-		var sheen: PackedVector2Array = PackedVector2Array()
-		var distance: float = coverage_radius * (0.58 + float(band) * 0.24)
-		var angle_start: float = inward_angle - 1.1 + float(band) * 0.25
-		for side: int in range(2):
-			for index: int in range(25):
-				var fraction: float = float(index if side == 0 else 24 - index) / 24.0
-				var width: float = sin(fraction * PI) * coverage_radius * 0.025
-				var angle: float = angle_start + fraction * 1.55
-				sheen.append(
-					(
-						home_position
-						+ (
-							Vector2.from_angle(angle)
-							* (distance + width * (-1.0 if side == 0 else 1.0))
-						)
-					)
-				)
-		highlights.append_array(_clip_to_crust(sheen))
-	_write_layer(_sheen, highlights)
 
 
 func _make_pool(size_ratio: float) -> PackedVector2Array:
@@ -100,10 +80,28 @@ func _clip_to_crust(contour: PackedVector2Array) -> Array[PackedVector2Array]:
 
 func _write_layer(layer: Polygon2D, patches: Array[PackedVector2Array]) -> void:
 	var vertices: PackedVector2Array = PackedVector2Array()
+	var uvs: PackedVector2Array = PackedVector2Array()
 	var triangles: Array[PackedInt32Array] = []
+	var inward: Vector2 = -home_position.normalized() if surface != null else Vector2.DOWN
+	var tangent: Vector2 = Vector2(inward.y, -inward.x)
 	for patch: PackedVector2Array in patches:
 		var offset: int = vertices.size()
 		vertices.append_array(patch)
+		for point: Vector2 in patch:
+			var local: Vector2 = (point - home_position) / coverage_radius
+			# Geometry defines coverage; only the filled paint is stretched across it.
+			uvs.append(
+				Vector2(
+					lerpf(
+						MucusTrail.SOURCE_LEFT,
+						MucusTrail.SOURCE_RIGHT,
+						local.dot(tangent) * 0.5 + 0.5
+					),
+					lerpf(
+						SOURCE_INTERIOR_TOP, SOURCE_INTERIOR_BOTTOM, local.dot(inward) * 0.5 + 0.5
+					)
+				)
+			)
 		var indices: PackedInt32Array = Geometry2D.triangulate_polygon(patch)
 		for index: int in range(0, indices.size(), 3):
 			triangles.append(
@@ -116,5 +114,6 @@ func _write_layer(layer: Polygon2D, patches: Array[PackedVector2Array]) -> void:
 				)
 			)
 	layer.polygon = vertices
+	layer.uv = uvs
 	layer.polygons = triangles
 	layer.visible = not triangles.is_empty()

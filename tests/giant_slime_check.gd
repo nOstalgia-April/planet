@@ -15,6 +15,12 @@ func _ready() -> void:
 
 
 func _run_checks() -> void:
+	if "--capture-interrupt" in OS.get_cmdline_user_args():
+		await _check_harvest_stream()
+		if _failures == 0:
+			print("PASS: stationary giant, retained size, roaming, resumed harvest and single payout.")
+		get_tree().quit(0 if _failures == 0 else 1)
+		return
 	_check_global_research()
 	_check_local_groups()
 	_check_population_settlement()
@@ -26,6 +32,7 @@ func _run_checks() -> void:
 	await _check_harvest_stream()
 	await _check_capture_timing()
 	await _check_mucus_capture_session()
+	await _check_mucus_exit()
 	if "--capture" in OS.get_cmdline_user_args():
 		await _capture_showcase()
 	if "--capture-harvest" in OS.get_cmdline_user_args():
@@ -284,10 +291,22 @@ func _check_all_nests() -> void:
 	demo.run.purchase_technology("net_unlock")
 	var before: int = demo.run.candy
 	demo._net_anchor = giant.get_capture_point()
+	demo._net_phase = DemoScript.NetPhase.CLOSING
+	demo._advance_net(demo._net.close_seconds)
+	_check(
+		giant._attraction_hold == 0.0 and giant._attraction_strength == 0.0,
+		"A closing net never attracts a fused giant."
+	)
 	demo._resolve_net()
 	_check(
+		demo.run.candy == before and demo.run.get_nest(4).alive_slimes == 12
+		and demo._net_caught_count == 0 and demo._slimes.has(giant),
+		"A net preserves a mixed giant's value, body and occupied population."
+	)
+	demo._capture_at(demo._capture_seconds_for(giant) + 0.01, giant.get_capture_point(), true)
+	_check(
 		demo.run.candy == before + 44 and demo.run.get_nest(4).alive_slimes == 0,
-		"Net collection settles one mixed giant once and releases all twelve slots."
+		"Suction still settles the mixed giant once and releases all twelve slots."
 	)
 	get_tree().current_scene = null
 	demo.queue_free()
@@ -414,13 +433,29 @@ func _capture_showcase() -> void:
 
 
 func _check_harvest_stream() -> void:
-	var demo: DemoScript = _make_demo()
+	var capture: bool = "--capture-interrupt" in OS.get_cmdline_user_args()
+	var demo: DemoScript = _make_demo(PlayScene if capture else DemoScene)
+	await get_tree().process_frame
 	_offscreen_pair(demo)
 	_enable_fusion(demo)
 	demo._advance_giant_fusion(1.0)
 	var giant: PrototypeSlime = _giants(demo)[0]
 	giant.set_process(false)
-	var pointer: Vector2 = giant.get_capture_point()
+	if capture:
+		demo._view.zoom_steps(-1.0, false)
+		demo._view.focus_surface(giant.position.angle(), false)
+	giant._update_surface_rotation()
+	await _save_harvest_stage(demo, giant, "full")
+	var original_position: Vector2 = giant.position
+	var body_transform: Transform2D = giant.transform * giant._get_art_transform()
+	var body_bounds: Rect2 = giant.slime_art.get_art_bounds()
+	var pointer: Vector2 = body_transform * (
+		body_bounds.get_center() + Vector2(body_bounds.size.x * 0.3, 0.0)
+	)
+	_check(
+		is_zero_approx(giant.get_capture_distance_squared(pointer)),
+		"Giant targeting accepts the body away from its center."
+	)
 	var before: int = demo.run.candy
 	var occupancy: int = demo.run.get_nest(giant.nest_id).alive_slimes
 	var step: float = giant.get_capture_seconds(demo.run.get_pipe_capture_seconds()) / 5.0
@@ -429,7 +464,7 @@ func _check_harvest_stream() -> void:
 	_check(stream != null and stream.emitted_bursts > 0, "A partial giant capture emits candy.")
 	var first_bursts: int = stream.emitted_bursts
 	var original_height: float = giant._get_body_center_offset().length()
-	demo._capture_at(step, pointer, true)
+	demo._capture_at(step, giant.get_capture_point() + Vector2(1.0, 0.0), true)
 	_check(
 		(
 			stream.emitted_bursts > first_bursts
@@ -438,8 +473,8 @@ func _check_harvest_stream() -> void:
 		"Candy continues across capture ticks while the giant shrinks."
 	)
 	_check(
-		giant.get_capture_point().distance_to(pointer) < 0.01,
-		"Shrinking keeps the body at the stationary suction mouth."
+		giant.position.is_equal_approx(original_position),
+		"Shrinking stays grounded instead of following the moving suction mouth."
 	)
 	_check(
 		demo.run.candy == before and demo.run.get_nest(giant.nest_id).alive_slimes == occupancy,
@@ -450,18 +485,60 @@ func _check_harvest_stream() -> void:
 			not candy.get_node("AmountLabel").visible,
 			"In-progress candy has no false payout label."
 		)
-	demo._capture_at(0.0, pointer, false)
+	giant._process(0.3)
+	_check(giant.position.is_equal_approx(original_position), "Slow frames keep a held giant still.")
+	var retained_progress: float = giant.capture_progress
+	var retained_scale: Vector2 = giant._get_art_transform().get_scale()
+	await _save_harvest_stage(demo, giant, "suction")
+	demo._capture_at(0.0, pointer + Vector2(10000.0, 0.0), true)
 	_check(
-		demo._giant_harvest == null and stream._finished and giant.capture_progress == 0.0,
-		"Interrupting capture stops emission and restores the giant."
+		demo._giant_harvest == null
+		and stream._finished
+		and is_equal_approx(giant.capture_progress, retained_progress)
+		and giant._get_art_transform().get_scale().is_equal_approx(retained_scale),
+		"Leaving the body stops emission and retains the remaining size and progress."
 	)
+	_check(
+		not giant.get_source_texture().resource_path.contains("/吸入/"),
+		"Released giants resume their ordinary animation."
+	)
+	giant.release_from_nest()
+	giant._wander_target = giant.position.rotated(0.15)
+	giant._wander_wait = 0.0
+	giant._process(0.25)
+	giant.refresh_presentation()
+	_check(
+		not giant.position.is_equal_approx(original_position)
+		and is_equal_approx(giant.capture_progress, retained_progress)
+		and giant.ground_shadow.visible,
+		"The smaller giant resumes roaming with a matching ground shadow."
+	)
+	await _save_harvest_stage(demo, giant, "released")
 	first_bursts = stream.emitted_bursts
 	stream.update_capture(Vector2.ZERO, Vector2.ONE, 1.0)
 	_check(stream.emitted_bursts == first_bursts, "A stopped stream cannot emit again.")
 	demo._capture_at(step, giant.get_capture_point(), true)
 	_check(demo._giant_harvest != stream, "Resuming uses a fresh visual stream.")
+	var resumed: HarvestEffect = demo._giant_harvest
+	_check(
+		is_equal_approx(giant.capture_progress, retained_progress + 0.2)
+		and resumed.get_child_count()
+		== (resumed.emitted_bursts - first_bursts) * resumed.candies_per_burst,
+		"Resume continues progress and emits only newly absorbed candy."
+	)
+	demo._capture_at(0.0, giant.get_capture_point(), false)
+	var remaining_seconds: float = demo._capture_seconds_for(giant)
+	_check(
+		is_equal_approx(
+			remaining_seconds,
+			giant.get_capture_seconds(demo.run.get_pipe_capture_seconds()) * 0.4
+		),
+		"A second interruption preserves progress and reports only the remaining duration."
+	)
+	demo._capture_at(remaining_seconds * 0.5, giant.get_capture_point(), true)
+	await _save_harvest_stage(demo, giant, "resumed")
 	var payout: int = giant.reward
-	demo._capture_at(demo._capture_seconds_for(giant), giant.get_capture_point(), true)
+	demo._capture_at(demo._capture_seconds_for(giant) + 0.0001, giant.get_capture_point(), true)
 	_check(
 		demo.run.candy == before + payout and demo._giant_harvest == null,
 		"A resumed harvest still pays the complete amount exactly once."
@@ -484,6 +561,19 @@ func _check_harvest_stream() -> void:
 	get_tree().current_scene = null
 	demo.queue_free()
 	await get_tree().process_frame
+
+
+func _save_harvest_stage(demo: DemoScript, giant: PrototypeSlime, stage: String) -> void:
+	if not ("--capture-interrupt" in OS.get_cmdline_user_args()):
+		return
+	demo._pipe.hide()
+	giant.refresh_presentation()
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	DirAccess.make_dir_recursive_absolute("res://artifacts/giant_interrupt_20261014")
+	get_tree().root.get_texture().get_image().save_png(
+		"res://artifacts/giant_interrupt_20261014/%s.png" % stage
+	)
 
 
 func _check_capture_timing() -> void:
@@ -535,9 +625,19 @@ func _check_mucus_capture_session() -> void:
 	demo.run.settings.pipe_capture_seconds[0] = 2.0
 	demo._capture_targets.assign([actor])
 	var pointer: Vector2 = actor.get_capture_point()
+	demo._capture_at(5.0, pointer, true)
+	_check(
+		is_equal_approx(actor.peel_progress, 0.5) and actor.capture_progress == 0.0,
+		"Giant mucus uses one peel lasting five times the ordinary capture duration."
+	)
+	_check(
+		is_equal_approx(demo._capture_seconds_for(actor), 15.0),
+		"The remaining time includes only the unfinished peel and body suction."
+	)
 	var started_capture: bool = false
-	var previous_peel: float = 0.0
-	for _step: int in range(660):
+	var previous_peel: float = actor.peel_progress
+	for _step: int in range(840):
+		pointer = actor.get_capture_point()
 		demo._capture_at(1.0 / 60.0, pointer, true)
 		if actor.capture_progress > 0.0:
 			started_capture = true
@@ -549,13 +649,53 @@ func _check_mucus_capture_session() -> void:
 		actor._process(1.0 / 60.0)
 	_check(
 		started_capture and actor.capture_progress > 0.8 and not actor.is_anchored(),
-		"A stationary mouth keeps suction beyond the old detachment timeout."
+		"Keeping the mouth over the shrinking body sustains suction past the detachment timeout."
 	)
 	demo._capture_at(0.0, pointer, false)
 	_check(
-		actor.capture_progress == 0.0 and actor.is_anchored(),
-		"An interrupted capture can reattach after its grace period expires."
+		actor.capture_progress > 0.8 and actor.is_anchored(),
+		"An interrupted giant keeps its remaining size while mucus can reattach."
 	)
+	get_tree().current_scene = null
+	demo.queue_free()
+	await get_tree().process_frame
+
+
+func _check_mucus_exit() -> void:
+	var demo: DemoScript = _make_demo()
+	_offscreen_pair(demo, NestState.Species.MUCUS)
+	var actor: PrototypeSlime = demo._slimes.back()
+	var home: Vector2 = demo.run.get_nest(actor.nest_id).position
+	var wet_position: Vector2 = home - home.normalized() * 20.0
+	var dry_position: Vector2 = demo._planet.get_nest_position(PI)
+	_check(not demo._is_on_ground_mucus(dry_position), "The exit fixture is outside all mucus.")
+	for base_seconds: float in demo.run.settings.pipe_capture_seconds:
+		demo.run.settings.pipe_capture_seconds[0] = base_seconds
+		for population: int in [1, 12, 36]:
+			actor.release_capture(0.0)
+			actor.capture_progress = 0.0
+			actor.detached_remaining = 0.0
+			actor.population_units = population
+			actor.position = wet_position
+			demo._capture_targets.assign([actor])
+			var seconds: float = base_seconds * (5.0 if population > 1 else 1.0)
+			demo._capture_at(seconds * 0.4, actor.get_capture_point(), true)
+			_check(
+				is_equal_approx(actor.peel_progress, 0.4) and actor.capture_progress == 0.0,
+				"Ordinary and giant mucus timing follows suction upgrades independently of population."
+			)
+			actor.position = dry_position
+			demo._capture_at(seconds * 0.1, actor.get_capture_point(), true)
+			_check(
+				actor.peel_progress == 0.0 and is_equal_approx(actor.capture_progress, 0.1),
+				"Leaving mucus discards the unfinished peel and starts body suction immediately."
+			)
+			actor.position = wet_position
+			demo._capture_at(seconds * 0.1, actor.get_capture_point(), true)
+			_check(
+				actor.peel_progress == 0.0 and is_equal_approx(actor.capture_progress, 0.2),
+				"Returning to mucus cannot add another peel during the same suction session."
+			)
 	get_tree().current_scene = null
 	demo.queue_free()
 	await get_tree().process_frame
@@ -593,6 +733,8 @@ func _capture_harvest_showcase() -> void:
 				for candy: CollectionEffect in effect.get_children():
 					candy._tween.custom_step(0.02)
 		if frame >= 8 and frame <= 38:
+			pointer = giant.get_capture_point()
+			demo._pipe.set_tool_state(pointer, pointer, true)
 			demo._capture_at(
 				giant.get_capture_seconds(demo.run.get_pipe_capture_seconds()) / 30.0, pointer, true
 			)
@@ -618,6 +760,12 @@ func _check_population_settlement() -> void:
 	_check(not run.collect_slime(1, 24, 13), "Cannot collect more population than the nest owns.")
 	_check(not run.collect_slime(1, 24, 0), "Zero population cannot produce a reward.")
 	_check(run.candy == 0 and nest.alive_slimes == 12, "Rejected harvests preserve both totals.")
+	run.net_unlocked = true
+	_check(
+		run.collect_net_batch([1], [24], [12]) == 0
+		and run.candy == 0 and nest.alive_slimes == 12,
+		"Net settlement rejects fused population even when called directly."
+	)
 	_check(run.collect_slime(1, -1, 12), "A weighted harvest releases all population units.")
 	_check(run.candy == 12 and nest.alive_slimes == 0, "Default reward conserves the source value.")
 	_check(not run.collect_slime(1, 24, 12), "The same population cannot be collected twice.")
@@ -652,16 +800,21 @@ func _check_live_settlement() -> void:
 	)
 	_check(demo.run.combo_count == 1, "A fused harvest is one manual combo action.")
 	demo.run.net_unlocked = true
-	_spawn_weighted(demo, 12, 12)
+	var net_immune: PrototypeSlime = _spawn_weighted(demo, 12, 12)
+	net_immune.capture_progress = 0.4
 	_spawn_weighted(demo, 1, 1)
 	demo._net_anchor = Vector2(0, -190)
 	before = demo.run.candy
 	demo._resolve_net()
 	_check(
-		demo.run.candy == before + 26 and demo.run.get_nest(1).alive_slimes == 0,
-		"A net settles weighted and ordinary individuals in one batch."
+		demo.run.candy == before + 2 and demo.run.get_nest(1).alive_slimes == 12,
+		"A mixed net batch collects ordinary individuals and leaves giant occupancy intact."
 	)
-	_check(demo._net_caught_count == 2, "The net holds two bodies regardless of represented units.")
+	_check(demo._net_caught_count == 1, "An immune giant never occupies a net capacity slot.")
+	_check(
+		demo._slimes.has(net_immune) and is_equal_approx(net_immune.capture_progress, 0.4),
+		"A partially harvested giant retains its body and suction progress after a net cast."
+	)
 	_check(demo.run.combo_count == 1, "Net harvesting does not increment the manual combo.")
 	demo.restart_run()
 	_check(demo._slimes.is_empty(), "Restart clears fused and ordinary actors together.")

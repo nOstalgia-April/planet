@@ -1,14 +1,17 @@
-extends SceneTree
+extends Node
 
 const DemoScript = preload("res://scripts/disk_demo.gd")
 const PipeCursor = preload("res://scripts/pipe_cursor.gd")
+const VacuumSkin = preload("res://scripts/vacuum_skin.gd")
 const DemoScene: PackedScene = preload("res://scenes/disk_demo.tscn")
 const NET_ANCHOR: Vector2 = Vector2(0.0, -235.0)
 
 var _failures: int = 0
 
+@onready var root: Window = get_tree().root
 
-func _initialize() -> void:
+
+func _ready() -> void:
 	_run_checks.call_deferred()
 
 
@@ -17,7 +20,7 @@ func _run_checks() -> void:
 	root.size = Vector2i(1920, 1080)
 	var demo: DemoScript = DemoScene.instantiate() as DemoScript
 	root.add_child(demo)
-	current_scene = demo
+	get_tree().current_scene = demo
 	demo.set_process(false)
 	demo._view.set_process(false)
 	demo._layout.set_process(false)
@@ -25,17 +28,18 @@ func _run_checks() -> void:
 	demo.run.settings = demo.run.settings.duplicate() as PrototypeSettings
 	demo.run.settings.spawn_interval_jitter = 0.0
 	await _check_pipe_transport(demo)
+	await _check_skin_states(demo)
 	for child: Node in demo.get_node("Audio").get_children():
 		if child is AudioStreamPlayer:
 			child.stop()
-	current_scene = null
+	get_tree().current_scene = null
 	demo.queue_free()
-	await process_frame
+	await get_tree().process_frame
 	if _failures == 0:
 		print(
-			"PASS: empty tube, cancelled intake, confirmed single capture, continuous transport, queued capture, target loss, tool switch, focus and restart."
+			"PASS: empty tube, cancelled intake, confirmed single capture, continuous transport, queued capture, target loss, tool switch, focus, restart, species skin, combo priority, expiry and queued bottom-up transitions."
 		)
-	quit(0 if _failures == 0 else 1)
+	get_tree().quit(0 if _failures == 0 else 1)
 
 
 func _check_pipe_transport(demo: DemoScript) -> void:
@@ -155,10 +159,10 @@ func _check_pipe_transport(demo: DemoScript) -> void:
 func _save(demo: DemoScript, label: String) -> void:
 	if not ("--capture" in OS.get_cmdline_user_args()):
 		return
-	await process_frame
-	await process_frame
+	await get_tree().process_frame
+	await get_tree().process_frame
 	await RenderingServer.frame_post_draw
-	var folder: String = "res://artifacts/vacuum_transport"
+	var folder: String = "res://artifacts/vacuum_skin_20261013"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder))
 	_check(
 		root.get_texture().get_image().save_png(folder.path_join(label + ".png")) == OK,
@@ -167,10 +171,101 @@ func _save(demo: DemoScript, label: String) -> void:
 	demo._window_has_focus = true
 
 
-func _prepare_one(demo: DemoScript) -> PrototypeSlime:
+func _check_skin_states(demo: DemoScript) -> void:
+	demo.restart_run()
+	var art: VacuumSkin = demo._pipe._art
+	art.set_process(false)
+	var actor: PrototypeSlime = _prepare_one(demo)
+	demo._drive_tool(0.01, actor.get_capture_point(), false)
+	_check(
+		art.requested_skin == VacuumSkin.SkinKind.DEFAULT, "Partial capture does not change skin."
+	)
+	demo._drive_tool(demo.run.get_pipe_capture_seconds(), actor.get_capture_point(), false)
+	_check(art.target_skin == VacuumSkin.SkinKind.PINK, "A collected pink slime starts pink skin.")
+	art._process(art.transition_seconds * 0.5)
+	_check(
+		is_equal_approx(art.progress, 0.5), "The bottom-up wipe advances over its configured time."
+	)
+	await _save(demo, "pink_half")
+	art._process(art.transition_seconds)
+	_check(art.current_skin == VacuumSkin.SkinKind.PINK, "Pink skin finishes.")
+	art.seek_frame(3)
+	_check(
+		art.get_node("贴图").texture == art.pink_frames[3],
+		"The skin follows the same transport frame."
+	)
+	demo._pipe.reset_transport()
+	_check(art.current_skin == VacuumSkin.SkinKind.PINK, "Finishing transport preserves skin.")
+	await _save(demo, "pink")
+
+	actor = _prepare_one(demo)
+	actor.species = PrototypeSlime.Species.MUCUS
+	actor.slime_art.configure_species(actor.species)
+	# Place the body away from mucus so this fixture tests collection, not detachment.
+	actor.on_mucus = false
+	actor.detached_remaining = 10.0
+	demo._drive_tool(demo._capture_seconds_for(actor) + 1.0, actor.get_capture_point(), false)
+	_check(
+		art.target_skin == VacuumSkin.SkinKind.BLUE, "A collected mucus slime selects blue skin."
+	)
+	art._process(art.transition_seconds)
+	await _save(demo, "blue")
+
+	# Keep rule ownership in PrototypeRun and reach the actual configured combo threshold.
+	for index: int in range(demo.run.settings.combo_target):
+		demo.run.advance(demo.run.settings.spawn_intervals[0])
+	demo.run.combo_level = 1
+	for index: int in range(demo.run.settings.combo_target):
+		actor = _prepare_one(demo, false)
+		demo._drive_tool(demo.run.get_pipe_capture_seconds(), actor.get_capture_point(), false)
+		art._process(art.transition_seconds)
+	_check(
+		(
+			demo.run.combo_count == demo.run.settings.combo_target
+			and art.requested_skin == VacuumSkin.SkinKind.RAINBOW
+		),
+		"The actual combo threshold requests rainbow skin."
+	)
+	art._process(art.transition_seconds)
+	await _save(demo, "rainbow")
+	_check(art.current_skin == VacuumSkin.SkinKind.RAINBOW, "Rainbow skin takes priority.")
+	demo.run.advance(demo.run.get_combo_window_seconds() + 0.01)
+	demo._drive_tool(0.0, NET_ANCHOR + Vector2.RIGHT * 80.0, false)
+	art._process(art.transition_seconds)
+	_check(
+		art.current_skin == VacuumSkin.SkinKind.PINK, "Combo expiry restores the latest species."
+	)
+
+	art.request_skin(VacuumSkin.SkinKind.BLUE)
+	art._process(art.transition_seconds * 0.25)
+	art.request_skin(VacuumSkin.SkinKind.RAINBOW)
+	art.request_skin(VacuumSkin.SkinKind.PINK)
+	_check(
+		art.target_skin == VacuumSkin.SkinKind.BLUE and is_equal_approx(art.progress, 0.25),
+		"Rapid requests do not rewind or replace the current wipe."
+	)
+	art._process(art.transition_seconds)
+	_check(art.target_skin == VacuumSkin.SkinKind.PINK, "Only the latest pending skin is retained.")
+	art._process(art.transition_seconds)
+	demo._pipe.hide()
+	demo._pipe.show()
+	_check(art.current_skin == VacuumSkin.SkinKind.PINK, "Temporary hiding preserves the skin.")
+	demo.restart_run()
+	_check(
+		(
+			art.current_skin == VacuumSkin.SkinKind.DEFAULT
+			and art.transition == VacuumSkin.Transition.STABLE
+		),
+		"Restart clears current skin and pending transitions."
+	)
+	art.set_process(true)
+
+
+func _prepare_one(demo: DemoScript, spawn: bool = true) -> PrototypeSlime:
 	demo._window_has_focus = true
 	demo._select_tool(DemoScript.ToolMode.PIPE)
-	demo.run.advance(demo.run.settings.spawn_intervals[0])
+	if spawn:
+		demo.run.advance(demo.run.settings.spawn_intervals[0])
 	assert(demo._slimes.size() >= 2, "The transport fixture needs two real actors.")
 	for actor: PrototypeSlime in demo._slimes:
 		actor.restore_to_surface(Vector2.LEFT * 235.0)

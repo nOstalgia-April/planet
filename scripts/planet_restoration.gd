@@ -7,8 +7,9 @@ signal palette_changed(progress: float)
 const PlanetView = preload("res://scripts/planet_view_controller.gd")
 const PlanetArt = preload("res://scripts/场景动画/双视角星球.gd")
 
-enum Phase { IDLE, CONFIRM, CAMERA, FILL, FINISH, HOLD }
+enum Phase { IDLE, CONFIRM, CAMERA, FILL, FINISH, BACKGROUND, HOLD }
 
+@export var run: PrototypeRun
 @export var view: PlanetView
 @export var art: PlanetArt
 @export var bright_background: Node2D
@@ -24,10 +25,13 @@ var phase: Phase = Phase.IDLE
 var _queue: Array[int] = []
 var _species: int = -1
 var _elapsed: float = 0.0
+var _background_complete: bool = false
 
 
 func _ready() -> void:
-	assert(view != null and art != null and bright_background != null and core != null)
+	assert(
+		run != null and view != null and art != null and bright_background != null and core != null
+	)
 	reset()
 
 
@@ -37,11 +41,32 @@ func reveal_flower(_nest_id: int, species: int) -> void:
 		return
 	unlocked_species.append(species)
 	_queue.append(species)
-	if phase == Phase.IDLE:
+	_try_start()
+
+
+func _try_start() -> void:
+	if (
+		phase == Phase.IDLE
+		and (not _queue.is_empty() or _can_restore_background())
+		and not view.presentation_locked
+	):
 		view.end_drag()
 		view.presentation_locked = true
 		presentation_started.emit()
-		_start_next()
+		if not _queue.is_empty():
+			_start_next()
+		else:
+			_species = -1
+			_set_phase(Phase.CONFIRM)
+
+
+func _can_restore_background() -> bool:
+	if _background_complete or run.nests.is_empty():
+		return false
+	for nest: NestState in run.nests:
+		if not nest.is_tamed:
+			return false
+	return true
 
 
 func reset() -> void:
@@ -51,6 +76,7 @@ func reset() -> void:
 	_species = -1
 	phase = Phase.IDLE
 	_elapsed = 0.0
+	_background_complete = false
 	view.presentation_locked = false
 	art.reset_colors()
 	bright_background.modulate.a = 0.0
@@ -73,6 +99,7 @@ func _progress(duration: float) -> float:
 
 
 func _process(delta: float) -> void:
+	_try_start()
 	_elapsed += delta
 	match phase:
 		Phase.CONFIRM:
@@ -81,7 +108,7 @@ func _process(delta: float) -> void:
 				_set_phase(Phase.CAMERA)
 		Phase.CAMERA:
 			if not view.is_transitioning():
-				_set_phase(Phase.FILL)
+				_set_phase(Phase.FILL if _species >= 0 else Phase.BACKGROUND)
 		Phase.FILL:
 			var progress: float = _progress(fill_seconds)
 			art.set_color_progress(_species, progress)
@@ -91,16 +118,23 @@ func _process(delta: float) -> void:
 		Phase.FINISH:
 			var progress: float = smoothstep(0.0, 1.0, _progress(background_seconds))
 			art.set_restored_mix(progress)
-			bright_background.modulate.a = progress
 			core.modulate.a = 1.0 - progress
+			if progress >= 1.0:
+				_set_phase(Phase.HOLD)
+		Phase.BACKGROUND:
+			var progress: float = smoothstep(0.0, 1.0, _progress(background_seconds))
+			bright_background.modulate.a = progress
 			palette_changed.emit(progress)
 			if progress >= 1.0:
+				_background_complete = true
 				_set_phase(Phase.HOLD)
 		Phase.HOLD:
 			if _elapsed < hold_seconds:
 				return
 			if not _queue.is_empty():
 				_start_next()
+			elif _can_restore_background():
+				_set_phase(Phase.BACKGROUND)
 			else:
 				_set_phase(Phase.IDLE)
 				view.presentation_locked = false

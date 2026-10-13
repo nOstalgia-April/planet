@@ -12,6 +12,7 @@
 [ext_resource type="PackedScene" path="res://scenes/effects/planet_restoration.tscn" id="restoration"]
 [ext_resource type="PackedScene" path="res://scenes/场景动画/亮色背景.tscn" id="bright"]
 [ext_resource type="PackedScene" path="res://scenes/effects/population_palette.tscn" id="palette"]
+[ext_resource type="PackedScene" path="res://scenes/effects/nest_discovery_presentation.tscn" id="discovery"]
 
 [node name="近景游玩预览" unique_id=41260423 instance=ExtResource("r001")]
 script = ExtResource("r002")
@@ -68,7 +69,8 @@ visible = false
 [node name="亮色背景" parent="美术背景/地壳裁剪/画布" instance=ExtResource("bright")]
 modulate = Color(1, 1, 1, 0)
 
-[node name="PlanetRestoration" parent="." node_paths=PackedStringArray("view", "art", "bright_background", "core") instance=ExtResource("restoration")]
+[node name="PlanetRestoration" parent="." node_paths=PackedStringArray("run", "view", "art", "bright_background", "core") instance=ExtResource("restoration")]
+run = NodePath("../Run")
 view = NodePath("../PlanetViewController")
 art = NodePath("../World/PlanetSurface/星球画面")
 bright_background = NodePath("../美术背景/地壳裁剪/画布/亮色背景")
@@ -83,3 +85,8 @@ button_brushes = [NodePath("../HUD/Interface/GameMenu/Toolbar/Pause/Brush"), Nod
 ecology_backdrop = NodePath("../OverviewEcology/Backdrop/Color")
 
 bottom_dock = NodePath("../HUD/Interface/ToolDock")
+
+[node name="NestDiscoveryPresentation" parent="." node_paths=PackedStringArray("run", "view", "palette") instance=ExtResource("discovery")]
+run = NodePath("../Run")
+view = NodePath("../PlanetViewController")
+palette = NodePath("../PopulationPalette")

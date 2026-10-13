@@ -1,0 +1,25 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/mascot_presenter.gd" id="1"]
+[ext_resource type="SpriteFrames" path="res://resources/mascot/cloak.tres" id="2"]
+[ext_resource type="SpriteFrames" path="res://resources/mascot/muscle.tres" id="3"]
+[ext_resource type="SpriteFrames" path="res://resources/mascot/small.tres" id="4"]
+
+[node name="MascotPresenter" type="Control"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+script = ExtResource("1")
+forms = Array[SpriteFrames]([ExtResource("2"), ExtResource("3"), ExtResource("4")])
+resting_bounds = Array[Rect2]([Rect2(78, 43, 512, 419), Rect2(31, 14, 396, 291), Rect2(0, 0, 187, 159)])
+
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+sprite_frames = ExtResource("2")
+animation = &"idle"
+centered = false

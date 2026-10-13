@@ -1,0 +1,36 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Shader" path="res://shaders/dock_shortcut.gdshader" id="shader"]
+
+[sub_resource type="ShaderMaterial" id="material"]
+shader = ExtResource("shader")
+
+[sub_resource type="Gradient" id="gradient"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="texture"]
+gradient = SubResource("gradient")
+width = 32
+height = 22
+
+[node name="Shortcut" type="Button"]
+offset_left = 79.0
+offset_top = 57.0
+offset_right = 111.0
+offset_bottom = 79.0
+focus_mode = 0
+mouse_default_cursor_shape = 2
+theme_override_font_sizes/font_size = 14
+
+[node name="Backing" type="TextureRect" parent="."]
+show_behind_parent = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+material = SubResource("material")
+texture = SubResource("texture")
+expand_mode = 1

@@ -1,11 +1,16 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/slime.gd" id="1_slime"]
 [ext_resource type="PackedScene" path="res://scenes/world/slime_art.tscn" id="2_art"]
+[ext_resource type="PackedScene" path="res://scenes/effects/pink_ground_shadow.tscn" id="3_shadow"]
 
-[node name="Slime" type="Node2D" node_paths=PackedStringArray("slime_art")]
+[node name="Slime" type="Node2D" node_paths=PackedStringArray("slime_art", "ground_shadow")]
 script = ExtResource("1_slime")
 slime_art = NodePath("Art")
+ground_shadow = NodePath("GroundShadow")
+
+[node name="GroundShadow" parent="." instance=ExtResource("3_shadow")]
+scale = Vector2(0.36, 0.36)
 
 [node name="Art" parent="." instance=ExtResource("2_art")]
 scale = Vector2(0.36, 0.36)

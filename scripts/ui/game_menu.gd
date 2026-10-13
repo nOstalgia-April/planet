@@ -24,7 +24,7 @@ var _pending_action: StringName = &""
 
 func _ready() -> void:
 	_pause.pressed.connect(pause_toggled.emit)
-	_music.pressed.connect(GamePreferences.toggle_music)
+	_music.pressed.connect(GamePreferences.toggle_audio)
 	_settings.pressed.connect(set_open.bind(true))
 	%CloseSettings.pressed.connect(set_open.bind(false))
 	%ResumeGame.pressed.connect(set_open.bind(false))
@@ -87,14 +87,21 @@ func _set_effects(value: float) -> void:
 
 
 func _refresh_preferences() -> void:
-	var music_audible: bool = GamePreferences.music_enabled and GamePreferences.music_volume > 0.0
-	_music.glyph = MUSIC_ON if music_audible else MUSIC_OFF
-	_music.highlighted = not music_audible
+	var audio_audible: bool = (
+		GamePreferences.audio_enabled
+		and (GamePreferences.music_volume > 0.0 or GamePreferences.effects_volume > 0.0)
+	)
+	_music.glyph = MUSIC_ON if audio_audible else MUSIC_OFF
+	_music.tooltip_text = "关闭声音" if audio_audible else "开启声音"
 	_music.queue_redraw()
 	_music_slider.set_value_no_signal(GamePreferences.music_volume * 100.0)
 	_effects_slider.set_value_no_signal(GamePreferences.effects_volume * 100.0)
-	%MusicValue.text = "%d%%" % roundi(_music_slider.value) if music_audible else "已关闭"
-	%EffectsValue.text = "%d%%" % roundi(_effects_slider.value)
+	%MusicValue.text = (
+		"%d%%" % roundi(_music_slider.value) if GamePreferences.audio_enabled else "已关闭"
+	)
+	%EffectsValue.text = (
+		"%d%%" % roundi(_effects_slider.value) if GamePreferences.audio_enabled else "已关闭"
+	)
 	%Fullscreen.set_pressed_no_signal(GamePreferences.fullscreen)
 
 

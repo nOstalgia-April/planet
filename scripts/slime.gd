@@ -9,6 +9,7 @@ const POPULATION_FONT: Font = preload("res://fonts/game_font.tres")
 const NORMAL_CENTRAL_75_Z: float = 1.15034938
 
 @export var slime_art: SlimeArt
+@export var ground_shadow: Node2D
 @export_range(0.1, 1.0, 0.01) var slime_art_scale: float = 0.36
 @export var art_settings: ArtPresentationSettings = preload("res://resources/art_presentation.tres")
 
@@ -66,6 +67,7 @@ var _wander_target: Vector2 = Vector2.ZERO
 var _elapsed: float = 0.0
 var _phase: float = 0.0
 var _capture_hold: float = 0.0
+var _suction_active: bool = false
 var _detached_for_capture: bool = false
 var _attraction_offset: Vector2 = Vector2.ZERO
 var _attraction_strength: float = 0.0
@@ -92,7 +94,7 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		return
 	if slime_art != null:
-		slime_art.configure_species(species)
+		slime_art.configure_species(species, high_value)
 		_sync_slime_art()
 
 
@@ -100,9 +102,10 @@ func _get_art_transform() -> Transform2D:
 	var normal_size: float = 18.0 if species == Species.MUCUS else 15.0
 	var multiplier: float = slime_art_scale * body_size / normal_size * get_presentation_scale()
 	var shrink: float = lerpf(1.0, 0.2, capture_progress)
+	var suction_stretch: float = capture_progress if population_units == 1 else 0.0
 	var stretch: Vector2 = Vector2(
-		1.0 - peel_progress * 0.18 - capture_progress * 0.37 - _attraction_strength * 0.05,
-		1.0 + peel_progress * 0.40 + capture_progress * 0.60 + _attraction_strength * 0.12
+		1.0 - peel_progress * 0.18 - suction_stretch * 0.37 - _attraction_strength * 0.05,
+		1.0 + peel_progress * 0.40 + suction_stretch * 0.60 + _attraction_strength * 0.12
 	)
 	var launch_bob: float = 0.0
 	if species == Species.MUCUS and _launch_elapsed < launch_seconds:
@@ -118,7 +121,34 @@ func _get_art_transform() -> Transform2D:
 func _sync_slime_art() -> void:
 	if slime_art != null:
 		slime_art.transform = _get_art_transform()
-		slime_art.set_gold(high_value)
+	_sync_ground_shadow()
+
+
+func _sync_ground_shadow() -> void:
+	if ground_shadow == null:
+		return
+	ground_shadow.visible = (
+		species == Species.SLIME
+		and not _flying
+		and not _suction_active
+		and (population_units > 1 or capture_progress <= 0.0)
+	)
+	if not ground_shadow.visible:
+		return
+	var lift: float = sin(clampf(_launch_elapsed / launch_seconds, 0.0, 1.0) * PI)
+	var multiplier: float = slime_art_scale * body_size / 15.0 * get_presentation_scale()
+	if population_units > 1:
+		multiplier *= lerpf(1.0, 0.2, capture_progress)
+	ground_shadow.transform = (
+		SurfaceProjection.get_visual_compensation(self)
+		* Transform2D(
+			0.0,
+			Vector2.ONE * multiplier * lerpf(1.0, 0.8, lift),
+			0.0,
+			Vector2(0.0, get_presentation_sink())
+		)
+	)
+	ground_shadow.modulate.a = lerpf(1.0, 0.65, maxf(lift, peel_progress))
 
 
 func get_source_texture() -> Texture2D:
@@ -143,6 +173,7 @@ func setup(
 ) -> void:
 	assert(planet_surface != null, "Slime movement requires its planet surface dependency.")
 	nest_id = owner_id
+	_suction_active = false
 	surface = planet_surface
 	_home = surface.project_to_surface(home)
 	_planet_radius = surface.radius
@@ -203,7 +234,7 @@ func can_capture() -> bool:
 
 
 func can_net_capture() -> bool:
-	return not consumed
+	return not consumed and population_units == 1
 
 
 func configure_fusion(population: int, value_units: int, candy_reward: int) -> void:
@@ -251,7 +282,7 @@ func configure_species(kind: Species, valuable: bool, candy_reward: int) -> void
 		wander_speed = 16.0
 		body_size = 15.0
 	if slime_art != null:
-		slime_art.configure_species(species)
+		slime_art.configure_species(species, high_value)
 		_sync_slime_art()
 	queue_redraw()
 
@@ -262,6 +293,7 @@ func is_anchored() -> bool:
 
 func pull_off_mucus(delta: float, target: Vector2, duration: float = -1.0) -> bool:
 	if not is_anchored():
+		peel_progress = 0.0
 		return true
 	apply_attraction(delta, target, 0.7)
 	var seconds: float = peel_seconds if duration <= 0.0 else duration
@@ -285,6 +317,7 @@ func can_emit_ground_mucus() -> bool:
 
 
 func launch(direction: Vector2) -> void:
+	_suction_active = false
 	_detached_for_capture = false
 	_flying = false
 	_flight_complete = false
@@ -330,6 +363,7 @@ func refresh_surface_bounds() -> void:
 
 
 func restore_to_surface(drop_position: Vector2) -> void:
+	_suction_active = false
 	_detached_for_capture = false
 	position = _project_to_surface(drop_position)
 	_update_surface_rotation()
@@ -349,6 +383,7 @@ func restore_to_surface(drop_position: Vector2) -> void:
 
 
 func begin_fall(initial_velocity: Vector2, viewport_bounds: Rect2, settings: DropSettings) -> void:
+	_suction_active = false
 	_detached_for_capture = false
 	assert(settings != null and settings.max_step > 0.0)
 	_drop_settings = settings
@@ -375,11 +410,21 @@ func get_capture_point() -> Vector2:
 	return position + _get_body_center_offset().rotated(rotation)
 
 
+func get_capture_distance_squared(target: Vector2) -> float:
+	if population_units <= 1 or slime_art == null:
+		return get_capture_point().distance_squared_to(target)
+	var body_transform: Transform2D = transform * _get_art_transform()
+	var bounds: Rect2 = slime_art.get_art_bounds()
+	var local_target: Vector2 = body_transform.affine_inverse() * target
+	var closest: Vector2 = local_target.clamp(bounds.position, bounds.end)
+	return target.distance_squared_to(body_transform * closest)
+
+
 func _get_body_center_offset() -> Vector2:
 	if slime_art != null:
 		return _get_art_transform() * slime_art.get_art_bounds().get_center()
 	var height_scale: float = (
-		(1.0 + capture_progress * 0.60) * lerpf(1.0, 0.2, capture_progress)
+		lerpf(1.0, 0.2, capture_progress)
 		if population_units > 1
 		else 1.0
 	)
@@ -423,6 +468,10 @@ func _process(delta: float) -> void:
 		return
 	_elapsed += delta
 	detached_remaining = maxf(0.0, detached_remaining - delta)
+	if population_units > 1 and _suction_active:
+		_update_surface_rotation()
+		queue_redraw()
+		return
 	if _capture_hold <= 0.0:
 		peel_progress = maxf(0.0, peel_progress - delta * 2.0)
 	_capture_hold = maxf(0.0, _capture_hold - delta)
@@ -465,8 +514,9 @@ func apply_capture(delta: float, capture_seconds: float, target: Vector2) -> boo
 	capture_progress = minf(
 		1.0, capture_progress + delta / maxf(get_capture_seconds(capture_seconds), 0.05)
 	)
-	body_center = body_center.move_toward(target, delta * (24.0 + capture_progress * 46.0))
-	position = body_center - _get_body_center_offset().rotated(rotation)
+	if population_units == 1:
+		body_center = body_center.move_toward(target, delta * (24.0 + capture_progress * 46.0))
+		position = body_center - _get_body_center_offset().rotated(rotation)
 	_update_surface_rotation()
 	queue_redraw()
 	if capture_progress >= 1.0:
@@ -480,11 +530,13 @@ func release_capture(delta: float) -> void:
 	_set_suction_expression(false)
 	_capture_hold = 0.0
 	peel_progress = 0.0
-	capture_progress = maxf(0.0, capture_progress - delta * 0.75)
+	if population_units == 1:
+		capture_progress = maxf(0.0, capture_progress - delta * 0.75)
 	queue_redraw()
 
 
 func _set_suction_expression(active: bool) -> void:
+	_suction_active = active
 	if slime_art != null:
 		slime_art.set_suction(active)
 
@@ -618,7 +670,7 @@ func _draw() -> void:
 	_sync_slime_art()
 	var compensation: Transform2D = SurfaceProjection.get_visual_compensation(self)
 	var shrink: float = lerpf(1.0, 0.2, capture_progress)
-	if not _flying:
+	if not _flying and species != Species.SLIME:
 		draw_set_transform_matrix(
 			(
 				compensation
@@ -642,7 +694,7 @@ func _draw() -> void:
 			1.8,
 			true
 		)
-	if capture_progress > 0.02:
+	if capture_progress > 0.02 and (population_units == 1 or _suction_active):
 		draw_arc(
 			center,
 			ring_radius,
@@ -653,19 +705,6 @@ func _draw() -> void:
 			1.5,
 			true
 		)
-	if high_value:
-		draw_set_transform_matrix(
-			(
-				compensation
-				* Transform2D(
-					0.0,
-					Vector2.ONE * get_presentation_scale(),
-					0.0,
-					Vector2(0.0, get_presentation_sink())
-				)
-			)
-		)
-		_draw_value_marker(body_size * shrink)
 	_draw_population_marker()
 
 
@@ -688,18 +727,3 @@ func _draw_population_marker() -> void:
 	draw_string(
 		POPULATION_FONT, origin, caption, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color("fff6df")
 	)
-
-
-func _draw_value_marker(body_height: float) -> void:
-	var marker: Vector2 = Vector2(0.0, -body_height * 1.9)
-	var diamond: PackedVector2Array = PackedVector2Array(
-		[
-			marker + Vector2(0.0, -6.0),
-			marker + Vector2(4.0, 0.0),
-			marker + Vector2(0.0, 6.0),
-			marker + Vector2(-4.0, 0.0)
-		]
-	)
-	draw_colored_polygon(diamond, Color("fff4b7"))
-	diamond.append(diamond[0])
-	draw_polyline(diamond, Color("ad7b35"), 1.3, true)

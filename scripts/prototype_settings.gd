@@ -2,11 +2,11 @@ class_name PrototypeSettings
 extends Resource
 
 @export_range(1, 20, 1) var initial_nests: int = 2
+# Target nest counts: slime : mucus : drill = 2 : 1 : 0.5 (4 : 2 : 1).
 @export var unlocked_species_weights: PackedFloat32Array = PackedFloat32Array([2.0, 1.0])
 @export_group("Drill treasure")
 @export_range(0, 20, 1) var drill_nest_limit: int = 4
 @export_range(0.0, 5.0, 0.1) var drill_discovery_weight: float = 0.5
-@export_range(0.1, 0.95, 0.05) var drill_discovery_decay: float = 0.5
 @export var drill_population_limits: PackedInt32Array = PackedInt32Array([1, 2, 4])
 @export_range(2.0, 60.0, 0.5) var drill_spawn_interval: float = 8.0
 @export var drill_reward_weights: PackedInt32Array = PackedInt32Array([70, 25, 5])

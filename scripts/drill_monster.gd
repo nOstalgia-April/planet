@@ -1,11 +1,12 @@
 extends PrototypeSlime
 
 const ItemArt = preload("res://scripts/物品动画/动画物件.gd")
-const CAPTURE_SECONDS: float = 0.5
+const CAPTURE_SECONDS: float = 0.2
 static var _visible_texture_bounds: Dictionary[Texture2D, Rect2] = {}
 enum Phase { LAUNCH, DIVE, TRAVEL, PAUSE, EMERGE, EXPOSED }
 
-@export var art: ItemArt
+@export var ordinary_art: ItemArt
+@export var valuable_art: ItemArt
 @export_group("Drill movement")
 @export_range(0.1, 1.0, 0.01) var range_fraction: float = 2.0 / 3.0
 @export_range(10.0, 120.0, 1.0) var tunnel_speed: float = 55.0
@@ -20,15 +21,22 @@ var _turns_remaining: int = 0
 var _travel_direction: float = 1.0
 var _travel_target: Vector2
 var _launch_progress: float = 0.0
-
-@onready var _art_sprite: Sprite2D = art.get_node("画面/贴图") as Sprite2D
+var _capture_active: bool = false
+var art: ItemArt
+var _art_sprite: Sprite2D
 
 
 func _ready() -> void:
+	for view: ItemArt in [ordinary_art, valuable_art]:
+		_prepare_animations(view)
+	_select_art()
+
+
+func _prepare_animations(view: ItemArt) -> void:
 	# Animation resources are shared by every actor and the art preview.
 	# Looping belongs to this runtime instance, not the source animation scene.
 	var library: AnimationLibrary = (
-		art.animation_player.get_animation_library(&"").duplicate() as AnimationLibrary
+		view.animation_player.get_animation_library(&"").duplicate() as AnimationLibrary
 	)
 	for clip: StringName in library.get_animation_list():
 		var animation: Animation = library.get_animation(clip).duplicate() as Animation
@@ -37,8 +45,24 @@ func _ready() -> void:
 		)
 		library.remove_animation(clip)
 		library.add_animation(clip, animation)
-	art.animation_player.remove_animation_library(&"")
-	art.animation_player.add_animation_library(&"", library)
+	view.animation_player.remove_animation_library(&"")
+	view.animation_player.add_animation_library(&"", library)
+
+
+func _select_art() -> void:
+	var clip: StringName = &"鼓包"
+	var clip_time: float = 0.0
+	if art != null:
+		clip = art.animation_player.assigned_animation
+		clip_time = art.animation_player.current_animation_position
+	for view: ItemArt in [ordinary_art, valuable_art]:
+		view.hide()
+		view.animation_player.stop()
+	art = valuable_art if high_value else ordinary_art
+	_art_sprite = art.get_node("画面/贴图") as Sprite2D
+	art.show()
+	art.play_clip(clip)
+	art.animation_player.seek(clip_time, true)
 
 
 func setup(
@@ -51,10 +75,12 @@ func setup(
 	body_size = 20.0
 
 
-func configure_species(_kind: Species, _valuable: bool, _candy_reward: int) -> void:
+func configure_species(_kind: Species, valuable: bool, _candy_reward: int) -> void:
 	species = Species.DRILL
-	high_value = false
+	high_value = valuable
 	reward = 0
+	_select_art()
+	_sync_art()
 
 
 func launch(direction: Vector2) -> void:
@@ -91,24 +117,29 @@ func apply_attraction(delta: float, target: Vector2, strength: float) -> void:
 		super.apply_attraction(delta, target, strength)
 
 
-func apply_capture(delta: float, capture_seconds: float, target: Vector2) -> bool:
+func apply_capture(delta: float, _capture_seconds: float, _target: Vector2) -> bool:
 	if not can_capture():
 		return false
-	var completed: bool = super.apply_capture(delta, capture_seconds, target)
+	clear_attraction()
+	_set_suction_expression(true)
+	capture_progress = minf(1.0, capture_progress + delta / CAPTURE_SECONDS)
+	consumed = capture_progress >= 1.0
 	_sync_art()
-	return completed
+	return consumed
 
 
 func _process(delta: float) -> void:
 	if consumed or surface == null:
 		return
 	_update_surface_rotation()
-	# Once suction starts, allow it to finish; releasing resumes the peek timer.
+	# Capture ends explicitly through release_capture, never through a frame timeout.
+	if _capture_active:
+		_sync_art()
+		return
 	_capture_hold = maxf(0.0, _capture_hold - delta)
 	if _capture_hold > 0.0:
 		_sync_art()
 		return
-	_set_suction_expression(false)
 	phase_remaining -= delta
 	match phase:
 		Phase.LAUNCH:
@@ -175,14 +206,17 @@ func _enter_phase(next: Phase, seconds: float, clip: StringName) -> void:
 
 
 func _set_suction_expression(active: bool) -> void:
+	_capture_active = active
 	art.set_suction(active)
+	if active:
+		art.show_frame(&"吸入", 0)
 
 
 func _sync_art() -> void:
 	var multiplier: float = get_presentation_scale()
-	var shrink: float = lerpf(1.0, 0.1, capture_progress)
+	# Keep the exposed size while the suction expression plays until capture completes.
 	art.transform = SurfaceProjection.get_visual_compensation(self).scaled_local(
-		Vector2.ONE * multiplier * shrink
+		Vector2.ONE * multiplier
 	)
 	art.position += SurfaceProjection.get_visual_compensation(self).basis_xform(
 		Vector2(0.0, get_presentation_sink())

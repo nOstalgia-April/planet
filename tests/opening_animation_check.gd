@@ -4,8 +4,8 @@ const Intro = preload("res://scenes/开头动画/开头动画.gd")
 const Menu = preload("res://scenes/主菜单/主菜单.gd")
 const Audio = preload("res://scripts/fmod_audio.gd")
 const INTRO_PATH: String = "res://scenes/开头动画/开头动画.tscn"
-const FRAME_COUNTS: Array[int] = [4, 6, 3, 3, 7, 13, 9]
-const FRAME_RATES: Array[float] = [4.0, 3.0, 3.0, 4.0, 5.0, 4.5, 5.0]
+const FRAME_COUNTS: Array[int] = [4, 6, 3, 3, 7, 13, 9, 14]
+const FRAME_RATES: Array[float] = [4.0, 3.0, 3.0, 4.0, 5.0, 4.5, 5.0, 5.0]
 
 var _tree: SceneTree
 
@@ -28,7 +28,7 @@ func _run() -> void:
 	var clip: Animation = player.get_animation(&"开头")
 	assert(player.is_playing())
 	assert(clip.loop_mode == Animation.LOOP_NONE)
-	assert(clip.track_get_key_count(0) == 45)
+	assert(clip.track_get_key_count(0) == 59)
 	assert(audio._music_path.is_empty(), "菜单音乐应在动画结束后开始。")
 	if "--natural" in OS.get_cmdline_user_args():
 		var started_at: int = Time.get_ticks_msec()
@@ -60,7 +60,7 @@ func _run() -> void:
 	player.advance(clip.length - 0.01)
 	await _tree.process_frame
 	assert(_tree.current_scene == intro, "最后一帧播放结束前必须留在开头动画。")
-	assert(picture.texture.resource_path.ends_with("p7/009.png"))
+	assert(picture.texture.resource_path.ends_with("p8/014.png"))
 	player.advance(0.02)
 	await _tree.scene_changed
 	assert(_tree.current_scene is Menu, "播放结束必须自动进入原主菜单。")
@@ -78,7 +78,7 @@ func _run() -> void:
 	game_menu.get_node("%ConfirmAction").pressed.emit()
 	await _tree.scene_changed
 	assert(_tree.current_scene is Menu, "返回菜单不能重播开头动画。")
-	print("PASS: startup, all 45 frames/rates, final-frame hold, menu music, Start and return.")
+	print("PASS: startup, all 59 frames/rates, final-frame hold, menu music, Start and return.")
 	_tree.quit()
 
 
@@ -92,12 +92,12 @@ func _capture_intro(intro: Intro, player: AnimationPlayer) -> void:
 		var picture: TextureRect = intro.get_node("画面") as TextureRect
 		assert(picture.size == intro.size)
 		assert(picture.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
-		for sample in [0.0, 7.3, 10.5]:
+		for sample in [10.6389, 10.8389, 11.0389, 12.2389, 13.4389]:
 			player.seek(sample, true)
 			await _capture("intro_%dx%d_%.1f" % [dimensions.x, dimensions.y, sample])
 
 
 func _capture(label: String) -> void:
 	await RenderingServer.frame_post_draw
-	var destination: String = "res://artifacts/opening_animation_%s.png" % label
+	var destination: String = "res://artifacts/opening_animation_part2_20261013_%s.png" % label
 	assert(_tree.root.get_texture().get_image().save_png(destination) == OK)

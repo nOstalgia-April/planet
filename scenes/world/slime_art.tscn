@@ -1,15 +1,25 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/slime_art.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/物品动画/史莱姆.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/物品动画/黏液怪.tscn" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/高价值史莱姆.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/高价值黏液怪.tscn" id="5"]
 
-[node name="SlimeArt" type="Node2D" node_paths=PackedStringArray("pink", "mucus")]
+[node name="SlimeArt" type="Node2D" node_paths=PackedStringArray("pink", "mucus", "valuable_pink", "valuable_mucus")]
 script = ExtResource("1")
 pink = NodePath("Pink")
 mucus = NodePath("Mucus")
+valuable_pink = NodePath("ValuablePink")
+valuable_mucus = NodePath("ValuableMucus")
 
 [node name="Pink" parent="." instance=ExtResource("2")]
 
 [node name="Mucus" parent="." instance=ExtResource("3")]
+visible = false
+
+[node name="ValuablePink" parent="." instance=ExtResource("4")]
+visible = false
+
+[node name="ValuableMucus" parent="." instance=ExtResource("5")]
 visible = false

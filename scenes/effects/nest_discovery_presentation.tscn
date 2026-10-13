@@ -1,0 +1,14 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/nest_discovery_presentation.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/world/overview_monster_bubble.tscn" id="2"]
+
+[node name="NestDiscoveryPresentation" type="Node" node_paths=PackedStringArray("bubble")]
+script = ExtResource("1")
+bubble = NodePath("ScreenCue/MonsterBubble")
+
+[node name="ScreenCue" type="CanvasLayer" parent="."]
+layer = 20
+
+[node name="MonsterBubble" parent="ScreenCue" instance=ExtResource("2")]
+visible = false

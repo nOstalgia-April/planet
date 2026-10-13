@@ -1,4 +1,10 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=20 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/dock_cooldown.tscn" id="cooldown"]
+[ext_resource type="PackedScene" path="res://scenes/ui/dock_shortcut.tscn" id="shortcut"]
+
+[ext_resource type="Texture2D" path="res://assets/ui/candy_coin.png" id="coin"]
+[ext_resource type="Material" path="res://resources/candy_grain_outline.tres" id="coin_outline"]
 
 [ext_resource type="Script" path="res://scripts/ui/bottom_dock.gd" id="script"]
 [ext_resource type="Shader" path="res://shaders/dock_upgrade.gdshader" id="shader"]
@@ -79,18 +85,40 @@ expand_mode = 1
 texture = ExtResource("upgrade")
 material = SubResource("material")
 
-[node name="Caption" type="Label" parent="Pipe/Reveal/Purchase"]
+[node name="Caption" type="HBoxContainer" parent="Pipe/Reveal/Purchase"]
 layout_mode = 0
 offset_left = 8.0
-offset_top = 7.0
+offset_top = 5.0
 offset_right = 158.0
-offset_bottom = 34.0
+offset_bottom = 30.0
 mouse_filter = 2
-theme_override_colors/font_color = Color(1,1,1,1)
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="Level" type="Label" parent="Pipe/Reveal/Purchase/Caption"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 14
-text = "2 级 · 10 糖果"
-horizontal_alignment = 1
-vertical_alignment = 1
+text = "2 级 ·"
+
+[node name="Coin" type="TextureRect" parent="Pipe/Reveal/Purchase/Caption"]
+texture_filter = 4
+material = ExtResource("coin_outline")
+custom_minimum_size = Vector2(19, 19)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("coin")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Cost" type="Label" parent="Pipe/Reveal/Purchase/Caption"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "10"
 
 [node name="Button" type="Button" parent="Pipe"]
 layout_mode = 0
@@ -147,6 +175,9 @@ layout_mode = 0
 texture = ExtResource("pipe_slot")
 selected = false
 
+[node name="Shortcut" parent="Pipe" instance=ExtResource("shortcut")]
+text = "1"
+
 [node name="Net" type="Control" parent="."]
 layout_mode = 0
 offset_left = 410.0
@@ -183,18 +214,40 @@ expand_mode = 1
 texture = ExtResource("upgrade")
 material = SubResource("material")
 
-[node name="Caption" type="Label" parent="Net/Reveal/Purchase"]
+[node name="Caption" type="HBoxContainer" parent="Net/Reveal/Purchase"]
 layout_mode = 0
 offset_left = 8.0
-offset_top = 7.0
+offset_top = 5.0
 offset_right = 158.0
-offset_bottom = 34.0
+offset_bottom = 30.0
 mouse_filter = 2
-theme_override_colors/font_color = Color(1,1,1,1)
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="Level" type="Label" parent="Net/Reveal/Purchase/Caption"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 14
-text = "2 级 · 10 糖果"
-horizontal_alignment = 1
-vertical_alignment = 1
+text = "2 级 ·"
+
+[node name="Coin" type="TextureRect" parent="Net/Reveal/Purchase/Caption"]
+texture_filter = 4
+material = ExtResource("coin_outline")
+custom_minimum_size = Vector2(19, 19)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("coin")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Cost" type="Label" parent="Net/Reveal/Purchase/Caption"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "10"
 
 [node name="Button" type="Button" parent="Net"]
 layout_mode = 0
@@ -214,6 +267,8 @@ mouse_filter = 2
 expand_mode = 1
 texture = ExtResource("net_slot")
 material = SubResource("backing_material")
+
+[node name="Cooldown" parent="Net/Button" instance=ExtResource("cooldown")]
 
 [node name="Icon" type="TextureRect" parent="Net/Button"]
 layout_mode = 0
@@ -250,6 +305,9 @@ theme_override_font_sizes/font_size = 12
 layout_mode = 0
 texture = ExtResource("net_slot")
 selected = false
+
+[node name="Shortcut" parent="Net" instance=ExtResource("shortcut")]
+text = "2"
 
 [node name="Technology" type="Button" parent="."]
 layout_mode = 0

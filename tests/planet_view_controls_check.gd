@@ -1,4 +1,4 @@
-extends SceneTree
+extends Node
 
 const DemoScene: PackedScene = preload("res://scenes/disk_demo.tscn")
 const DemoScript = preload("res://scripts/disk_demo.gd")
@@ -8,8 +8,10 @@ const SurfaceProjection = preload("res://scripts/surface_projection.gd")
 var _failures: Array[String] = []
 var _view_changes: int = 0
 
+@onready var root: Window = get_tree().root
 
-func _initialize() -> void:
+
+func _ready() -> void:
 	_run_checks.call_deferred()
 
 
@@ -18,7 +20,7 @@ func _run_checks() -> void:
 	root.size = Vector2i(1920, 1080)
 	var demo: DemoScript = DemoScene.instantiate() as DemoScript
 	root.add_child(demo)
-	current_scene = demo
+	get_tree().current_scene = demo
 	demo.set_process(false)
 	demo._layout.set_process(false)
 	var camera: PlanetViewController = demo._view
@@ -86,16 +88,16 @@ func _run_checks() -> void:
 	for child: Node in demo.get_node("Audio").get_children():
 		if child is AudioStreamPlayer:
 			child.stop()
-	current_scene = null
+	get_tree().current_scene = null
 	demo.queue_free()
-	await process_frame
+	await get_tree().process_frame
 	for failure: String in _failures:
 		push_error("FAIL: " + failure)
 	if _failures.is_empty():
 		print(
 			"PASS: overview self-rotation, top-surface handoff to the near horizon, mode-specific drag, switch interruption, UI/focus gates and stable world state at both resolutions."
 		)
-	quit(0 if _failures.is_empty() else 1)
+	get_tree().quit(0 if _failures.is_empty() else 1)
 
 
 func _check_near_projection(demo: DemoScript) -> void:
@@ -284,9 +286,14 @@ func _check_mode_drag_input(demo: DemoScript) -> void:
 	_check(demo._view_blocks_tool_until_release, "starting camera movement gates tool actions")
 	_mouse_motion(pointer + Vector2(0.0, 40.0), MOUSE_BUTTON_MASK_RIGHT)
 	_check(
-		is_equal_approx(world.rotation, rotation),
-		"vertical-only mouse movement still leaves rotation unchanged"
+		(
+			world.rotation < rotation
+			if camera.is_overview()
+			else is_equal_approx(world.rotation, rotation)
+		),
+		"overview follows vertical motion beside the planet while near view remains horizontal"
 	)
+	rotation = world.rotation
 	var marker_before: Vector2 = demo._nest_views[0].get_global_transform_with_canvas().origin
 	_mouse_motion(pointer + Vector2(80.0, 40.0), MOUSE_BUTTON_MASK_RIGHT)
 	_check(world.rotation > rotation, "rightward input rotates in the original direction")
@@ -310,7 +317,9 @@ func _check_mode_drag_input(demo: DemoScript) -> void:
 
 func _check_ui_and_focus_gates(demo: DemoScript) -> void:
 	var camera: PlanetViewController = demo._view
-	for button: Button in [demo._quick_pipe_button, demo._quick_net_button, demo._layout._technology_button]:
+	for button: Button in [
+		demo._quick_pipe_button, demo._quick_net_button, demo._layout._technology_button
+	]:
 		if not button.is_visible_in_tree():
 			continue
 		_mouse_button(button.get_global_rect().get_center(), MOUSE_BUTTON_RIGHT, true)
@@ -359,8 +368,13 @@ func _check_overview_top_handoff(demo: DemoScript, resolution: Vector2i) -> void
 			var screen_radius: float = (
 				planet.radius * world.scale.x * camera.projection_root.scale.x
 			)
-			camera.begin_drag(Vector2.ZERO)
-			camera.drag_to(Vector2((heading - world.rotation) * screen_radius, 0.0))
+			var center: Vector2 = world.get_global_transform_with_canvas().origin
+			var turn: float = angle_difference(world.rotation, heading)
+			camera.begin_drag(center + Vector2.UP * screen_radius * 1.5)
+			for step: int in range(1, 25):
+				camera.drag_to(
+					center + Vector2.UP.rotated(turn * step / 24.0) * screen_radius * 1.5
+				)
 			camera.end_drag()
 			if source == "automatic":
 				var speed: float = camera.overview_rotation_speed
@@ -573,13 +587,13 @@ func _mouse_motion(position: Vector2, mask: MouseButtonMask) -> void:
 
 func _settle() -> void:
 	for frame: int in range(4):
-		await process_frame
+		await get_tree().process_frame
 
 
 func _capture(stem: String, resolution: Vector2i) -> void:
 	if not OS.get_cmdline_user_args().has("--capture") or DisplayServer.get_name() == "headless":
 		return
-	var demo: DemoScript = current_scene as DemoScript
+	var demo: DemoScript = get_tree().current_scene as DemoScript
 	for actor: PrototypeSlime in demo._slimes:
 		actor._process(0.0)
 	await RenderingServer.frame_post_draw

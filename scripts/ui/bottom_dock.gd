@@ -3,6 +3,7 @@ extends Control
 signal upgrade_requested(tool: int)
 
 const Selection = preload("res://scripts/ui/dock_selection.gd")
+const Cooldown = preload("res://scripts/ui/dock_cooldown.gd")
 
 enum ToolState { HIDDEN, LOCKED_READY, LOCKED_SHORT, READY, SHORT, MAXED }
 
@@ -17,11 +18,8 @@ var states: Array[int] = [ToolState.SHORT, ToolState.HIDDEN]
 var net_discovered: bool = false
 var _run: PrototypeRun
 var _accent: Color = Color("881e35")
-var _announced: Dictionary[String, bool] = {}
-var _automatic: Array[bool] = [false, false]
 var _hovered: Array[bool] = [false, false]
 var _hover_remaining: Array[float] = [0.0, 0.0]
-var _actions: Array[String] = ["", ""]
 var _expanded: Array[bool] = [false, false]
 var _tweens: Array[Tween] = [null, null]
 var _text_tweens: Array[Tween] = [null, null]
@@ -38,8 +36,11 @@ var _view_fade: Tween
 @onready var badge: TextureRect = $Technology/Badge
 @onready var buttons: Array[Button] = [pipe_button, net_button]
 @onready var upgrades: Array[Button] = [$Pipe/Reveal/Purchase, $Net/Reveal/Purchase]
-@onready
-var surfaces: Array[Button] = [pipe_button, net_button, technology_button, upgrades[0], upgrades[1]]
+@onready var shortcuts: Array[Button] = [$Pipe/Shortcut, $Net/Shortcut]
+@onready var net_cooldown: Cooldown = $Net/Button/Cooldown
+@onready var surfaces: Array[Button] = [
+	pipe_button, net_button, technology_button, upgrades[0], upgrades[1], shortcuts[0], shortcuts[1]
+]
 
 
 func _ready() -> void:
@@ -50,6 +51,7 @@ func _ready() -> void:
 		var backing: TextureRect = button.get_node("Backing") as TextureRect
 		backing.material = backing.material.duplicate()
 	for index: int in range(2):
+		shortcuts[index].pressed.connect(_select_shortcut.bind(index))
 		upgrades[index].pressed.connect(_purchase.bind(index))
 		buttons[index].mouse_entered.connect(show_upgrade.bind(index))
 		buttons[index].focus_entered.connect(show_upgrade.bind(index))
@@ -57,6 +59,7 @@ func _ready() -> void:
 
 
 func reset_notifications() -> void:
+	net_cooldown.reset()
 	if _view_fade != null:
 		_view_fade.kill()
 	_view_transitioning = false
@@ -64,12 +67,9 @@ func reset_notifications() -> void:
 	for button: Button in surfaces:
 		button.mouse_filter = Control.MOUSE_FILTER_STOP
 	net_discovered = false
-	_announced.clear()
 	for index: int in range(2):
-		_automatic[index] = false
 		_hovered[index] = false
 		_hover_remaining[index] = 0.0
-		_actions[index] = ""
 		_expanded[index] = false
 		if _tweens[index] != null:
 			_tweens[index].kill()
@@ -92,10 +92,6 @@ func _refresh_tool(index: int) -> void:
 	var cost: int = _run.get_technology_cost(id)
 	var allowed: bool = _run.get_technology_requirement(id).is_empty()
 	var affordable: bool = allowed and cost >= 0 and _run.candy >= cost
-	var action: String = "%s:%d" % [id, _run.get_technology_level(id)]
-	if action != _actions[index]:
-		_actions[index] = action
-		_automatic[index] = false
 	if index == 1:
 		net_discovered = net_discovered or affordable or _run.net_unlocked
 	if index == 1 and not net_discovered:
@@ -106,12 +102,12 @@ func _refresh_tool(index: int) -> void:
 		states[index] = ToolState.MAXED
 	else:
 		states[index] = ToolState.READY if affordable else ToolState.SHORT
-	if not affordable:
-		_automatic[index] = false
-	if affordable and not _announced.has(action):
-		_announced[action] = true
-		_automatic[index] = true
 	var button: Button = buttons[index]
+	shortcuts[index].disabled = locked
+	shortcuts[index].modulate.a = 0.45 if locked else 1.0
+	(shortcuts[index].get_node("Backing").material as ShaderMaterial).set_shader_parameter(
+		"selected", 1.0 if button.button_pressed and not locked else 0.0
+	)
 	var backing: TextureRect = button.get_node("Backing") as TextureRect
 	var icon: TextureRect = button.get_node("Icon") as TextureRect
 	backing.modulate = Color("8b8b8b") if locked else Color.WHITE
@@ -130,7 +126,11 @@ func _refresh_tool(index: int) -> void:
 	var next_level: int = (
 		_run.pipe_level + 2 if index == 0 else (1 if locked else _run.net_level + 2)
 	)
-	(purchase.get_node("Caption") as Label).text = "%d 级 · %d 糖果" % [next_level, maxi(0, cost)]
+	(purchase.get_node("Caption/Level") as Label).text = "%d 级 ·" % next_level
+	(purchase.get_node("Caption/Cost") as Label).text = str(maxi(0, cost))
+	(purchase.get_node("Caption") as Control).modulate = (
+		Color.WHITE if affordable else Color("d7a18f")
+	)
 	_update_accent(index)
 
 
@@ -148,6 +148,9 @@ func _set_text_layout(index: int, two_lines: bool) -> void:
 
 
 func refresh_timers(run: PrototypeRun) -> void:
+	net_cooldown.sync(
+		run.net_cooldown_remaining, run.settings.net_cooldown_seconds, run.net_unlocked
+	)
 	(pipe_button.get_node("Detail") as Label).text = "%d 级" % (run.pipe_level + 1)
 	var detail: Label = net_button.get_node("Detail") as Label
 	if not run.net_unlocked:
@@ -169,6 +172,16 @@ func _update_accent(index: int) -> void:
 	(buttons[index].get_node("Selected") as Selection).self_modulate = Color.from_hsv(
 		_accent.h, 0.58, 1.0
 	)
+	(shortcuts[index].get_node("Backing").material as ShaderMaterial).set_shader_parameter(
+		"accent", Color.from_hsv(_accent.h, 0.58, 1.0)
+	)
+	if index == 1:
+		net_cooldown.set_accent(Color.from_hsv(_accent.h, 0.4, 1.0))
+
+
+func _select_shortcut(index: int) -> void:
+	if not _suppressed and not _view_transitioning and _near_view:
+		buttons[index].pressed.emit()
 
 
 func _purchase(index: int) -> void:
@@ -247,6 +260,7 @@ func _update_surface_hover(delta: float) -> void:
 		var hovered: bool = (
 			not _suppressed
 			and not _view_transitioning
+			and not button.disabled
 			and button.is_visible_in_tree()
 			and button.get_global_rect().has_point(_pointer_position)
 		)
@@ -265,6 +279,7 @@ func update_hover(delta: float, pointer: Vector2) -> void:
 			_hovered[index] = false
 			continue
 		var area: Rect2 = buttons[index].get_global_rect()
+		area = area.merge(shortcuts[index].get_global_rect())
 		if _expanded[index]:
 			area = area.merge((upgrades[index].get_parent() as Control).get_global_rect())
 		if area.grow(3.0).has_point(pointer):
@@ -274,7 +289,6 @@ func update_hover(delta: float, pointer: Vector2) -> void:
 			_hover_remaining[index] -= delta
 			if _hover_remaining[index] <= 0.0:
 				_hovered[index] = false
-				_automatic[index] = false
 	_refresh_visibility()
 
 
@@ -283,14 +297,15 @@ func _refresh_visibility() -> void:
 	$Net.visible = _near_view and net_discovered
 	for index: int in range(2):
 		var available: bool = states[index] in [ToolState.READY, ToolState.LOCKED_READY]
+		var has_next: bool = not states[index] in [ToolState.HIDDEN, ToolState.MAXED]
 		_set_expanded(
 			index,
 			(
 				_near_view
 				and not _suppressed
 				and not _view_transitioning
-				and available
-				and (_automatic[index] or _hovered[index])
+				and has_next
+				and (available or _hovered[index])
 			)
 		)
 
@@ -319,7 +334,10 @@ func contains_pointer(pointer: Vector2) -> bool:
 	for index: int in range(2):
 		if (
 			buttons[index].is_visible_in_tree()
-			and buttons[index].get_global_rect().has_point(pointer)
+			and (
+				buttons[index].get_global_rect().has_point(pointer)
+				or shortcuts[index].get_global_rect().has_point(pointer)
+			)
 		):
 			return true
 		if (

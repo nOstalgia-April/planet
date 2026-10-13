@@ -19,6 +19,9 @@ const PARAMETERS: PackedStringArray = [
 var dominant_species: int = NestState.Species.SLIME
 var population_counts: Vector3 = Vector3.ZERO
 var scores: Vector3 = Vector3.ZERO
+var accent_species: int = -1
+var accent_remaining: float = 0.0
+var _display_species: int = NestState.Species.SLIME
 var _candidate: int = -1
 var _candidate_seconds: float = 0.0
 var _transition_elapsed: float = 0.0
@@ -49,6 +52,9 @@ func _ready() -> void:
 
 func reset() -> void:
 	dominant_species = NestState.Species.SLIME
+	_display_species = dominant_species
+	accent_species = -1
+	accent_remaining = 0.0
 	_candidate = -1
 	_candidate_seconds = 0.0
 	_transition_elapsed = settings.transition_seconds
@@ -57,6 +63,21 @@ func reset() -> void:
 	_colors = settings.colors_for(dominant_species).duplicate()
 	_from_colors = _colors.duplicate()
 	_apply_colors()
+
+
+func emphasize_species(species: int, seconds: float) -> void:
+	assert(species >= 0 and species < 3 and seconds >= 0.0)
+	accent_species = species if seconds > 0.0 else -1
+	accent_remaining = seconds
+	_set_display_species(species if seconds > 0.0 else dominant_species)
+
+
+func _set_display_species(species: int) -> void:
+	if _display_species == species:
+		return
+	_display_species = species
+	_from_colors = _colors.duplicate()
+	_transition_elapsed = 0.0
 
 
 func _process(delta: float) -> void:
@@ -84,18 +105,21 @@ func advance_population(counts: Vector3, delta: float) -> void:
 		_candidate_seconds += delta
 		if _candidate_seconds >= settings.confirmation_seconds:
 			dominant_species = winner
-			_from_colors = _colors.duplicate()
-			_transition_elapsed = 0.0
 			_candidate = -1
 			_candidate_seconds = 0.0
 	else:
 		_candidate = -1
 		_candidate_seconds = 0.0
+	# Keep the population decision current beneath the temporary discovery color.
+	accent_remaining = maxf(0.0, accent_remaining - delta)
+	if accent_remaining <= 0.0:
+		accent_species = -1
+	_set_display_species(accent_species if accent_species >= 0 else dominant_species)
 	if _transition_elapsed >= settings.transition_seconds:
 		return
 	_transition_elapsed = minf(_transition_elapsed + delta, settings.transition_seconds)
 	var progress: float = smoothstep(0.0, 1.0, _transition_elapsed / settings.transition_seconds)
-	var target: PackedColorArray = settings.colors_for(dominant_species)
+	var target: PackedColorArray = settings.colors_for(_display_species)
 	for index: int in range(5):
 		_colors[index] = _from_colors[index].lerp(target[index], progress)
 	_apply_colors()

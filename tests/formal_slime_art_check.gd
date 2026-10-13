@@ -53,8 +53,8 @@ func _run() -> void:
 		actor.configure_species(species as PrototypeSlime.Species, true, 6)
 		actor.refresh_presentation()
 		_check(
-			actor.slime_art._gold_material.get_shader_parameter("gold"),
-			"gold variant keeps sprite details"
+			actor.get_source_texture().resource_path.contains("高价值怪物"),
+			"valuable individual uses supplied crown artwork"
 		)
 		actor.launch(Vector2.RIGHT)
 		actor.set_process(false)
@@ -87,7 +87,7 @@ func _run() -> void:
 		push_error(failure)
 	print(
 		(
-			"PASS: formal species art, launch/idle, gold, giant, presentation settings and capture geometry"
+			"PASS: formal species art, launch/idle, crowns, giant, presentation settings and capture geometry"
 			if _failures.is_empty()
 			else "FAIL: formal slime art"
 		)
