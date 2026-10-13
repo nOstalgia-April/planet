@@ -24,6 +24,10 @@ const ViewGestureFilter = preload("res://scripts/view_gesture_filter.gd")
 # Music stages drive the global FMOD parameter GameStage (0 / 1 / 2); its Seek
 # modulator in FMOD turns each step into a crossfade between the music layers.
 const MUSIC_STAGE_PARAMETER: String = "GameStage"
+const GAMEPLAY_MUSIC: String = "event:/Mx_GamePlay"
+# Gameplay music parameter: 0 in the near view (stems A + B), 1 in the
+# overview (stems A + C). It follows the camera zoom continuously.
+const MUSIC_DISTANT_VIEW_PARAMETER: String = "IsDistantView"
 # Stage 2 starts with the third base value breakthrough (900 candy, 5 -> 10).
 const MUSIC_MID_BASE_VALUE_LEVEL: int = 3
 # Stage 3 starts once full automation is researched (7500 candy).
@@ -111,9 +115,12 @@ func _ready() -> void:
 	assert(slime_scene != null and nest_scene != null and collection_scene != null)
 	assert(giant_slime_scene != null, "Fusion requires the reusable giant slime scene.")
 	assert(giant_harvest_scene != null, "Giant capture requires its harvest effect scene.")
-	GameAudio.play_music("event:/Mx_GamePlay")
+	GameAudio.play_music(GAMEPLAY_MUSIC)
 	# Leaving the game in the overview must not leave near-view sounds muted.
 	tree_exiting.connect(GameAudio.set_near_view_gain.bind(1.0))
+	tree_exiting.connect(
+		GameAudio.set_music_parameter.bind(GAMEPLAY_MUSIC, MUSIC_DISTANT_VIEW_PARAMETER, 0.0)
+	)
 	_vacuum_audio = VacuumAudio.new()
 	_vacuum_audio.name = "VacuumAudio"
 	$Audio.add_child(_vacuum_audio)
@@ -171,6 +178,10 @@ func _process(delta: float) -> void:
 	_advance_ground_mucus(delta)
 	_advance_monster_chatter(delta)
 	GameAudio.set_near_view_gain(_view.near_blend)
+	GameAudio.set_music_parameter(
+		GAMEPLAY_MUSIC, MUSIC_DISTANT_VIEW_PARAMETER, 1.0 - _view.near_blend
+	)
+	_planet_audio.update_zoom(_view.target_zoom, _view.is_transitioning())
 	_planet_audio.update_rotation(delta, _view.is_dragging(), _world.rotation)
 	var world_position: Vector2 = _world.to_local(get_global_mouse_position())
 	var holding: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)

@@ -9,6 +9,8 @@ const BANK_ROOT: String = "res://bank/Desktop"
 const BANK_NAMES: PackedStringArray = ["Master.strings.bank", "Master.bank", "ProjectVacuum.bank"]
 
 const MAX_FADE_STEP: float = 1.0 / 30.0
+# Safety net: music held back by a transition starts anyway after this long.
+const TRANSITION_TIMEOUT_SECONDS: float = 15.0
 # Near-view gameplay sounds. They keep running in the planet overview but are
 # silenced there; music, UI and Earth_Rotate stay audible in both views.
 const NEAR_VIEW_PREFIXES: PackedStringArray = [
@@ -22,8 +24,15 @@ const NEAR_VIEW_PREFIXES: PackedStringArray = [
 
 @export_range(0.0, 10.0, 0.05) var music_fade_in_seconds: float = 0.3
 @export_range(0.0, 10.0, 0.05) var music_fade_out_seconds: float = 0.3
+# Music after a transition is started this long before the transition's file
+# ends. GameStart_Transition fades below -40 dB from about 2.4 s of its 3.43 s,
+# so the music enters there (overlapping only that near-silent tail); the value
+# also absorbs FMOD's start-up delay (~0.21 s measured).
+@export_range(0.0, 3.0, 0.01) var transition_music_lead_seconds: float = 1.2
 
 var banks_loaded: bool = false
+# Names of the global parameters defined by the loaded banks.
+var _global_parameters: Dictionary = {}
 var _effects_elapsed: float = 0.0
 var _effect_descriptions: Array[FmodEventDescription] = []
 # Parallel to _effect_descriptions: whether each one is a near-view sound.
@@ -36,6 +45,14 @@ var _banks: Array[FmodBank] = []
 var _music: FmodEvent
 var _music_path: String = ""
 var _music_volume: float = 0.0
+# A transition sound between two music tracks. Music requested while it plays
+# starts paused in _pending_music, so its streams are already open, and is
+# unpaused at full volume as the transition ends.
+var _transition: FmodEvent
+var _transition_elapsed: float = 0.0
+var _transition_length: float = 0.0
+var _pending_music: FmodEvent
+var _pending_music_path: String = ""
 # Previous tracks still fading out: FmodEvent -> current volume.
 var _fading_out: Dictionary = {}
 
@@ -53,6 +70,8 @@ func _ready() -> void:
 			)
 		)
 	banks_loaded = true
+	for description: Dictionary in FmodServer.get_global_parameter_desc_list():
+		_global_parameters[description["name"]] = true
 	for bank: FmodBank in _banks:
 		for description: FmodEventDescription in bank.get_description_list():
 			var path: String = description.get_path()
@@ -66,6 +85,8 @@ func _ready() -> void:
 # Stop the music before dropping the banks at quit; dropping them unloads every event.
 func _exit_tree() -> void:
 	stop_music()
+	_end_transition()
+	_discard_pending_music()
 	for instance: FmodEvent in _fading_out:
 		if instance.is_valid():
 			instance.stop(FmodServer.FMOD_STUDIO_STOP_IMMEDIATE)
@@ -110,7 +131,8 @@ func play(event_path: String, parameters: Dictionary = {}) -> void:
 	instance.release()
 
 
-# Called every frame by the game scene with its near/overview blend. Silent
+# Called every frame by the game scene with the camera's near/overview blend
+# (1 = near view, 0 = overview) to fade near-view sound effects. Silent
 # near-view events still play, so their FMOD logic (commands, parameters) runs.
 func set_near_view_gain(gain: float) -> void:
 	gain = clampf(gain, 0.0, 1.0)
@@ -118,6 +140,16 @@ func set_near_view_gain(gain: float) -> void:
 		return
 	_near_view_gain = gain
 	_apply_effects_volume()
+
+
+# Sets a music parameter whether FMOD defines it as global or as local to the
+# event. A local one is only set while event_path is the track playing, since
+# other music events may not define it.
+func set_music_parameter(event_path: String, parameter_name: String, value: float) -> void:
+	if _global_parameters.has(parameter_name):
+		set_global(parameter_name, value)
+	elif event_path == _music_path and _music != null and _music.is_valid():
+		_music.set_parameter_by_name(parameter_name, value)
 
 
 func set_global(parameter_name: String, value: float) -> void:
@@ -149,6 +181,9 @@ func stop_loop(instance: FmodEvent) -> void:
 func play_music(event_path: String) -> void:
 	if event_path == _music_path and _music != null and _music.is_valid():
 		return
+	if _transition != null:
+		_prepare_pending_music(event_path)
+		return
 	stop_music()
 	if not has_events([event_path]):
 		return
@@ -167,6 +202,33 @@ func stop_music() -> void:
 		_fading_out[_music] = _music_volume
 	_music = null
 	_music_path = ""
+	_discard_pending_music()
+
+
+# Stops the current music and plays a one-shot transition sound right away.
+# Music requested while it plays (next_music_path now, or a later play_music
+# call) starts as the transition ends. The current music is stopped through
+# FMOD (its own fade-out, if any) because a scene load may follow immediately.
+func play_transition(event_path: String, next_music_path: String = "") -> void:
+	if not has_events([event_path]):
+		return
+	if _music != null and _music.is_valid():
+		_music.stop(FmodServer.FMOD_STUDIO_STOP_ALLOWFADEOUT)
+		_music.release()
+	_music = null
+	_music_path = ""
+	_discard_pending_music()
+	_end_transition()
+	_transition = FmodServer.create_event_instance(event_path)
+	if _transition == null:
+		return
+	_transition.set_volume(GamePreferences.effects_volume)
+	_transition.start()
+	_transition_elapsed = 0.0
+	_transition_length = FmodServer.get_event(event_path).get_length() / 1000.0
+	if not next_music_path.is_empty():
+		_prepare_pending_music(next_music_path)
+	FmodServer.update()
 
 
 ## Returns -1 when this track is unavailable. FMOD owns looping, pausing and seeking.
@@ -177,6 +239,11 @@ func get_music_position_seconds(event_path: String) -> float:
 
 
 func _process(delta: float) -> void:
+	if _transition != null:
+		_transition_elapsed += delta
+		if _is_transition_ending():
+			_end_transition()
+			_start_pending_music()
 	_effects_elapsed += delta
 	if _effects_elapsed >= 0.1:
 		_effects_elapsed = 0.0
@@ -198,6 +265,61 @@ func _process(delta: float) -> void:
 		else:
 			instance.set_volume(volume * _music_gain())
 			_fading_out[instance] = volume
+
+
+func _is_transition_ending() -> bool:
+	if not _transition.is_valid() or _transition_elapsed >= TRANSITION_TIMEOUT_SECONDS:
+		return true
+	if _transition.get_playback_state() == FmodServer.FMOD_STUDIO_PLAYBACK_STOPPED:
+		return true
+	return (
+		_transition_length > 0.0
+		and _transition.get_timeline_position() / 1000.0
+		>= _transition_length - transition_music_lead_seconds
+	)
+
+
+func _prepare_pending_music(event_path: String) -> void:
+	if event_path == _pending_music_path:
+		return
+	_discard_pending_music()
+	if not has_events([event_path]):
+		return
+	_pending_music = FmodServer.create_event_instance(event_path)
+	if _pending_music == null:
+		return
+	_pending_music.set_volume(_music_gain())
+	_pending_music.set_paused(true)
+	_pending_music.start()
+	_pending_music_path = event_path
+
+
+# Picks up right where the transition ends, so it starts at full volume.
+func _start_pending_music() -> void:
+	if _pending_music == null or not _pending_music.is_valid():
+		_discard_pending_music()
+		return
+	_music = _pending_music
+	_music_path = _pending_music_path
+	_pending_music = null
+	_pending_music_path = ""
+	_music_volume = 1.0
+	_music.set_volume(_music_gain())
+	_music.set_paused(false)
+
+
+func _discard_pending_music() -> void:
+	if _pending_music != null and _pending_music.is_valid():
+		_pending_music.stop(FmodServer.FMOD_STUDIO_STOP_IMMEDIATE)
+		_pending_music.release()
+	_pending_music = null
+	_pending_music_path = ""
+
+
+func _end_transition() -> void:
+	if _transition != null and _transition.is_valid():
+		_transition.release()
+	_transition = null
 
 
 func _music_gain() -> float:

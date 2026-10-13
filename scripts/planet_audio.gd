@@ -1,10 +1,13 @@
 extends Node
 
-# Earth_Rotate loops while a drag is actually turning the planet. Holding the
-# drag still lets it fade out (via its FMOD AHDSR); reversing direction restarts
-# the event from the top.
+# Planet view sounds. Earth_Rotate loops while a drag is actually turning the
+# planet; holding the drag still lets it fade out (via its FMOD AHDSR) and
+# reversing direction restarts it from the top. ZoomIn / ZoomOut play when the
+# camera starts an animated switch between the near view and the overview.
 
 const ROTATE_EVENT: String = "event:/Earth_Rotate"
+const ZOOM_IN_EVENT: String = "event:/ZoomIn"
+const ZOOM_OUT_EVENT: String = "event:/ZoomOut"
 
 # Mouse motion does not arrive every frame, so the planet counts as still only
 # after this long without turning.
@@ -19,10 +22,26 @@ var _last_rotation: float = 0.0
 var _direction: int = 0
 var _still_elapsed: float = 0.0
 var _reverse_amount: float = 0.0
+var _zoom_ready: bool = false
+# Last camera target (1 = near view, 0 = overview); NAN until the first frame.
+var _zoom_target: float = NAN
 
 
 func _ready() -> void:
 	_ready_to_play = GameAudio.has_events([ROTATE_EVENT])
+	_zoom_ready = GameAudio.has_events([ZOOM_IN_EVENT, ZOOM_OUT_EVENT])
+
+
+# Called every frame with the camera's target view and whether it is animating.
+# Only animated switches play: instant ones (restart, scenes opening in the
+# overview) just update the tracked target.
+func update_zoom(target_zoom: float, transitioning: bool) -> void:
+	var previous: float = _zoom_target
+	_zoom_target = target_zoom
+	if not _zoom_ready or is_nan(previous) or is_equal_approx(previous, target_zoom):
+		return
+	if transitioning:
+		GameAudio.play(ZOOM_IN_EVENT if target_zoom > previous else ZOOM_OUT_EVENT)
 
 
 # Called every frame with the drag state and the planet's current rotation.
