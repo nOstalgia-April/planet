@@ -1,0 +1,48 @@
+{
+  "source": "山树上色/山树上色",
+  "method": "原图提取填充色，通过灰阶区域映射沿用当前山树全部动画帧、线条、透明度和位置，不替换轮廓。",
+  "unlocks": {
+    "green": "对侧绿色山顶",
+    "pink": "红山、粉山和三株粉树",
+    "blue": "右侧蓝山、对侧紫色山脚"
+  },
+  "colors": {
+    "tree_middle": "#ffc0e0",
+    "right_hill": "#5e7a8a",
+    "tree_right": "#ffb2d7",
+    "left_hill": "#9a1e13",
+    "peak_foot": "#9e9aee",
+    "pink": "#ee8daa",
+    "peak_top": "#bad3b2"
+  },
+  "files": [
+    {
+      "file": "位置参考.png",
+      "sha256": "ac656d75ea2b127135ce99f7e18923e763c46e45c377f703ea3caa9e66af391d"
+    },
+    {
+      "file": "IMG_3040-1.png",
+      "sha256": "70754a0bdb5f51ae11f747a143ad4f2a1f3be6b98593965d5a38275f959b1640"
+    },
+    {
+      "file": "IMG_3040-2.png",
+      "sha256": "74e344793417142943129cee35e8b8abc2f7699064a44a5b9afeb44b687dc4c6"
+    },
+    {
+      "file": "IMG_3040-3.png",
+      "sha256": "326b6d5907573048c787c05b4633e6f9d60868f35a9f3bb87dff24f678f36712"
+    },
+    {
+      "file": "IMG_3040-4.png",
+      "sha256": "99a7f5943f97a487caaa45a3ec5b7c50b9c21d46367415d65e7583f285690560"
+    },
+    {
+      "file": "IMG_3776.png",
+      "sha256": "eee00c00bbe892a7e41f64d945612f0a320fd70787779cbe5e841a44dc472bba"
+    },
+    {
+      "file": "IMG_3777.png",
+      "sha256": "8fe6c2811ed1fd7ec6ae7de961a23755d4853603e66717ba2bdfaf6886c6e7ef"
+    }
+  ]
+}

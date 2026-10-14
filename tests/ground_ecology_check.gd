@@ -156,6 +156,7 @@ func _check_nest_mucus_coverage(demo: DemoScript) -> void:
 	_prepare_ecology(demo)
 	_check(demo._nest_mucus_areas.size() == 1, "only mucus nests create persistent coverage")
 	var area: NestMucusArea = demo._nest_mucus_areas[0]
+	area._process(2.0)
 	var nest: NestState = demo.run.get_nest(3)
 	_check(
 		is_equal_approx(area.coverage_radius, demo._regions[2].region_radius * 2.0),

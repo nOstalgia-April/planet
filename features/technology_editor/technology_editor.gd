@@ -2,7 +2,7 @@ extends Control
 
 const PageScript = preload("res://features/github_tech_tree_preview/github_technology_page.gd")
 const GROUPS: PackedStringArray = [
-	"基础价值", "吸取速率", "巢穴培育", "完全自动化", "高价值个体", "巨型史莱姆", "连击奖励", "连击间隔", "捕网"
+	"基础价值", "吸取速率", "巢穴培育", "完全治理", "高价值个体", "巨型史莱姆", "连击爬梯", "捕网", "捕网大小"
 ]
 const TECHNOLOGY_IDS: PackedStringArray = [
 	"base_value",
@@ -12,8 +12,8 @@ const TECHNOLOGY_IDS: PackedStringArray = [
 	"valuable",
 	"giant",
 	"combo_unlock",
-	"combo_interval",
-	"net_unlock"
+	"net_unlock",
+	"net_size"
 ]
 
 @export_file("*.tres") var settings_path: String = "res://resources/prototype_settings.tres"
@@ -86,7 +86,7 @@ func _show_group(index: int) -> void:
 			_element("governance_upgrade_costs", 0, "培育研究费用（糖果）", 0)
 			_values("nest_upgrade_costs", "各巢穴建设费用（糖果）", 0, 1, 0)
 			_values("nest_population_limits", "巢穴人口上限", 1, 1, 0)
-			_note("建设费用依次为培育、强化培育、完全自动化；人口依次为野生、培育、强化培育。")
+			_note("建设费用依次为培育、强化培育、完全治理；人口依次为野生、培育、强化培育。")
 		3:
 			_element("governance_upgrade_costs", 1, "自动化研究费用（糖果）", 0)
 			_element("nest_upgrade_costs", 2, "每巢自动化建设费用（糖果）", 0)
@@ -103,21 +103,21 @@ func _show_group(index: int) -> void:
 			_scalar("giant_check_interval", "融合检查间隔（秒）", 0.1, 0.1)
 			_scalar("giant_activity_radius_multiplier", "融合范围倍率", 0.05, 0.05)
 		6:
-			_values("combo_upgrade_costs", "解锁与升级费用（糖果）", 0)
-			_values("combo_reward_percentages", "额外收益（%，未解锁固定 0）", 0, 1, 0, true)
-			_scalar("combo_target", "连续吸入多少只后开始奖励", 1)
-			_note("费用第 1 项为解锁，之后为奖励升级。奖励从达标后的下一只开始。")
+			_values("combo_upgrade_costs", "各段解锁费用（糖果）", 0)
+			_values("combo_reward_percentages", "各段额外糖果（%）", 0)
+			_values("combo_stage_targets", "各段吸入目标（只）", 1)
+			_scalar("combo_window_seconds", "每段限时（秒）", 0.1, 0.1)
+			_note("每段独立计数，达标按该段全部糖果结算；巨型计 1 只。")
 		7:
-			_scalar("combo_window_seconds", "基础续接间隔（秒）", 0.1, 0.1)
-			_values("combo_interval_upgrade_costs", "研究费用（糖果）", 0, 1, 2)
-			_values("combo_interval_bonus_seconds", "额外续接时间（秒，初始固定 0）", 0, 0.1, 1, true)
-			_note("实际续接间隔 = 基础间隔 + 当前等级的额外时间。")
-		8:
 			_scalar("net_unlock_cost", "捕网解锁费用（糖果）", 0)
 			_values("net_upgrade_costs", "扩容费用（糖果）", 0, 1, 2)
 			_values("net_capacities", "一次捕获数量", 1)
 			_scalar("net_cooldown_seconds", "冷却时间（秒）", 0.1, 0.1)
 			_scalar("net_radius", "捕网半径", 0.1, 0.1)
+		8:
+			_values("net_size_upgrade_costs", "大小升级费用（糖果）", 0, 1, 2)
+			_values("net_size_multipliers", "半径倍率（初始固定 ×1）", 1, 0.05, 1, true)
+			_note("捕网扩容满级后开放；实际半径 = 基础捕网半径 × 当前倍率。")
 
 
 func _scalar(property: String, title: String, minimum: float, step: float = 1.0) -> void:

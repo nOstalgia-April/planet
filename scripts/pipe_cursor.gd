@@ -2,6 +2,8 @@ extends Node2D
 
 const SurfaceProjection = preload("res://scripts/surface_projection.gd")
 const VacuumSkin = preload("res://scripts/vacuum_skin.gd")
+const ComboBurst = preload("res://scripts/combo_burst.gd")
+const ComboBurstScene: PackedScene = preload("res://scenes/effects/combo_burst.tscn")
 const REFERENCE_RADIUS: float = 24.0
 
 enum TransportState { IDLE, SINGLE, CONTINUOUS }
@@ -22,6 +24,11 @@ var _capture_engaged: bool = false
 var _pending_transport: bool = false
 var _last_capture_skin: VacuumSkin.SkinKind = VacuumSkin.SkinKind.DEFAULT
 var _combo_active: bool = false
+var _combo_hold: float = 0.0
+var _combo_burst_played: bool = false
+var _combo_restoring: bool = false
+var _combo_reward: Vector2i = Vector2i.ZERO
+var _combo_bursts: Array[Vector2i] = []
 
 @onready var _art_root: Node2D = $ArtRoot
 @onready var _art: VacuumSkin = $ArtRoot/吸尘器
@@ -63,7 +70,7 @@ func play_capture() -> void:
 		_pending_transport = true
 
 
-func show_capture_skin(species: PrototypeSlime.Species, combo_active: bool) -> void:
+func show_capture_skin(species: PrototypeSlime.Species) -> void:
 	match species:
 		PrototypeSlime.Species.SLIME:
 			_last_capture_skin = VacuumSkin.SkinKind.PINK
@@ -71,7 +78,7 @@ func show_capture_skin(species: PrototypeSlime.Species, combo_active: bool) -> v
 			_last_capture_skin = VacuumSkin.SkinKind.BLUE
 		PrototypeSlime.Species.DRILL:
 			_last_capture_skin = VacuumSkin.SkinKind.DEFAULT
-	set_combo_active(combo_active)
+	set_combo_active(_combo_active)
 
 
 func set_combo_active(value: bool) -> void:
@@ -79,9 +86,56 @@ func set_combo_active(value: bool) -> void:
 	_art.request_skin(VacuumSkin.SkinKind.RAINBOW if _combo_active else _last_capture_skin)
 
 
+func play_combo_burst(stage: int, bonus: int) -> void:
+	_combo_bursts.append(Vector2i(stage, bonus))
+	if not _combo_active and not _combo_restoring:
+		_begin_combo_burst()
+
+
+func _begin_combo_burst() -> void:
+	_combo_reward = _combo_bursts.pop_front()
+	_combo_hold = 0.30 + _combo_reward.x * 0.06
+	_combo_burst_played = false
+	set_combo_active(true)
+
+
+func _advance_combo_burst(delta: float) -> void:
+	if _combo_restoring:
+		if _art.transition != VacuumSkin.Transition.STABLE:
+			return
+		_combo_restoring = false
+		if not _combo_bursts.is_empty():
+			_begin_combo_burst()
+	if not _combo_active:
+		return
+	if (
+		_art.current_skin != VacuumSkin.SkinKind.RAINBOW
+		or _art.transition != VacuumSkin.Transition.STABLE
+	):
+		return
+	if not _combo_burst_played:
+		var burst: ComboBurst = ComboBurstScene.instantiate() as ComboBurst
+		$Bursts.add_child(burst)
+		burst.top_level = true
+		burst.global_transform = Transform2D.IDENTITY
+		burst.global_position = _art.get_global_transform_with_canvas().origin
+		burst.play(_combo_reward.x, _combo_reward.y)
+		_combo_burst_played = true
+	_combo_hold = maxf(0.0, _combo_hold - delta)
+	if _combo_hold == 0.0:
+		set_combo_active(false)
+		_combo_restoring = true
+
+
 func reset_skin() -> void:
 	_last_capture_skin = VacuumSkin.SkinKind.DEFAULT
 	_combo_active = false
+	_combo_hold = 0.0
+	_combo_burst_played = false
+	_combo_restoring = false
+	_combo_bursts.clear()
+	for effect: Node in $Bursts.get_children():
+		effect.queue_free()
 	_art.reset_skin()
 
 
@@ -94,6 +148,7 @@ func reset_transport() -> void:
 
 func _process(delta: float) -> void:
 	_time += delta
+	_advance_combo_burst(delta)
 	_update_visual_compensation()
 	if visible and active:
 		queue_redraw()

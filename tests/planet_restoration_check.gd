@@ -47,7 +47,12 @@ func _run() -> void:
 	_game._restoration._process(0.4)
 	_check(not _game._view.is_overview(), "confirmation holds near view")
 	_game._restoration._process(0.41)
-	_check(_game._view.is_overview(), "confirmation forces overview")
+	_check(
+		_game._restoration.phase == Restoration.Phase.TERRAIN,
+		"flower confirmation first restores visible terrain"
+	)
+	_game._restoration._process(_game._restoration.terrain_seconds)
+	_check(_game._view.is_overview(), "colored terrain then forces overview")
 	_game._view._process(1.0)
 	_game._restoration._process(0.0)
 	_game._restoration._process(1.2)
@@ -164,6 +169,8 @@ func _run() -> void:
 	)
 	_game._restoration.reveal_flower(1, 0)
 	_game._restoration._process(0.8)
+	if _game._restoration.phase == Restoration.Phase.TERRAIN:
+		_game._restoration._process(_game._restoration.terrain_seconds)
 	_game._view._process(1.0)
 	_game._restoration._process(0.0)
 	_game._restoration._process(1.0)
@@ -182,6 +189,8 @@ func _run() -> void:
 			_game.run.upgrade_nest(nest.nest_id)
 	_game._restoration.reveal_flower(1, 0)
 	_game._restoration._process(0.8)
+	if _game._restoration.phase == Restoration.Phase.TERRAIN:
+		_game._restoration._process(_game._restoration.terrain_seconds)
 	_game._view._process(1.0)
 	_game._restoration._process(0.0)
 	_game._restoration._process(2.4)

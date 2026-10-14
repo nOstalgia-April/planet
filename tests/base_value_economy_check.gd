@@ -1,13 +1,14 @@
-extends SceneTree
+extends Node
 
 const SETTINGS: PrototypeSettings = preload("res://resources/prototype_settings.tres")
 const DemoScene: PackedScene = preload("res://scenes/disk_demo.tscn")
 const DemoScript = preload("res://scripts/disk_demo.gd")
 
 var _failures: int = 0
+@onready var root: Window = get_tree().root
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	_run_checks.call_deferred()
 
 
@@ -19,7 +20,7 @@ func _run_checks() -> void:
 		print(
 			"PASS: value purchases, live species and gold rewards, in-flight net, percentage carry, automation and reset"
 		)
-	quit(0 if _failures == 0 else 1)
+	get_tree().quit(0 if _failures == 0 else 1)
 
 
 func _check_value_purchases() -> void:
@@ -81,18 +82,18 @@ func _check_fractional_combo() -> void:
 	run.start_run([Vector2(-100, -200), Vector2(100, -200)])
 	run.combo_level = 1
 	run.get_nest(1).alive_slimes = 20
-	for _index: int in range(6):
+	for _index: int in range(3):
 		run.collect_slime(1)
 	_check(
-		run.candy == 6 and run._combo_reward_remainder == 25,
-		"A quarter candy is retained, never rounded up per capture."
+		run.candy == 3 and run._combo_reward_remainder == 75,
+		"Three quarters of a candy are retained, never rounded up per capture."
 	)
-	run.advance(3.1)
+	run.advance(5.1)
 	run.get_nest(1).alive_slimes = 20
-	for _index: int in range(6):
+	for _index: int in range(3):
 		run.collect_slime(1)
 	_check(
-		run.candy == 12 and run._combo_reward_remainder == 50,
+		run.candy == 7 and run._combo_reward_remainder == 50,
 		"Earned fractions survive a broken streak."
 	)
 	run.start_run([Vector2(-100, -200), Vector2(100, -200)])
@@ -106,7 +107,7 @@ func _check_fractional_combo() -> void:
 func _check_live_rewards() -> void:
 	var demo: DemoScript = DemoScene.instantiate() as DemoScript
 	root.add_child(demo)
-	current_scene = demo
+	get_tree().current_scene = demo
 	demo.set_process(false)
 	demo._view.set_process(false)
 	demo._layout.set_process(false)
@@ -153,7 +154,8 @@ func _check_live_rewards() -> void:
 	)
 	for actor: PrototypeSlime in [basic, golden, mucus]:
 		actor.position = Vector2(0, -190)
-	demo.run.combo_count = 5
+	demo.run.combo_count = 2
+	demo.run.combo_stage_candy = 10
 	demo.run.combo_remaining = 3.0
 	demo._select_tool(DemoScript.ToolMode.NET)
 	demo._start_net(Vector2(0, -190))
@@ -166,7 +168,7 @@ func _check_live_rewards() -> void:
 		"A net already in flight settles all species at the new value."
 	)
 	_check(
-		demo.run.combo_count == 5 and demo.run.combo_remaining == 3.0,
+		demo.run.combo_count == 2 and demo.run.combo_remaining == 3.0,
 		"The net neither rewards nor renews combo."
 	)
 	var fresh: PrototypeSlime = _spawn(demo, 1)
@@ -175,7 +177,7 @@ func _check_live_rewards() -> void:
 	before = demo.run.candy
 	demo._capture_at(2.0, fresh.get_capture_point(), true)
 	_check(
-		demo.run.candy == before + 6 and demo.run._combo_reward_remainder == 25,
+		demo.run.candy == before + 8 and demo.run._combo_reward_remainder == 75,
 		"Real suction pays current value plus its fractional percentage bonus."
 	)
 	demo.restart_run()
@@ -183,9 +185,9 @@ func _check_live_rewards() -> void:
 		demo.run.get_base_value() == 1 and demo._slimes.is_empty(),
 		"Live restart clears research and the old actors."
 	)
-	current_scene = null
+	get_tree().current_scene = null
 	demo.queue_free()
-	await process_frame
+	await get_tree().process_frame
 
 
 func _spawn(demo: DemoScript, nest_id: int) -> PrototypeSlime:

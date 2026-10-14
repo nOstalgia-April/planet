@@ -14,6 +14,8 @@
 [ext_resource type="PackedScene" path="res://scenes/effects/population_palette.tscn" id="palette"]
 [ext_resource type="PackedScene" path="res://scenes/effects/nest_discovery_presentation.tscn" id="discovery"]
 
+[ext_resource type="PackedScene" path="res://scenes/场景动画/山丘树木.tscn" id="terrain"]
+
 [node name="近景游玩预览" unique_id=41260423 instance=ExtResource("r001")]
 script = ExtResource("r002")
 start_in_overview = false
@@ -30,6 +32,8 @@ external_backdrop_palette = true
 script = ExtResource("r003")
 nest_edge_inset = 1.0
 planet_art = NodePath("星球画面")
+
+[node name="HorizonTerrain" parent="World" instance=ExtResource("terrain")]
 
 [node name="星球画面" parent="World/PlanetSurface" index="0" unique_id=1645310864 instance=ExtResource("r004")]
 rotation = 1.5707964
@@ -69,12 +73,13 @@ visible = false
 [node name="亮色背景" parent="美术背景/地壳裁剪/画布" instance=ExtResource("bright")]
 modulate = Color(1, 1, 1, 0)
 
-[node name="PlanetRestoration" parent="." node_paths=PackedStringArray("run", "view", "art", "bright_background", "core") instance=ExtResource("restoration")]
+[node name="PlanetRestoration" parent="." node_paths=PackedStringArray("run", "view", "art", "bright_background", "core", "terrain") instance=ExtResource("restoration")]
 run = NodePath("../Run")
 view = NodePath("../PlanetViewController")
 art = NodePath("../World/PlanetSurface/星球画面")
 bright_background = NodePath("../美术背景/地壳裁剪/画布/亮色背景")
 core = NodePath("../World/PlanetSurface/星球画面/星球核心")
+terrain = NodePath("../World/HorizonTerrain")
 
 [node name="PopulationPalette" parent="." node_paths=PackedStringArray("run", "background_sprites", "core_sprite", "technology_background", "button_brushes", "ecology_backdrop", "bottom_dock") instance=ExtResource("palette")]
 run = NodePath("../Run")

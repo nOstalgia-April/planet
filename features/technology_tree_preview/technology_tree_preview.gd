@@ -39,8 +39,9 @@ func set_preview(state: int) -> void:
 			run.purchase_technology("pipe")
 		run.purchase_technology("automation")
 		run.purchase_technology("combo_unlock")
-		run.purchase_technology("combo_reward")
-		run.purchase_technology("combo_interval")
+		run.purchase_technology("combo_unlock")
+		run.purchase_technology("combo_unlock")
+		run.purchase_technology("combo_unlock")
 		for _index: int in range(2):
 			run.purchase_technology("net_capacity")
 		run.purchase_technology("valuable")

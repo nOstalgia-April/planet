@@ -16,15 +16,14 @@ const TECHNOLOGIES: PackedStringArray = [
 	"valuable",
 	"giant",
 	"combo_unlock",
-	"combo_reward",
-	"combo_interval",
 	"net_unlock",
-	"net_capacity"
+	"net_capacity",
+	"net_size"
 ]
 const TITLES: PackedStringArray = [
-	"基础价值", "吸取速率", "巢穴培育", "完全自动化", "高价值个体", "巨型史莱姆", "连击解锁", "连击收益", "连击间隔", "捕网解锁", "捕网扩容"
+	"基础价值", "吸取速率", "巢穴培育", "完全治理", "高价值个体", "巨型史莱姆", "连击爬梯", "捕网解锁", "捕网扩容", "捕网大小"
 ]
-const SYMBOLS: PackedInt32Array = [9, 0, 2, 7, 4, 10, 3, 6, 5, 1, 8]
+const SYMBOLS: PackedInt32Array = [9, 0, 2, 7, 4, 10, 3, 1, 8, 1]
 const COLORS: Array[Color] = [
 	Color("e2b578"),
 	Color("79acd8"),
@@ -33,8 +32,7 @@ const COLORS: Array[Color] = [
 	Color("d49c79"),
 	Color("e59bbd"),
 	Color("d3b575"),
-	Color("d3b575"),
-	Color("d3b575"),
+	Color("b39ada"),
 	Color("b39ada"),
 	Color("b39ada")
 ]
@@ -43,6 +41,7 @@ var selected_key: String = "base_value"
 var _run: PrototypeRun
 var _nodes: Dictionary[String, NodeScript] = {}
 var _hovered_key: String = ""
+var _detail_pointer: Vector2 = Vector2.ZERO
 
 @onready var graph: GraphScript = %Graph
 @onready var _canvas: Control = %Canvas
@@ -59,8 +58,6 @@ var _hovered_key: String = ""
 
 func _ready() -> void:
 	%Close.pressed.connect(func() -> void: close_requested.emit())
-	%Purchase.pressed.connect(_purchase_selected)
-	%Purchase.set_meta(UiAudio.PURCHASE_META, true)
 	_canvas.resized.connect(_fit_graph)
 	_fit_graph.call_deferred()
 	visibility_changed.connect(_hide_details)
@@ -70,9 +67,11 @@ func refresh(run: PrototypeRun) -> void:
 	_run = run
 	if _nodes.is_empty():
 		_build_graph()
-	_wallet.text = "%d 糖果" % run.candy
+	_wallet.text = str(run.candy)
 	for id: String in _nodes:
-		_nodes[id].refresh(_state_for(id), _detail.visible and id == selected_key, _current_level(id))
+		_nodes[id].refresh(
+			_state_for(id), _detail.visible and id == selected_key, _current_level(id)
+		)
 		_nodes[id].show_price(_max_level(id), _cost(id))
 	_refresh_details()
 	_refresh_goal()
@@ -89,7 +88,10 @@ func has_available_technology() -> bool:
 # Only first-time research needs a discovery badge; owned technologies can still upgrade.
 func has_unlocked_candidate() -> bool:
 	for id: String in TECHNOLOGIES:
-		if _current_level(id) == 0 and _state_for(id) == NodeScript.State.AVAILABLE:
+		var unowned: bool = (
+			_current_level(id) == 0 or (id == "net_size" and _run.net_size_level == 0)
+		)
+		if unowned and _state_for(id) == NodeScript.State.AVAILABLE:
 			return true
 	return false
 
@@ -121,6 +123,8 @@ func _build_graph() -> void:
 	graph.node_keys = TECHNOLOGIES
 	for id: String in TECHNOLOGIES:
 		for prerequisite: String in _node_prerequisites(id):
+			if id == "net_size" and prerequisite == "net_unlock":
+				continue
 			graph.links.append(Vector2i(TECHNOLOGIES.find(prerequisite), TECHNOLOGIES.find(id)))
 	_fit_graph()
 
@@ -140,15 +144,13 @@ func _node_position(id: String) -> Vector2:
 		"giant":
 			return Vector2(820.0, 330.0)
 		"combo_unlock":
-			return Vector2(360.0, 458.0)
-		"combo_reward":
-			return Vector2(270.0, 245.0)
-		"combo_interval":
-			return Vector2(450.0, 245.0)
+			return Vector2(360.0, 300.0)
 		"net_unlock":
 			return Vector2(920.0, 458.0)
 		"net_capacity":
-			return Vector2(920.0, 74.0)
+			return Vector2(1080.0, 265.0)
+		"net_size":
+			return Vector2(1080.0, 74.0)
 	return Vector2.ZERO
 
 
@@ -168,8 +170,8 @@ func _current_level(id: String) -> int:
 			return _run.pipe_level + 1
 		"net_capacity":
 			return _run.net_level + 1 if _run.net_unlocked else 0
-		"combo_interval":
-			return _run.combo_interval_level + 1 if _run.combo_level > 0 else 0
+		"net_size":
+			return _run.net_size_level + 1 if _run.get_technology_requirement(id).is_empty() else 0
 	return _run.get_technology_level(id)
 
 
@@ -181,10 +183,10 @@ func _max_level(id: String) -> int:
 			return _run.settings.pipe_capture_seconds.size()
 		"net_capacity":
 			return _run.settings.net_capacities.size()
-		"combo_reward":
+		"net_size":
+			return _run.settings.net_size_multipliers.size()
+		"combo_unlock":
 			return _run.settings.combo_upgrade_costs.size()
-		"combo_interval":
-			return _run.settings.combo_interval_bonus_seconds.size()
 		"valuable":
 			return _run.settings.valuable_upgrade_costs.size()
 	return 1
@@ -221,7 +223,9 @@ func _refresh_details() -> void:
 	_detail_icon.ink = node.glyph.ink
 	_detail_icon.queue_redraw()
 	_detail_title.text = node.title_label.text
-	_detail_level.text = "Lv.%d → Lv.%d" % [_current_level(id), mini(_current_level(id) + 1, _max_level(id))]
+	_detail_level.text = (
+		"Lv.%d → Lv.%d" % [_current_level(id), mini(_current_level(id) + 1, _max_level(id))]
+	)
 	if node.state == NodeScript.State.PURCHASED:
 		_detail_level.text = "Lv.%d/%d · MAX" % [_current_level(id), _max_level(id)]
 	_detail_level.visible = not _detail_icon.locked
@@ -232,8 +236,6 @@ func _refresh_details() -> void:
 	_detail_gain.visible = not gain.is_empty()
 	_detail_note.text = "再攒 %d 糖果即可升级" % maxi(0, _cost(id) - _run.candy)
 	_detail_note.visible = node.state == NodeScript.State.UNAFFORDABLE
-	%Purchase.disabled = node.state != NodeScript.State.AVAILABLE
-	%Purchase.text = ["✓ 已满级", "购买 · %d" % _cost(id), "糖果不足", "尚未解锁"][node.state]
 	for child: Node in _requirements.get_children():
 		_requirements.remove_child(child)
 		child.queue_free()
@@ -249,6 +251,8 @@ func _refresh_details() -> void:
 		label.text = "%s  %s" % ["✓" if fulfilled else "○", _nodes[prerequisite].title_label.text]
 		if prerequisite == "pipe":
 			label.text += " · %d级" % (required_level + 1)
+		elif prerequisite == "net_capacity":
+			label.text += " · %d级（满级）" % (required_level + 1)
 		label.add_theme_font_size_override("font_size", 14)
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		label.add_theme_color_override("font_color", Color("d5b7c9"))
@@ -262,6 +266,8 @@ func _refresh_goal() -> void:
 	for id: String in ["net_unlock", "cultivation", "automation"]:
 		if _run.get_technology_level(id) > 0:
 			continue
+		if _state_for(id) == NodeScript.State.LOCKED and id != "automation":
+			break
 		var prerequisites: Dictionary[String, int] = _run.get_technology_prerequisites(id)
 		var fulfilled: int = 0
 		for prerequisite: String in prerequisites:
@@ -272,9 +278,7 @@ func _refresh_goal() -> void:
 		if fulfilled < prerequisites.size():
 			progress = "前置 %d/%d" % [fulfilled, prerequisites.size()]
 		var purposes: Dictionary[String, String] = {
-			"net_unlock": "一次捕获成群史莱姆",
-			"cultivation": "培育巢穴，容纳更多怪物",
-			"automation": "开放自动化改造，持续产糖"
+			"net_unlock": "一次捕获成群史莱姆", "cultivation": "培育巢穴，容纳更多怪物", "automation": "开放自动化改造，持续产糖"
 		}
 		%NextGoalNote.text = purposes[id] + "  ·  " + progress
 		break
@@ -295,15 +299,17 @@ func _activate_node(id: String) -> void:
 
 func _show_details(id: String) -> void:
 	_hovered_key = id
+	_detail_pointer = get_viewport().get_mouse_position()
+	if not _nodes[id].is_hovered():
+		_detail_pointer = _nodes[id].get_global_rect().get_center()
 	_detail.show()
 	select_node(id)
 	_place_details.call_deferred()
 
 
 func _hide_node_details(id: String) -> void:
-	# Keep the inspected technology available while moving to its purchase button.
 	if _hovered_key == id:
-		_hovered_key = ""
+		_hide_details()
 
 
 func _hide_details() -> void:
@@ -316,6 +322,24 @@ func _hide_details() -> void:
 
 
 func _place_details() -> void:
+	if not _detail.visible:
+		return
 	_detail.size = Vector2(248.0, 0.0)
 	var body: Control = _detail.get_parent() as Control
-	_detail.position = Vector2(28.0, minf(160.0, maxf(96.0, body.size.y - _detail.size.y - 24.0)))
+	var inverse: Transform2D = body.get_global_transform_with_canvas().affine_inverse()
+	var pointer: Vector2 = inverse * _detail_pointer
+	var node_center: Vector2 = inverse * _nodes[selected_key].get_global_rect().get_center()
+	var offset: Vector2 = Vector2(24.0, 24.0)
+	if node_center.x > body.size.x * 0.5:
+		offset.x = -_detail.size.x - 24.0
+	if node_center.y > body.size.y * 0.5:
+		offset.y = -_detail.size.y - 24.0
+	_detail.position = (pointer + offset).clamp(
+		Vector2(12.0, 12.0), body.size - _detail.size - Vector2(12.0, 12.0)
+	)
+
+
+func _input(event: InputEvent) -> void:
+	if is_visible_in_tree() and event is InputEventMouseMotion:
+		_detail_pointer = (event as InputEventMouseMotion).position
+		_place_details()

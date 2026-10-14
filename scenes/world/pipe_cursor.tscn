@@ -12,3 +12,5 @@ script = ExtResource("1_pipe")
 [node name="吸尘器" parent="ArtRoot" instance=ExtResource("2_art")]
 position = Vector2(5.544, -6.768)
 scale = Vector2(0.144, 0.144)
+
+[node name="Bursts" type="Node2D" parent="."]

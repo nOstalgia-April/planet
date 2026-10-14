@@ -88,7 +88,7 @@ func refresh(run: PrototypeRun) -> void:
 
 func _refresh_tool(index: int) -> void:
 	var locked: bool = index == 1 and not _run.net_unlocked
-	var id: String = "pipe" if index == 0 else ("net_unlock" if locked else "net_capacity")
+	var id: String = "pipe" if index == 0 else _run.get_net_quick_upgrade_id()
 	var cost: int = _run.get_technology_cost(id)
 	var allowed: bool = _run.get_technology_requirement(id).is_empty()
 	var affordable: bool = allowed and cost >= 0 and _run.candy >= cost
@@ -123,10 +123,10 @@ func _refresh_tool(index: int) -> void:
 	var purchase: Button = upgrades[index]
 	purchase.disabled = not affordable
 	purchase.tooltip_text = ""
-	var next_level: int = (
-		_run.pipe_level + 2 if index == 0 else (1 if locked else _run.net_level + 2)
-	)
-	(purchase.get_node("Caption/Level") as Label).text = "%d 级 ·" % next_level
+	var upgrade_name: String = {
+		"pipe": "吸取速率", "net_unlock": "解锁捕网", "net_capacity": "捕网扩容", "net_size": "捕网大小"
+	}[id]
+	(purchase.get_node("Caption/Level") as Label).text = upgrade_name + " ·"
 	(purchase.get_node("Caption/Cost") as Label).text = str(maxi(0, cost))
 	(purchase.get_node("Caption") as Control).modulate = (
 		Color.WHITE if affordable else Color("d7a18f")
@@ -155,6 +155,8 @@ func refresh_timers(run: PrototypeRun) -> void:
 	var detail: Label = net_button.get_node("Detail") as Label
 	if not run.net_unlocked:
 		detail.text = "未解锁"
+	elif run.get_net_quick_upgrade_id() == "net_size":
+		detail.text = "大小 %d 级" % (run.net_size_level + 1)
 	else:
 		detail.text = "%d 级" % (run.net_level + 1)
 
@@ -166,9 +168,11 @@ func set_accent(color: Color) -> void:
 
 
 func _update_accent(index: int) -> void:
-	var material: ShaderMaterial = upgrades[index].get_node("Backing").material as ShaderMaterial
+	var backing_material: ShaderMaterial = (
+		upgrades[index].get_node("Backing").material as ShaderMaterial
+	)
 	var locked: bool = states[index] in [ToolState.LOCKED_READY, ToolState.LOCKED_SHORT]
-	material.set_shader_parameter("accent", unlock_color if locked else _accent)
+	backing_material.set_shader_parameter("accent", unlock_color if locked else _accent)
 	(buttons[index].get_node("Selected") as Selection).self_modulate = Color.from_hsv(
 		_accent.h, 0.58, 1.0
 	)
@@ -264,11 +268,11 @@ func _update_surface_hover(delta: float) -> void:
 			and button.is_visible_in_tree()
 			and button.get_global_rect().has_point(_pointer_position)
 		)
-		var material: ShaderMaterial = button.get_node("Backing").material as ShaderMaterial
-		var current: float = material.get_shader_parameter("hover_amount")
+		var backing_material: ShaderMaterial = button.get_node("Backing").material as ShaderMaterial
+		var current: float = backing_material.get_shader_parameter("hover_amount")
 		var target: float = 1.0 if hovered else 0.0
 		if not is_equal_approx(current, target):
-			material.set_shader_parameter(
+			backing_material.set_shader_parameter(
 				"hover_amount", move_toward(current, target, delta / hover_fade_seconds)
 			)
 

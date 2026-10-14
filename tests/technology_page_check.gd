@@ -27,7 +27,7 @@ func _check_page() -> void:
 	await _settle()
 	preview.set_preview(0)
 	var page: PageScript = preview.page
-	_check(page._nodes.size() == 11, "each upgrade item has exactly one icon")
+	_check(page._nodes.size() == 9, "each upgrade item has exactly one icon")
 	_check(page._nodes["base_value"].level_label.text.begins_with("1/"), "base value starts at level one")
 	preview.run.candy = 40
 	page.refresh(preview.run)
@@ -51,9 +51,9 @@ func _check_page() -> void:
 		page._nodes["cultivation"].state == NodeScript.State.UNAFFORDABLE,
 		"cultivation is available from the opening"
 	)
-	page.select_node("combo_interval")
+	page.select_node("combo_unlock")
 	page._nodes[page.selected_key].pressed.emit()
-	_check(preview.run.combo_interval_level == 0, "locked interval cannot be purchased")
+	_check(preview.run.combo_level == 0, "locked interval cannot be purchased")
 	preview.set_preview(1)
 	await _settle()
 	await _click(page._nodes["net_capacity"])
@@ -156,11 +156,11 @@ func _check_page() -> void:
 	)
 	demo._layout._technology.select_node("combo_unlock")
 	demo._layout._technology._nodes[demo._layout._technology.selected_key].pressed.emit()
-	demo._layout._technology.select_node("combo_interval")
+	demo._layout._technology.select_node("combo_unlock")
 	demo._layout._technology._nodes[demo._layout._technology.selected_key].pressed.emit()
 	_check(
-		demo.run.combo_interval_level == 1 and demo._layout._combo_timer.max_value == 4.0,
-		"interval purchases update the main HUD timer scale"
+		demo.run.combo_level == 2 and demo._layout._combo_timer.max_value == 5.0,
+		"ladder upgrades retain the five-second timer"
 	)
 	if _capture:
 		await _settle()
@@ -233,8 +233,6 @@ func _check_technology_badge(demo: DemoScript) -> void:
 		"valuable",
 		"giant",
 		"combo_unlock",
-		"combo_reward",
-		"combo_interval",
 		"net_unlock",
 		"net_capacity"
 	]:
@@ -258,13 +256,13 @@ func _check_model_branches(preview: PreviewScript) -> void:
 	)
 	_check(
 		(
-			not run.purchase_technology("combo_reward")
-			and not run.purchase_technology("combo_interval")
+			not run.purchase_technology("combo_unlock")
+			and not run.purchase_technology("combo_unlock")
 		),
 		"both combo upgrades require its unlock"
 	)
 	_check(
-		run.get_technology_cost("combo_reward") == run.settings.combo_upgrade_costs[1],
+		run.get_technology_cost("combo_unlock") == run.settings.combo_upgrade_costs[0],
 		"locked reward advertises its own upgrade cost"
 	)
 	_check(
@@ -305,12 +303,12 @@ func _check_model_branches(preview: PreviewScript) -> void:
 		"speed two permits combo unlock"
 	)
 	_check(
-		run.purchase_technology("combo_interval") and run.combo_level == 1,
-		"interval upgrades do not increase rewards"
+		run.purchase_technology("combo_unlock") and run.combo_level == 2,
+		"second research unlocks the second stage"
 	)
 	_check(
-		run.purchase_technology("combo_reward") and run.combo_interval_level == 1,
-		"reward upgrades do not increase interval level"
+		run.purchase_technology("combo_unlock") and run.combo_level == 3,
+		"third research unlocks the third stage"
 	)
 	run.get_nest(2).alive_slimes = 20
 	before = run.candy
@@ -321,16 +319,16 @@ func _check_model_branches(preview: PreviewScript) -> void:
 		"reward upgrade retains its half-candy bonus on real captures"
 	)
 	_check(
-		is_equal_approx(run.combo_remaining, 4.0),
-		"interval upgrade renews real captures to four seconds"
+		is_equal_approx(run.combo_remaining, 5.0),
+		"second stage begins with five seconds"
 	)
 	run.advance(3.5)
-	_check(run.combo_count == 6, "upgraded combo survives past the old three-second deadline")
-	run.advance(0.6)
+	_check(run.combo_count == 3, "upgraded combo survives past the old three-second deadline")
+	run.advance(1.6)
 	_check(run.combo_count == 0, "upgraded combo expires at its new deadline")
 	run.candy = 100000
 	for id: String in [
-		"base_value", "pipe", "net_unlock", "net_capacity", "combo_reward", "combo_interval"
+		"base_value", "pipe", "net_unlock", "net_capacity", "combo"
 	]:
 		while run.purchase_technology(id):
 			pass
@@ -343,8 +341,8 @@ func _check_model_branches(preview: PreviewScript) -> void:
 	_check(preview.page._nodes["pipe"].level_label.text == "7", "max speed stays on the same icon")
 	preview.set_preview(0)
 	_check(
-		run.combo_interval_level == 0 and is_equal_approx(run.get_combo_window_seconds(), 3.0),
-		"restart resets interval research"
+		run.combo_level == 0 and is_equal_approx(run.get_combo_window_seconds(), 5.0),
+		"restart resets ladder research"
 	)
 
 

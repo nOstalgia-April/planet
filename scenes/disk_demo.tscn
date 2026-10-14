@@ -190,7 +190,7 @@ layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.60, 0.36, 0.18, 1)
 theme_override_font_sizes/font_size = 15
-text = "连击 0 / 5 · +1 糖果"
+text = "I · 0 / 3 · 待吸入"
 
 [node name="ComboTimerBar" type="ProgressBar" parent="HUD/Interface/ComboChip/Content"]
 unique_name_in_owner = true

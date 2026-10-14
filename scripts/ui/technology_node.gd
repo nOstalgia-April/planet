@@ -60,9 +60,11 @@ func refresh(next_state: State, is_selected: bool, current_level: int) -> void:
 	level_label.add_theme_color_override("font_color", PRICE_COLORS[state])
 	title_label.add_theme_color_override("font_color", INK_COLORS[state])
 	$Milestone.modulate = INK_COLORS[state]
-	title_label.show()
-	level_label.show()
-	$Price.show()
+	var revealed: bool = state != State.LOCKED or technology_id == "automation"
+	title_label.visible = revealed
+	level_label.visible = revealed
+	$Price.visible = revealed
+	$Milestone.visible = revealed and MILESTONES.has(technology_id)
 	glyph.queue_redraw()
 	_refresh_appearance()
 

@@ -104,8 +104,8 @@ func _playthrough() -> void:
 		"Each completed body contributes one independently paid capture frame."
 	)
 	_check(
-		demo.run.governance_level == 3 and demo.run.combo_level == 3,
-		"Governance and all three combo tiers are purchased through earned candy."
+		demo.run.governance_level == 3 and demo.run.combo_level == 4,
+		"Governance and all four combo tiers are purchased through earned candy."
 	)
 	_check(
 		_mucus_collected > 0 and _valuable_collected > 0,
@@ -188,7 +188,7 @@ func _invest(demo: DemoScript) -> void:
 		demo._layout.technology_upgrade_requested.emit("governance")
 	elif first_nest.level < 3:
 		_invest_in_nest(demo, first_nest)
-	elif demo.run.combo_level < 3:
+	elif demo.run.combo_level < 4:
 		demo._layout.technology_upgrade_requested.emit("combo")
 	elif demo.run.get_net_upgrade_cost() >= 0:
 		demo._layout.quick_upgrade_requested.emit(1)
@@ -249,6 +249,9 @@ func _drive_collection(demo: DemoScript) -> void:
 	var population_before: int = demo._slimes.size()
 	var actors_before: Array[PrototypeSlime] = demo._slimes.duplicate()
 	var combo_before: int = demo.run.combo_count
+	var combo_target: int = demo.run.get_combo_target()
+	var combo_value: int = demo.run.combo_stage_candy
+	var combo_percent: int = demo.run.get_combo_reward_percent()
 	var fraction_before: int = demo.run._combo_reward_remainder
 	var effects_before: int = demo.get_node("%Effects").get_child_count()
 	demo._drive_tool(STEP_SECONDS, _pointer, _holding)
@@ -263,9 +266,9 @@ func _drive_collection(demo: DemoScript) -> void:
 			if slime.high_value:
 				_valuable_collected += 1
 	var bonus: int = 0
-	if collected > 0 and combo_before + collected > demo.run.settings.combo_target:
+	if collected > 0 and combo_before + collected == combo_target:
 		bonus = floori(
-			float(individual_reward * demo.run.get_combo_reward_percent() + fraction_before) / 100.0
+			float((combo_value + individual_reward) * combo_percent + fraction_before) / 100.0
 		)
 	_check(
 		collected in [0, 1] and demo._capture_targets.size() <= 1,

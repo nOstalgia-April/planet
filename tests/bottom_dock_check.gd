@@ -3,7 +3,7 @@ extends Node
 const PLAY: PackedScene = preload("res://features/场景预览/近景游玩预览.tscn")
 const Play = preload("res://features/场景预览/游玩预览.gd")
 const Dock = preload("res://scripts/ui/bottom_dock.gd")
-const OUTPUT: String = "res://artifacts/dock_cooldown_20261013"
+const OUTPUT: String = "res://artifacts/dock_net_size_20261014"
 
 var _failures: int = 0
 var _game: Play
@@ -114,11 +114,11 @@ func _check_game() -> void:
 	_check(_game.run.net_unlocked, "unlock button unlocks real tool")
 	_check(
 		(
-			(_dock.upgrades[1].get_node("Caption/Level") as Label).text == "2 级 ·"
+			(_dock.upgrades[1].get_node("Caption/Level") as Label).text == "捕网扩容 ·"
 			and (_dock.upgrades[1].get_node("Caption/Cost") as Label).text == "50"
 			and (_dock.upgrades[1].get_node("Caption/Coin") as TextureRect).texture != null
 		),
-		"purchase names next level and cost"
+		"purchase names upgrade direction and cost"
 	)
 	await _click(_dock.net_button)
 	_check(_game._active_tool == 1, "unlocked net can be selected")
@@ -240,6 +240,11 @@ func _check_game() -> void:
 	await _settle()
 	_check(not _dock.badge.visible, "remaining repeatable upgrades do not trigger discovery badge")
 	await _wallet(1000000)
+	while _game.run.purchase_technology("net_capacity"):
+		pass
+	await _settle()
+	await _check_size_upgrades()
+	await _wallet(1000000)
 	_game._select_nest(1)
 	await _capture("nest_wild")
 	_game.run.upgrade_nest(1)
@@ -249,12 +254,10 @@ func _check_game() -> void:
 	await _capture("nest_automation_next")
 	_game.run.upgrade_nest(1)
 	_game._select_nest(1)
-	_check(_game._nest_level_label.text == "完全自动化", "nest shortcut shows final stage")
+	_check(_game._nest_level_label.text == "完全治理", "nest shortcut shows final stage")
 	await _capture("nest_automated")
 	_game._layout.hide_nest_details()
 	while _game.run.purchase_technology("pipe"):
-		pass
-	while _game.run.purchase_technology("net_capacity"):
 		pass
 	await _settle()
 	_check(
@@ -266,6 +269,7 @@ func _check_game() -> void:
 	await _capture("maxed")
 	_game.restart_run()
 	await _settle()
+	_check(_game.run.get_net_quick_upgrade_id() == "net_unlock" and _game.run.net_size_level == 0, "restart restores net shortcut progression")
 	_check(
 		not _dock.net_discovered and not _dock.net_button.is_visible_in_tree(),
 		"restart resets net discovery"
@@ -276,6 +280,37 @@ func _check_game() -> void:
 	await get_tree().process_frame
 	print("Bottom dock: %d failures" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)
+
+
+func _check_size_upgrades() -> void:
+	_check(_dock.states[1] == Dock.ToolState.READY and _dock._expanded[1], "capacity max opens affordable size shortcut")
+	_check((_dock.net_button.get_node("Detail") as Label).text == "大小 1 级", "shortcut distinguishes size from capacity")
+	for index: int in range(3):
+		var cost: int = [1500, 3000, 5000][index]
+		_check((_dock.upgrades[1].get_node("Caption/Level") as Label).text == "捕网大小 ·", "shortcut identifies size without the next level")
+		_check((_dock.upgrades[1].get_node("Caption/Cost") as Label).text == str(cost), "shortcut displays the size price")
+		await _wallet(cost - 1)
+		await _hover(_dock.net_button.get_global_rect().get_center())
+		_check(_dock.upgrades[1].disabled, "size shortcut disables when one candy short")
+		await _click(_dock.upgrades[1])
+		_check(_game.run.net_size_level == index and _game.run.candy == cost - 1, "unaffordable size shortcut cannot spend")
+		await _hover(Vector2(5, 120))
+		_check(not _dock._expanded[1], "unaffordable size preview closes on leaving")
+		await _wallet(cost)
+		_check(_dock._expanded[1] and not _dock.upgrades[1].disabled, "exact size price opens shortcut without hover")
+		await _capture("size_%d_available" % (index + 2))
+		var caption: Control = _dock.upgrades[1].get_node("Caption") as Control
+		_check(_dock.upgrades[1].get_global_rect().encloses(caption.get_global_rect()), "size label and price fit the purchase tab")
+		await _click(_dock.upgrades[1])
+		_check(_game.run.net_size_level == index + 1 and _game.run.candy == 0, "size shortcut buys and charges exactly once")
+		_check(_game.run.get_net_capacity() == 30 and is_equal_approx(_game.run.get_net_radius(), [42.0, 50.4, 58.8][index]), "shortcut grows radius while preserving capacity")
+		_check((_dock.net_button.get_node("Detail") as Label).text == "大小 %d 级" % (index + 2), "size shortcut shows the purchased level")
+	_check(_dock.states[1] == Dock.ToolState.MAXED and not _dock._expanded[1], "size max stops shortcut announcements")
+	await _hover(_dock.net_button.get_global_rect().get_center())
+	_check(not _dock._expanded[1], "size max stays closed on hover")
+	await _wallet(10000)
+	_game._on_quick_upgrade(1)
+	_check(_game.run.candy == 10000 and _game.run.net_size_level == 3, "maxed shortcut cannot charge again")
 
 
 func _check_cooldown_shortcuts() -> void:

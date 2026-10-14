@@ -19,11 +19,12 @@ func _draw() -> void:
 		var source: NodeScript = nodes[node_keys[link.x]]
 		var destination: NodeScript = nodes[node_keys[link.y]]
 		var start: Vector2 = source.position + NodeScript.ICON_CENTER - Vector2(0, TOP_CLEARANCE)
-		# Keep the destination's price clear even when its icon is currently locked.
 		var end: Vector2 = (
 			destination.position
 			+ Vector2(NodeScript.ICON_CENTER.x, destination.size.y + PRICE_CLEARANCE)
 		)
+		if destination.state == NodeScript.State.LOCKED and destination.technology_id != "automation":
+			end = destination.position + NodeScript.ICON_CENTER + Vector2(0.0, 46.0)
 		var points: PackedVector2Array = _curve_points(start, end, float(index) * 1.7)
 		var color: Color = LINE_COLOR
 		color.a = 0.22 if destination.state == NodeScript.State.LOCKED else 0.38

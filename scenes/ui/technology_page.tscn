@@ -1,4 +1,4 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=26 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/technology_page.gd" id="1_page"]
 [ext_resource type="Script" path="res://scripts/ui/technology_graph.gd" id="2_graph"]
@@ -14,6 +14,9 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/technology_backdrop.tscn" id="9_backdrop"]
 [ext_resource type="Shader" path="res://shaders/technology_art.gdshader" id="10_art"]
 [ext_resource type="Shader" path="res://shaders/population_art.gdshader" id="14_brush_palette"]
+[ext_resource type="Texture2D" path="res://assets/ui/candy_coin.png" id="15_coin"]
+[ext_resource type="Material" path="res://resources/candy_grain_outline.tres" id="16_coin_outline"]
+[ext_resource type="FontVariation" path="res://fonts/game_font.tres" id="17_wallet_font"]
 
 [sub_resource type="ShaderMaterial" id="ExitBrushPalette"]
 resource_local_to_scene = true
@@ -162,7 +165,7 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 292.0
+offset_left = 20.0
 offset_top = 112.0
 offset_right = -20.0
 offset_bottom = -24.0
@@ -252,14 +255,6 @@ unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 
-[node name="Purchase" type="Button" parent="Margin/Content/Body/Detail/Content"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 40)
-layout_mode = 2
-mouse_default_cursor_shape = 2
-theme_override_font_sizes/font_size = 17
-text = "购买"
-
 [node name="Header" type="Control" parent="Margin/Content"]
 layout_mode = 1
 anchors_preset = 15
@@ -285,17 +280,36 @@ glyph = ExtResource("7_exit")
 [node name="Brush" parent="Margin/Content/Header/Close" instance=ExtResource("13_brush")]
 material = SubResource("ExitBrushPalette")
 
-[node name="Wallet" type="Label" parent="Margin/Content/Header"]
-unique_name_in_owner = true
+[node name="Economy" type="HBoxContainer" parent="Margin/Content/Header"]
 layout_mode = 0
-offset_left = 32.0
-offset_top = 36.0
-offset_right = 200.0
-offset_bottom = 76.0
+offset_left = 28.0
+offset_top = 24.0
+offset_right = 238.0
+offset_bottom = 58.0
 mouse_filter = 2
-theme_override_colors/font_color = Color(1, 0.89, 0.95, 1)
-theme_override_font_sizes/font_size = 18
-text = "0 糖果"
+theme_override_constants/separation = 8
+
+[node name="CoinIcon" type="TextureRect" parent="Margin/Content/Header/Economy"]
+material = ExtResource("16_coin_outline")
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture_filter = 4
+texture = ExtResource("15_coin")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Wallet" type="Label" parent="Margin/Content/Header/Economy"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_fonts/font = ExtResource("17_wallet_font")
+theme_override_colors/font_color = Color(0.9187172, 0.95208365, 0.92662764, 1)
+theme_override_colors/font_outline_color = Color(1, 0.98, 0.91, 0.95)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 26
+text = "0"
 vertical_alignment = 1
 
 [node name="NextGoal" type="Label" parent="Margin/Content/Header"]

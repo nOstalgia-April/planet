@@ -3,10 +3,12 @@ extends "res://scripts/disk_demo.gd"
 const BlendedPlanetArt = preload("res://scripts/场景动画/双视角星球.gd")
 const PlanetRestoration = preload("res://scripts/planet_restoration.gd")
 const PopulationPalette = preload("res://scripts/population_palette.gd")
+const HorizonTerrain = preload("res://scripts/horizon_terrain.gd")
 const NestDiscovery = preload("res://scripts/nest_discovery_presentation.gd")
 
 @export var start_in_overview: bool = false
 
+@onready var _horizon_terrain: HorizonTerrain = $World/HorizonTerrain
 @onready var _near_background: Node2D = $美术背景/地壳裁剪/画布/近景背景
 @onready var _overview_background: Node2D = $美术背景/地壳裁剪/画布/全景背景
 @onready var _planet_art: BlendedPlanetArt = $World/PlanetSurface/星球画面
@@ -36,10 +38,11 @@ func restart_run() -> void:
 	super.restart_run()
 	_population_palette.reset()
 	_nest_discovery.reset()
+	_horizon_terrain.replay()
 
 
-func _present_discovered_nest(species: NestState.Species, position: Vector2) -> void:
-	_nest_discovery.request_discovery(species, position)
+func _present_discovered_nest(species: NestState.Species, nest_position: Vector2) -> void:
+	_nest_discovery.request_discovery(species, nest_position)
 
 
 func _on_emergence_progressed(nest_id: int, progress: float) -> void:
@@ -78,6 +81,8 @@ func _show_completion() -> void:
 
 
 func _sync_art() -> void:
+	_horizon_terrain.set_surface_radius(_planet.radius * PlanetSurface.SURFACE_RADIUS_RATIO)
+	_horizon_terrain.set_near_blend(_view.near_blend)
 	_planet_art.set_zoom(_view.zoom_amount)
 	_near_background.visible = _view.near_blend > 0.0
 	_overview_background.visible = _view.near_blend < 1.0

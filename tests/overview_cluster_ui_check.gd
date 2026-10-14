@@ -60,7 +60,7 @@ func _check_timers_and_stages(demo: DemoScript) -> void:
 	)
 	var first_stage: NodeScript = page._nodes["pipe"]
 	var style: StyleBox = first_stage.get_theme_stylebox("normal")
-	demo.run.combo_count = demo.run.settings.combo_target
+	demo.run.combo_count = demo.run.get_combo_target() - 1
 	demo.run.combo_remaining = 3.0
 	demo.run.net_cooldown_remaining = 6.0
 	demo._layout.refresh_timers(demo.run)
@@ -121,7 +121,7 @@ func _check_timers_and_stages(demo: DemoScript) -> void:
 		if _capture:
 			await _save("ui_seven_tiers_%dx%d.png" % [resolution.x, resolution.y])
 		demo._layout.close_panels()
-		demo.run.combo_count = 5
+		demo.run.combo_count = 2
 		demo.run.combo_remaining = 2.3
 		demo.run.net_cooldown_remaining = 4.7
 		demo._layout.refresh_timers(demo.run)

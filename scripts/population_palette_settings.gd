@@ -1,6 +1,8 @@
 extends Resource
 
-@export var population_weights: Vector3 = Vector3(0.75, 1.0, 10.0)
+# Fixed 4:2:1 tier-two reference: slime 1/2; drill sqrt(30 * 24) ~= 27.
+# Extra nests keep their advantage; never normalize by the current nest mix.
+@export var population_weights: Vector3 = Vector3(0.5, 1.0, 27.0)
 @export_range(0.0, 0.5, 0.01) var lead_margin: float = 0.05
 @export_range(0.0, 5.0, 0.1) var confirmation_seconds: float = 1.2
 @export_range(0.1, 5.0, 0.1) var transition_seconds: float = 1.0

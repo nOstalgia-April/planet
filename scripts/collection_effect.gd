@@ -2,6 +2,7 @@ class_name CollectionEffect
 extends Node2D
 
 @export_range(0.1, 1.5, 0.01) var duration: float = 0.48
+@export var flight_ease: Tween.EaseType = Tween.EASE_IN
 @export var color: Color = Color("d7e8bb")
 @export_range(0.4, 2.0, 0.05) var size: float = 1.0
 
@@ -43,7 +44,7 @@ func play(
 	_amount_label.modulate.a = 1.0
 	_tween = create_tween().set_parallel(true)
 	_tween.tween_method(_set_flight, 0.0, 1.0, duration).set_trans(Tween.TRANS_CUBIC).set_ease(
-		Tween.EASE_IN
+		flight_ease
 	)
 	(
 		_tween

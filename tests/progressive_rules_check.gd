@@ -239,64 +239,30 @@ func _check_random_spawn_cooldowns() -> void:
 
 
 func _check_continuous_pipe_combo() -> void:
-	for tier: int in range(1, 4):
-		var run: PrototypeRun = _create_run()
-		run.combo_level = tier
-		run.get_nest(1).alive_slimes = 20
-		for _index: int in range(5):
-			run.collect_slime(1)
-		_check(
-			run.combo_count == 5 and run.candy == 5 * SETTINGS.slime_reward,
-			"The first five pipe captures build a streak without a bonus."
-		)
-		for _index: int in range(3):
-			run.collect_slime(1)
-		_check(
-			run.combo_count == 8 and run.candy == 8 * SETTINGS.slime_reward + [0, 1, 2][tier - 1],
-			"Every capture from the sixth onward adds the researched bonus without resetting."
-		)
-		run.advance(2.9)
-		_check(run.combo_count == 8, "The active streak survives until its three-second deadline.")
-		run.net_unlocked = true
-		var reward: int = run.collect_net_batch([1, 1])
-		_check(
-			reward == 2 * SETTINGS.slime_reward and run.combo_count == 8,
-			"Net captures neither advance the pipe streak nor receive its bonus."
-		)
-		run.get_nest(1).level = 3
-		run.get_nest(1).is_tamed = true
-		run.get_nest(1).income_remainder = 0.95
-		run.get_nest(1).income_clock = run.settings.automatic_income_interval - 0.05
-		run.completed_nests = 1
-		var before_income: int = run.candy
-		run.advance(0.05)
-		_check(
-			run.combo_count == 8 and run.candy == before_income + 1,
-			"Automatic income pays candy without advancing the pipe streak."
-		)
-		_check(
-			is_equal_approx(run.combo_remaining, 0.05),
-			"Net and automatic income do not refresh the remaining buff duration."
-		)
-		var balance: int = run.candy
-		_check(
-			not run.collect_slime(999) and run.combo_count == 8 and run.candy == balance,
-			"Rejected targets cannot advance a streak or award candy."
-		)
-		run.collect_slime(1)
-		_check(
-			is_equal_approx(run.combo_remaining, 3.0) and run.combo_count == 9,
-			"A pipe capture within the deadline refreshes the buff to three seconds."
-		)
-		run.advance(3.01)
-		_check(run.combo_count == 0, "The streak resets when its capture window expires.")
-		balance = run.candy
-		run.collect_slime(1)
-		_check(
-			run.combo_count == 1 and run.candy == balance + SETTINGS.slime_reward,
-			"A new streak must rebuild the first five captures."
-		)
-		run.free()
+	var run: PrototypeRun = _create_run()
+	run.combo_level = 4
+	run.get_nest(1).alive_slimes = 20
+	for capture: int in range(3):
+		run.collect_slime(1, 4)
+	_check(run.combo_stage == 1 and run.candy == 15, "First stage pays 25% and advances.")
+	run.collect_slime(1, 4)
+	run.advance(4.9)
+	run.net_unlocked = true
+	var reward: int = run.collect_net_batch([1, 1])
+	_check(reward == 2 * SETTINGS.slime_reward and run.combo_count == 1, "Net does not advance ladder.")
+	run.get_nest(1).level = 3
+	run.get_nest(1).is_tamed = true
+	run.get_nest(1).income_remainder = 0.95
+	run.get_nest(1).income_clock = run.settings.automatic_income_interval - 0.05
+	var before_income: int = run.candy
+	run.advance(0.05)
+	_check(run.candy == before_income + 1 and run.combo_count == 1, "Automation does not advance ladder.")
+	_check(is_equal_approx(run.combo_remaining, 0.05), "Other income does not renew timer.")
+	run.collect_slime(1)
+	_check(is_equal_approx(run.combo_remaining, 0.05), "Captures do not renew stage timer.")
+	run.advance(0.06)
+	_check(run.combo_count == 0 and run.combo_stage == 0, "Timeout returns to first stage.")
+	run.free()
 
 
 func _check_tool_tiers() -> void:
@@ -306,17 +272,17 @@ func _check_tool_tiers() -> void:
 		is_equal_approx(run.get_pipe_capture_seconds(), 0.6),
 		"Base pipe speed remains 0.60 seconds."
 	)
-	var speeds: Array[float] = [0.45, 0.32, 0.22, 0.17, 0.135, 0.11]
+	var speeds: Array[float] = [0.4, 0.3, 0.22, 0.15, 0.12, 0.1, 0.08]
 	for index: int in range(speeds.size()):
-		_check(run.upgrade_pipe(), "Every one of the six pipe upgrades is purchasable.")
+		_check(run.upgrade_pipe(), "Every one of the seven pipe upgrades is purchasable.")
 		_check(
 			is_equal_approx(run.get_pipe_capture_seconds(), speeds[index]),
-			"Pipe upgrades expose the configured seven speed tiers."
+			"Pipe upgrades expose the configured eight speed tiers."
 		)
-	_check(not run.upgrade_pipe(), "The seventh pipe tier is the final tier.")
+	_check(not run.upgrade_pipe(), "The eighth pipe tier is the final tier.")
 	_check(
-		is_equal_approx(run.get_pipe_capture_seconds(), 0.22 / 2.0),
-		"The final pipe tier is twice as fast as the former 0.22-second maximum."
+		is_equal_approx(run.get_pipe_capture_seconds(), 0.08),
+		"The final pipe tier takes 0.08 seconds per capture."
 	)
 	for capacity: int in [5, 10, 20, 30]:
 		_check(run.upgrade_net(), "Net unlock and each capacity upgrade are purchasable.")

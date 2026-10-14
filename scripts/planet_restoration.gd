@@ -6,15 +6,18 @@ signal palette_changed(progress: float)
 
 const PlanetView = preload("res://scripts/planet_view_controller.gd")
 const PlanetArt = preload("res://scripts/场景动画/双视角星球.gd")
+const HorizonTerrain = preload("res://scripts/horizon_terrain.gd")
 
-enum Phase { IDLE, CONFIRM, CAMERA, FILL, FINISH, BACKGROUND, HOLD }
+enum Phase { IDLE, CONFIRM, CAMERA, FILL, FINISH, BACKGROUND, HOLD, TERRAIN }
 
 @export var run: PrototypeRun
 @export var view: PlanetView
 @export var art: PlanetArt
 @export var bright_background: Node2D
 @export var core: Node2D
+@export var terrain: HorizonTerrain
 @export_range(0.0, 3.0, 0.05) var confirmation_seconds: float = 0.8
+@export_range(0.0, 3.0, 0.05) var terrain_seconds: float = 0.9
 @export_range(0.0, 6.0, 0.1) var fill_seconds: float = 2.4
 @export_range(0.0, 3.0, 0.1) var background_seconds: float = 1.0
 @export_range(0.0, 3.0, 0.1) var hold_seconds: float = 1.2
@@ -32,6 +35,7 @@ func _ready() -> void:
 	assert(
 		run != null and view != null and art != null and bright_background != null and core != null
 	)
+	assert(terrain != null)
 	reset()
 
 
@@ -79,6 +83,7 @@ func reset() -> void:
 	_background_complete = false
 	view.presentation_locked = false
 	art.reset_colors()
+	terrain.reset_colors()
 	bright_background.modulate.a = 0.0
 	core.modulate.a = 1.0
 	palette_changed.emit(0.0)
@@ -104,8 +109,17 @@ func _process(delta: float) -> void:
 	match phase:
 		Phase.CONFIRM:
 			if _elapsed >= confirmation_seconds:
-				view.show_restoration_overview()
-				_set_phase(Phase.CAMERA)
+				if _species >= 0 and view.near_blend > 0.0 and terrain.has_visible_color(_species):
+					_set_phase(Phase.TERRAIN)
+				else:
+					if _species >= 0:
+						terrain.set_color_progress(_species, 1.0)
+					_start_overview()
+		Phase.TERRAIN:
+			var progress: float = smoothstep(0.0, 1.0, _progress(terrain_seconds))
+			terrain.set_color_progress(_species, progress)
+			if progress >= 1.0:
+				_start_overview()
 		Phase.CAMERA:
 			if not view.is_transitioning():
 				_set_phase(Phase.FILL if _species >= 0 else Phase.BACKGROUND)
@@ -139,3 +153,8 @@ func _process(delta: float) -> void:
 				_set_phase(Phase.IDLE)
 				view.presentation_locked = false
 				presentation_finished.emit()
+
+
+func _start_overview() -> void:
+	view.show_restoration_overview()
+	_set_phase(Phase.CAMERA)

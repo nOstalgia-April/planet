@@ -63,7 +63,7 @@ func seek_seconds(seconds: float) -> void:
 	)
 	var tile: int = clip.frame_tiles[frame]
 	var per_page: int = clip.columns * clip.rows
-	_wanted_page = tile / per_page
+	_wanted_page = floori(float(tile) / per_page)
 	_next_page = (_wanted_page + 1) % clip.page_paths.size()
 	for page: int in _pages.keys():
 		if page != _wanted_page and page != _next_page:
@@ -72,7 +72,8 @@ func seek_seconds(seconds: float) -> void:
 		var local_tile: int = tile % per_page
 		sprite.texture = _pages[_wanted_page]
 		sprite.region_rect = Rect2(
-			Vector2(local_tile % clip.columns, local_tile / clip.columns) * Vector2(clip.tile_size),
+			Vector2(local_tile % clip.columns, floori(float(local_tile) / clip.columns))
+			* Vector2(clip.tile_size),
 			Vector2(clip.tile_size)
 		)
 		var region: Rect2 = sprite.region_rect

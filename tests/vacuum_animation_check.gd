@@ -212,16 +212,16 @@ func _check_skin_states(demo: DemoScript) -> void:
 	await _save(demo, "blue")
 
 	# Keep rule ownership in PrototypeRun and reach the actual configured combo threshold.
-	for index: int in range(demo.run.settings.combo_target):
+	for index: int in range(demo.run.get_combo_target()):
 		demo.run.advance(demo.run.settings.spawn_intervals[0])
 	demo.run.combo_level = 1
-	for index: int in range(demo.run.settings.combo_target):
+	for index: int in range(demo.run.get_combo_target()):
 		actor = _prepare_one(demo, false)
 		demo._drive_tool(demo.run.get_pipe_capture_seconds(), actor.get_capture_point(), false)
 		art._process(art.transition_seconds)
 	_check(
 		(
-			demo.run.combo_count == demo.run.settings.combo_target
+			demo.run.combo_count == 0
 			and art.requested_skin == VacuumSkin.SkinKind.RAINBOW
 		),
 		"The actual combo threshold requests rainbow skin."
@@ -229,11 +229,11 @@ func _check_skin_states(demo: DemoScript) -> void:
 	art._process(art.transition_seconds)
 	await _save(demo, "rainbow")
 	_check(art.current_skin == VacuumSkin.SkinKind.RAINBOW, "Rainbow skin takes priority.")
-	demo.run.advance(demo.run.get_combo_window_seconds() + 0.01)
+	demo._pipe._advance_combo_burst(3.0)
 	demo._drive_tool(0.0, NET_ANCHOR + Vector2.RIGHT * 80.0, false)
 	art._process(art.transition_seconds)
 	_check(
-		art.current_skin == VacuumSkin.SkinKind.PINK, "Combo expiry restores the latest species."
+		art.current_skin == VacuumSkin.SkinKind.PINK, "Completed burst restores the latest species."
 	)
 
 	art.request_skin(VacuumSkin.SkinKind.BLUE)

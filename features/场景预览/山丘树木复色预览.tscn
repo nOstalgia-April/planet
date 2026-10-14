@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://features/场景预览/山丘树木预览.tscn" id="1"]
+
+[node name="山丘树木复色预览" instance=ExtResource("1")]
+
+[node name="地形" parent="."]
+color_progress = Vector3(1, 1, 1)

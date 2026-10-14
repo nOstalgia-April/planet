@@ -30,7 +30,7 @@ const GAMEPLAY_MUSIC: String = "event:/Mx/Mx_GamePlay"
 const MUSIC_DISTANT_VIEW_PARAMETER: String = "IsDistantView"
 # Stage 2 starts with the third base value breakthrough (900 candy, 5 -> 10).
 const MUSIC_MID_BASE_VALUE_LEVEL: int = 3
-# Stage 3 starts once full automation is researched (7500 candy).
+# Stage 3 starts once full automation is researched (4500 candy).
 const MUSIC_LATE_GOVERNANCE_LEVEL: int = 3
 
 enum ToolMode { PIPE, NET }
@@ -132,6 +132,9 @@ func _ready() -> void:
 	$Audio.add_child(_planet_audio)
 	get_viewport().physics_object_picking = true
 	run.economy_changed.connect(_queue_hud_refresh)
+	run.combo_stage_completed.connect(_on_combo_stage_completed)
+	run.combo_progressed.connect(_layout.pulse_combo)
+	run.combo_interrupted.connect(_layout.pulse_combo.bind(true))
 	run.economy_changed.connect(_update_music_stage)
 	run.base_value_changed.connect(_refresh_monster_rewards)
 	run.nest_added.connect(_on_nest_added)
@@ -207,9 +210,6 @@ func _update_overview_hover(pointer: Vector2) -> void:
 
 
 func _drive_tool(delta: float, pointer: Vector2, holding: bool) -> void:
-	_pipe.set_combo_active(
-		run.combo_count >= run.settings.combo_target and run.combo_remaining > 0.0
-	)
 	var just_pressed: bool = holding and not _was_holding
 	_tool_pointer = pointer
 	_pipe.visible = _active_tool == ToolMode.PIPE and _can_collect(pointer, run.get_pipe_radius())
@@ -640,7 +640,7 @@ func restart_run() -> void:
 	_site_random.randomize()
 	# The opening nests are already there when play starts; only later nests "appear".
 	_opening_nests = true
-	run.start_run(spawn_positions)
+	run.start_run(spawn_positions, _nest_site_angles.size())
 	_opening_nests = false
 	_music_stage = 0
 	GameAudio.set_global(MUSIC_STAGE_PARAMETER, 0.0)
@@ -732,11 +732,9 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 	if nearest.species == PrototypeSlime.Species.DRILL:
 		_play_drill_treasure(candy_gained, nearest.get_capture_point())
 	else:
-		_pipe.show_capture_skin(
-			nearest.species, run.combo_count >= run.settings.combo_target and run.combo_remaining > 0.0
-		)
+		_pipe.show_capture_skin(nearest.species)
 		_pipe.play_capture()
-		_play_collection_reward(candy_gained, nearest.get_capture_point(), nearest.body_color)
+		_play_collection_reward(nearest.reward, nearest.get_capture_point(), nearest.body_color)
 	_pipe.set_capture_engaged(false)
 	_capture_targets.clear()
 	_slimes.erase(nearest)
@@ -872,6 +870,10 @@ func _refresh_overview() -> void:
 	)
 
 
+func _on_combo_stage_completed(stage: int, bonus: int) -> void:
+	_pipe.play_combo_burst(stage, bonus)
+
+
 func _play_collection_reward(
 	reward: int, source_position: Vector2, color: Color = Color("d7e8bb")
 ) -> void:
@@ -1000,8 +1002,8 @@ func _on_nest_spawn_requested(species: NestState.Species) -> void:
 	_present_discovered_nest(species, selected)
 
 
-func _present_discovered_nest(_species: NestState.Species, position: Vector2) -> void:
-	run.resolve_nest_spawn(position)
+func _present_discovered_nest(_species: NestState.Species, nest_position: Vector2) -> void:
+	run.resolve_nest_spawn(nest_position)
 
 
 func _on_nest_added(nest: NestState) -> void:
@@ -1028,6 +1030,7 @@ func _on_nest_added(nest: NestState) -> void:
 	view.rotation = _planet.get_nest_rotation(nest.position.angle())
 	view.configure_species(nest.species)
 	view.flower_appeared.connect(_on_flower_appeared)
+	view.production_released.connect(_on_flower_production_released)
 	view.presentation_scale = _view.near_nest_scale
 	view.update_state(nest.level, nest.is_tamed, run.settings.nest_upgrade_costs.size())
 	_nest_views.append(view)
@@ -1117,19 +1120,19 @@ func _advance_giant_fusion(delta: float) -> void:
 
 
 func _apply_giant_fusion(plan: GiantFusion.Plan, viewport: Rect2) -> void:
-	var owner: NestState = run.get_nest(plan.owner_id)
+	var owner_nest: NestState = run.get_nest(plan.owner_id)
 	var giant: PrototypeSlime = giant_slime_scene.instantiate() as PrototypeSlime
 	_slime_root.add_child(giant)
-	giant.setup(owner.nest_id, owner.position, _planet, _get_roaming_screen_half_angle())
+	giant.setup(owner_nest.nest_id, owner_nest.position, _planet, _get_roaming_screen_half_angle())
 	giant.presentation_scale = _view.near_slime_scale
-	giant.configure_species(owner.species as PrototypeSlime.Species, false, 0)
+	giant.configure_species(owner_nest.species as PrototypeSlime.Species, false, 0)
 	giant.configure_fusion(
 		plan.actors.size(), plan.value_units, run.get_base_value() * plan.value_units
 	)
-	var inward: Vector2 = -owner.position.normalized()
+	var inward: Vector2 = -owner_nest.position.normalized()
 	var tangent: Vector2 = inward.orthogonal()
 	giant.restore_to_surface(
-		owner.position + inward * 35.0 + tangent * _site_random.randf_range(-28.0, 28.0)
+		owner_nest.position + inward * 35.0 + tangent * _site_random.randf_range(-28.0, 28.0)
 	)
 	# A large body can reach the screen while its nest is already outside it.
 	# Defer that batch until it is safe to replace all of its participants.
@@ -1158,10 +1161,18 @@ func _refresh_monster_rewards() -> void:
 		)
 
 
-func _on_automatic_income_received(nest_id: int, _amount: int) -> void:
+func _on_automatic_income_received(nest_id: int, amount: int) -> void:
 	if _view.is_overview():
 		return
-	_nest_views[nest_id - 1].pulse_automatic()
+	var view: NestView = _nest_views[nest_id - 1]
+	if get_viewport_rect().intersects(view.get_hover_rect()):
+		view.pulse_automatic(amount)
+
+
+func _on_flower_production_released(nest_id: int, amount: int) -> void:
+	var view: NestView = _nest_views[nest_id - 1]
+	if amount > 0 and get_viewport_rect().intersects(view.get_hover_rect()):
+		_play_collection_reward(amount, view.get_production_point())
 
 
 func _select_nest(nest_id: int) -> void:
@@ -1241,7 +1252,7 @@ func _refresh_hud() -> void:
 		return
 	_nest_title_label.text = ("%s巢穴 %02d" % [["史莱姆", "黏液怪", "钻头怪"][nest.species], nest.nest_id])
 	if nest.is_tamed:
-		_nest_level_label.text = "完全自动化"
+		_nest_level_label.text = "完全治理"
 		_nest_benefit_label.text = "停止产怪 · 自动产糖"
 		_nest_button.text = "自动产糖中"
 		_nest_button.disabled = true
@@ -1250,7 +1261,7 @@ func _refresh_hud() -> void:
 	_nest_level_label.text = stage_names[nest.level]
 	var next_level: int = nest.level + 1
 	if next_level == run.settings.nest_upgrade_costs.size():
-		_nest_benefit_label.text = "下一阶段：完全自动化\n停止产怪 · 自动产糖"
+		_nest_benefit_label.text = "下一阶段：完全治理\n停止产怪 · 自动产糖"
 	else:
 		_nest_benefit_label.text = "下一阶段：%s" % stage_names[next_level]
 	var nest_cost: int = run.get_nest_upgrade_cost(selected_nest_id)
@@ -1313,7 +1324,7 @@ func _on_nest_upgrade() -> void:
 
 
 func _on_quick_upgrade(tool: int) -> void:
-	_on_technology_upgrade("pipe" if tool == 0 else "net")
+	_on_technology_upgrade("pipe" if tool == 0 else run.get_net_quick_upgrade_id())
 
 
 func _on_technology_upgrade(technology_id: String) -> void:
@@ -1327,6 +1338,8 @@ func _on_technology_upgrade(technology_id: String) -> void:
 			_show_status("吸取 %d 级" % (run.pipe_level + 1))
 		elif technology_id in ["net", "net_capacity"]:
 			_show_status("捕网 %d 级" % (run.net_level + 1))
+		elif technology_id == "net_size":
+			_show_status("捕网大小 %d 级" % (run.net_size_level + 1))
 		else:
 			_show_status("科技升级完成")
 

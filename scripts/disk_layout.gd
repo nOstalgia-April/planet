@@ -19,6 +19,7 @@ var _manual_pause: bool = false
 
 var _shop_layout_queued: bool = false
 var _nest_anchor: Rect2 = Rect2()
+var _combo_feedback: Tween
 var _run: PrototypeRun
 
 @onready var _nest_card: Control = $NestCard
@@ -105,15 +106,10 @@ func refresh_progression(run: PrototypeRun) -> void:
 	_run = run
 	_technology.refresh(run)
 	_technology_badge.visible = _technology.has_unlocked_candidate()
-	var combo_hint: String = (
-		"连续吸入 %d 只后，捕获收益 +%d%%；间隔 %.0f 秒。小数奖励累计到账。"
-		% [
-			run.settings.combo_target,
-			run.get_combo_reward_percent(),
-			run.get_combo_window_seconds()
-		]
+	$ComboChip.tooltip_text = (
+		"每段 %s 秒 · 达标额外结算本段糖果。\n巨型计 1 只，全部价值参与奖励。最高段完成后循环，小数奖励累计到账。"
+		% String.num(run.get_combo_window_seconds(), 1).trim_suffix(".0")
 	)
-	$ComboChip.tooltip_text = combo_hint
 	_tool_dock.refresh(run)
 	refresh_timers(run)
 	_queue_shop_layout()
@@ -121,20 +117,27 @@ func refresh_progression(run: PrototypeRun) -> void:
 
 func refresh_timers(run: PrototypeRun) -> void:
 	$ComboChip.visible = run.combo_level > 0
-	if run.combo_count >= run.settings.combo_target and run.combo_remaining > 0.0:
-		_combo_label.text = (
-			"连击 +%d%% · %.1f 秒" % [run.get_combo_reward_percent(), run.combo_remaining]
-		)
-	elif run.combo_remaining > 0.0:
-		_combo_label.text = (
-			"连吸 %d / %d · %.1f 秒"
-			% [run.combo_count, run.settings.combo_target, run.combo_remaining]
-		)
-	else:
-		_combo_label.text = "连吸 0 / %d" % run.settings.combo_target
+	var remaining: String = "%.1f 秒" % run.combo_remaining if run.combo_remaining > 0.0 else "待吸入"
+	_combo_label.text = (
+		"%s · %d / %d · %s"
+		% [
+			["I", "II", "III", "IV"][run.combo_stage],
+			run.combo_count,
+			run.get_combo_target(),
+			remaining
+		]
+	)
 	_combo_timer.max_value = run.get_combo_window_seconds()
 	_combo_timer.value = run.combo_remaining
 	_tool_dock.refresh_timers(run)
+
+
+func pulse_combo(interrupted: bool = false) -> void:
+	if _combo_feedback != null:
+		_combo_feedback.kill()
+	_combo_label.modulate = Color("aaa3a0") if interrupted else Color("f4bc78")
+	_combo_feedback = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_STOP)
+	_combo_feedback.tween_property(_combo_label, "modulate", Color.WHITE, 0.35)
 
 
 func is_over_ui(viewport_position: Vector2) -> bool:

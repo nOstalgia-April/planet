@@ -1,0 +1,57 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/flower_production_effect.gd" id="1_effect"]
+[ext_resource type="Shader" path="res://shaders/flower_production.gdshader" id="2_shader"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/史莱姆花/待机/001.png" id="3_preview"]
+
+[sub_resource type="ShaderMaterial" id="Material_sweep"]
+resource_local_to_scene = true
+shader = ExtResource("2_shader")
+
+[sub_resource type="Gradient" id="Gradient_spark"]
+offsets = PackedFloat32Array(0, 0.3, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.85, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="Texture_spark"]
+gradient = SubResource("Gradient_spark")
+width = 16
+height = 16
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(1, 0.5)
+
+[sub_resource type="Gradient" id="Gradient_fade"]
+offsets = PackedFloat32Array(0, 0.2, 1)
+colors = PackedColorArray(1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="Curve" id="Curve_size"]
+_data = [Vector2(0, 0.6), 0.0, 0.0, 0, 0, Vector2(0.25, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.1), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[node name="FlowerProduction" type="Node2D"]
+script = ExtResource("1_effect")
+
+[node name="PreviewFlower" type="Sprite2D" parent="."]
+visible = false
+texture = ExtResource("3_preview")
+
+[node name="LightSweep" type="Sprite2D" parent="."]
+visible = false
+material = SubResource("Material_sweep")
+
+[node name="EnergySparks" type="CPUParticles2D" parent="."]
+emitting = false
+amount = 40
+lifetime = 0.55
+texture = SubResource("Texture_spark")
+emission_shape = 3
+emission_rect_extents = Vector2(18, 2)
+direction = Vector2(0, -1)
+spread = 70.0
+gravity = Vector2(0, -18)
+initial_velocity_min = 20.0
+initial_velocity_max = 50.0
+scale_amount_min = 0.22
+scale_amount_max = 0.42
+scale_amount_curve = SubResource("Curve_size")
+color_ramp = SubResource("Gradient_fade")

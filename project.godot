@@ -10,7 +10,7 @@ config_version=5
 
 [Fmod]
 
-General/banks_path="res://assets/fmod/banks"
+General/banks_path="res://bank/Desktop"
 General/should_load_by_name=true
 
 [application]
@@ -55,5 +55,4 @@ theme/custom_font="res://fonts/game_font.tres"
 
 [rendering]
 
-rendering_device/driver.windows="d3d12"
 textures/vram_compression/import_etc2_astc=true

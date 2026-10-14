@@ -2,10 +2,12 @@ extends Node2D
 
 signal bounds_changed
 signal flower_appeared
+signal production_started(sprite: Sprite2D, amount: int, duration: float)
 
 const ItemArt = preload("res://scripts/物品动画/动画物件.gd")
 const GroundBend: ShaderMaterial = preload("res://resources/nest_ground_bend.tres")
 const GROUND_SAMPLES: int = 256
+const GROUND_OVERLAP_PIXELS: float = 4.0
 const TRANSITIONS: Array[StringName] = [&"1-2", &"2-3", &"3-4"]
 const SPAWN_CLIPS: Array[StringName] = [&"阶段1产怪", &"阶段2产怪", &"阶段3产怪"]
 
@@ -101,12 +103,13 @@ func play_spawn() -> void:
 	_refresh_bounds()
 
 
-func play_production() -> void:
+func play_production(amount: int = 0) -> void:
 	if _transitioning or _display_level != 3:
 		return
 	# Faster automatic collections must not repeatedly restart the same first frame.
 	if _flower.animation_player.current_animation != &"产出":
 		_flower.play_clip(&"产出")
+	production_started.emit(_sprite, amount, _flower.animation_player.get_animation(&"产出").length)
 
 
 func get_art_bounds() -> Rect2:
@@ -141,7 +144,9 @@ func set_ground_contour(contour: PackedVector2Array) -> void:
 		if is_equal_approx(start.x, finish.x):
 			continue
 		var first: int = maxi(0, ceili((minf(start.x, finish.x) - _bounds.position.x) / step))
-		var last: int = mini(GROUND_SAMPLES - 1, floori((maxf(start.x, finish.x) - _bounds.position.x) / step))
+		var last: int = mini(
+			GROUND_SAMPLES - 1, floori((maxf(start.x, finish.x) - _bounds.position.x) / step)
+		)
 		for sample: int in range(first, last + 1):
 			var x: float = _bounds.position.x + float(sample) * step
 			var y: float = lerpf(start.y, finish.y, (x - start.x) / (finish.x - start.x))
@@ -150,7 +155,9 @@ func set_ground_contour(contour: PackedVector2Array) -> void:
 	_ground_max_y = _bounds.end.y
 	for sample: int in range(GROUND_SAMPLES):
 		if not is_finite(_ground_heights[sample]):
-			_ground_heights[sample] = _bounds.end.y + _get_ground_bend(_bounds.position.x + float(sample) * step)
+			_ground_heights[sample] = (
+				_bounds.end.y + _get_ground_bend(_bounds.position.x + float(sample) * step)
+			)
 		_ground_max_y = maxf(_ground_max_y, _ground_heights[sample])
 		profile.set_pixel(sample, 0, Color(_ground_heights[sample], 0.0, 0.0))
 	if _ground_profile == null:
@@ -167,8 +174,8 @@ func clear_ground_contour() -> void:
 
 
 func get_grounded_bounds() -> Rect2:
-	# Slight overlap covers antialiasing at the ground's edge without a visible seam.
-	var overlap: float = 1.25 / get_global_transform_with_canvas().y.length()
+	# Cover the painted rim and its antialiasing, including when viewed at an angle.
+	var overlap: float = GROUND_OVERLAP_PIXELS / get_global_transform_with_canvas().y.length()
 	_bottom_padding = maxf(0.0, _ground_max_y + overlap - _bounds.end.y)
 	_bend_material.set_shader_parameter("follow_contour", true)
 	_bend_material.set_shader_parameter("ground_overlap", overlap)
@@ -179,7 +186,9 @@ func get_grounded_bounds() -> Rect2:
 func get_ground_contact_y(x: float) -> float:
 	if _ground_heights.is_empty():
 		return _bounds.end.y + _get_ground_bend(x)
-	var sample: float = clampf((x - _bounds.position.x) / _bounds.size.x, 0.0, 1.0) * float(GROUND_SAMPLES - 1)
+	var sample: float = (
+		clampf((x - _bounds.position.x) / _bounds.size.x, 0.0, 1.0) * float(GROUND_SAMPLES - 1)
+	)
 	var index: int = mini(floori(sample), GROUND_SAMPLES - 2)
 	return lerpf(_ground_heights[index], _ground_heights[index + 1], sample - float(index))
 
@@ -196,14 +205,18 @@ func _refresh_bend_material() -> void:
 	var picture: Node2D = _sprite.get_parent() as Node2D
 	var frame_transform: Transform2D = _active_art.transform * picture.transform * _sprite.transform
 	_bend_material.set_shader_parameter("sprite_to_art", _shader_matrix(frame_transform))
-	_bend_material.set_shader_parameter("art_to_sprite", _shader_matrix(frame_transform.affine_inverse()))
+	_bend_material.set_shader_parameter(
+		"art_to_sprite", _shader_matrix(frame_transform.affine_inverse())
+	)
 	_bend_material.set_shader_parameter("sprite_rect_origin", _sprite.get_rect().position)
 	_bend_material.set_shader_parameter("ground_curve", _ground_curve)
 	_bend_material.set_shader_parameter("contact_y", _bounds.end.y)
 	_bend_material.set_shader_parameter("emergence_height", _bounds.size.y)
 	_bend_material.set_shader_parameter("emergence_width", _bounds.size.x)
 	_bend_material.set_shader_parameter("emergence_center_x", _bounds.get_center().x)
-	_bend_material.set_shader_parameter("bend_height", maxf(1.0, _bounds.size.y * _bend_height_ratio))
+	_bend_material.set_shader_parameter(
+		"bend_height", maxf(1.0, _bounds.size.y * _bend_height_ratio)
+	)
 	_bend_material.set_shader_parameter("bottom_padding", _bottom_padding)
 	_bend_material.set_shader_parameter("foot_profile", _get_foot_profile(_sprite.texture))
 
@@ -229,7 +242,9 @@ func _get_foot_profile(texture: Texture2D) -> ImageTexture:
 	for x: int in range(used.position.x, used.end.x):
 		if feet[x] < 0.0:
 			continue
-		for neighbor: int in range(maxi(used.position.x, x - radius * 2), mini(used.end.x, x + radius * 2 + 1)):
+		for neighbor: int in range(
+			maxi(used.position.x, x - radius * 2), mini(used.end.x, x + radius * 2 + 1)
+		):
 			if feet[neighbor] >= 0.0:
 				inset_feet[x] = minf(inset_feet[x], feet[neighbor])
 	for x: int in range(used.position.x, used.end.x):
@@ -237,7 +252,9 @@ func _get_foot_profile(texture: Texture2D) -> ImageTexture:
 			continue
 		var weighted_height: float = 0.0
 		var total_weight: float = 0.0
-		for neighbor: int in range(maxi(used.position.x, x - radius), mini(used.end.x, x + radius + 1)):
+		for neighbor: int in range(
+			maxi(used.position.x, x - radius), mini(used.end.x, x + radius + 1)
+		):
 			if inset_feet[neighbor] < 0.0:
 				continue
 			var weight: float = float(radius + 1 - absi(neighbor - x))

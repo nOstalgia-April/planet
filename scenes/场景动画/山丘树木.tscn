@@ -1,0 +1,104 @@
+[gd_scene load_steps=34 format=3]
+
+[ext_resource type="Script" path="res://scripts/horizon_terrain.gd" id="script"]
+[ext_resource type="Shader" path="res://shaders/horizon_terrain_color.gdshader" id="paint"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/right_hill/01.png" id="right_hill_1"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/right_hill/02.png" id="right_hill_2"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/right_hill/03.png" id="right_hill_3"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/right_hill/04.png" id="right_hill_4"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/right_hill/05.png" id="right_hill_5"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/left_hills/01.png" id="left_hills_1"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/left_hills/02.png" id="left_hills_2"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/left_hills/03.png" id="left_hills_3"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/left_hills/04.png" id="left_hills_4"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/left_hills/05.png" id="left_hills_5"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/far_peak/01.png" id="far_peak_1"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/far_peak/02.png" id="far_peak_2"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/far_peak/03.png" id="far_peak_3"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/far_peak/04.png" id="far_peak_4"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/far_peak/05.png" id="far_peak_5"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/trees/01.png" id="trees_1"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/trees/02.png" id="trees_2"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/trees/03.png" id="trees_3"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/trees/04.png" id="trees_4"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/trees/05.png" id="trees_5"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/trees/06.png" id="trees_6"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/trees/07.png" id="trees_7"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/山丘树木/trees/08.png" id="trees_8"]
+
+[sub_resource type="ShaderMaterial" id="paint_right"]
+shader = ExtResource("paint")
+shader_parameter/piece_kind = 0
+shader_parameter/fill_a = Color(0.36862745, 0.47843137, 0.54117647, 1)
+
+[sub_resource type="ShaderMaterial" id="paint_left"]
+shader = ExtResource("paint")
+shader_parameter/piece_kind = 1
+shader_parameter/fill_a = Color(0.60392157, 0.11764706, 0.0745098, 1)
+shader_parameter/fill_b = Color(0.93333333, 0.55294118, 0.66666667, 1)
+
+[sub_resource type="ShaderMaterial" id="paint_peak"]
+shader = ExtResource("paint")
+shader_parameter/piece_kind = 2
+shader_parameter/fill_a = Color(0.72941176, 0.82745098, 0.69803922, 1)
+shader_parameter/fill_b = Color(0.61960784, 0.60392157, 0.93333333, 1)
+
+[sub_resource type="ShaderMaterial" id="paint_trees"]
+shader = ExtResource("paint")
+shader_parameter/piece_kind = 3
+shader_parameter/fill_a = Color(0.93333333, 0.55294118, 0.66666667, 1)
+shader_parameter/fill_b = Color(1, 0.75294118, 0.87843137, 1)
+shader_parameter/fill_c = Color(1, 0.69803922, 0.84313725, 1)
+
+[sub_resource type="SpriteFrames" id="right_hill"]
+animations = [{"frames": [{"duration": 1.0, "texture": ExtResource("right_hill_1")}, {"duration": 1.0, "texture": ExtResource("right_hill_2")}, {"duration": 1.0, "texture": ExtResource("right_hill_3")}, {"duration": 1.0, "texture": ExtResource("right_hill_4")}, {"duration": 1.0, "texture": ExtResource("right_hill_5")}], "loop": false, "name": &"appear", "speed": 7.0}]
+
+[sub_resource type="SpriteFrames" id="left_hills"]
+animations = [{"frames": [{"duration": 1.0, "texture": ExtResource("left_hills_1")}, {"duration": 1.0, "texture": ExtResource("left_hills_2")}, {"duration": 1.0, "texture": ExtResource("left_hills_3")}, {"duration": 1.0, "texture": ExtResource("left_hills_4")}, {"duration": 1.0, "texture": ExtResource("left_hills_5")}], "loop": false, "name": &"appear", "speed": 7.0}]
+
+[sub_resource type="SpriteFrames" id="far_peak"]
+animations = [{"frames": [{"duration": 1.0, "texture": ExtResource("far_peak_1")}, {"duration": 1.0, "texture": ExtResource("far_peak_2")}, {"duration": 1.0, "texture": ExtResource("far_peak_3")}, {"duration": 1.0, "texture": ExtResource("far_peak_4")}, {"duration": 1.0, "texture": ExtResource("far_peak_5")}], "loop": false, "name": &"appear", "speed": 7.0}]
+
+[sub_resource type="SpriteFrames" id="trees"]
+animations = [{"frames": [{"duration": 1.0, "texture": ExtResource("trees_1")}, {"duration": 1.0, "texture": ExtResource("trees_2")}, {"duration": 1.0, "texture": ExtResource("trees_3")}, {"duration": 1.0, "texture": ExtResource("trees_4")}, {"duration": 1.0, "texture": ExtResource("trees_5")}, {"duration": 1.0, "texture": ExtResource("trees_6")}, {"duration": 1.0, "texture": ExtResource("trees_7")}, {"duration": 1.0, "texture": ExtResource("trees_8")}], "loop": false, "name": &"appear", "speed": 8.0}]
+
+[node name="山丘树木" type="Node2D" node_paths=PackedStringArray("pieces")]
+z_index = -10
+scale = Vector2(0.19454545, 0.19454545)
+script = ExtResource("script")
+pieces = [NodePath("RightHill"), NodePath("LeftHills"), NodePath("OppositeSide/Peak"), NodePath("Trees")]
+
+[node name="RightHill" type="AnimatedSprite2D" parent="."]
+material = SubResource("paint_right")
+position = Vector2(150, -1452)
+centered = false
+sprite_frames = SubResource("right_hill")
+animation = &"appear"
+frame = 4
+
+[node name="LeftHills" type="AnimatedSprite2D" parent="."]
+material = SubResource("paint_left")
+position = Vector2(-980, -1438)
+centered = false
+sprite_frames = SubResource("left_hills")
+animation = &"appear"
+frame = 4
+
+[node name="OppositeSide" type="Node2D" parent="."]
+rotation = 3.1415927
+
+[node name="Peak" type="AnimatedSprite2D" parent="OppositeSide"]
+material = SubResource("paint_peak")
+position = Vector2(-250, -1552)
+centered = false
+sprite_frames = SubResource("far_peak")
+animation = &"appear"
+frame = 4
+
+[node name="Trees" type="AnimatedSprite2D" parent="."]
+material = SubResource("paint_trees")
+position = Vector2(210, -1682)
+centered = false
+sprite_frames = SubResource("trees")
+animation = &"appear"
+frame = 7

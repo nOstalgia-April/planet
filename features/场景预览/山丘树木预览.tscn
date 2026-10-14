@@ -1,0 +1,19 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/场景动画/近景背景.tscn" id="background"]
+[ext_resource type="PackedScene" path="res://scenes/场景动画/近景星球.tscn" id="planet"]
+[ext_resource type="PackedScene" path="res://scenes/场景动画/山丘树木.tscn" id="terrain"]
+
+[node name="山丘树木预览" type="Node2D"]
+
+[node name="背景" parent="." instance=ExtResource("background")]
+z_index = -20
+
+[node name="地形" parent="." instance=ExtResource("terrain")]
+position = Vector2(960, 1848)
+surface_radius = 1320.0
+
+[node name="星球" parent="." instance=ExtResource("planet")]
+position = Vector2(960, 1848)
+rotation = 1.5707964
+scale = Vector2(5.140187, 5.140187)

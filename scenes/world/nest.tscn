@@ -1,8 +1,9 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/nest_view.gd" id="1_nest"]
 [ext_resource type="PackedScene" path="res://scenes/world/nest_art.tscn" id="2_art"]
 [ext_resource type="PackedScene" path="res://scenes/effects/nest_emergence_dust.tscn" id="3_dust"]
+[ext_resource type="PackedScene" path="res://scenes/effects/flower_production.tscn" id="4_production"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_selection"]
 size = Vector2(93.36, 47.6)
@@ -13,6 +14,8 @@ script = ExtResource("1_nest")
 [node name="NestArt" parent="." instance=ExtResource("2_art")]
 
 [node name="EmergenceDust" parent="." instance=ExtResource("3_dust")]
+
+[node name="ProductionEffect" parent="." instance=ExtResource("4_production")]
 
 [node name="SelectionArea" type="Area2D" parent="."]
 collision_layer = 1

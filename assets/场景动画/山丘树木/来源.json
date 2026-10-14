@@ -1,0 +1,122 @@
+{
+  "source_directory": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\山丘树木出现动画\\山丘树木出现动画",
+  "timing_note": "山丘目录标7帧但各含5张原图，按7fps播放现有5张；树8张按8fps播放。均不循环，末帧保持。",
+  "placement": "按1920x1080位置参考、球心(960,1848)、半径1320放置。山与树在同侧组合，山2在左侧，山3位于对侧以避免与山2自带峰顶叠放。 最终接地点已按实机微调：右山与树向左20、向下16参考像素，左山同样微调，独立山峰向下12像素，保证底部被星球遮住。",
+  "frames": [
+    {
+      "source": "山（7帧\\未命名作品-1.png",
+      "asset": "assets\\场景动画\\山丘树木\\right_hill\\01.png",
+      "sha256": "48bb16ececb3e905cd0d10ffe717a2cd42faaa04b3d72832cc5c39894575d243"
+    },
+    {
+      "source": "山（7帧\\未命名作品-2.png",
+      "asset": "assets\\场景动画\\山丘树木\\right_hill\\02.png",
+      "sha256": "077aad7390af5e775c5d40d93714388adaffdfa29ee089b7ba93ba4038541eb3"
+    },
+    {
+      "source": "山（7帧\\未命名作品-3.png",
+      "asset": "assets\\场景动画\\山丘树木\\right_hill\\03.png",
+      "sha256": "11b4058c4e79be28a7d6432968dfcedbf1350cb3b878fca5fabc33e3ddf22690"
+    },
+    {
+      "source": "山（7帧\\未命名作品-4.png",
+      "asset": "assets\\场景动画\\山丘树木\\right_hill\\04.png",
+      "sha256": "92915ccdf440f53332c7e82bc4948426a0ae6cd013a2f840af4005672db90046"
+    },
+    {
+      "source": "山（7帧\\未命名作品-5.png",
+      "asset": "assets\\场景动画\\山丘树木\\right_hill\\05.png",
+      "sha256": "c60172d4f9bb9c5010fd2e8e321144fd6f029a4b006e79f437ddd4d0aa206cc0"
+    },
+    {
+      "source": "山2（7帧\\未命名作品-1.png",
+      "asset": "assets\\场景动画\\山丘树木\\left_hills\\01.png",
+      "sha256": "9615bc68e4bad28e2bdf7bdd501f02f0e3c5a463e90526f8c4b27f6202e84793"
+    },
+    {
+      "source": "山2（7帧\\未命名作品-2.png",
+      "asset": "assets\\场景动画\\山丘树木\\left_hills\\02.png",
+      "sha256": "d2746d2db095ac463dd2847f48197cc6cffa8f50d8f74a206d0a35d3707c5891"
+    },
+    {
+      "source": "山2（7帧\\未命名作品-3.png",
+      "asset": "assets\\场景动画\\山丘树木\\left_hills\\03.png",
+      "sha256": "ee76e797060940dd07261a2ec2b3ad1e795fc6edfd66ed943327cd460b7b7795"
+    },
+    {
+      "source": "山2（7帧\\未命名作品-4.png",
+      "asset": "assets\\场景动画\\山丘树木\\left_hills\\04.png",
+      "sha256": "548f66a2124702fccb8b8945fc42631585ddb855349ebc215dda77e8f40d3e7e"
+    },
+    {
+      "source": "山2（7帧\\未命名作品-5.png",
+      "asset": "assets\\场景动画\\山丘树木\\left_hills\\05.png",
+      "sha256": "5d3b5e4bbeee1093bb6e92f7c59faeb3df8589eac46c3e17e1dd118627777ee3"
+    },
+    {
+      "source": "山3（7帧\\未命名作品-1.png",
+      "asset": "assets\\场景动画\\山丘树木\\far_peak\\01.png",
+      "sha256": "4eec55011a63c9ebc430eb446f60d9083aa31491f861a3231cf254eb95533a12"
+    },
+    {
+      "source": "山3（7帧\\未命名作品-2.png",
+      "asset": "assets\\场景动画\\山丘树木\\far_peak\\02.png",
+      "sha256": "6b78eab5e9222af5d7dffe20afaa28fe674222a3ed2ff1bca1af353a8ad89326"
+    },
+    {
+      "source": "山3（7帧\\未命名作品-3.png",
+      "asset": "assets\\场景动画\\山丘树木\\far_peak\\03.png",
+      "sha256": "a03bc6b12ea253feff79c9d99d284492981c8a6c5681cab53b3cdbd797d7822b"
+    },
+    {
+      "source": "山3（7帧\\未命名作品-4.png",
+      "asset": "assets\\场景动画\\山丘树木\\far_peak\\04.png",
+      "sha256": "b8215c0e28654f101b04338eb4cbad936fca6a7ae974808c90dc0801378e2e65"
+    },
+    {
+      "source": "山3（7帧\\未命名作品-5.png",
+      "asset": "assets\\场景动画\\山丘树木\\far_peak\\05.png",
+      "sha256": "d6c36a63c8365e3e072c3b3df673f9e39c952cb692fde501d082fbc5732dda87"
+    },
+    {
+      "source": "树（8帧\\未命名作品-1.png",
+      "asset": "assets\\场景动画\\山丘树木\\trees\\01.png",
+      "sha256": "a0fc8aaee23324bfbf96bbf9541bd4a52f851aa9190fa8634cb5cb04b2aff7ea"
+    },
+    {
+      "source": "树（8帧\\未命名作品-2.png",
+      "asset": "assets\\场景动画\\山丘树木\\trees\\02.png",
+      "sha256": "96a0fde5b6f6b43aae4c8ed17017801bed6e1eff9b805556c1f2949e5cd14f5e"
+    },
+    {
+      "source": "树（8帧\\未命名作品-3.png",
+      "asset": "assets\\场景动画\\山丘树木\\trees\\03.png",
+      "sha256": "7432cc2fa90b8809fb674e34731cc228759c4f0e4e90fd4cf3f509e79fcbf162"
+    },
+    {
+      "source": "树（8帧\\未命名作品-4.png",
+      "asset": "assets\\场景动画\\山丘树木\\trees\\04.png",
+      "sha256": "03c0e9c01c92dfa5955d5cf68b08df1c7a47be3e6426249624de68a718445b18"
+    },
+    {
+      "source": "树（8帧\\未命名作品-5.png",
+      "asset": "assets\\场景动画\\山丘树木\\trees\\05.png",
+      "sha256": "e2496cadcc0c5d4a3a6adb56a0a446d71a2b037a9af4eb42d157fb118ba366af"
+    },
+    {
+      "source": "树（8帧\\未命名作品-6.png",
+      "asset": "assets\\场景动画\\山丘树木\\trees\\06.png",
+      "sha256": "b42baac783cf829cf84dccca6bcf518746d7e19ee835e70d0faff26a13c7a8f6"
+    },
+    {
+      "source": "树（8帧\\未命名作品-7.png",
+      "asset": "assets\\场景动画\\山丘树木\\trees\\07.png",
+      "sha256": "d3448de82e4bbd62bf4688b181b78c3329525adc9227358cad274a75d97b604f"
+    },
+    {
+      "source": "树（8帧\\未命名作品-8.png",
+      "asset": "assets\\场景动画\\山丘树木\\trees\\08.png",
+      "sha256": "a184d39a26ee6ba39f07509ea197f6bec9dd9148f8b125f20c343a9a9916711e"
+    }
+  ]
+}

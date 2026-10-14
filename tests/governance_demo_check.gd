@@ -318,8 +318,8 @@ func _check_automation_and_completion(demo: DemoScript) -> void:
 			"Each additional pipe tier charges its displayed price."
 		)
 	_check(
-		demo.run.pipe_level == 6 and is_equal_approx(demo.run.get_pipe_capture_seconds(), 0.11),
-		"The technology page reaches the seventh pipe speed tier."
+		demo.run.pipe_level == 7 and is_equal_approx(demo.run.get_pipe_capture_seconds(), 0.08),
+		"The technology page reaches the eighth pipe speed tier."
 	)
 	var nest_id: int = 1
 	while nest_id <= demo.run.generated_nests:

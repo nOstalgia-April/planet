@@ -4,7 +4,7 @@ const DemoScene: PackedScene = preload("res://features/场景预览/近景游玩
 const DemoScript = preload("res://scripts/disk_demo.gd")
 const NodeScript = preload("res://scripts/ui/technology_node.gd")
 const InteractivePageScript = preload("res://scripts/ui/interactive_technology_page.gd")
-const OUTPUT: String = "res://artifacts/technology_decision_20261014"
+const OUTPUT: String = "res://artifacts/technology_pan_20261014"
 
 var _failures: int = 0
 @onready var root: Window = get_tree().root
@@ -37,7 +37,7 @@ func _check_game() -> void:
 	_check(not demo.run.net_unlocked and demo.run.candy == 400, "locked research preserves wallet")
 	page.select_node("pipe")
 	await _hover(page._nodes["pipe"])
-	await _click(page.get_node("%Purchase") as Control)
+	await _click(page._nodes[page.selected_key])
 	_check(
 		(
 			demo.run.pipe_level == 1
@@ -47,7 +47,7 @@ func _check_game() -> void:
 	)
 	_check(not page._nodes["net_unlock"].glyph.locked, "prerequisite reveals the real net icon")
 	_check(page._detail_level.text == "Lv.2 → Lv.3", "tooltip level updates after purchase")
-	_check(page._detail_gain.get_parsed_text() == "吸取速率 +40.6%", "tooltip percentage follows the purchased upgrade")
+	_check(page._detail_gain.get_parsed_text() == "吸取速率 +33.3%", "tooltip percentage follows the purchased upgrade")
 	_check(page._nodes["net_unlock"].level_label.visible, "revealed node shows its level")
 	_check(page._nodes["net_unlock"].get_node("Price").visible, "revealed node shows its price")
 	page.select_node("net_unlock")
@@ -96,7 +96,7 @@ func _check_game() -> void:
 		await _settle()
 		_check_layout(page)
 		await _save_art("maximum_zoom_%dx%d" % [resolution.x, resolution.y])
-		page.set_zoom(1.0)
+		page.set_zoom(0.6)
 		await _settle()
 	page.select_node("giant")
 	var before: int = demo.run.candy
@@ -111,7 +111,6 @@ func _check_game() -> void:
 	_check(page._nodes["giant"].price_label.text == "✓ MAX", "completed node replaces its price")
 	_check(not page._nodes["giant"]._purchase_glow.visible, "completed research stops glowing")
 	_check(not page._nodes["giant"].coin.visible, "completed node hides the cost icon")
-	_check(page.get_node("%Purchase").text == "✓ 已满级" and page.get_node("%Purchase").disabled, "completed tooltip replaces its purchase price")
 	await _save_art("owned")
 	for resolution: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
 		root.size = resolution
@@ -143,7 +142,9 @@ func _check_game() -> void:
 	_check(
 		not demo._layout.is_technology_open() and not get_tree().paused, "Escape resumes gameplay"
 	)
+	await _check_net_size(demo, page)
 	demo.restart_run()
+	_check(demo.run.net_size_level == 0 and is_equal_approx(demo.run.get_net_radius(), 33.6), "new game resets net size")
 	_check(
 		not demo.run.giant_unlocked and not demo.run.net_unlocked and demo.run.pipe_level == 0,
 		"new game resets research"
@@ -152,6 +153,74 @@ func _check_game() -> void:
 	await get_tree().process_frame
 	print("Game upward technology: %d failures" % _failures)
 	get_tree().quit(0 if _failures == 0 else 1)
+
+
+func _check_net_size(demo: DemoScript, page: InteractivePageScript) -> void:
+	demo.run.candy = 100000
+	demo.run.economy_changed.emit()
+	demo._layout._show_technology()
+	await _settle()
+	await _hover(page._nodes["net_size"])
+	_check(page._nodes["net_size"].state == NodeScript.State.LOCKED, "size requires maximum capacity")
+	_check(demo.run.get_technology_requirement("net_size").contains("4 级"), "size names its exact prerequisite")
+	while demo.run.get_technology_cost("net_capacity") >= 0:
+		var before: int = demo.run.candy
+		_check(not demo.run.purchase_technology("net_size") and demo.run.candy == before, "early size purchase never charges")
+		_check(demo.run.purchase_technology("net_capacity"), "capacity upgrades precede size")
+	await _settle()
+	_check(page._nodes["net_size"].state == NodeScript.State.AVAILABLE, "max capacity opens size immediately")
+	_check(page.has_unlocked_candidate(), "new size research is discoverable")
+	_check(page._nodes["net_size"].level_label.text == "Lv.1/4", "size starts at the existing radius")
+	for resolution: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
+		root.size = resolution
+		await _hover(page._nodes["net_size"])
+		_check_layout(page)
+		await _save_art("size_available_%dx%d" % [resolution.x, resolution.y])
+	var costs: Array[int] = [1500, 3000, 5000]
+	var radii: Array[float] = [42.0, 50.4, 58.8]
+	for index: int in range(costs.size()):
+		_check(demo.run.get_technology_cost("net_size") == costs[index], "size tier has the requested price")
+		demo.run.candy = costs[index] - 1
+		demo.run.economy_changed.emit()
+		await _hover(page._nodes["net_size"])
+		await _click(page._nodes[page.selected_key])
+		_check(demo.run.net_size_level == index and demo.run.candy == costs[index] - 1, "one candy short blocks size purchase")
+		demo.run.candy = costs[index]
+		demo.run.economy_changed.emit()
+		await _click(page._nodes[page.selected_key])
+		_check(demo.run.net_size_level == index + 1 and demo.run.candy == 0, "size purchase charges exactly once")
+		_check(is_equal_approx(demo.run.get_net_radius(), radii[index]), "size changes the gameplay radius")
+		_check(demo.run.get_net_capacity() == 30 and is_equal_approx(demo.run.settings.net_cooldown_seconds, 6.0), "size preserves capacity and cooldown")
+		_check_net_boundary(demo, radii[index])
+	_check(not demo.run.purchase_technology("net_size"), "size cannot exceed level four")
+	_check(page._nodes["net_size"].price_label.text == "✓ MAX", "size displays its final state")
+	await _save_art("size_maxed")
+	demo._layout.close_panels()
+	demo._net.show_preview(Vector2(0.0, -175.0), demo.run.get_net_radius())
+	await _settle()
+	await _save_art("size_maxed_gameplay")
+
+
+func _check_net_boundary(demo: DemoScript, radius: float) -> void:
+	demo.run.advance(20.0)
+	_check(demo._slimes.size() >= 2, "range fixture has real actors")
+	var anchor: Vector2 = Vector2(0.0, -175.0)
+	for index: int in range(demo._slimes.size()):
+		var actor: PrototypeSlime = demo._slimes[index]
+		actor._process(actor.launch_seconds)
+		actor.set_process(false)
+		var point: Vector2 = anchor + Vector2(200.0 + index * 10.0, 0.0)
+		if index < 2:
+			point = anchor + Vector2(radius + (-0.1 if index == 0 else 0.1), 0.0)
+		actor.position = point
+		actor._update_surface_rotation()
+		actor.position += point - actor.get_capture_point()
+	var outside: PrototypeSlime = demo._slimes[1]
+	demo._net_anchor = anchor
+	demo._net.show_preview(anchor, radius)
+	_check(is_equal_approx(demo._net._rim.points[0].length(), radius), "visible net matches capture radius")
+	demo._resolve_net()
+	_check(demo._net_caught_count == 1 and demo._slimes.has(outside), "expanded net catches inside its boundary and excludes outside")
 
 
 func _check_copy_previews(page: InteractivePageScript) -> void:
@@ -168,7 +237,6 @@ func _check_copy_previews(page: InteractivePageScript) -> void:
 
 
 func _check_layout(page: InteractivePageScript) -> void:
-	var canvas: Rect2 = page._canvas.get_global_rect()
 	var endpoint: NodeScript = page._nodes["automation"]
 	_check(endpoint.glyph.size.x > page._nodes["pipe"].glyph.size.x, "key unlock uses a larger original icon")
 	_check(endpoint.title_label.visible, "automation is emphasized by its name")
@@ -180,10 +248,10 @@ func _check_layout(page: InteractivePageScript) -> void:
 	var close: Rect2 = (page.get_node("%Close") as Control).get_global_rect()
 	_check(screen.encloses(close) and close.get_center().x > screen.end.x * 0.9 and close.get_center().y < screen.end.y * 0.15, "exit stays in the top right")
 	for node: NodeScript in page._nodes.values():
-		_check(node.title_label.visible and not node.title_label.text.is_empty(), "all technologies have permanent names")
+		_check(node.title_label.visible == (node.state != NodeScript.State.LOCKED or node.technology_id == "automation"), "only revealed nodes and the final goal show names")
 		_check(node.get_global_rect().encloses(node.title_label.get_global_rect()), "name stays inside node bounds")
 		_check(node._purchase_glow.visible == (node.state == NodeScript.State.AVAILABLE), "only affordable nodes breathe")
-		_check(canvas.encloses(node.get_global_rect()), "node fits game canvas: " + node.name)
+
 		for other: NodeScript in page._nodes.values():
 			if node != other:
 				_check(
@@ -193,7 +261,7 @@ func _check_layout(page: InteractivePageScript) -> void:
 	_check(
 		root.get_visible_rect().encloses(page._detail.get_global_rect()), "hover details fit screen"
 	)
-	_check(page.has_node("%Purchase"), "fixed detail provides a purchase button")
+	_check(not page.has_node("%Purchase"), "hover detail has no purchase button")
 	_check(
 		not page.has_node("Margin/Content/NavigationControls"),
 		"zoom toolbar and reset button are removed"
@@ -206,6 +274,18 @@ func _check_game_navigation(demo: DemoScript) -> void:
 	demo._layout._show_technology()
 	await _settle()
 	_check(get_tree().paused, "game is paused while researching")
+	page.reset_layout()
+	for resolution: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
+		root.size = resolution
+		await _settle()
+		for id: String in ["pipe", "base_value", "cultivation", "combo_unlock", "net_unlock", "valuable", "giant"]:
+			_check(page._canvas.get_global_rect().encloses(page._nodes[id].get_global_rect()), "initial view contains the starting rows: " + id)
+		_check(not page._canvas.get_global_rect().intersects(page._nodes["automation"].get_global_rect()), "later research starts outside the initial view")
+		_check(is_equal_approx(page._nodes["base_value"].get_global_rect().get_center().x, page._canvas.get_global_rect().get_center().x), "starting row is horizontally centered")
+		await _hover(page._wallet)
+		await _save_art("initial_%dx%d" % [resolution.x, resolution.y])
+		await _hover(page._nodes["pipe"])
+		await _save_art("initial_hover_%dx%d" % [resolution.x, resolution.y])
 	var balance: int = demo.run.candy
 	var node: NodeScript = page._nodes["pipe"]
 	var center: Vector2 = node.get_global_rect().get_center()
@@ -223,6 +303,7 @@ func _check_game_navigation(demo: DemoScript) -> void:
 		"left dragging cannot reposition technology nodes"
 	)
 	var graph_position: Vector2 = page.graph.position
+	var graph_screen_position: Vector2 = page.graph.global_position
 	var blank: Vector2 = page._canvas.get_global_rect().position + Vector2(240.0, 120.0)
 	await _send_mouse(blank, MOUSE_BUTTON_RIGHT, true)
 	motion.position = blank + Vector2(120.0, 80.0)
@@ -232,6 +313,17 @@ func _check_game_navigation(demo: DemoScript) -> void:
 	root.push_input(motion, true)
 	await _send_mouse(motion.position, MOUSE_BUTTON_RIGHT, false)
 	_check(page.graph.position.is_equal_approx(graph_position), "right dragging cannot pan the tree")
+	await _send_mouse(blank, MOUSE_BUTTON_LEFT, true)
+	motion.position = blank + Vector2(120.0, 240.0)
+	motion.global_position = motion.position
+	motion.relative = Vector2(120.0, 240.0)
+	motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+	root.push_input(motion, true)
+	await _send_mouse(motion.position, MOUSE_BUTTON_LEFT, false)
+	_check(page.graph.position.distance_to(graph_position) > 100.0, "blank left drag pans the whole tree")
+	_check((page.graph.global_position - graph_screen_position).is_equal_approx(Vector2(120.0, 240.0)), "panning follows the pointer in screen pixels")
+	var remembered_center: Vector2 = page.view_center
+	await _save_art("panned")
 	await _send_mouse(page._canvas.get_global_rect().get_center(), MOUSE_BUTTON_WHEEL_UP, true)
 	_check(is_equal_approx(page.zoom_factor, 1.1), "wheel continues to zoom without a slider")
 	_check(demo.run.candy == balance, "navigation never spends candy")
@@ -243,14 +335,18 @@ func _check_game_navigation(demo: DemoScript) -> void:
 	demo._layout._show_technology()
 	await _settle()
 	_check(is_equal_approx(page.zoom_factor, 1.1), "reopening retains the previous zoom")
+	_check(page.view_center.is_equal_approx(remembered_center), "reopening retains the previous position")
 	var page_scene: PackedScene = load("res://scenes/ui/interactive_technology_page.tscn") as PackedScene
 	var replacement: InteractivePageScript = page_scene.instantiate() as InteractivePageScript
 	root.add_child(replacement)
 	_check(is_equal_approx(replacement.zoom_factor, 1.1), "recreated menu retains the session zoom")
+	_check(replacement.view_center.is_equal_approx(remembered_center), "recreated menu retains the session position")
 	replacement.queue_free()
 	await get_tree().process_frame
 	# Restore the fixture for the remaining purchase and layout checks.
 	page.reset_layout()
+	page.set_view_center(Vector2(540.0, 440.0))
+	page.set_zoom(0.6)
 	demo._layout.close_panels()
 	for link: Vector2i in page.graph.links:
 		var parent: NodeScript = page._nodes[page.graph.node_keys[link.x]]
@@ -268,10 +364,9 @@ func _check_art_states(demo: DemoScript, page: InteractivePageScript) -> void:
 	_check(speed.glyph.ink == Color.WHITE, "technology icons retain their original white ink")
 	_check(page._detail.visible, "hover opens the information card")
 	_check(page._detail_level.text == "Lv.1 → Lv.2", "tooltip shows current and maximum level beneath title")
-	_check(page._detail_gain.get_parsed_text() == "吸取速率 +33.3%", "speed gain compares capture rates as a percentage")
-	_check(page.get_node("%Purchase").text == "购买 · 10", "tooltip places the purchase action at the bottom")
+	_check(page._detail_gain.get_parsed_text() == "吸取速率 +50%", "speed gain compares capture rates as a percentage")
 	_check(demo.run.candy == balance, "hover never spends currency")
-	_check(speed.level_label.text == "Lv.1/7", "node shows current and maximum level")
+	_check(speed.level_label.text == "Lv.1/8", "node shows current and maximum level")
 	_check(speed.price_label.text == str(demo.run.get_technology_cost("pipe")), "node shows live cost")
 	_check(speed.price_label.get_theme_color("font_color") == NodeScript.PRICE_COLORS[1], "affordable price uses the bright palette")
 	await _hover(page._nodes["net_unlock"])
@@ -281,10 +376,11 @@ func _check_art_states(demo: DemoScript, page: InteractivePageScript) -> void:
 	_check(locked_node.glyph.locked, "locked technology replaces its art with a lock")
 	_check(locked_node.glyph.ink == NodeScript.INK_COLORS[NodeScript.State.LOCKED], "locked icon is subdued")
 	_check(speed._halo.visible and not speed._focus_ink.visible, "moving to another node restores its pink halo")
-	_check(locked_node.title_label.visible and locked_node.level_label.visible and locked_node.price_label.text == "未解锁" and not locked_node.coin.visible, "locked technology keeps identity and level while replacing its price")
+	_check(not locked_node.title_label.visible and not locked_node.level_label.visible and not locked_node.get_node("Price").visible and not locked_node.get_node("Milestone").visible, "locked technology displays only its lock")
+	_check(page._nodes["automation"].title_label.visible and page._nodes["automation"].title_label.text == "完全治理", "final goal retains its name while locked")
 	_check(page._detail_title.text == "捕网解锁" and page._detail_effect.visible, "locked hover previews the future capability")
 	_check(page._requirements.visible and page._requirements.get_child_count() > 0, "capability preview keeps unmet prerequisites visible")
-	_check(not page._detail_level.visible and page._detail_gain.visible and page.get_node("%Purchase").disabled, "locked tooltip previews effects without enabling purchase")
+	_check(not page._detail_level.visible and page._detail_gain.visible, "locked tooltip previews effects without enabling purchase")
 	await _save_art("locked")
 	demo.run.candy = 0
 	demo.run.economy_changed.emit()
@@ -292,12 +388,12 @@ func _check_art_states(demo: DemoScript, page: InteractivePageScript) -> void:
 	_check(not speed._purchase_glow.visible, "spending wallet clears purchase glow")
 	_check(not speed.glyph.locked, "insufficient funds do not hide an available technology")
 	_check(speed.price_label.get_theme_color("font_color") == NodeScript.PRICE_COLORS[2], "unaffordable price is subdued")
-	_check(page.get_node("%Purchase").text == "糖果不足" and page._detail_note.text == "再攒 10 糖果即可升级", "tooltip explains insufficient funds beside the cost")
+	_check(page._detail_note.text == "再攒 10 糖果即可升级", "tooltip explains insufficient funds beside the cost")
 	await _click(speed)
 	_check(demo.run.candy == 0 and demo.run.pipe_level == 0, "unaffordable click cannot upgrade")
 	await _save_art("unaffordable")
 	await _hover(page.get_node("%Wallet") as Control)
-	_check(page._detail.visible, "inspection persists while moving to the purchase button")
+	_check(not page._detail.visible, "leaving the node closes its hover detail")
 	_check(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE, "technology page restores illustrated pointer")
 	speed.grab_focus()
 	await _settle()
@@ -322,16 +418,16 @@ func _check_pointer_placement(page: InteractivePageScript) -> void:
 		for id: String in page.TECHNOLOGIES:
 			await _hover(page._nodes[id])
 			var rect: Rect2 = page._detail.get_global_rect()
-			_check(root.get_visible_rect().encloses(rect), "fixed detail stays inside viewport")
-			_check(not rect.intersects(page._canvas.get_global_rect()), "detail never covers the tree or its links")
+			_check(root.get_visible_rect().encloses(rect), "hover detail stays inside viewport")
+			_check(not rect.has_point(page._nodes[id].get_global_rect().get_center()), "hover detail clears the pointer")
 			var motion: InputEventMouseMotion = InputEventMouseMotion.new()
 			motion.position = page._nodes[id].get_global_rect().get_center() + Vector2(3, 3)
 			motion.global_position = motion.position
 			root.push_input(motion, true)
 			await _settle()
-			_check(page._detail.get_global_rect().position.is_equal_approx(rect.position), "pointer motion does not move details")
-			await _hover(page.get_node("%Purchase") as Control)
-			_check(page._detail.visible and page.selected_key == id, "moving to purchase retains inspected technology")
+			_check(not page._detail.get_global_rect().position.is_equal_approx(rect.position), "details follow pointer motion")
+			await _hover(page._wallet)
+			_check(not page._detail.visible, "leaving the node hides its floating detail")
 		page._hide_details()
 		await _save_art("overview_quiet_%dx%d" % [resolution.x, resolution.y])
 

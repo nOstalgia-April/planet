@@ -201,6 +201,7 @@ func _check_peel_at_level(demo: DemoScript) -> void:
 
 func _check_basic_slime_nest_mucus(demo: DemoScript) -> void:
 	var area: NestMucusArea = demo._nest_mucus_areas[0]
+	area._process(2.0)
 	var nest: NestState = demo.run.get_nest(3)
 	var ground: Vector2 = nest.position - nest.position.normalized() * area.coverage_radius * 0.5
 	for level: int in range(demo.run.settings.pipe_capture_seconds.size()):

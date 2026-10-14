@@ -9,6 +9,9 @@ signal nest_changed(nest: NestState)
 signal nest_spawn_requested(species: NestState.Species)
 signal slime_requested(nest_id: int)
 signal automatic_income_received(nest_id: int, amount: int)
+signal combo_stage_completed(stage: int, bonus: int)
+signal combo_progressed
+signal combo_interrupted
 signal goal_completed
 
 @export var settings: PrototypeSettings
@@ -17,12 +20,14 @@ var candy: int = 0
 var base_value_level: int = 0
 var pipe_level: int = 0
 var net_level: int = 0
+var net_size_level: int = 0
 var net_unlocked: bool = false
 var governance_level: int = 0
 var valuable_level: int = 0
 var giant_unlocked: bool = false
 var combo_level: int = 0
-var combo_interval_level: int = 0
+var combo_stage: int = 0
+var combo_stage_candy: int = 0
 var combo_count: int = 0
 var combo_remaining: float = 0.0
 var net_cooldown_remaining: float = 0.0
@@ -39,14 +44,31 @@ var _combo_reward_remainder: int = 0
 var _nest_spawn_cooldown_remaining: float = 0.0
 var _nest_initial_delay_remaining: float = 0.0
 var _pending_nest_species: int = -1
+# Zero is an unbounded layout; finite layouts provide their site count at startup.
+var _nest_site_capacity: int = 0
 var _random: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
-func start_run(spawn_positions: Array[Vector2]) -> void:
+func start_run(spawn_positions: Array[Vector2], site_capacity: int = 0) -> void:
 	assert(settings != null, "PrototypeRun requires a PrototypeSettings resource.")
 	assert(settings.initial_nests == 2, "The opening needs two basic slime nests.")
 	assert(spawn_positions.size() >= settings.initial_nests, "The opening needs two nest sites.")
 	assert(settings.unlocked_species_weights.size() == 2)
+	assert(settings.nest_minimum_counts.size() == 3)
+	assert(site_capacity == 0 or site_capacity >= settings.initial_nests)
+	var minimum_total: int = 0
+	for species: int in range(3):
+		assert(settings.nest_minimum_counts[species] >= 0)
+		var minimum: int = settings.nest_minimum_counts[species]
+		if species == NestState.Species.DRILL:
+			minimum = mini(minimum, settings.drill_nest_limit)
+			if settings.drill_discovery_weight <= 0.0:
+				minimum = 0
+		elif species == NestState.Species.SLIME:
+			minimum = maxi(minimum, settings.initial_nests)
+		minimum_total += minimum
+	assert(site_capacity == 0 or minimum_total <= site_capacity, "Nest minima must fit the map.")
+	_nest_site_capacity = site_capacity
 	assert(settings.drill_population_limits.size() == 3)
 	assert(settings.drill_discovery_weight >= 0.0)
 	assert(settings.drill_spawn_interval > settings.spawn_interval_jitter)
@@ -79,6 +101,10 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	assert(settings.nest_population_limits.size() == settings.spawn_intervals.size())
 	assert(settings.pipe_capture_seconds.size() == settings.pipe_upgrade_costs.size() + 1)
 	assert(settings.net_capacities.size() == settings.net_upgrade_costs.size() + 1)
+	assert(settings.net_size_multipliers.size() == settings.net_size_upgrade_costs.size() + 1)
+	assert(is_equal_approx(settings.net_size_multipliers[0], 1.0))
+	for multiplier: float in settings.net_size_multipliers:
+		assert(multiplier > 0.0)
 	assert(settings.pipe_radius > 0.0)
 	assert(settings.net_radius > 0.0 and settings.net_cooldown_seconds > 0.0)
 	assert(settings.governance_upgrade_costs.size() == 2)
@@ -86,14 +112,11 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	assert(settings.automatic_income_interval > 0.0)
 	assert(settings.base_value_multipliers.size() == settings.base_value_upgrade_costs.size() + 1)
 	assert(settings.base_value_multipliers[0] == 1)
-	assert(settings.combo_reward_percentages.size() == settings.combo_upgrade_costs.size() + 1)
-	assert(settings.combo_target > 0 and settings.combo_window_seconds > 0.0)
-	assert(
-		(
-			settings.combo_interval_bonus_seconds.size()
-			== settings.combo_interval_upgrade_costs.size() + 1
-		)
-	)
+	assert(settings.combo_reward_percentages.size() == settings.combo_upgrade_costs.size())
+	assert(settings.combo_stage_targets.size() == settings.combo_upgrade_costs.size())
+	assert(settings.combo_window_seconds > 0.0)
+	for target: int in settings.combo_stage_targets:
+		assert(target > 0)
 	assert(settings.spawn_burst_ratio_min > 0.0)
 	assert(settings.spawn_burst_ratio_max >= settings.spawn_burst_ratio_min)
 	assert(settings.spawn_burst_ratio_max <= 1.0)
@@ -120,14 +143,13 @@ func start_run(spawn_positions: Array[Vector2]) -> void:
 	_combo_reward_remainder = 0
 	pipe_level = 0
 	net_level = 0
+	net_size_level = 0
 	net_unlocked = false
 	governance_level = 0
 	valuable_level = 0
 	giant_unlocked = false
 	combo_level = 0
-	combo_interval_level = 0
-	combo_count = 0
-	combo_remaining = 0.0
+	_reset_combo()
 	net_cooldown_remaining = 0.0
 	nests.clear()
 	generated_nests = 0
@@ -150,8 +172,9 @@ func advance(delta: float) -> void:
 		net_cooldown_changed.emit()
 	if combo_remaining > 0.0:
 		combo_remaining = maxf(0.0, combo_remaining - delta)
-		if combo_remaining == 0.0 and combo_count > 0:
-			combo_count = 0
+		if combo_remaining == 0.0:
+			_reset_combo()
+			combo_interrupted.emit()
 			economy_changed.emit()
 	var current_nests: Array[NestState] = nests.duplicate()
 	for nest: NestState in current_nests:
@@ -177,7 +200,8 @@ func collect_slime(
 	var capture_reward: int = (
 		get_capture_reward(nest.species) * population if reward < 0 else reward
 	)
-	candy += capture_reward + _register_manual_capture(capture_reward)
+	candy += capture_reward
+	_register_manual_capture(capture_reward)
 	nest_changed.emit(nest)
 	economy_changed.emit()
 	_check_completion()
@@ -235,6 +259,8 @@ func purchase_technology(id: String) -> bool:
 			generation_stage = 1
 		"net_capacity":
 			net_level += 1
+		"net_size":
+			net_size_level += 1
 		"cultivation":
 			governance_level = 1
 		"automation":
@@ -243,10 +269,8 @@ func purchase_technology(id: String) -> bool:
 			valuable_level += 1
 		"giant":
 			giant_unlocked = true
-		"combo_unlock", "combo_reward":
+		"combo_unlock":
 			combo_level += 1
-		"combo_interval":
-			combo_interval_level += 1
 	economy_changed.emit()
 	return true
 
@@ -318,16 +342,14 @@ func get_technology_level(id: String) -> int:
 			return 1 if net_unlocked else 0
 		"net_capacity":
 			return net_level
+		"net_size":
+			return net_size_level
 		"cultivation":
 			return 1 if governance_level >= 1 else 0
 		"automation":
 			return 1 if governance_level >= 3 else 0
 		"combo_unlock":
-			return 1 if combo_level > 0 else 0
-		"combo_reward":
 			return combo_level
-		"combo_interval":
-			return combo_interval_level
 	return -1
 
 
@@ -343,11 +365,9 @@ func get_technology_cost(id: String) -> int:
 		"automation":
 			return -1 if governance_level >= 3 else settings.governance_upgrade_costs[1]
 		"combo_unlock":
-			return -1 if combo_level > 0 else settings.combo_upgrade_costs[0]
+			return -1 if combo_level >= settings.combo_upgrade_costs.size() else settings.combo_upgrade_costs[combo_level]
 	var costs: PackedInt32Array = _get_technology_costs(id)
 	var level: int = get_technology_level(id)
-	if id == "combo_reward":
-		level = maxi(1, level)
 	if level < 0 or level >= costs.size():
 		return -1
 	return costs[level]
@@ -365,8 +385,8 @@ func get_technology_requirement(id: String) -> String:
 					return "需要吸取速率 %d 级" % (prerequisites[prerequisite] + 1)
 				"net_unlock":
 					return "需要解锁捕网"
-				"combo_unlock":
-					return "需要解锁连击"
+				"net_capacity":
+					return "需要捕网扩容满级（%d 级）" % settings.net_capacities.size()
 				"cultivation":
 					return "需要巢穴培育"
 	return ""
@@ -382,8 +402,9 @@ func get_technology_prerequisites(id: String) -> Dictionary[String, int]:
 			prerequisites["pipe"] = 1
 		"net_capacity":
 			prerequisites["net_unlock"] = 1
-		"combo_reward", "combo_interval":
-			prerequisites["combo_unlock"] = 1
+		"net_size":
+			prerequisites["net_unlock"] = 1
+			prerequisites["net_capacity"] = settings.net_upgrade_costs.size()
 		"automation", "valuable", "giant":
 			prerequisites["cultivation"] = 1
 	return prerequisites
@@ -397,7 +418,7 @@ func _resolve_technology_action(id: String) -> String:
 		"governance":
 			return "automation" if governance_level > 0 else "cultivation"
 		"combo":
-			return "combo_reward" if combo_level > 0 else "combo_unlock"
+			return "combo_unlock"
 	return id
 
 
@@ -412,16 +433,14 @@ func get_technology_description(id: String) -> String:
 			return "解锁捕网，一次捕获成群的史莱姆。"
 		"net_capacity":
 			return "让一张捕网装下更多目标，收走更大的群落。"
+		"net_size":
+			return "扩大捕网范围，网住分布更散的目标。"
 		"cultivation":
 			return "解锁巢穴培育升级，让巢穴能容纳更多怪物。"
 		"automation":
 			return "解锁巢穴的自动化改造，让糖果自己送上门。改造后持续产糖，停止产怪。"
 		"combo_unlock":
-			return "连续吸入触发连击，让后续吸取赚到额外糖果。"
-		"combo_reward":
-			return "让连击期间的每次吸取带回更多额外糖果。"
-		"combo_interval":
-			return "多留一点寻找下个目标的时间，让连击更容易接下去。"
+			return "每段 %s 秒，达标额外结算本段糖果。巨型计 1 只，按全部价值奖励；超时回到第一段，最高段完成后循环。" % String.num(get_combo_window_seconds(), 1).trim_suffix(".0")
 		"valuable":
 			return "让新生怪物中出现高价值个体，捕获它们可赚取多倍糖果。"
 		"giant":
@@ -461,34 +480,18 @@ func get_technology_gain(id: String) -> String:
 			return _upgrade_percent(
 				"捕网容量", settings.net_capacities[net_level], settings.net_capacities[next_level]
 			)
+		"net_size":
+			var next_level: int = mini(net_size_level + 1, settings.net_size_multipliers.size() - 1)
+			return _upgrade_percent(
+				"捕网半径",
+				settings.net_size_multipliers[net_size_level],
+				settings.net_size_multipliers[next_level]
+			)
 		"combo_unlock":
-			return (
-				"连吸 %d 次后收益 +%d%%\n续接时间 %s 秒"
-				% [
-					settings.combo_target,
-					settings.combo_reward_percentages[maxi(1, combo_level)],
-					String.num(get_combo_window_seconds(), 1).trim_suffix(".0")
-				]
-			)
-		"combo_reward":
-			var current_level: int = maxi(1, combo_level)
-			var next_level: int = mini(
-				current_level + 1, settings.combo_reward_percentages.size() - 1
-			)
-			return _upgrade_percent(
-				"连击总收益",
-				100 + settings.combo_reward_percentages[current_level],
-				100 + settings.combo_reward_percentages[next_level]
-			)
-		"combo_interval":
-			var next_level: int = mini(
-				combo_interval_level + 1, settings.combo_interval_bonus_seconds.size() - 1
-			)
-			return _upgrade_percent(
-				"连击续接时间",
-				get_combo_window_seconds(),
-				settings.combo_window_seconds + settings.combo_interval_bonus_seconds[next_level]
-			)
+			var stage: int = mini(combo_level, settings.combo_stage_targets.size() - 1)
+			return "第 %d 段 · %d 只 → 额外 +%d%%" % [
+				stage + 1, settings.combo_stage_targets[stage], settings.combo_reward_percentages[stage]
+			]
 		"valuable":
 			return "高价值个体收益 ×%d" % settings.valuable_reward_multiplier
 	return ""
@@ -513,7 +516,7 @@ func get_nest_upgrade_requirement(nest_id: int) -> String:
 		nest.level == settings.nest_upgrade_costs.size() - 1
 		and get_technology_level("automation") == 0
 	):
-		return "先研究完全自动化"
+		return "先研究完全治理"
 	return ""
 
 
@@ -521,6 +524,12 @@ func get_pipe_upgrade_cost() -> int:
 	if pipe_level >= settings.pipe_upgrade_costs.size():
 		return -1
 	return settings.pipe_upgrade_costs[pipe_level]
+
+
+func get_net_quick_upgrade_id() -> String:
+	if not net_unlocked:
+		return "net_unlock"
+	return "net_capacity" if net_level < settings.net_upgrade_costs.size() else "net_size"
 
 
 func get_net_upgrade_cost() -> int:
@@ -574,7 +583,7 @@ func get_net_capacity() -> int:
 
 
 func get_net_radius() -> float:
-	return settings.net_radius
+	return settings.net_radius * settings.net_size_multipliers[net_size_level]
 
 
 func can_cast_net() -> bool:
@@ -644,35 +653,54 @@ func _get_technology_costs(id: String) -> PackedInt32Array:
 			return settings.pipe_upgrade_costs
 		"net_capacity":
 			return settings.net_upgrade_costs
-		"combo_reward":
-			return settings.combo_upgrade_costs
-		"combo_interval":
-			return settings.combo_interval_upgrade_costs
+		"net_size":
+			return settings.net_size_upgrade_costs
 	return PackedInt32Array()
 
 
 func get_combo_window_seconds() -> float:
-	return (
-		settings.combo_window_seconds + settings.combo_interval_bonus_seconds[combo_interval_level]
-	)
+	return settings.combo_window_seconds
+
+
+func get_combo_target() -> int:
+	return settings.combo_stage_targets[combo_stage]
 
 
 func get_combo_reward_percent() -> int:
-	return settings.combo_reward_percentages[combo_level]
+	return settings.combo_reward_percentages[combo_stage] if combo_level > 0 else 0
 
 
-func _register_manual_capture(reward: int) -> int:
+func _reset_combo() -> void:
+	combo_stage = 0
+	combo_count = 0
+	combo_stage_candy = 0
+	combo_remaining = 0.0
+
+
+func _register_manual_capture(reward: int) -> void:
 	if combo_level == 0:
-		return 0
-	combo_remaining = get_combo_window_seconds()
+		return
+	if combo_remaining <= 0.0:
+		combo_remaining = get_combo_window_seconds()
 	combo_count += 1
-	if combo_count <= settings.combo_target:
-		return 0
-	_combo_reward_remainder += reward * get_combo_reward_percent()
+	combo_stage_candy += reward
+	combo_progressed.emit()
+	if combo_count < get_combo_target():
+		return
+	_combo_reward_remainder += combo_stage_candy * get_combo_reward_percent()
 	@warning_ignore("integer_division")
 	var bonus: int = _combo_reward_remainder / 100
 	_combo_reward_remainder %= 100
-	return bonus
+	candy += bonus
+	var completed_stage: int = combo_stage
+	if combo_stage + 1 >= combo_level:
+		_reset_combo()
+	else:
+		combo_stage += 1
+		combo_count = 0
+		combo_stage_candy = 0
+		combo_remaining = get_combo_window_seconds()
+	combo_stage_completed.emit(completed_stage + 1, bonus)
 
 
 func _advance_nest_population(nest: NestState, delta: float) -> void:
@@ -805,6 +833,8 @@ func _advance_nest_roll(delta: float) -> void:
 		_nest_spawn_cooldown_remaining = 0.0
 		_nest_initial_delay_remaining = 0.0
 		return
+	if _nest_site_capacity > 0 and nests.size() >= _nest_site_capacity:
+		return
 	var remaining_delta: float = delta
 	if _nest_initial_delay_remaining > 0.0:
 		var delay_step: float = minf(remaining_delta, _nest_initial_delay_remaining)
@@ -838,32 +868,41 @@ func _advance_nest_roll(delta: float) -> void:
 
 
 func _choose_spawn_species() -> int:
-	# Count actual placements, including opening and automated nests. Failed sites
-	# consume no quota. Fill the largest deficit against the next nest's target mix.
+	# Opening and automated nests occupy sites and count toward the minimum.
 	var weights: PackedFloat32Array = settings.unlocked_species_weights.duplicate()
 	weights.append(get_drill_discovery_weight())
 	var counts: PackedInt32Array = PackedInt32Array([0, 0, 0])
 	for nest: NestState in nests:
 		counts[nest.species] += 1
-	var total_weight: float = 0.0
-	var eligible_count: int = 0
+	var deficits: PackedInt32Array = PackedInt32Array([0, 0, 0])
+	var total_deficit: int = 0
 	for species: int in range(weights.size()):
 		if weights[species] > 0.0:
-			total_weight += weights[species]
-			eligible_count += counts[species]
-	var largest_deficit: float = -INF
-	var candidates: Array[int] = []
+			var minimum: int = settings.nest_minimum_counts[species]
+			if species == NestState.Species.DRILL:
+				minimum = mini(minimum, settings.drill_nest_limit)
+			deficits[species] = maxi(0, minimum - counts[species])
+			total_deficit += deficits[species]
+	var reserve_sites: bool = (
+		_nest_site_capacity > 0
+		and _nest_site_capacity - nests.size() <= total_deficit
+	)
+	var total_weight: float = 0.0
+	for species: int in range(weights.size()):
+		if reserve_sites and deficits[species] == 0:
+			weights[species] = 0.0
+		total_weight += weights[species]
+	assert(total_weight > 0.0, "Discovery needs an eligible species and a free site.")
+	var roll: float = _random.randf() * total_weight
+	var last_eligible: int = NestState.Species.SLIME
 	for species: int in range(weights.size()):
 		if weights[species] <= 0.0:
 			continue
-		var target: float = float(eligible_count + 1) * weights[species] / total_weight
-		var deficit: float = target - counts[species]
-		if is_equal_approx(deficit, largest_deficit):
-			candidates.append(species)
-		elif deficit > largest_deficit:
-			largest_deficit = deficit
-			candidates.assign([species])
-	return candidates[_random.randi_range(0, candidates.size() - 1)]
+		last_eligible = species
+		roll -= weights[species]
+		if roll < 0.0:
+			return species
+	return last_eligible
 
 
 func can_discover_drill_nest() -> bool:

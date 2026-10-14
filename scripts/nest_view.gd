@@ -2,9 +2,11 @@ class_name NestView
 extends Node2D
 
 signal flower_appeared(nest_id: int, species: int)
+signal production_released(nest_id: int, amount: int)
 
 const SurfaceProjection = preload("res://scripts/surface_projection.gd")
 const NestArt = preload("res://scripts/nest_art.gd")
+const FlowerProduction = preload("res://scripts/flower_production_effect.gd")
 
 @export_group("场景显示")
 @export var outline_color: Color = Color("454944")
@@ -33,6 +35,7 @@ var _ground_rect: Rect2
 
 @onready var _selection_shape: CollisionShape2D = $SelectionArea/CollisionShape2D
 @onready var _art: NestArt = $NestArt
+@onready var _production: FlowerProduction = $ProductionEffect
 @onready var _emergence_dust: CPUParticles2D = $EmergenceDust
 
 
@@ -41,6 +44,8 @@ func _ready() -> void:
 	_selection_shape.shape = _selection_shape.shape.duplicate()
 	_art.bounds_changed.connect(_refresh_art)
 	_art.flower_appeared.connect(_on_flower_appeared)
+	_art.production_started.connect(_production.play)
+	_production.released.connect(_on_production_released)
 	_refresh_art()
 
 
@@ -79,8 +84,17 @@ func update_state(level: int, tamed: bool, max_level: int, animate: bool = true)
 	_refresh_art()
 
 
-func pulse_automatic() -> void:
-	_art.play_production()
+func pulse_automatic(amount: int = 0) -> void:
+	_art.play_production(amount)
+
+
+func _on_production_released(amount: int) -> void:
+	production_released.emit(nest_id, amount)
+
+
+func get_production_point() -> Vector2:
+	var tip: Vector2 = Vector2(_art_rect.get_center().x, _art_rect.position.y)
+	return transform * _art.transform * tip
 
 
 func pulse_spawn() -> void:

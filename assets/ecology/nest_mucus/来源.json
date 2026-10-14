@@ -1,0 +1,211 @@
+{
+  "source_rotation": -0.3,
+  "anchors": [
+    [
+      437.3028387040106,
+      -84.6950039971414
+    ],
+    [
+      423.545575356829,
+      -87.1763006586203
+    ],
+    [
+      447.393519497161,
+      -88.90106275954173
+    ]
+  ],
+  "widths": [
+    757.070302077188,
+    819.8065734227216,
+    802.1720793011344
+  ],
+  "frames": [
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\1（6帧\\未命名作品-1.png",
+      "sha256": "be43ea530591ba91baa112f94f867a0891b39d06cb76257eb0a72ade95fed320",
+      "destination": "assets/ecology/nest_mucus/variant_1_01.png",
+      "crop": [
+        112,
+        77,
+        881,
+        512
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\1（6帧\\未命名作品-2.png",
+      "sha256": "db688683ec9a7981ccdd5a27012bf00b7d3c9eaa160bc9db00b2aedf209c3a46",
+      "destination": "assets/ecology/nest_mucus/variant_1_02.png",
+      "crop": [
+        112,
+        77,
+        881,
+        512
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\1（6帧\\未命名作品-3.png",
+      "sha256": "92588da266f150061f99f01d7174d7645684f682c7fec8c8ae9a9ffc432eaa3a",
+      "destination": "assets/ecology/nest_mucus/variant_1_03.png",
+      "crop": [
+        112,
+        77,
+        881,
+        512
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\1（6帧\\未命名作品-4.png",
+      "sha256": "d7bdecab1aa1333699343676d79afff88e0205c0bc285ba613749ea758c11793",
+      "destination": "assets/ecology/nest_mucus/variant_1_04.png",
+      "crop": [
+        112,
+        77,
+        881,
+        512
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\1（6帧\\未命名作品-5.png",
+      "sha256": "3b11743352eb46ed738cf759c63b51bf94fe69ffacf5c2dd174477f611aa5dc1",
+      "destination": "assets/ecology/nest_mucus/variant_1_05.png",
+      "crop": [
+        112,
+        77,
+        881,
+        512
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\1（6帧\\未命名作品-6.png",
+      "sha256": "7c163f93e17013a9513c3cfc2b26260e19fde53e1cf3e659e94e50fff3d49166",
+      "destination": "assets/ecology/nest_mucus/variant_1_06.png",
+      "crop": [
+        112,
+        77,
+        881,
+        512
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\1（6帧\\未命名作品-7.png",
+      "sha256": "86f0080e098bed8dd768d3475cc387ea92872d1d961b05b071f2286f02888d7d",
+      "destination": "assets/ecology/nest_mucus/variant_1_07.png",
+      "crop": [
+        112,
+        77,
+        881,
+        512
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\第二种（6帧\\未命名作品-1.png",
+      "sha256": "1e85ed2bb57e0d5d8d76e1270b7e77954930966e021d087008c55f81a594e539",
+      "destination": "assets/ecology/nest_mucus/variant_2_01.png",
+      "crop": [
+        73,
+        16,
+        885,
+        390
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\第二种（6帧\\未命名作品-2.png",
+      "sha256": "2c4906ae98f33811d8245da7613a07ed8571712104acbedc72034654244748a2",
+      "destination": "assets/ecology/nest_mucus/variant_2_02.png",
+      "crop": [
+        73,
+        16,
+        885,
+        390
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\第二种（6帧\\未命名作品-3.png",
+      "sha256": "7242f876e744598a56e7e42bcf2bf61f4db9dcb2cc8d2c034580f0d58f502a60",
+      "destination": "assets/ecology/nest_mucus/variant_2_03.png",
+      "crop": [
+        73,
+        16,
+        885,
+        390
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\第二种（6帧\\未命名作品-4.png",
+      "sha256": "47dc99356a5e30697d0414224af9c5b637e56c888fe17d1c3cdf25b16878ae1f",
+      "destination": "assets/ecology/nest_mucus/variant_2_04.png",
+      "crop": [
+        73,
+        16,
+        885,
+        390
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\第二种（6帧\\未命名作品-5.png",
+      "sha256": "50f4ca1537feb4065888587959daf1ef251558c285dd6d470bd08867611613c9",
+      "destination": "assets/ecology/nest_mucus/variant_2_05.png",
+      "crop": [
+        73,
+        16,
+        885,
+        390
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\第三种（6帧\\未命名作品-1.png",
+      "sha256": "69bcfa43fd4d7676edcb1634bff89e06ab278af8327144582335db8f7d28b1bf",
+      "destination": "assets/ecology/nest_mucus/variant_3_01.png",
+      "crop": [
+        110,
+        41,
+        931,
+        421
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\第三种（6帧\\未命名作品-2.png",
+      "sha256": "a40dbe8c26aac6b230c8f175dc4e6e45c5c3ebb5abe1a947847531f6a0804f89",
+      "destination": "assets/ecology/nest_mucus/variant_3_02.png",
+      "crop": [
+        110,
+        41,
+        931,
+        421
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\第三种（6帧\\未命名作品-3.png",
+      "sha256": "6d63da7a8adb35c8f50bca8530b512ea8d79896cae434b4368599c413b76d377",
+      "destination": "assets/ecology/nest_mucus/variant_3_03.png",
+      "crop": [
+        110,
+        41,
+        931,
+        421
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\第三种（6帧\\未命名作品-4.png",
+      "sha256": "2bf7877691893d4b4f3404cf39d7125d66cd82ec8dee935c3bc76a74333518fd",
+      "destination": "assets/ecology/nest_mucus/variant_3_04.png",
+      "crop": [
+        110,
+        41,
+        931,
+        421
+      ]
+    },
+    {
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\粘液粘液\\粘液粘液\\第三种（6帧\\未命名作品-5.png",
+      "sha256": "a6e2716c47f7997cf68267e276198dbd04b11b89b5f557d56c402b85b427da35",
+      "destination": "assets/ecology/nest_mucus/variant_3_05.png",
+      "crop": [
+        110,
+        41,
+        931,
+        421
+      ]
+    }
+  ]
+}

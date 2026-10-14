@@ -1,7 +1,25 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://c1pcr0lfgmgs0"]
 
-[ext_resource type="PackedScene" path="res://features/场景预览/近景游玩预览.tscn" id="1"]
-[ext_resource type="Script" path="res://features/nest_discovery_preview/nest_discovery_preview.gd" id="2"]
+[ext_resource type="PackedScene" uid="uid://c2d6w6pxeuir6" path="res://features/场景预览/近景游玩预览.tscn" id="1"]
+[ext_resource type="Script" uid="uid://clrjll227nemj" path="res://features/nest_discovery_preview/nest_discovery_preview.gd" id="2"]
 
-[node name="NestDiscoveryPreview" instance=ExtResource("1")]
+[node name="NestDiscoveryPreview" unique_id=311213296 instance=ExtResource("1")]
 script = ExtResource("2")
+preview_species = 1
+preview_from_overview = false
+
+[node name="星球画面" parent="World/PlanetSurface" index="0" unique_id=1645310864]
+overview_center_uv = Vector2(0.495104, 0.510278)
+overview_radius_width_ratio = 0.19375
+overview_heading_degrees = 90.0
+blend_start_zoom = 0.28
+blend_end_zoom = 0.02
+
+[node name="ToolDock" parent="HUD/Interface" index="3"]
+anchors_preset = 0
+
+[node name="ViewShortcut" parent="HUD/Interface" index="4"]
+anchors_preset = 0
+
+[node name="GameMenu" parent="HUD/Interface" index="8"]
+layout_mode = 1
