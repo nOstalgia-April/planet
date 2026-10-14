@@ -24,7 +24,7 @@ const ViewGestureFilter = preload("res://scripts/view_gesture_filter.gd")
 # Music stages drive the global FMOD parameter GameStage (0 / 1 / 2); its Seek
 # modulator in FMOD turns each step into a crossfade between the music layers.
 const MUSIC_STAGE_PARAMETER: String = "GameStage"
-const GAMEPLAY_MUSIC: String = "event:/Mx_GamePlay"
+const GAMEPLAY_MUSIC: String = "event:/Mx/Mx_GamePlay"
 # Gameplay music parameter: 0 in the near view (stems A + B), 1 in the
 # overview (stems A + C). It follows the camera zoom continuously.
 const MUSIC_DISTANT_VIEW_PARAMETER: String = "IsDistantView"
@@ -247,6 +247,7 @@ func _start_net(pointer: Vector2) -> void:
 		direction = Vector2.UP
 	_net_origin = direction * (_planet.radius + 80.0)
 	_net.show_cast(_net_origin, run.get_net_radius(), 0.0)
+	_monster_audio.net_cast()
 
 
 func _advance_net(delta: float) -> void:
@@ -306,11 +307,15 @@ func _resolve_net() -> void:
 	var source_ids: Array[int] = []
 	var rewards: Array[int] = []
 	var populations: Array[int] = []
+	var caught_monsters: int = 0
+	var caught_golden: bool = false
 	for index: int in range(caught_count):
 		var slime: PrototypeSlime = candidates[index]
 		source_ids.append(slime.nest_id)
 		rewards.append(slime.reward)
 		populations.append(slime.population_units)
+		caught_monsters += slime.population_units
+		caught_golden = caught_golden or slime.high_value
 		_slimes.erase(slime)
 		_capture_targets.erase(slime)
 		slime.consumed = true
@@ -319,10 +324,14 @@ func _resolve_net() -> void:
 		slime.queue_free()
 	var reward: int = run.collect_net_batch(source_ids, rewards, populations)
 	_net_caught_count = caught_count
+	if caught_count > 0:
+		_monster_audio.net_captured()
+	if caught_golden:
+		_monster_audio.golden_collected()
 	if reward > 0:
 		_play_collection_reward(reward, _net_anchor)
 		if _monster_audio.is_ready():
-			_monster_audio.candy_from_net()
+			_monster_audio.candy_from_net(reward, caught_monsters)
 		else:
 			_collect_sound.pitch_scale = 0.75
 			_collect_sound.play()
@@ -684,6 +693,8 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 	_vacuum_audio.update(delta, nearest != null, active and _is_on_ground_mucus(target))
 	_pipe.set_capture_engaged(nearest != null and nearest.species != PrototypeSlime.Species.DRILL)
 	if nearest == null:
+		_vacuum_audio.update_loading(null, 0.0)
+		_vacuum_audio.update_peel(null, 0.0)
 		_stop_giant_harvest()
 		return
 	_capture_targets.append(nearest)
@@ -693,10 +704,18 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 	var peel_seconds: float = nearest.get_capture_seconds(base_seconds)
 	if nearest.is_anchored():
 		capture_delta = maxf(0.0, delta - (1.0 - nearest.peel_progress) * peel_seconds)
+	var was_anchored: bool = nearest.is_anchored()
 	if not nearest.pull_off_mucus(delta, target, peel_seconds):
+		_vacuum_audio.update_loading(null, 0.0)
+		_vacuum_audio.update_peel(nearest, nearest.peel_progress)
 		return
+	if was_anchored:
+		_vacuum_audio.peel_snapped()
+	else:
+		_vacuum_audio.update_peel(null, 0.0)
 	var previous_capture_progress: float = nearest.capture_progress
 	var completed: bool = nearest.apply_capture(capture_delta, base_seconds, target)
+	_vacuum_audio.update_loading(null if completed else nearest, nearest.capture_progress)
 	if nearest.population_units > 1:
 		_update_giant_harvest(nearest, previous_capture_progress)
 	if not completed:
@@ -707,14 +726,17 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 		nearest.nest_id, nearest.reward, nearest.population_units, nearest.high_value
 	)
 	assert(accepted, "Collected monster must belong to its source population.")
+	var candy_gained: int = run.candy - before
+	if nearest.high_value:
+		_monster_audio.golden_collected()
 	if nearest.species == PrototypeSlime.Species.DRILL:
-		_play_drill_treasure(run.candy - before, nearest.get_capture_point())
+		_play_drill_treasure(candy_gained, nearest.get_capture_point())
 	else:
 		_pipe.show_capture_skin(
 			nearest.species, run.combo_count >= run.settings.combo_target and run.combo_remaining > 0.0
 		)
 		_pipe.play_capture()
-		_play_collection_reward(run.candy - before, nearest.get_capture_point(), nearest.body_color)
+		_play_collection_reward(candy_gained, nearest.get_capture_point(), nearest.body_color)
 	_pipe.set_capture_engaged(false)
 	_capture_targets.clear()
 	_slimes.erase(nearest)
@@ -722,7 +744,9 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 	nearest.set_process(false)
 	nearest.queue_free()
 	if _monster_audio.is_ready():
-		_monster_audio.monster_sucked(run.combo_count)
+		_monster_audio.monster_sucked(
+			run.combo_count, candy_gained, nearest.population_units
+		)
 	else:
 		_collect_sound.pitch_scale = randf_range(0.92, 1.12)
 		_collect_sound.play()
@@ -1277,11 +1301,14 @@ func _on_tool_upgrade() -> void:
 func _on_nest_upgrade() -> void:
 	if run.upgrade_nest(selected_nest_id):
 		var nest: NestState = run.get_nest(selected_nest_id)
+		var fmod_played: bool = _monster_audio.nest_leveled_up(nest.level)
 		if nest.is_tamed:
-			_tame_sound.play()
+			if not fmod_played:
+				_tame_sound.play()
 			_show_status("巢穴已自动产糖")
 		else:
-			_upgrade_sound.play()
+			if not fmod_played:
+				_upgrade_sound.play()
 			_show_status("巢穴 · %s" % ["野生", "培育中", "强化培育"][nest.level])
 
 

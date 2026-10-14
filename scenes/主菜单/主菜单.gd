@@ -14,7 +14,7 @@ func _ready() -> void:
 	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 	get_viewport().size_changed.connect(_fit_canvas)
 	_fit_canvas()
-	GameAudio.play_music("event:/Mx_MainMenu")
+	GameAudio.play_music("event:/Mx/Mx_MainMenu")
 	set_process(false)
 
 
@@ -28,7 +28,7 @@ func _start() -> void:
 	if not _loading_scene.is_empty():
 		return
 	# The gameplay music is prepared now and enters as the transition fades.
-	GameAudio.play_transition("event:/GameStart_Transition", "event:/Mx_GamePlay")
+	GameAudio.play_transition("event:/GameStart_Transition", "event:/Mx/Mx_GamePlay")
 	# Load in the background so the main thread keeps running and the music
 	# handoff stays on time; the menu ignores input until the scene is ready.
 	if ResourceLoader.load_threaded_request(start_scene) != OK:

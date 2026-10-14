@@ -210,7 +210,7 @@ func _run() -> void:
 		get_tree().current_scene.scene_file_path == "res://scenes/主菜单/主菜单.tscn",
 		"confirmed menu action changes scene"
 	)
-	_check(GameAudio._music_path == "event:/Mx_MainMenu", "main menu music starts")
+	_check(GameAudio._music_path == "event:/Mx/Mx_MainMenu", "main menu music starts")
 	get_tree().current_scene.queue_free()
 	get_tree().current_scene = null
 	await _settle()

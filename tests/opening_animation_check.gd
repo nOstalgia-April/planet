@@ -30,11 +30,15 @@ func _run() -> void:
 	assert(clip.loop_mode == Animation.LOOP_NONE)
 	assert(clip.track_get_key_count(0) == 59)
 	assert(audio._music_path.is_empty(), "菜单音乐应在动画结束后开始。")
+	# The intro holds its first frame (speed 0) until the opening sound is playing.
+	# This check drives the animation by hand, so it releases that hold first.
+	intro.set_process(false)
+	player.speed_scale = 1.0
 	if "--natural" in OS.get_cmdline_user_args():
 		var started_at: int = Time.get_ticks_msec()
 		await _tree.scene_changed
 		assert(_tree.current_scene is Menu)
-		assert(audio._music_path == "event:/Mx_MainMenu")
+		assert(audio._music_path == "event:/Mx/Mx_MainMenu")
 		var duration: float = float(Time.get_ticks_msec() - started_at) / 1000.0
 		assert(absf(duration - clip.length) < 1.0, "正常播放必须按实际时长结束。")
 		print("PASS: natural opening playback entered the menu after %.2f seconds." % duration)
@@ -64,7 +68,7 @@ func _run() -> void:
 	player.advance(0.02)
 	await _tree.scene_changed
 	assert(_tree.current_scene is Menu, "播放结束必须自动进入原主菜单。")
-	assert(audio._music_path == "event:/Mx_MainMenu")
+	assert(audio._music_path == "event:/Mx/Mx_MainMenu")
 	if "--capture" in OS.get_cmdline_user_args():
 		await _capture("menu")
 	var menu: Menu = _tree.current_scene as Menu

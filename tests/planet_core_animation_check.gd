@@ -38,8 +38,8 @@ func _run() -> void:
 	get_tree().current_scene = game
 	game._window_has_focus = true
 	var live_core: Core = game.get_node("World/PlanetSurface/星球画面/星球核心") as Core
-	assert(GameAudio._music_path == "event:/Mx_GamePlay")
-	assert(GameAudio.get_music_position_seconds("event:/Mx_MainMenu") == -1.0)
+	assert(GameAudio._music_path == "event:/Mx/Mx_GamePlay")
+	assert(GameAudio.get_music_position_seconds("event:/Mx/Mx_MainMenu") == -1.0)
 	await get_tree().create_timer(0.3).timeout
 	var music: FmodEvent = GameAudio._music
 	assert(music != null and music.is_valid())
@@ -48,7 +48,7 @@ func _run() -> void:
 		music.set_timeline_position(int(seconds * 1000.0))
 		FmodServer.update()
 		await get_tree().create_timer(0.08).timeout
-		var position: float = GameAudio.get_music_position_seconds("event:/Mx_GamePlay")
+		var position: float = GameAudio.get_music_position_seconds("event:/Mx/Mx_GamePlay")
 		assert(absf(position - seconds) < 0.1, "FMOD exposes the requested timeline position.")
 		await _wait_music_frame(live_core, int(floor(position * live_core.frames_per_second)))
 	var held_frame: int = live_core.current_frame
@@ -71,7 +71,7 @@ func _run() -> void:
 	music.set_paused(true)
 	FmodServer.update()
 	await get_tree().create_timer(0.08).timeout
-	var loop_position: float = GameAudio.get_music_position_seconds("event:/Mx_GamePlay")
+	var loop_position: float = GameAudio.get_music_position_seconds("event:/Mx/Mx_GamePlay")
 	assert(loop_position >= 0.0 and loop_position < 1.0, "The actual BGM must loop back.")
 	await _wait_music_frame(live_core, int(floor(loop_position * live_core.frames_per_second)))
 	if "--capture" in OS.get_cmdline_user_args():
@@ -79,8 +79,8 @@ func _run() -> void:
 	get_tree().current_scene = null
 	game.queue_free()
 	await get_tree().process_frame
-	GameAudio.play_music("event:/Mx_MainMenu")
-	assert(GameAudio.get_music_position_seconds("event:/Mx_GamePlay") == -1.0)
+	GameAudio.play_music("event:/Mx/Mx_MainMenu")
+	assert(GameAudio.get_music_position_seconds("event:/Mx/Mx_GamePlay") == -1.0)
 	print(
 		"PASS: all 46 pages, bounded cache, frame boundaries, final hold, backward/loop seek, FMOD pause and scene exit."
 	)

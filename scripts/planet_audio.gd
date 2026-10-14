@@ -6,8 +6,8 @@ extends Node
 # camera starts an animated switch between the near view and the overview.
 
 const ROTATE_EVENT: String = "event:/Earth_Rotate"
-const ZOOM_IN_EVENT: String = "event:/ZoomIn"
-const ZOOM_OUT_EVENT: String = "event:/ZoomOut"
+const ZOOM_IN_EVENT: String = "event:/UI/ZoomIn"
+const ZOOM_OUT_EVENT: String = "event:/UI/ZoomOut"
 
 # Mouse motion does not arrive every frame, so the planet counts as still only
 # after this long without turning.

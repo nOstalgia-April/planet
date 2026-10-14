@@ -24,8 +24,17 @@ const SPECIES_EVENTS: Dictionary = {
 }
 const SUCK_UP_EVENT: String = "event:/SuckUp_Pop"
 const CANDY_EVENT: String = "event:/Candy_Acquire"
-const NET_CANDY_EVENT: String = "event:/Candy_Nest"
+const NET_CAST_EVENT: String = "event:/Net_Cast"
+const GOLDEN_EVENT: String = "event:/Golden_Mon"
+const NET_CAPTURE_EVENT: String = "event:/Net_Capture"
+# Indexed by the nest's new level - 1; the last one is the upgrade that tames it.
+const NEST_LEVEL_UP_EVENTS: PackedStringArray = [
+	"event:/Nest_Lvlup_Stage01",
+	"event:/Nest_Lvlup_Stage02",
+	"event:/Nest_Lvlup_Stage03",
+]
 const CANDY_COMBO_PARAMETER: String = "Candy_Combo"
+const CANDY_VALUE_PARAMETER: String = "Candy_Value"
 const COMBO_FOR_MAX_PITCH: int = 10
 
 # Random chatter per species: each monster on the surface adds this many calls
@@ -46,7 +55,29 @@ const COMBO_FOR_MAX_PITCH: int = 10
 @export_range(0.0, 0.2, 0.01) var trigger_min_gap_seconds: float = 0.05
 @export_range(0.05, 1.0, 0.05) var trigger_max_delay_seconds: float = 0.3
 
+# Candy payouts play Candy_Acquire once per monster caught, so a giant (worth
+# several monsters) or a full net plays a run: the first right away, then gaps
+# starting at candy_first_gap_seconds and shrinking by candy_gap_decay down to
+# candy_min_gap_seconds, each voice candy_volume_decay quieter than the last.
+# candy_max_voices caps the voices waiting at once across all payouts.
+@export_range(1, 64, 1) var candy_max_voices: int = 12
+# After SuckUp_Pop, the pipe's candy run starts this much later; net payouts
+# have no pop and start right away.
+@export_range(0.0, 1.0, 0.01) var candy_after_pop_seconds: float = 0.15
+@export_range(0.02, 1.0, 0.01) var candy_first_gap_seconds: float = 0.15
+@export_range(0.5, 1.0, 0.01) var candy_gap_decay: float = 0.85
+@export_range(0.02, 0.5, 0.01) var candy_min_gap_seconds: float = 0.05
+@export_range(0.5, 1.0, 0.01) var candy_volume_decay: float = 0.94
+# Candy per monster that maps to the top of the Candy_Value parameter; the
+# mapping is logarithmic, so 1 candy is the bottom and this value the top.
+@export_range(2, 10000, 1) var candy_value_full: int = 250
+
 var _ready_to_play: bool = false
+# Checked apart from _ready_to_play so a bank without these newer events keeps
+# the older monster sounds working.
+var _net_events_ready: bool = false
+var _nest_level_up_ready: bool = false
+var _golden_ready: bool = false
 var _chatter_cooldowns: Dictionary = {}
 var _clock: float = 0.0
 # species -> monsters spawned since the last frame.
@@ -56,14 +87,24 @@ var _scheduled_triggers: Array[Dictionary] = []
 # Play times of recent Trigger voices, oldest first, for the global cap.
 var _recent_triggers: Array[float] = []
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+# Candy voices waiting to play: {"time", "combo", "value", "volume"}, by time.
+var _scheduled_candy: Array[Dictionary] = []
+# Candy_Value's range on Candy_Acquire; empty until FMOD defines the parameter.
+var _candy_value_range: Vector2 = Vector2.ZERO
+var _has_candy_value: bool = false
 
 
 func _ready() -> void:
-	var event_paths: PackedStringArray = [SUCK_UP_EVENT, CANDY_EVENT, NET_CANDY_EVENT]
+	var event_paths: PackedStringArray = [SUCK_UP_EVENT, CANDY_EVENT]
 	for events: Dictionary in SPECIES_EVENTS.values():
 		for event_path: String in events.values():
 			event_paths.append(event_path)
 	_ready_to_play = GameAudio.has_events(event_paths)
+	_net_events_ready = GameAudio.has_events([NET_CAST_EVENT, NET_CAPTURE_EVENT])
+	_nest_level_up_ready = GameAudio.has_events(NEST_LEVEL_UP_EVENTS)
+	_golden_ready = GameAudio.has_events([GOLDEN_EVENT])
+	if _ready_to_play:
+		_find_candy_value_parameter()
 	_rng.randomize()
 
 
@@ -87,6 +128,8 @@ func _process(delta: float) -> void:
 		_schedule_spawn_bursts()
 	if not _scheduled_triggers.is_empty():
 		_play_due_triggers()
+	if not _scheduled_candy.is_empty():
+		_play_due_candy()
 
 
 func _schedule_spawn_bursts() -> void:
@@ -129,19 +172,96 @@ func _play_due_triggers() -> void:
 
 
 # A monster was sucked up by the pipe: the pop and its candy sound together.
-# The candy pitch rises with the combo and peaks at 10.
-func monster_sucked(combo_count: int) -> void:
+# The candy pitch rises with the combo and peaks at 10. A giant counts as the
+# number of monsters it is worth.
+func monster_sucked(combo_count: int, candy: int, monsters: int = 1) -> void:
 	if not _ready_to_play:
 		return
 	GameAudio.play(SUCK_UP_EVENT)
-	var combo: float = clampf(float(combo_count) / COMBO_FOR_MAX_PITCH, 0.0, 1.0)
-	GameAudio.play(CANDY_EVENT, {CANDY_COMBO_PARAMETER: combo})
+	_queue_candy(
+		monsters,
+		candy,
+		clampf(float(combo_count) / COMBO_FOR_MAX_PITCH, 0.0, 1.0),
+		candy_after_pop_seconds
+	)
 
 
-# A net catch paid out candy.
-func candy_from_net() -> void:
+# A net catch paid out candy. The net never builds a combo.
+func candy_from_net(candy: int, monsters: int) -> void:
 	if _ready_to_play:
-		GameAudio.play(NET_CANDY_EVENT)
+		_queue_candy(monsters, candy, 0.0)
+
+
+func _queue_candy(monsters: int, candy: int, combo: float, delay: float = 0.0) -> void:
+	if candy <= 0 or monsters <= 0:
+		return
+	var voices: int = mini(monsters, candy_max_voices - _scheduled_candy.size())
+	var value: float = _candy_value(float(candy) / monsters)
+	var time: float = _clock + delay
+	var gap: float = candy_first_gap_seconds
+	var volume: float = 1.0
+	for index: int in range(voices):
+		_scheduled_candy.append({"time": time, "combo": combo, "value": value, "volume": volume})
+		time += gap
+		gap = maxf(candy_min_gap_seconds, gap * candy_gap_decay)
+		volume *= candy_volume_decay
+	_scheduled_candy.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["time"] < b["time"])
+	_play_due_candy()
+
+
+func _play_due_candy() -> void:
+	while not _scheduled_candy.is_empty() and float(_scheduled_candy[0]["time"]) <= _clock:
+		var voice: Dictionary = _scheduled_candy.pop_front()
+		var parameters: Dictionary = {CANDY_COMBO_PARAMETER: voice["combo"]}
+		if _has_candy_value:
+			parameters[CANDY_VALUE_PARAMETER] = voice["value"]
+		GameAudio.play(CANDY_EVENT, parameters, float(voice["volume"]))
+
+
+# Logarithmic: 1 candy per monster is the bottom of the range, candy_value_full
+# and above the top.
+func _candy_value(candy_per_monster: float) -> float:
+	var amount: float = clampf(
+		log(maxf(candy_per_monster, 1.0)) / log(float(candy_value_full)), 0.0, 1.0
+	)
+	return lerpf(_candy_value_range.x, _candy_value_range.y, amount)
+
+
+func _find_candy_value_parameter() -> void:
+	var description: FmodEventDescription = FmodServer.get_event(CANDY_EVENT)
+	if description == null:
+		return
+	for index: int in range(description.get_parameter_count()):
+		var parameter: FmodParameterDescription = description.get_parameter_by_index(index)
+		if parameter.get_name() == CANDY_VALUE_PARAMETER:
+			_candy_value_range = Vector2(parameter.get_minimum(), parameter.get_maximum())
+			_has_candy_value = true
+			return
+
+
+# A golden (high-value) monster was collected; once per pipe capture or net.
+func golden_collected() -> void:
+	if _golden_ready:
+		GameAudio.play(GOLDEN_EVENT)
+
+
+func net_cast() -> void:
+	if _net_events_ready:
+		GameAudio.play(NET_CAST_EVENT)
+
+
+# The net closed on at least one monster.
+func net_captured() -> void:
+	if _net_events_ready:
+		GameAudio.play(NET_CAPTURE_EVENT)
+
+
+# Returns false when the event is unavailable, so the caller can fall back.
+func nest_leveled_up(level: int) -> bool:
+	if not _nest_level_up_ready or level < 1 or level > NEST_LEVEL_UP_EVENTS.size():
+		return false
+	GameAudio.play(NEST_LEVEL_UP_EVENTS[level - 1])
+	return true
 
 
 # population: species -> number of monsters currently roaming the surface.

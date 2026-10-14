@@ -8,7 +8,7 @@ const CoreClip = preload("res://scripts/planet_core_clip.gd")
 @export var sprite: Sprite2D
 @export_range(1.0, 60.0, 0.01) var frames_per_second: float = 30.0
 @export var synchronize_music: bool = true
-@export var music_event: String = "event:/Mx_GamePlay"
+@export var music_event: String = "event:/Mx/Mx_GamePlay"
 ## Positive values advance the picture relative to the music.
 @export_range(-180.0, 180.0, 0.01) var time_offset_seconds: float = 0.0
 @export var loop_preview: bool = true

@@ -19,6 +19,7 @@ const NEAR_VIEW_PREFIXES: PackedStringArray = [
 	"event:/Slime_",
 	"event:/SuckUp_Pop",
 	"event:/Candy_",
+	"event:/Net_",
 	"event:/Drill_Crawl",
 ]
 
@@ -84,7 +85,7 @@ func _ready() -> void:
 	for bank: FmodBank in _banks:
 		for description: FmodEventDescription in bank.get_description_list():
 			var path: String = description.get_path()
-			if not path.begins_with("event:/Mx_"):
+			if not path.begins_with("event:/Mx/Mx_"):
 				_effect_descriptions.append(description)
 				_effect_is_near_view.append(_is_near_view(path))
 	_apply_preferences()
@@ -128,8 +129,25 @@ func play_now(event_path: String) -> void:
 		FmodServer.update()
 
 
+# Plays a one-shot event and returns its instance so the caller can watch its
+# timeline (for example to sync visuals). The instance is already released: it
+# finishes on its own, including its tail, even across scene changes.
+func start_event(event_path: String) -> FmodEvent:
+	if not banks_loaded or not FmodServer.check_event_path(event_path):
+		return null
+	var instance: FmodEvent = FmodServer.create_event_instance(event_path)
+	if instance == null:
+		return null
+	instance.set_volume(_effects_gain(_is_near_view(event_path)))
+	instance.start()
+	instance.release()
+	FmodServer.update()
+	return instance
+
+
 # Plays a one-shot event, optionally setting its local parameters first.
-func play(event_path: String, parameters: Dictionary = {}) -> void:
+# volume_scale lowers this one instance below the effects volume.
+func play(event_path: String, parameters: Dictionary = {}, volume_scale: float = 1.0) -> void:
 	if not banks_loaded:
 		return
 	var instance: FmodEvent = FmodServer.create_event_instance(event_path)
@@ -137,7 +155,7 @@ func play(event_path: String, parameters: Dictionary = {}) -> void:
 		return
 	for parameter_name: String in parameters:
 		instance.set_parameter_by_name(parameter_name, float(parameters[parameter_name]))
-	instance.set_volume(_effects_gain(_is_near_view(event_path)))
+	instance.set_volume(_effects_gain(_is_near_view(event_path)) * volume_scale)
 	instance.start()
 	instance.release()
 
