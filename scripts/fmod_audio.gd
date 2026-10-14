@@ -145,7 +145,7 @@ func start_event(event_path: String) -> FmodEvent:
 	return instance
 
 
-# Plays a one-shot event, optionally setting its local parameters first.
+# Plays a one-shot event, optionally setting its global or local parameters first.
 # volume_scale lowers this one instance below the effects volume.
 func play(event_path: String, parameters: Dictionary = {}, volume_scale: float = 1.0) -> void:
 	if not banks_loaded:
@@ -154,7 +154,10 @@ func play(event_path: String, parameters: Dictionary = {}, volume_scale: float =
 	if instance == null:
 		return
 	for parameter_name: String in parameters:
-		instance.set_parameter_by_name(parameter_name, float(parameters[parameter_name]))
+		if _global_parameters.has(parameter_name):
+			set_global(parameter_name, float(parameters[parameter_name]))
+		else:
+			instance.set_parameter_by_name(parameter_name, float(parameters[parameter_name]))
 	instance.set_volume(_effects_gain(_is_near_view(event_path)) * volume_scale)
 	instance.start()
 	instance.release()

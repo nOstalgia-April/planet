@@ -271,6 +271,7 @@
 
 | 日期 | 内容 |
 |---|---|
+| 2026-10-14 | 合并 `Oct14-FMOD-1` 时修正一次性音效参数设置：按 bank 定义区分全局与事件内参数，避免全局 `Candy_Value` 被按事件内参数设置时报错 |
 | 2026-10-14 | 吸管的 `Candy_Acquire` 改为在 `SuckUp_Pop` 之后 0.15 秒才响，不再同时触发 |
 | 2026-10-14 | 接入 `Vacuum/Mucus_Peel`（拔出黏液循环，`MucusPeel_Progress` 跟随拔出进度）、`Vacuum/Mucus_PeelSnap`（拔出瞬间）和 `Golden_Mon`（吸走或网到金色怪物） |
 | 2026-10-14 | 接入 `Vacuum/Vacuum_Loading`：吸入怪物时循环，`Loading_Progress` 跟随每只怪物的捕捉进度，每只怪物重新开始一次，吸完或中断时停止。`Candy_Acquire` 的 `Candy_Value` 参数已在 FMOD 里加上，游戏开始传值 |
