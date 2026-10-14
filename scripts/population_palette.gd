@@ -1,5 +1,8 @@
 extends Node
 
+# The background starts turning to another species' colors (not on reset).
+signal display_species_changed(species: int)
+
 const Settings = preload("res://scripts/population_palette_settings.gd")
 const BottomDock = preload("res://scripts/ui/bottom_dock.gd")
 const ART_SHADER: Shader = preload("res://shaders/population_art.gdshader")
@@ -78,6 +81,7 @@ func _set_display_species(species: int) -> void:
 	_display_species = species
 	_from_colors = _colors.duplicate()
 	_transition_elapsed = 0.0
+	display_species_changed.emit(species)
 
 
 func _process(delta: float) -> void:

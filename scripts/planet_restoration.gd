@@ -3,6 +3,11 @@ extends Node
 signal presentation_started
 signal presentation_finished
 signal palette_changed(progress: float)
+# The planet starts filling with a species' color: stage 1 for the first species
+# restored this run, 2 and 3 for the next ones, whatever the species order.
+signal color_fill_started(stage: int)
+# The whole scene brightens to white once every nest is automated.
+signal background_restore_started
 
 const PlanetView = preload("res://scripts/planet_view_controller.gd")
 const PlanetArt = preload("res://scripts/场景动画/双视角星球.gd")
@@ -97,6 +102,10 @@ func _start_next() -> void:
 func _set_phase(value: Phase) -> void:
 	phase = value
 	_elapsed = 0.0
+	if value == Phase.FILL:
+		color_fill_started.emit(completed_species.size() + 1)
+	elif value == Phase.BACKGROUND:
+		background_restore_started.emit()
 
 
 func _progress(duration: float) -> float:

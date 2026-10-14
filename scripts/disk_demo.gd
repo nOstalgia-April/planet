@@ -74,6 +74,8 @@ var _nest_site_jitter: float = 0.0
 var _nest_site_distance: float = 0.0
 var _vacuum_audio: VacuumAudio
 var _monster_audio: MonsterAudio
+# Combo bonus paid during the current pipe capture; kept out of Candy_Value.
+var _capture_combo_bonus: int = 0
 var _planet_audio: PlanetAudio
 var _opening_nests: bool = false
 var _population_by_species: Dictionary = {}
@@ -135,6 +137,7 @@ func _ready() -> void:
 	run.combo_stage_completed.connect(_on_combo_stage_completed)
 	run.combo_progressed.connect(_layout.pulse_combo)
 	run.combo_interrupted.connect(_layout.pulse_combo.bind(true))
+	run.combo_interrupted.connect(_monster_audio.combo_broken)
 	run.economy_changed.connect(_update_music_stage)
 	run.base_value_changed.connect(_refresh_monster_rewards)
 	run.nest_added.connect(_on_nest_added)
@@ -722,6 +725,8 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 		return
 	_stop_giant_harvest()
 	var before: int = run.candy
+	var candy_combo: float = _combo_ladder_progress()
+	_capture_combo_bonus = 0
 	var accepted: bool = run.collect_slime(
 		nearest.nest_id, nearest.reward, nearest.population_units, nearest.high_value
 	)
@@ -743,7 +748,10 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 	nearest.queue_free()
 	if _monster_audio.is_ready():
 		_monster_audio.monster_sucked(
-			run.combo_count, candy_gained, nearest.population_units
+			candy_combo,
+			candy_gained - _capture_combo_bonus,
+			nearest.population_units,
+			nearest.species == PrototypeSlime.Species.DRILL
 		)
 	else:
 		_collect_sound.pitch_scale = randf_range(0.92, 1.12)
@@ -871,7 +879,22 @@ func _refresh_overview() -> void:
 
 
 func _on_combo_stage_completed(stage: int, bonus: int) -> void:
+	_capture_combo_bonus += bonus
+	# The sound marks the stage clear itself; the burst visual may still queue.
+	_monster_audio.combo_stage_cleared(stage)
 	_pipe.play_combo_burst(stage, bonus)
+
+
+# Candy_Combo pitch: the whole combo ladder as 0-1, a quarter per stage. Read
+# before the capture registers and counting it, so the capture that clears a
+# stage sounds at that stage's top rather than after the reset.
+func _combo_ladder_progress() -> float:
+	if run.combo_level == 0:
+		return 0.0
+	var target: int = run.get_combo_target()
+	var count: int = mini(run.combo_count + 1, target)
+	var stages: float = float(run.settings.combo_stage_targets.size())
+	return clampf((run.combo_stage + float(count) / target) / stages, 0.0, 1.0)
 
 
 func _play_collection_reward(
@@ -1363,7 +1386,8 @@ func _on_goal_completed() -> void:
 
 func _show_completion() -> void:
 	_layout.close_panels()
-	_finish_sound.play()
+	if not _planet_audio.monsters_cleared():
+		_finish_sound.play()
 	_completion_title.text = "星球清扫完成"
 	_completion_detail.text = "场上所有怪物已清除。"
 	_completion.show()

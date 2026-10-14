@@ -24,6 +24,10 @@ func _run() -> void:
 	_game.set_process(false)
 	_game._view.set_process(false)
 	_game._restoration.set_process(false)
+	var fill_stages: Array[int] = []
+	_game._restoration.color_fill_started.connect(func(stage: int) -> void: fill_stages.append(stage))
+	var white_starts: Array[int] = [0]
+	_game._restoration.background_restore_started.connect(func() -> void: white_starts[0] += 1)
 	_game.run.candy = 100000
 	_game.run.purchase_technology("cultivation")
 	_game.run.purchase_technology("automation")
@@ -88,6 +92,7 @@ func _run() -> void:
 	_game._restoration._process(2.4)
 	_game._restoration._process(1.2)
 	_check(_game._restoration.completed_species == [0, 1], "queued colors present serially")
+	_check(fill_stages == [1, 2], "each color fill reports its order for the recover sound")
 	_check(
 		_game._restoration.phase == Restoration.Phase.CONFIRM, "last color has its own confirmation"
 	)
@@ -104,6 +109,7 @@ func _run() -> void:
 	_check(
 		_game._restoration.phase == Restoration.Phase.FINISH, "last fill starts final transition"
 	)
+	_check(fill_stages == [1, 2, 3], "the third color fill is recover stage 3")
 	_game._restoration._process(1.0)
 	_game._restoration._process(1.2)
 	_check(
@@ -139,6 +145,10 @@ func _run() -> void:
 		_game._restoration.phase == Restoration.Phase.BACKGROUND,
 		"all current nests automated starts the background transition without a new color"
 	)
+	_check(white_starts[0] == 1, "turning white reports once for ColorRecover_Stage3")
+	_game._sync_presentation_audio()
+	_check(GameAudio._music_ducked, "music stays ducked through the restoration presentation")
+	_check(_game._planet_audio.zoom_sounds_muted, "restoration camera moves play no zoom sound")
 	_game._restoration._process(0.5)
 	_check(
 		is_equal_approx(_game._restoration.bright_background.modulate.a, 0.5),

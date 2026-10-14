@@ -102,6 +102,12 @@ func _check_sequence_and_triggers() -> void:
 	_check(discovery.phase == Discovery.Phase.IDLE, "Opening nests do not trigger discovery.")
 	_request(NestState.Species.SLIME)
 	_check(discovery.bubble.visible, "The species cue appears before the camera moves.")
+	var new_nest: FmodEvent = _game._monster_audio._new_nest
+	_check(
+		new_nest != null and new_nest.is_valid(), "New_Nest starts with the discovery presentation."
+	)
+	_game._sync_presentation_audio()
+	_check(GameAudio._music_ducked, "Music ducks during the discovery presentation.")
 	_check(_game._view.presentation_locked, "Discovery locks camera and capture input.")
 	_game._view.zoom_steps(-1.0)
 	_game._view.begin_drag(Vector2(600, 300))

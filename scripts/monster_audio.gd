@@ -5,37 +5,45 @@ extends Node
 const SPECIES_EVENTS: Dictionary = {
 	NestState.Species.DRILL:
 	{
-		"nest_appear": "event:/Monsters/Drill_NestAppear",
+		"nest_appear": "event:/Nest/Drill_NestAppear",
 		"trigger": "event:/Monsters/DrillMon_Trigger",
 		"rand": "event:/Monsters/DrillMon_Rand",
 	},
 	NestState.Species.SLIME:
 	{
-		"nest_appear": "event:/Monsters/Slime_NestAppear",
+		"nest_appear": "event:/Nest/Slime_NestAppear",
 		"trigger": "event:/Monsters/SlimeMon_Trigger",
 		"rand": "event:/Monsters/SlimeMon_Rand",
 	},
 	NestState.Species.MUCUS:
 	{
-		"nest_appear": "event:/Monsters/Mucus_NestAppear",
+		"nest_appear": "event:/Nest/Mucus_NestAppear",
 		"trigger": "event:/Monsters/MucusMon_Trigger",
 		"rand": "event:/Monsters/MucusMon_Rand",
 	},
 }
-const SUCK_UP_EVENT: String = "event:/SuckUp_Pop"
-const CANDY_EVENT: String = "event:/Candy_Acquire"
-const NET_CAST_EVENT: String = "event:/Net_Cast"
-const GOLDEN_EVENT: String = "event:/Golden_Mon"
-const NET_CAPTURE_EVENT: String = "event:/Net_Capture"
+const SUCK_UP_EVENT: String = "event:/Vacuum/SuckUp_Pop"
+# Drill monsters play their own suck-up sound in place of SuckUp_Pop.
+const DRILL_SUCK_UP_EVENT: String = "event:/Vacuum/DrillMon_SuckUp"
+# Combo ladder: StageClear plays as each stage's burst shows (Combo_Stage 1-4);
+# Break plays when a stage times out and the ladder drops back to stage 1.
+const COMBO_CLEAR_EVENT: String = "event:/Candy/Combo_StageClear"
+const COMBO_BREAK_EVENT: String = "event:/Candy/Combo_Break"
+const COMBO_STAGE_PARAMETER: String = "Combo_Stage"
+const CANDY_EVENT: String = "event:/Candy/Candy_Acquire"
+const NET_CAST_EVENT: String = "event:/Net/Net_Cast"
+const GOLDEN_EVENT: String = "event:/Candy/Golden_Mon"
+# Plays with the new-nest presentation (slow-down, planet turn, close-up).
+const NEW_NEST_EVENT: String = "event:/New_Nest"
+const NET_CAPTURE_EVENT: String = "event:/Net/Net_Capture"
 # Indexed by the nest's new level - 1; the last one is the upgrade that tames it.
 const NEST_LEVEL_UP_EVENTS: PackedStringArray = [
-	"event:/Nest_Lvlup_Stage01",
-	"event:/Nest_Lvlup_Stage02",
-	"event:/Nest_Lvlup_Stage03",
+	"event:/Nest/Nest_Lvlup_Stage01",
+	"event:/Nest/Nest_Lvlup_Stage02",
+	"event:/Nest/Nest_Lvlup_Stage03",
 ]
 const CANDY_COMBO_PARAMETER: String = "Candy_Combo"
 const CANDY_VALUE_PARAMETER: String = "Candy_Value"
-const COMBO_FOR_MAX_PITCH: int = 10
 
 # Random chatter per species: each monster on the surface adds this many calls
 # per second on average, capped so a crowded planet does not turn into noise.
@@ -78,6 +86,14 @@ var _ready_to_play: bool = false
 var _net_events_ready: bool = false
 var _nest_level_up_ready: bool = false
 var _golden_ready: bool = false
+var _drill_suck_ready: bool = false
+var _combo_clear_ready: bool = false
+var _combo_clear_has_stage: bool = false
+var _combo_break_ready: bool = false
+# Stage clears played so far; lets checks confirm the timing without audio.
+var _combo_clear_count: int = 0
+var _new_nest_ready: bool = false
+var _new_nest: FmodEvent
 var _chatter_cooldowns: Dictionary = {}
 var _clock: float = 0.0
 # species -> monsters spawned since the last frame.
@@ -92,6 +108,9 @@ var _scheduled_candy: Array[Dictionary] = []
 # Candy_Value's range on Candy_Acquire; empty until FMOD defines the parameter.
 var _candy_value_range: Vector2 = Vector2.ZERO
 var _has_candy_value: bool = false
+# Candy_Value may be authored as a global parameter; then it is set globally
+# right before each candy voice instead of on the instance.
+var _candy_value_global: bool = false
 
 
 func _ready() -> void:
@@ -103,6 +122,13 @@ func _ready() -> void:
 	_net_events_ready = GameAudio.has_events([NET_CAST_EVENT, NET_CAPTURE_EVENT])
 	_nest_level_up_ready = GameAudio.has_events(NEST_LEVEL_UP_EVENTS)
 	_golden_ready = GameAudio.has_events([GOLDEN_EVENT])
+	_drill_suck_ready = GameAudio.has_events([DRILL_SUCK_UP_EVENT])
+	_combo_clear_ready = GameAudio.has_events([COMBO_CLEAR_EVENT])
+	_combo_clear_has_stage = (
+		_combo_clear_ready and _has_parameter(COMBO_CLEAR_EVENT, COMBO_STAGE_PARAMETER)
+	)
+	_combo_break_ready = GameAudio.has_events([COMBO_BREAK_EVENT])
+	_new_nest_ready = GameAudio.has_events([NEW_NEST_EVENT])
 	if _ready_to_play:
 		_find_candy_value_parameter()
 	_rng.randomize()
@@ -171,19 +197,29 @@ func _play_due_triggers() -> void:
 	_scheduled_triggers = waiting
 
 
-# A monster was sucked up by the pipe: the pop and its candy sound together.
-# The candy pitch rises with the combo and peaks at 10. A giant counts as the
+# A monster was sucked up by the pipe: its suck-up sound now, its candy run
+# shortly after. combo is the Candy_Combo pitch (0-1). A giant counts as the
 # number of monsters it is worth.
-func monster_sucked(combo_count: int, candy: int, monsters: int = 1) -> void:
+func monster_sucked(combo: float, candy: int, monsters: int = 1, drill: bool = false) -> void:
 	if not _ready_to_play:
 		return
-	GameAudio.play(SUCK_UP_EVENT)
-	_queue_candy(
-		monsters,
-		candy,
-		clampf(float(combo_count) / COMBO_FOR_MAX_PITCH, 0.0, 1.0),
-		candy_after_pop_seconds
-	)
+	GameAudio.play(DRILL_SUCK_UP_EVENT if drill and _drill_suck_ready else SUCK_UP_EVENT)
+	_queue_candy(monsters, candy, clampf(combo, 0.0, 1.0), candy_after_pop_seconds)
+
+
+func combo_stage_cleared(stage: int) -> void:
+	if not _combo_clear_ready:
+		return
+	var parameters: Dictionary = {}
+	if _combo_clear_has_stage:
+		parameters[COMBO_STAGE_PARAMETER] = stage
+	GameAudio.play(COMBO_CLEAR_EVENT, parameters)
+	_combo_clear_count += 1
+
+
+func combo_broken() -> void:
+	if _combo_break_ready:
+		GameAudio.play(COMBO_BREAK_EVENT)
 
 
 # A net catch paid out candy. The net never builds a combo.
@@ -213,7 +249,9 @@ func _play_due_candy() -> void:
 	while not _scheduled_candy.is_empty() and float(_scheduled_candy[0]["time"]) <= _clock:
 		var voice: Dictionary = _scheduled_candy.pop_front()
 		var parameters: Dictionary = {CANDY_COMBO_PARAMETER: voice["combo"]}
-		if _has_candy_value:
+		if _candy_value_global:
+			GameAudio.set_global(CANDY_VALUE_PARAMETER, voice["value"])
+		elif _has_candy_value:
 			parameters[CANDY_VALUE_PARAMETER] = voice["value"]
 		GameAudio.play(CANDY_EVENT, parameters, float(voice["volume"]))
 
@@ -227,7 +265,22 @@ func _candy_value(candy_per_monster: float) -> float:
 	return lerpf(_candy_value_range.x, _candy_value_range.y, amount)
 
 
+func _has_parameter(event_path: String, parameter_name: String) -> bool:
+	var description: FmodEventDescription = FmodServer.get_event(event_path)
+	if description == null:
+		return false
+	for index: int in range(description.get_parameter_count()):
+		if description.get_parameter_by_index(index).get_name() == parameter_name:
+			return true
+	return false
+
+
 func _find_candy_value_parameter() -> void:
+	for global: Dictionary in FmodServer.get_global_parameter_desc_list():
+		if global["name"] == CANDY_VALUE_PARAMETER:
+			_candy_value_range = Vector2(global["minimum"], global["maximum"])
+			_candy_value_global = true
+			return
 	var description: FmodEventDescription = FmodServer.get_event(CANDY_EVENT)
 	if description == null:
 		return
@@ -237,6 +290,24 @@ func _find_candy_value_parameter() -> void:
 			_candy_value_range = Vector2(parameter.get_minimum(), parameter.get_maximum())
 			_has_candy_value = true
 			return
+
+
+# The new-nest presentation began: the warning bubble shows and time slows.
+func new_nest_discovered() -> void:
+	if _new_nest_ready:
+		stop_new_nest()
+		_new_nest = GameAudio.start_event(NEW_NEST_EVENT)
+
+
+# Cuts the presentation sound short, e.g. on restart; it otherwise plays out.
+func stop_new_nest() -> void:
+	if _new_nest != null and _new_nest.is_valid():
+		_new_nest.stop(FmodServer.FMOD_STUDIO_STOP_ALLOWFADEOUT)
+	_new_nest = null
+
+
+func _exit_tree() -> void:
+	stop_new_nest()
 
 
 # A golden (high-value) monster was collected; once per pipe capture or net.

@@ -62,11 +62,12 @@ func _run_checks() -> void:
 			"Completed research is not unaffordable."
 		)
 		demo.run.candy = 0
-	demo._monster_audio.monster_sucked(10, 3, 1)
+	demo._monster_audio.monster_sucked(1.0, 3, 1)
 	demo._monster_audio.candy_from_net(2, 2)
 	demo._monster_audio.golden_collected()
 	_check(demo._monster_audio._golden_ready, "Golden_Mon is available.")
 	await _check_candy_bursts(demo._monster_audio)
+	_check_combo_audio(demo)
 	demo._play_collection_reward(2, Vector2.ZERO)
 	var reward_effect: CollectionEffect = (
 		demo._effects.get_child(demo._effects.get_child_count() - 1) as CollectionEffect
@@ -138,7 +139,7 @@ func _check_candy_bursts(audio: Node) -> void:
 	_check(audio._scheduled_candy.is_empty(), "Queued candy sounds finish playing.")
 	audio.candy_from_net(500, 1)
 	_check(audio._scheduled_candy.is_empty(), "One monster plays one candy sound, however rich.")
-	audio.monster_sucked(0, 600, 40)
+	audio.monster_sucked(0.0, 600, 40)
 	var queued: Array[Dictionary] = audio._scheduled_candy.duplicate()
 	_check(
 		queued.size() == audio.candy_max_voices,
@@ -199,6 +200,40 @@ func _check_loading_audio(audio: Node) -> void:
 	_check(audio._peel == null, "Stopping the vacuum stops the peel loop.")
 	first.free()
 	second.free()
+
+# Candy_Combo climbs the whole ladder a quarter per stage, counting the capture
+# being paid, and the stage-clear sound follows the on-screen burst.
+func _check_combo_audio(demo: Node) -> void:
+	var run: PrototypeRun = demo.run
+	run.combo_level = 0
+	_check(is_zero_approx(demo._combo_ladder_progress()), "No combo research keeps Candy_Combo at 0.")
+	run.combo_level = 4
+	run.combo_stage = 0
+	run.combo_count = 0
+	_check(
+		is_equal_approx(demo._combo_ladder_progress(), 1.0 / 12.0),
+		"The first capture of stage 1 sits a third of the way up its quarter."
+	)
+	run.combo_count = run.get_combo_target() - 1
+	_check(
+		is_equal_approx(demo._combo_ladder_progress(), 0.25),
+		"The capture that clears stage 1 sounds at the top of its quarter."
+	)
+	run.combo_stage = 3
+	run.combo_count = run.get_combo_target() - 1
+	_check(is_equal_approx(demo._combo_ladder_progress(), 1.0), "Clearing stage 4 reaches 1.")
+	run._reset_combo()
+	run.combo_level = 0
+	var played_before: int = demo._monster_audio._combo_clear_count
+	run.combo_stage_completed.emit(2, 10)
+	_check(
+		demo._monster_audio._combo_clear_count == played_before + 1,
+		"Combo_StageClear plays the moment a stage clears."
+	)
+	_check(
+		run.combo_interrupted.is_connected(demo._monster_audio.combo_broken),
+		"Combo_Break follows a combo timeout."
+	)
 
 func _check(condition: bool, message: String) -> void:
 	if not condition:

@@ -8,6 +8,20 @@ extends Node
 const ROTATE_EVENT: String = "event:/Earth_Rotate"
 const ZOOM_IN_EVENT: String = "event:/UI/ZoomIn"
 const ZOOM_OUT_EVENT: String = "event:/UI/ZoomOut"
+# Planet color restoration: Stage1 for the first species color this run,
+# Stage2 for the later ones, Stage3 for the final turn to white.
+const COLOR_RECOVER_FIRST_EVENT: String = "event:/ColorSystem/ColorRecover_Stage1"
+const COLOR_RECOVER_LATER_EVENT: String = "event:/ColorSystem/ColorRecover_Stage2"
+const COLOR_RECOVER_WHITE_EVENT: String = "event:/ColorSystem/ColorRecover_Stage3"
+# Background palette turning to a species' colors (pink, blue, green), indexed
+# by NestState.Species.
+const COLOR_CHANGE_EVENTS: PackedStringArray = [
+	"event:/ColorSystem/ColorChange_Slime",
+	"event:/ColorSystem/ColorChange_Mucus",
+	"event:/ColorSystem/ColorChange_Drill",
+]
+# The victory panel after every monster is cleared.
+const CLEAR_MONSTER_EVENT: String = "event:/UI/Clear_Monster"
 
 # Mouse motion does not arrive every frame, so the planet counts as still only
 # after this long without turning.
@@ -23,6 +37,11 @@ var _direction: int = 0
 var _still_elapsed: float = 0.0
 var _reverse_amount: float = 0.0
 var _zoom_ready: bool = false
+var _color_recover_ready: bool = false
+var _color_change_ready: bool = false
+var _clear_monster_ready: bool = false
+# Presentations move the camera themselves and play their own sounds.
+var zoom_sounds_muted: bool = false
 # Last camera target (1 = near view, 0 = overview); NAN until the first frame.
 var _zoom_target: float = NAN
 
@@ -30,6 +49,35 @@ var _zoom_target: float = NAN
 func _ready() -> void:
 	_ready_to_play = GameAudio.has_events([ROTATE_EVENT])
 	_zoom_ready = GameAudio.has_events([ZOOM_IN_EVENT, ZOOM_OUT_EVENT])
+	_color_recover_ready = GameAudio.has_events(
+		[COLOR_RECOVER_FIRST_EVENT, COLOR_RECOVER_LATER_EVENT, COLOR_RECOVER_WHITE_EVENT]
+	)
+	_color_change_ready = GameAudio.has_events(COLOR_CHANGE_EVENTS)
+	_clear_monster_ready = GameAudio.has_events([CLEAR_MONSTER_EVENT])
+
+
+# stage: 1 for the first species color restored this run, then 2 and 3.
+func color_recovered(stage: int) -> void:
+	if _color_recover_ready:
+		GameAudio.play(COLOR_RECOVER_FIRST_EVENT if stage == 1 else COLOR_RECOVER_LATER_EVENT)
+
+
+func planet_turned_white() -> void:
+	if _color_recover_ready:
+		GameAudio.play(COLOR_RECOVER_WHITE_EVENT)
+
+
+func palette_changed_to(species: int) -> void:
+	if _color_change_ready and species >= 0 and species < COLOR_CHANGE_EVENTS.size():
+		GameAudio.play(COLOR_CHANGE_EVENTS[species])
+
+
+# Returns false when the event is unavailable, so the caller can fall back.
+func monsters_cleared() -> bool:
+	if not _clear_monster_ready:
+		return false
+	GameAudio.play(CLEAR_MONSTER_EVENT)
+	return true
 
 
 # Called every frame with the camera's target view and whether it is animating.
@@ -38,7 +86,12 @@ func _ready() -> void:
 func update_zoom(target_zoom: float, transitioning: bool) -> void:
 	var previous: float = _zoom_target
 	_zoom_target = target_zoom
-	if not _zoom_ready or is_nan(previous) or is_equal_approx(previous, target_zoom):
+	if (
+		not _zoom_ready
+		or zoom_sounds_muted
+		or is_nan(previous)
+		or is_equal_approx(previous, target_zoom)
+	):
 		return
 	if transitioning:
 		GameAudio.play(ZOOM_IN_EVENT if target_zoom > previous else ZOOM_OUT_EVENT)

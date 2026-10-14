@@ -21,8 +21,12 @@ func _ready() -> void:
 	_restoration.palette_changed.connect(_on_palette_changed)
 	super._ready()
 	flower_appeared.connect(_restoration.reveal_flower)
+	_restoration.color_fill_started.connect(_planet_audio.color_recovered)
+	_restoration.background_restore_started.connect(_planet_audio.planet_turned_white)
+	_population_palette.display_species_changed.connect(_planet_audio.palette_changed_to)
 	_restoration.presentation_started.connect(_on_restoration_started)
 	_nest_discovery.presentation_started.connect(_on_restoration_started)
+	_nest_discovery.presentation_started.connect(_monster_audio.new_nest_discovered)
 	_nest_discovery.emergence_progressed.connect(_on_emergence_progressed)
 	_view.view_changed.connect(_sync_art)
 	_view.projection_changed.connect(_sync_art)
@@ -32,8 +36,27 @@ func _ready() -> void:
 	_sync_art()
 
 
+# Read every frame rather than from start/finish signals, so a cancelled or
+# reset presentation can never leave the music dipped.
+func _process(delta: float) -> void:
+	_sync_presentation_audio()
+	super._process(delta)
+
+
+func _sync_presentation_audio() -> void:
+	var restoring: bool = _restoration.phase != PlanetRestoration.Phase.IDLE
+	var discovering: bool = _nest_discovery.phase >= NestDiscovery.Phase.ANTICIPATE
+	GameAudio.set_music_ducked(restoring or discovering)
+	_planet_audio.zoom_sounds_muted = restoring
+
+
+func _exit_tree() -> void:
+	GameAudio.set_music_ducked(false)
+
+
 func restart_run() -> void:
 	_nest_discovery.cancel()
+	_monster_audio.stop_new_nest()
 	_restoration.reset()
 	super.restart_run()
 	_population_palette.reset()

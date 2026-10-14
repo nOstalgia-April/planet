@@ -9,6 +9,7 @@ const BANK_ROOT: String = "res://bank/Desktop"
 const BANK_NAMES: PackedStringArray = ["Master.strings.bank", "Master.bank", "ProjectVacuum.bank"]
 
 const MAX_FADE_STEP: float = 1.0 / 30.0
+const MUSIC_DUCK_PARAMETER: String = "Music_Duck"
 # Safety net: music held back by a transition starts anyway after this long.
 const TRANSITION_TIMEOUT_SECONDS: float = 15.0
 # Near-view gameplay sounds. They keep running in the planet overview but are
@@ -17,9 +18,11 @@ const NEAR_VIEW_PREFIXES: PackedStringArray = [
 	"event:/Monsters/",
 	"event:/Vacuum/",
 	"event:/Slime_",
-	"event:/SuckUp_Pop",
-	"event:/Candy_",
-	"event:/Net_",
+	"event:/Candy/",
+	"event:/Nest/Slime_NestAppear",
+	"event:/Nest/Mucus_NestAppear",
+	"event:/Nest/Drill_NestAppear",
+	"event:/Net/",
 	"event:/Drill_Crawl",
 ]
 
@@ -30,11 +33,16 @@ const NEAR_VIEW_PREFIXES: PackedStringArray = [
 # so the music enters there (overlapping only that near-silent tail); the value
 # also absorbs FMOD's start-up delay (~0.21 s measured).
 @export_range(0.0, 3.0, 0.01) var transition_music_lead_seconds: float = 1.2
+# Music_Duck (global, 0-1) dips the music during presentations; FMOD maps it to
+# volume and a low-pass. The game eases it over this many seconds each way.
+@export_range(0.0, 3.0, 0.05) var music_duck_fade_seconds: float = 0.4
 
 var banks_loaded: bool = false
 # Names of the global parameters defined by the loaded banks.
 var _global_parameters: Dictionary = {}
 var _effects_elapsed: float = 0.0
+var _music_ducked: bool = false
+var _music_duck: float = 0.0
 var _effect_descriptions: Array[FmodEventDescription] = []
 # Parallel to _effect_descriptions: whether each one is a near-view sound.
 var _effect_is_near_view: Array[bool] = []
@@ -271,6 +279,7 @@ func get_music_position_seconds(event_path: String) -> float:
 
 
 func _process(delta: float) -> void:
+	_advance_music_duck(delta)
 	if _transition != null:
 		_transition_elapsed += delta
 		if _is_transition_ending():
@@ -352,6 +361,21 @@ func _end_transition() -> void:
 	if _transition != null and _transition.is_valid():
 		_transition.release()
 	_transition = null
+
+
+# While true, Music_Duck eases to 1; set it back to false to release the dip.
+func set_music_ducked(ducked: bool) -> void:
+	_music_ducked = ducked
+
+
+func _advance_music_duck(delta: float) -> void:
+	var target: float = 1.0 if _music_ducked else 0.0
+	if is_equal_approx(_music_duck, target):
+		return
+	var step: float = 1.0 if music_duck_fade_seconds <= 0.0 else delta / music_duck_fade_seconds
+	_music_duck = move_toward(_music_duck, target, step)
+	if _global_parameters.has(MUSIC_DUCK_PARAMETER):
+		set_global(MUSIC_DUCK_PARAMETER, _music_duck)
 
 
 func _music_gain() -> float:
