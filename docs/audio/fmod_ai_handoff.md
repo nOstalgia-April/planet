@@ -52,7 +52,8 @@ git rev-parse --short HEAD
 | --- | --- | --- |
 | 验证 FMOD 插件与音频包 | `features/fmod_audio_test/fmod_audio_test.tscn` | 打开后 F6；本轮主要验收入口 |
 | 体验最新游戏 Demo | `scenes/主菜单/主菜单.tscn` | F5 后点击 **start**；背景音乐、按钮、科技、怪物、吸尘器与收集使用 FMOD。基础玩法场景 `scenes/disk_demo.tscn` 可按 F6 |
-| 看场景和工具美术预览 | 主菜单「预览」或 `features/场景预览/` | 近景、全景、吸尘器、捕网与黏液怪移动；[预览说明](../../features/场景预览/README.md) |
+| 看板娘说话音效测试 | 主菜单「预览」 | 开头速通、第二阶段、第三阶段三个入口；[操作、音效接入和台词](mascot_dialogue_preview.md) |
+| 看场景和工具美术预览 | `features/场景预览/` | 打开对应场景按 F6；[预览说明](../../features/场景预览/README.md) |
 | 看科技树页面 | 主游戏底部「科技树」或 `features/technology_tree_preview/technology_tree_preview.tscn` | 独立场景按 F6；[页面说明](../../features/technology_tree_preview/README.md) |
 | 看物件动作、巢穴升级与产怪 | `features/物品动画预览/物品动画总览.tscn` | F6；可选物件、动作、循环与逐帧进度；[预览说明](../../features/物品动画预览/README.md) |
 | 比较四种喷溅表现 | `features/splash_preview/splash_preview.tscn` | F6；说明见[喷溅预览手册](../../features/splash_preview/README.md) |

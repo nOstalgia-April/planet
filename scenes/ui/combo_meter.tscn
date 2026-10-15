@@ -1,70 +1,35 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/combo_meter.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/ui/vacuum_progress/frame.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/ui/vacuum_progress/fill.png" id="3"]
 
-[sub_resource type="StyleBoxFlat" id="Frame"]
-bg_color = Color(0.25, 0.20, 0.27, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 0.91, 0.73, 1)
-corner_radius_top_left = 2
-corner_radius_top_right = 2
-corner_radius_bottom_left = 2
-corner_radius_bottom_right = 2
-shadow_color = Color(0.17, 0.13, 0.20, 0.45)
-shadow_size = 1
-shadow_offset = Vector2(0, 1)
-anti_aliasing = false
+[sub_resource type="AtlasTexture" id="Frame"]
+atlas = ExtResource("2")
+region = Rect2(64, 81, 96, 16)
+filter_clip = true
 
-[sub_resource type="Gradient" id="Mint"]
-colors = PackedColorArray(0.20, 0.61, 0.52, 1, 0.77, 1, 0.82, 1)
-
-[sub_resource type="GradientTexture2D" id="MintFill"]
-gradient = SubResource("Mint")
-width = 256
-height = 16
-fill_to = Vector2(1, 0)
-
-[sub_resource type="Gradient" id="Amber"]
-colors = PackedColorArray(0.89, 0.47, 0.20, 1, 1, 0.93, 0.57, 1)
-
-[sub_resource type="GradientTexture2D" id="AmberFill"]
-gradient = SubResource("Amber")
-width = 256
-height = 16
-fill_to = Vector2(1, 0)
-
-[sub_resource type="Gradient" id="Coral"]
-colors = PackedColorArray(0.80, 0.26, 0.42, 1, 1, 0.76, 0.66, 1)
-
-[sub_resource type="GradientTexture2D" id="CoralFill"]
-gradient = SubResource("Coral")
-width = 256
-height = 16
-fill_to = Vector2(1, 0)
-
-[sub_resource type="Gradient" id="Rainbow"]
-offsets = PackedFloat32Array(0, 0.166667, 0.333333, 0.5, 0.666667, 0.833333, 1)
-colors = PackedColorArray(1, 0.40, 0.48, 1, 1, 0.70, 0.35, 1, 1, 0.94, 0.47, 1, 0.44, 0.94, 0.62, 1, 0.36, 0.85, 1, 1, 0.52, 0.54, 1, 1, 0.91, 0.54, 0.95, 1)
-
-[sub_resource type="GradientTexture2D" id="RainbowFill"]
-gradient = SubResource("Rainbow")
-width = 256
-height = 16
-fill_to = Vector2(1, 0)
+[sub_resource type="AtlasTexture" id="FillHighlight"]
+atlas = ExtResource("3")
+region = Rect2(76, 83, 44, 2)
+filter_clip = true
 
 [node name="ComboMeter" type="Node2D"]
 texture_filter = 2
 script = ExtResource("1")
-stage_gradients = Array[GradientTexture2D]([SubResource("MintFill"), SubResource("AmberFill"), SubResource("CoralFill"), SubResource("RainbowFill")])
-frame_style = SubResource("Frame")
+frame_texture = SubResource("Frame")
+fill_highlight = SubResource("FillHighlight")
 
 [node name="TimeTrack" type="Line2D" parent="."]
-width = 0.5
-default_color = Color(0.48, 0.39, 0.46, 1)
+width = 0.7
+default_color = Color(0.08, 0.06, 0.08, 0.6)
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true
 
 [node name="TimeFill" type="Line2D" parent="."]
-width = 0.5
+width = 0.7
 default_color = Color(1, 0.95, 0.74, 1)
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true

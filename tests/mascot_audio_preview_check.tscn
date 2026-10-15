@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/mascot_audio_preview_check.gd" id="script"]
+
+[node name="MascotAudioPreviewCheck" type="Node"]
+script = ExtResource("script")

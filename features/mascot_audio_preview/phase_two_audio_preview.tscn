@@ -1,0 +1,76 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://features/mascot_audio_preview/stage_audio_preview.gd" id="script"]
+[ext_resource type="PackedScene" path="res://features/场景预览/近景游玩预览.tscn" id="game"]
+[ext_resource type="PackedScene" path="res://scenes/ui/mascot_dialogue.tscn" id="dialogue"]
+
+[node name="PhaseTwoAudioPreview" type="Node"]
+script = ExtResource("script")
+
+[node name="Game" parent="." instance=ExtResource("game")]
+
+[node name="DialogueLayer" type="CanvasLayer" parent="."]
+layer = 30
+
+[node name="MascotDialogue" parent="DialogueLayer" instance=ExtResource("dialogue")]
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+grow_horizontal = 1
+grow_vertical = 1
+autoplay = false
+form_index = 1
+lines = PackedStringArray("咦？这个巢穴怎么不再往外冒小家伙了？", "地上还亮起来了……这些颜色，是从巢穴里跑出来的？", "难怪看着眼熟。我们刚来的时候，这里好像就是这个颜色。", "等等，你清理巢穴，为什么连里面攒着的糖果也一起放走了？", "你又清完一片了……难怪我连喊话都没刚才有劲了。", "我看明白了。巢穴里的颜色回到地上，我们从这里得到的力量也在消失。", "你说的“治理生态”……原来管的还有我们啊？", "可我们也不是故意的！飞船坏了，大家又饿，看到这里有吃的才留下来。", "我以为，多存点糖、多照顾几个小家伙，总不会有错……", "……你先答应我，收进去的那些家伙，一个都不能少。")
+
+[node name="Text" parent="DialogueLayer/MascotDialogue/SpeechBubble"]
+theme_override_font_sizes/normal_font_size = 28
+theme_override_constants/line_separation = 6
+
+[node name="UI" type="CanvasLayer" parent="."]
+layer = 40
+
+[node name="Blocker" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Toolbar" type="Control" parent="UI"]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 72.0
+offset_right = 306.0
+offset_bottom = 114.0
+mouse_filter = 2
+
+[node name="Return" type="Button" parent="UI/Toolbar"]
+layout_mode = 0
+offset_right = 84.0
+offset_bottom = 42.0
+focus_mode = 0
+theme_override_font_sizes/font_size = 20
+text = "返回"
+tooltip_text = "返回主菜单 · Esc"
+
+[node name="Replay" type="Button" parent="UI/Toolbar"]
+layout_mode = 0
+offset_left = 94.0
+offset_right = 178.0
+offset_bottom = 42.0
+focus_mode = 0
+theme_override_font_sizes/font_size = 20
+text = "重播"
+tooltip_text = "从入场重播 · R"
+
+[node name="Advance" type="Button" parent="UI/Toolbar"]
+layout_mode = 0
+offset_left = 188.0
+offset_right = 282.0
+offset_bottom = 42.0
+focus_mode = 0
+theme_override_font_sizes/font_size = 20
+text = "下一句"
+tooltip_text = "显示全句 / 下一句 · Space / Enter"

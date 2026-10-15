@@ -7,7 +7,10 @@ const PageScript = preload("res://scripts/ui/technology_page.gd")
 const InteractivePageScript = preload("res://scripts/ui/interactive_technology_page.gd")
 const VacuumSkin = preload("res://scripts/vacuum_skin.gd")
 const ComboMeter = preload("res://scripts/ui/combo_meter.gd")
-const OUTPUT: String = "res://artifacts/combo_meter_gradient_20261015"
+const OUTPUT: String = "res://artifacts/vacuum_progress_20261016/checks"
+const PINK: Color = Color("ffa6c6")
+const BLUE: Color = Color("a9bff6")
+const GOLD: Color = Color("f3ca6a")
 
 var _failures: int = 0
 var _completions: Array[Vector2i] = []
@@ -254,6 +257,11 @@ func _check_scene() -> void:
 		_check(demo._pipe.get_node("Bursts").get_child_count() == 0, "effects clean themselves up")
 		await _save("restored_%dx%d" % [resolution.x, resolution.y])
 		await _check_meter(demo, resolution)
+	demo.run.collect_slime(1, 4, 1, false, BLUE)
+	_check(
+		demo._pipe.combo_meter.captured_colors == PackedColorArray([BLUE]),
+		"restart fixture contains a captured body color"
+	)
 	demo._pipe.play_combo_burst(4, 100)
 	demo.restart_run()
 	_check(
@@ -262,8 +270,12 @@ func _check_scene() -> void:
 	)
 	demo._pipe.combo_meter.refresh()
 	_check(
-		not demo._pipe.combo_meter.visible and demo._pipe.combo_meter.displayed_count == 0,
-		"restart hides the locked meter and clears its displayed progress"
+		(
+			not demo._pipe.combo_meter.visible
+			and demo._pipe.combo_meter.displayed_count == 0
+			and demo._pipe.combo_meter.captured_colors.is_empty()
+		),
+		"restart hides the locked meter and clears its displayed progress and colors"
 	)
 	demo.queue_free()
 	await _settle()
@@ -290,8 +302,12 @@ func _check_meter(demo: DemoScript, resolution: Vector2i) -> void:
 		(meter.get_global_transform_with_canvas() * meter.get_meter_rect()).size.x
 	)
 	_check(
-		absf(meter_width / tool_width - 0.8 / 3.0) < 0.01,
-		"meter width is one third of the previous eighty-percent vacuum width"
+		absf(meter_width / tool_width - 0.6) < 0.01,
+		"concept meter width is sixty percent of the visible vacuum width"
+	)
+	_check(
+		is_equal_approx(meter.get_meter_rect().size.aspect(), 6.0),
+		"the meter preserves the concept frame's six-to-one proportions"
 	)
 	_check(
 		(
@@ -299,6 +315,7 @@ func _check_meter(demo: DemoScript, resolution: Vector2i) -> void:
 			and meter.displayed_stage == 0
 			and meter.displayed_count == 0
 			and meter.segment_count == SETTINGS.combo_stage_targets[0]
+			and meter.captured_colors.is_empty()
 			and is_zero_approx(meter.time_ratio)
 		),
 		"an unlocked idle meter shows three empty segments without a deadline"
@@ -311,13 +328,15 @@ func _check_meter(demo: DemoScript, resolution: Vector2i) -> void:
 		"the meter displays no numeric requirement labels"
 	)
 	await _save("meter_idle_%dx%d" % [resolution.x, resolution.y])
+	var palette: PackedColorArray = PackedColorArray([PINK, BLUE, GOLD])
 	for stage: int in range(4):
 		var target: int = SETTINGS.combo_stage_targets[stage]
+		var expected_colors: PackedColorArray = PackedColorArray()
 		for index: int in range(target):
 			var cell: Rect2 = meter.get_cell_rect(index)
 			_check(
 				cell.has_area() and meter.get_fill_rect().grow(0.0001).encloses(cell),
-				"each capture has a positive interval inside the gradient strip"
+				"each capture has a positive interval inside the color strip"
 			)
 			if index > 0:
 				_check(
@@ -329,15 +348,24 @@ func _check_meter(demo: DemoScript, resolution: Vector2i) -> void:
 				meter.displayed_stage == stage
 				and meter.displayed_count == 0
 				and meter.segment_count == target
+				and meter.captured_colors.is_empty()
 			),
 			"each stage opens with its configured number of empty segments"
 		)
 		for capture: int in range(target - 1):
-			_check(demo.run.collect_slime(1, 4), "meter fixture capture is accepted")
+			var color: Color = palette[(stage + capture) % palette.size()]
+			_check(
+				demo.run.collect_slime(1, 4, 1, false, color), "meter fixture capture is accepted"
+			)
+			expected_colors.append(color)
 			meter.refresh()
 			_check(
-				meter.displayed_stage == stage and meter.displayed_count == capture + 1,
-				"one confirmed capture lights exactly one segment"
+				(
+					meter.displayed_stage == stage
+					and meter.displayed_count == capture + 1
+					and meter.captured_colors == expected_colors
+				),
+				"each confirmed capture appends its body color in capture order"
 			)
 		demo.run.advance(1.0)
 		meter.refresh()
@@ -346,35 +374,52 @@ func _check_meter(demo: DemoScript, resolution: Vector2i) -> void:
 			"the small timer reflects the real fixed stage deadline"
 		)
 		await _save("meter_stage_%d_partial_%dx%d" % [stage + 1, resolution.x, resolution.y])
-		_check(demo.run.collect_slime(1, 4), "final stage capture is accepted")
+		var final_color: Color = palette[(stage + target - 1) % palette.size()]
+		_check(
+			demo.run.collect_slime(1, 4, 1, false, final_color), "final stage capture is accepted"
+		)
+		expected_colors.append(final_color)
 		meter.refresh()
 		_check(
 			(
 				meter.displayed_stage == stage
 				and meter.displayed_count == target
 				and meter.segment_count == target
+				and meter.captured_colors == expected_colors
 			),
-			"the completed outgoing stage remains fully lit after the model advances"
+			"the completed outgoing stage preserves its ordered colors after the model advances"
 		)
 		await _save("meter_stage_%d_full_%dx%d" % [stage + 1, resolution.x, resolution.y])
 		meter._process(1.0)
 		meter.refresh()
 		_check(
-			meter.displayed_stage == demo.run.combo_stage and meter.displayed_count == 0,
-			"completion feedback releases to the current empty stage"
+			(
+				meter.displayed_stage == demo.run.combo_stage
+				and meter.displayed_count == 0
+				and meter.captured_colors.is_empty()
+			),
+			"completion feedback clears outgoing colors when the hold ends"
 		)
 	_check(
 		meter.displayed_stage == 0 and is_zero_approx(meter.time_ratio),
 		"the final rainbow stage returns to an idle first stage"
 	)
 	for capture: int in range(SETTINGS.combo_stage_targets[0]):
-		demo.run.collect_slime(1, 4)
-	_check(meter.displayed_count == 3, "first stage completion begins its full-bar hold")
-	demo.run.collect_slime(1, 4)
+		demo.run.collect_slime(1, 4, 1, false, palette[capture])
+	_check(
+		meter.displayed_count == 3 and meter.captured_colors == palette,
+		"first stage completion begins its full-bar hold with all three captured colors"
+	)
+	demo.run.collect_slime(1, 4, 1, false, BLUE)
 	meter.refresh()
 	_check(
-		meter.displayed_stage == 1 and meter.displayed_count == 1 and meter.segment_count == 5,
-		"a fast next capture interrupts the hold and immediately lights its new segment"
+		(
+			meter.displayed_stage == 1
+			and meter.displayed_count == 1
+			and meter.segment_count == 5
+			and meter.captured_colors == PackedColorArray([BLUE])
+		),
+		"a fast next capture replaces the held stage with only its new body color"
 	)
 	demo._pipe.hide()
 	_check(not meter.is_visible_in_tree(), "the meter hides together with the vacuum")
@@ -387,9 +432,10 @@ func _check_meter(demo: DemoScript, resolution: Vector2i) -> void:
 			meter.displayed_stage == 0
 			and meter.displayed_count == 0
 			and meter.segment_count == 3
+			and meter.captured_colors.is_empty()
 			and is_zero_approx(meter.time_ratio)
 		),
-		"a timeout immediately clears progress and returns to the first stage"
+		"a timeout immediately clears progress and colors and returns to the first stage"
 	)
 	_check_meter_capture(demo)
 	await _check_meter_edges(demo, resolution)
@@ -402,23 +448,34 @@ func _check_meter(demo: DemoScript, resolution: Vector2i) -> void:
 
 func _check_meter_capture(demo: DemoScript) -> void:
 	var target: Vector2 = Vector2(0, -235)
-	demo._on_slime_requested(1)
-	var actor: PrototypeSlime = demo._slimes[-1]
-	actor._process(actor.launch_seconds)
-	actor.set_process(false)
-	actor.position = target
-	actor._update_surface_rotation()
-	actor.position += target - actor.get_capture_point()
-	demo._capture_at(demo.run.get_pipe_capture_seconds(), target, true)
-	demo._pipe.combo_meter.refresh()
-	_check(
-		(
-			not demo._slimes.has(actor)
-			and demo.run.combo_count == 1
-			and demo._pipe.combo_meter.displayed_count == 1
-		),
-		"a real vacuum capture removes one actor and lights exactly one segment"
-	)
+	var expected_colors: PackedColorArray = PackedColorArray([BLUE, GOLD])
+	for index: int in range(expected_colors.size()):
+		demo._on_slime_requested(1)
+		var actor: PrototypeSlime = demo._slimes[-1]
+		actor.configure_species(
+			PrototypeSlime.Species.MUCUS if index == 0 else PrototypeSlime.Species.SLIME,
+			index == 1,
+			4
+		)
+		_check(
+			actor.body_color == expected_colors[index], "real actor has its species or gold color"
+		)
+		actor._process(actor.launch_seconds)
+		actor.set_process(false)
+		actor.position = target
+		actor._update_surface_rotation()
+		actor.position += target - actor.get_capture_point()
+		demo._capture_at(demo.run.get_pipe_capture_seconds(), target, true)
+		demo._pipe.combo_meter.refresh()
+		_check(
+			(
+				not demo._slimes.has(actor)
+				and demo.run.combo_count == index + 1
+				and demo._pipe.combo_meter.displayed_count == index + 1
+				and demo._pipe.combo_meter.captured_colors == expected_colors.slice(0, index + 1)
+			),
+			"a real vacuum capture removes the actor and forwards its body color to the next segment"
+		)
 
 
 func _check_meter_edges(demo: DemoScript, resolution: Vector2i) -> void:
@@ -448,6 +505,14 @@ func _check_meter_edges(demo: DemoScript, resolution: Vector2i) -> void:
 			_check(
 				transform.origin.y < demo._pipe._art.get_global_transform_with_canvas().origin.y,
 				"the meter remains above the vacuum artwork at either side edge"
+			)
+		else:
+			_check(
+				(
+					screen_bounds.position.y
+					> demo._pipe._art_root.get_global_transform_with_canvas().origin.y
+				),
+				"the meter moves below the vacuum mouth when there is no room above it"
 			)
 		await _save("meter_edge_%d_%dx%d" % [index, resolution.x, resolution.y])
 
