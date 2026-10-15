@@ -1,0 +1,2 @@
+# Keep developer checks out of the editor's background script documentation scan.
+# Run checks explicitly through their res://tests/... paths from the command line.

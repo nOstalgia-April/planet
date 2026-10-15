@@ -315,6 +315,36 @@
       "target": "assets/场景动画/全景星星/003.png",
       "fps": 5,
       "sha256": "20e41af562c50728ba334f3869dcf3df45fcc1d033899c8e3e14e7e78c6fb870"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/星星/未命名作品-1.png",
+      "target": "assets/场景动画/近景星星/001.png",
+      "fps": 5,
+      "sha256": "663f87c19c1eef8b96eb089728e225c0298bbaa89563010f660b4e1411415d73"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/星星/未命名作品-2.png",
+      "target": "assets/场景动画/近景星星/002.png",
+      "fps": 5,
+      "sha256": "55a040787f3c439d27b0d3d6d737eb36ab8ebdaa21223f4fb217966f8cadfb12"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/星星/未命名作品-3.png",
+      "target": "assets/场景动画/近景星星/003.png",
+      "fps": 5,
+      "sha256": "afd709df8d253bbd1ecf0cb2825f703ba84e1bec425d53cd4d38aed696ab64ab"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/星星/未命名作品-4.png",
+      "target": "assets/场景动画/近景星星/004.png",
+      "fps": 5,
+      "sha256": "620358da6a4a86e70364fbc0650198d6f55d7f118680049bee1c008574c7785e"
+    },
+    {
+      "source": "放大后的地球（5帧每秒/放大后的背景动画（5帧每秒/星星/未命名作品-5.png",
+      "target": "assets/场景动画/近景星星/005.png",
+      "fps": 5,
+      "sha256": "95f10ea9d25cd51bea37b63e27f9cb2fc74dceaeb3e13823110465181df5837d"
     }
   ]
 }

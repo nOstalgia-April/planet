@@ -2,6 +2,7 @@ shader_type canvas_item;
 render_mode unshaded;
 
 #include "res://shaders/population_palette.gdshaderinc"
+#include "res://shaders/planet_core_paper.gdshaderinc"
 
 // Coordinates are inside one cropped frame, not the whole streaming atlas.
 uniform vec4 frame_region = vec4(0.0, 0.0, 356.0, 300.0);
@@ -33,5 +34,7 @@ void fragment() {
 	float core_alpha = 1.0 - smoothstep(core_radius - edge * 0.5, core_radius + edge * 0.5, radius);
 	float alpha = core_alpha + outer.a * (1.0 - core_alpha);
 	vec3 premultiplied = core_color.rgb * core_alpha + outer.rgb * outer.a * (1.0 - core_alpha);
-	COLOR = vec4(population_color(premultiplied / max(alpha, 0.00001)), alpha) * item_color;
+	vec3 colored = population_color(premultiplied / max(alpha, 0.00001));
+	vec3 paper = core_paper_color(from_center / core_radius);
+	COLOR = vec4(mix(colored, paper, core_white_mix), alpha) * item_color;
 }

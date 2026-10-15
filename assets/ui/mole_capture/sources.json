@@ -1,0 +1,32 @@
+{
+  "asset": "Mole hold-left-button capture cue",
+  "source": "Kenney — 1-Bit Input Prompts Pixel 16× (1.0)",
+  "source_url": "https://opengameart.org/content/1-bit-input-prompts-pixel-16%C3%97",
+  "download_url": "https://opengameart.org/sites/default/files/1-bit-input-prompts-pixel-16.zip",
+  "retrieved_on": "2026-10-15",
+  "license": "CC0 1.0 Universal",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "original_files": [
+    "Tiles (Black)/tile_0076.png",
+    "Tiles (Black)/tile_0077.png"
+  ],
+  "retained_originals": [
+    "kenney_pixel_mouse.png",
+    "kenney_pixel_mouse_left.png"
+  ],
+  "license_file": "Kenney-Pixel-LICENSE.txt",
+  "changes": [
+    "Converted the original 16×16 pixel rows into SVG rectangles without changing the silhouette or wheel.",
+    "Added an opaque bright-cream interior and near-black outline; extracted the left-button mask to change color while held.",
+    "Rendered the mouse at 24 px high with nearest filtering, beside a short hold label and a square 4 px progress bar."
+  ],
+  "visual_reference": "Inspected the author-provided Preview.png and tiles 0076/0077 from the downloaded pack. Original stepped mouse silhouette, two-pixel outline and distinct left-button fill adopted.",
+  "usage": "Compact 46×30 px cue above an exposed mole; left button stays highlighted while held and the continuous capture progress bar fills.",
+  "previous_source": {
+    "source": "Kenney — Input Prompts 1.5A",
+    "source_url": "https://kenney.nl/assets/input-prompts",
+    "retained_original": "kenney_mouse_left.svg",
+    "license_file": "Kenney-LICENSE.txt",
+    "usage": "Retained for provenance only; the floating cue now uses the pixel pack."
+  }
+}

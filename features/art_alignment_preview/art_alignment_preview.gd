@@ -67,7 +67,7 @@ func _ready() -> void:
 		nest.update_state(1, false, 3)
 		nest.presentation_scale = _view.near_nest_scale
 		_nest_views.append(nest)
-		var monster_scene: PackedScene = DRILL_SCENE if species_index == 2 else slime_scene
+		var monster_scene: PackedScene = drill_scene if species_index == 2 else slime_scene
 		var monster: PrototypeSlime = monster_scene.instantiate() as PrototypeSlime
 		monster.art_settings = settings
 		_slime_root.add_child(monster)

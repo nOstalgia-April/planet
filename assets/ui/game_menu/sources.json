@@ -2,5 +2,11 @@
   "source": "用户于 2026-10-12 提供的图标图集与蓝色笔刷附件",
   "icons.png": "codex-clipboard-6c60be9b-fb2b-42d1-909c-e6e56197d0f9.png",
   "blue_brush.png": "650180148ba7d6bb367bedf81241285a.png",
-  "usage": "原图保持不变，通过 .tres 中的 AtlasTexture 区域取用；参考图只借鉴右上角三按钮排列。"
+  "usage": "原图保持不变，通过 .tres 中的 AtlasTexture 区域取用；参考图只借鉴右上角三按钮排列。",
+  "zoom_icons": {
+    "reference": "用户于 2026-10-15 提供的 codex-clipboard-5b768b5d-26e0-47cd-aef2-8bf940712bcb.jpg",
+    "usage": "依据参考中四角向外与四向向内的细线箭头重绘为透明 SVG；保留现有按钮尺寸、位置与近远景切换规则。",
+    "zoom_out": "zoom_out_thin.svg",
+    "zoom_in": "zoom_in_thin.svg"
+  }
 }

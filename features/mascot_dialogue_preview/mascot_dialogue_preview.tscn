@@ -1,0 +1,16 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://features/mascot_dialogue_preview/mascot_dialogue_preview.gd" id="script"]
+[ext_resource type="PackedScene" path="res://features/场景预览/近景游玩预览.tscn" id="game"]
+[ext_resource type="PackedScene" path="res://scenes/ui/mascot_dialogue.tscn" id="dialogue"]
+
+[node name="MascotDialoguePreview" type="Node"]
+script = ExtResource("script")
+
+[node name="Game" parent="." instance=ExtResource("game")]
+
+[node name="DialogueLayer" type="CanvasLayer" parent="."]
+layer = 20
+
+[node name="MascotDialogue" parent="DialogueLayer" instance=ExtResource("dialogue")]
+lines = PackedStringArray("喂——小心脚下！你差点踩到我们家刚冒出来的小家伙！", "你是……清扫员？来帮我们治理巢穴和生态的？")

@@ -1,12 +1,17 @@
 extends PrototypeSlime
 
 const ItemArt = preload("res://scripts/物品动画/动画物件.gd")
-const CAPTURE_SECONDS: float = 0.2
+const CaptureCue = preload("res://scripts/effects/mole_capture_cue.gd")
+const HOVER_POP_SECONDS: float = 0.2
 static var _visible_texture_bounds: Dictionary[Texture2D, Rect2] = {}
 enum Phase { LAUNCH, DIVE, TRAVEL, PAUSE, EMERGE, EXPOSED }
 
 @export var ordinary_art: ItemArt
 @export var valuable_art: ItemArt
+@export var capture_cue: CaptureCue
+@export_group("Hold capture")
+@export_range(0.1, 3.0, 0.05) var capture_hold_seconds: float = 0.5
+@export_range(0.0, 3.0, 0.5) var hover_pop_height: float = 3.0
 @export_group("Drill movement")
 @export_range(0.1, 1.0, 0.01) var range_fraction: float = 2.0 / 3.0
 @export_range(10.0, 120.0, 1.0) var tunnel_speed: float = 55.0
@@ -22,14 +27,21 @@ var _travel_direction: float = 1.0
 var _travel_target: Vector2
 var _launch_progress: float = 0.0
 var _capture_active: bool = false
+var _capture_hovered: bool = false
+var _hover_pop_remaining: float = 0.0
+var _exposed_art_rect: Rect2
 var art: ItemArt
 var _art_sprite: Sprite2D
 
 
 func _ready() -> void:
+	assert(capture_cue != null, "Drill monster requires its hold capture cue.")
 	for view: ItemArt in [ordinary_art, valuable_art]:
 		_prepare_animations(view)
 	_select_art()
+	capture_cue.set_progress(0.0)
+	capture_cue.set_holding(false)
+	capture_cue.set_active(false)
 
 
 func _prepare_animations(view: ItemArt) -> void:
@@ -63,6 +75,11 @@ func _select_art() -> void:
 	art.show()
 	art.play_clip(clip)
 	art.animation_player.seek(clip_time, true)
+	if phase == Phase.EXPOSED:
+		_cache_exposed_art_rect()
+		if _capture_active:
+			art.set_suction(true)
+			art.show_frame(&"吸入", 0)
 
 
 func setup(
@@ -73,6 +90,7 @@ func setup(
 	position = _home
 	species = Species.DRILL
 	body_size = 20.0
+	_reset_capture_feedback()
 
 
 func configure_species(_kind: Species, valuable: bool, _candy_reward: int) -> void:
@@ -100,10 +118,6 @@ func can_net_capture() -> bool:
 	return false
 
 
-func get_capture_seconds(_base_seconds: float) -> float:
-	return CAPTURE_SECONDS
-
-
 func can_fuse() -> bool:
 	return false
 
@@ -112,35 +126,56 @@ func is_anchored() -> bool:
 	return false
 
 
-func apply_attraction(delta: float, target: Vector2, strength: float) -> void:
-	if can_capture():
-		super.apply_attraction(delta, target, strength)
+func apply_attraction(_delta: float, _target: Vector2, _strength: float) -> void:
+	pass
 
 
 func apply_capture(delta: float, _capture_seconds: float, _target: Vector2) -> bool:
-	if not can_capture():
+	if not can_capture() or not _capture_hovered:
 		return false
-	clear_attraction()
 	_set_suction_expression(true)
-	capture_progress = minf(1.0, capture_progress + delta / CAPTURE_SECONDS)
+	capture_progress = minf(1.0, capture_progress + delta / maxf(capture_hold_seconds, 0.1))
+	capture_cue.set_holding(true)
+	capture_cue.set_progress(capture_progress)
 	consumed = capture_progress >= 1.0
-	_sync_art()
+	if consumed:
+		_capture_hovered = false
+		capture_cue.set_active(false)
 	return consumed
+
+
+func release_capture(_delta: float) -> void:
+	_set_suction_expression(false)
+	capture_progress = 0.0
+	capture_cue.set_progress(0.0)
+	capture_cue.set_holding(false)
+
+
+func set_capture_hovered(active: bool) -> void:
+	var hovered: bool = active and can_capture()
+	if hovered == _capture_hovered:
+		return
+	_capture_hovered = hovered
+	capture_cue.set_active(hovered)
+	if hovered:
+		_hover_pop_remaining = HOVER_POP_SECONDS
+	else:
+		release_capture(0.0)
+	_sync_art()
+
+
+func get_capture_hit_rect() -> Rect2:
+	# Deliberately exclude the hover lift and changing facial frames.
+	return get_global_transform_with_canvas() * _get_base_art_transform() * _exposed_art_rect
 
 
 func _process(delta: float) -> void:
 	if consumed or surface == null:
 		return
 	_update_surface_rotation()
-	# Capture ends explicitly through release_capture, never through a frame timeout.
-	if _capture_active:
-		_sync_art()
-		return
-	_capture_hold = maxf(0.0, _capture_hold - delta)
-	if _capture_hold > 0.0:
-		_sync_art()
-		return
-	phase_remaining -= delta
+	_hover_pop_remaining = maxf(0.0, _hover_pop_remaining - delta)
+	if phase != Phase.EXPOSED or not _capture_active:
+		phase_remaining -= delta
 	match phase:
 		Phase.LAUNCH:
 			_launch_progress = minf(1.0, _launch_progress + delta)
@@ -157,7 +192,6 @@ func _process(delta: float) -> void:
 func _advance_phase() -> void:
 	match phase:
 		Phase.LAUNCH, Phase.EXPOSED:
-			capture_progress = 0.0
 			_enter_phase(Phase.DIVE, 0.875, &"钻地")
 			# The source includes an emergence before the dive; use its descending half.
 			art.animation_player.seek(1.0, true)
@@ -199,30 +233,67 @@ func _begin_travel(long_leg: bool) -> void:
 
 
 func _enter_phase(next: Phase, seconds: float, clip: StringName) -> void:
+	_reset_capture_feedback()
 	phase = next
 	phase_remaining = seconds
 	art.play_clip(clip)
+	if phase == Phase.EXPOSED:
+		_cache_exposed_art_rect()
 	_sync_art()
 
 
+func _reset_capture_feedback() -> void:
+	release_capture(0.0)
+	_capture_hovered = false
+	_hover_pop_remaining = 0.0
+	capture_cue.set_active(false)
+
+
+func _cache_exposed_art_rect() -> void:
+	var clip: StringName = art.animation_player.assigned_animation
+	var clip_time: float = art.animation_player.current_animation_position
+	art.show_frame(&"夹夹", 0)
+	_exposed_art_rect = _get_art_rect()
+	art.play_clip(clip)
+	art.animation_player.seek(clip_time, true)
+
+
 func _set_suction_expression(active: bool) -> void:
+	if active == _capture_active:
+		return
 	_capture_active = active
 	art.set_suction(active)
 	if active:
 		art.show_frame(&"吸入", 0)
 
 
-func _sync_art() -> void:
+func _get_base_art_transform() -> Transform2D:
 	var multiplier: float = get_presentation_scale()
-	# Keep the exposed size while the suction expression plays until capture completes.
-	art.transform = SurfaceProjection.get_visual_compensation(self).scaled_local(
-		Vector2.ONE * multiplier
+	return (
+		SurfaceProjection.get_visual_compensation(self)
+		* Transform2D(0.0, Vector2.ONE * multiplier, 0.0, Vector2(0.0, get_presentation_sink()))
 	)
-	art.position += SurfaceProjection.get_visual_compensation(self).basis_xform(
-		Vector2(0.0, get_presentation_sink())
-	)
+
+
+func _sync_art() -> void:
+	var feedback_offset: Vector2 = Vector2.ZERO
+	if _hover_pop_remaining > 0.0:
+		var progress: float = 1.0 - _hover_pop_remaining / HOVER_POP_SECONDS
+		feedback_offset.y -= sin(progress * PI) * clampf(hover_pop_height, 0.0, 3.0)
+	art.transform = _get_base_art_transform() * Transform2D(0.0, feedback_offset)
 	if phase == Phase.LAUNCH:
 		art.position.y -= sin(_launch_progress * PI) * 35.0
+	if _capture_hovered:
+		_sync_capture_cue()
+
+
+func _sync_capture_cue() -> void:
+	var bounds: Rect2 = get_capture_hit_rect()
+	var anchor: Vector2 = Vector2(bounds.get_center().x, bounds.position.y - 6.0)
+	# The hint remains upright and readable as the planet rotates or changes projection.
+	capture_cue.transform = (
+		get_global_transform_with_canvas().affine_inverse() * Transform2D(0.0, anchor)
+	)
 
 
 func refresh_presentation() -> void:

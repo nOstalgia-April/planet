@@ -57,69 +57,6 @@ offset_right = 190.0
 offset_bottom = 76.0
 mouse_filter = 2
 
-[node name="Reveal" type="Control" parent="Pipe"]
-layout_mode = 0
-offset_left = 12.0
-offset_top = -30.0
-offset_right = 178.0
-offset_bottom = 36.0
-mouse_filter = 2
-clip_contents = true
-
-[node name="Purchase" type="Button" parent="Pipe/Reveal"]
-layout_mode = 0
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 166.0
-offset_bottom = 36.0
-focus_mode = 0
-
-[node name="Backing" type="TextureRect" parent="Pipe/Reveal/Purchase"]
-layout_mode = 0
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 166.0
-offset_bottom = 72.0
-mouse_filter = 2
-expand_mode = 1
-texture = ExtResource("upgrade")
-material = SubResource("material")
-
-[node name="Caption" type="HBoxContainer" parent="Pipe/Reveal/Purchase"]
-layout_mode = 0
-offset_left = 8.0
-offset_top = 5.0
-offset_right = 158.0
-offset_bottom = 30.0
-mouse_filter = 2
-alignment = 1
-theme_override_constants/separation = 4
-
-[node name="Level" type="Label" parent="Pipe/Reveal/Purchase/Caption"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 14
-text = "2 级 ·"
-
-[node name="Coin" type="TextureRect" parent="Pipe/Reveal/Purchase/Caption"]
-texture_filter = 4
-material = ExtResource("coin_outline")
-custom_minimum_size = Vector2(19, 19)
-layout_mode = 2
-size_flags_vertical = 4
-mouse_filter = 2
-texture = ExtResource("coin")
-expand_mode = 1
-stretch_mode = 5
-
-[node name="Cost" type="Label" parent="Pipe/Reveal/Purchase/Caption"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 14
-text = "10"
-
 [node name="Button" type="Button" parent="Pipe"]
 layout_mode = 0
 offset_left = 0.0
@@ -178,15 +115,8 @@ selected = false
 [node name="Shortcut" parent="Pipe" instance=ExtResource("shortcut")]
 text = "1"
 
-[node name="Net" type="Control" parent="."]
-layout_mode = 0
-offset_left = 410.0
-offset_top = 0.0
-offset_right = 600.0
-offset_bottom = 76.0
-mouse_filter = 2
-
-[node name="Reveal" type="Control" parent="Net"]
+[node name="Reveal" type="Control" parent="Pipe"]
+z_index = -1
 layout_mode = 0
 offset_left = 12.0
 offset_top = -30.0
@@ -195,15 +125,15 @@ offset_bottom = 36.0
 mouse_filter = 2
 clip_contents = true
 
-[node name="Purchase" type="Button" parent="Net/Reveal"]
+[node name="Purchase" type="Button" parent="Pipe/Reveal"]
 layout_mode = 0
 offset_left = 0.0
 offset_top = 0.0
 offset_right = 166.0
-offset_bottom = 36.0
+offset_bottom = 44.0
 focus_mode = 0
 
-[node name="Backing" type="TextureRect" parent="Net/Reveal/Purchase"]
+[node name="Backing" type="TextureRect" parent="Pipe/Reveal/Purchase"]
 layout_mode = 0
 offset_left = 0.0
 offset_top = 0.0
@@ -214,7 +144,7 @@ expand_mode = 1
 texture = ExtResource("upgrade")
 material = SubResource("material")
 
-[node name="Caption" type="HBoxContainer" parent="Net/Reveal/Purchase"]
+[node name="Caption" type="HBoxContainer" parent="Pipe/Reveal/Purchase"]
 layout_mode = 0
 offset_left = 8.0
 offset_top = 5.0
@@ -224,14 +154,14 @@ mouse_filter = 2
 alignment = 1
 theme_override_constants/separation = 4
 
-[node name="Level" type="Label" parent="Net/Reveal/Purchase/Caption"]
+[node name="Level" type="Label" parent="Pipe/Reveal/Purchase/Caption"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 14
 text = "2 级 ·"
 
-[node name="Coin" type="TextureRect" parent="Net/Reveal/Purchase/Caption"]
+[node name="Coin" type="TextureRect" parent="Pipe/Reveal/Purchase/Caption"]
 texture_filter = 4
 material = ExtResource("coin_outline")
 custom_minimum_size = Vector2(19, 19)
@@ -242,12 +172,20 @@ texture = ExtResource("coin")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Cost" type="Label" parent="Net/Reveal/Purchase/Caption"]
+[node name="Cost" type="Label" parent="Pipe/Reveal/Purchase/Caption"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 14
 text = "10"
+
+[node name="Net" type="Control" parent="."]
+layout_mode = 0
+offset_left = 410.0
+offset_top = 0.0
+offset_right = 600.0
+offset_bottom = 76.0
+mouse_filter = 2
 
 [node name="Button" type="Button" parent="Net"]
 layout_mode = 0
@@ -308,6 +246,70 @@ selected = false
 
 [node name="Shortcut" parent="Net" instance=ExtResource("shortcut")]
 text = "2"
+
+[node name="Reveal" type="Control" parent="Net"]
+z_index = -1
+layout_mode = 0
+offset_left = 12.0
+offset_top = -30.0
+offset_right = 178.0
+offset_bottom = 36.0
+mouse_filter = 2
+clip_contents = true
+
+[node name="Purchase" type="Button" parent="Net/Reveal"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 166.0
+offset_bottom = 40.0
+focus_mode = 0
+
+[node name="Backing" type="TextureRect" parent="Net/Reveal/Purchase"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 166.0
+offset_bottom = 72.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("upgrade")
+material = SubResource("material")
+
+[node name="Caption" type="HBoxContainer" parent="Net/Reveal/Purchase"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 5.0
+offset_right = 158.0
+offset_bottom = 30.0
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="Level" type="Label" parent="Net/Reveal/Purchase/Caption"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "2 级 ·"
+
+[node name="Coin" type="TextureRect" parent="Net/Reveal/Purchase/Caption"]
+texture_filter = 4
+material = ExtResource("coin_outline")
+custom_minimum_size = Vector2(19, 19)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("coin")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Cost" type="Label" parent="Net/Reveal/Purchase/Caption"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "10"
 
 [node name="Technology" type="Button" parent="."]
 layout_mode = 0

@@ -64,9 +64,12 @@ func _check_timers_and_stages(demo: DemoScript) -> void:
 	demo.run.combo_remaining = 3.0
 	demo.run.net_cooldown_remaining = 6.0
 	demo._layout.refresh_timers(demo.run)
+	demo._pipe.combo_meter.refresh()
 	_check(
-		demo._layout._combo_label.text.contains("3.0 秒") and demo._layout._combo_timer.value == 3.0,
-		"the combo buff exposes its actual remaining seconds and full timer bar"
+		is_equal_approx(
+			demo._pipe.combo_meter.time_ratio, 3.0 / demo.run.get_combo_window_seconds()
+		),
+		"the combo meter exposes remaining time without numeric text"
 	)
 	for tick: int in range(36):
 		demo.run.combo_remaining = maxf(0.0, 3.0 - float(tick) * 0.1)
@@ -87,7 +90,8 @@ func _check_timers_and_stages(demo: DemoScript) -> void:
 	demo.run.combo_remaining = 0.0
 	demo.run.net_cooldown_remaining = 0.0
 	demo._layout.refresh_timers(demo.run)
-	_check(demo._layout._combo_timer.value == 0.0, "an expired streak empties its decay bar")
+	demo._pipe.combo_meter.refresh()
+	_check(demo._pipe.combo_meter.time_ratio == 0.0, "an expired streak empties its decay bar")
 	_check(
 		demo._layout._net_timer_label.text == "就绪 · 5 只",
 		"a ready net shows its capacity and availability"

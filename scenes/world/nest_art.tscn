@@ -22,6 +22,7 @@ mucus_spawn = NodePath("黏液产怪")
 drill_growth = NodePath("地鼠巢穴")
 drill_flower = NodePath("地鼠花")
 drill_spawn = NodePath("地鼠产怪")
+maximum_footprint_width = 325.0
 
 [node name="史莱姆巢穴" parent="." instance=ExtResource("2_slime")]
 

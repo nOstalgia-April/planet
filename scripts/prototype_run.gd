@@ -438,13 +438,13 @@ func get_technology_description(id: String) -> String:
 		"cultivation":
 			return "解锁巢穴培育升级，让巢穴能容纳更多怪物。"
 		"automation":
-			return "解锁巢穴的自动化改造，让糖果自己送上门。改造后持续产糖，停止产怪。"
+			return "恢复巢穴为小花，自动产糖，最终恢复整个星球！"
 		"combo_unlock":
-			return "每段 %s 秒，达标额外结算本段糖果。巨型计 1 只，按全部价值奖励；超时回到第一段，最高段完成后循环。" % String.num(get_combo_window_seconds(), 1).trim_suffix(".0")
+			return "每完成一段连击要求，就结算一次额外糖果！"
 		"valuable":
-			return "让新生怪物中出现高价值个体，捕获它们可赚取多倍糖果。"
+			return "怪物中会出现高价值个体，有机会赚取多倍糖果。"
 		"giant":
-			return "屏幕外相邻巢穴的个体可合成巨型，让你一次收割整群的糖果。巨型只能用吸管收割，收益全部保留。"
+			return "屏幕外的小怪现在会聚集成巨型史莱姆！"
 	return ""
 
 
@@ -863,7 +863,11 @@ func _advance_nest_roll(delta: float) -> void:
 			continue
 		_pending_nest_species = _choose_spawn_species()
 		nest_spawn_requested.emit(_pending_nest_species as NestState.Species)
-		if _pending_nest_species >= 0 or is_complete:
+		if (
+			_pending_nest_species >= 0
+			or is_complete
+			or (_nest_site_capacity > 0 and nests.size() >= _nest_site_capacity)
+		):
 			return
 
 
@@ -884,8 +888,7 @@ func _choose_spawn_species() -> int:
 			deficits[species] = maxi(0, minimum - counts[species])
 			total_deficit += deficits[species]
 	var reserve_sites: bool = (
-		_nest_site_capacity > 0
-		and _nest_site_capacity - nests.size() <= total_deficit
+		_nest_site_capacity > 0 and _nest_site_capacity - nests.size() <= total_deficit
 	)
 	var total_weight: float = 0.0
 	for species: int in range(weights.size()):

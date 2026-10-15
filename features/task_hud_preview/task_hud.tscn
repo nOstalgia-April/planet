@@ -1,0 +1,121 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/ui/task_hud_preview/task_panel_web_v1.tres" id="panel"]
+[ext_resource type="Texture2D" path="res://assets/ui/technology/automation.tres" id="automation"]
+[ext_resource type="Font" path="res://fonts/game_font.tres" id="font"]
+[ext_resource type="Texture2D" path="res://assets/ui/candy_coin.png" id="coin"]
+
+[sub_resource type="StyleBoxFlat" id="track"]
+bg_color = Color(0.26, 0.20, 0.25, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_left = 3
+corner_radius_bottom_right = 3
+
+[sub_resource type="StyleBoxFlat" id="fill"]
+bg_color = Color(0.86, 0.44, 0.61, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_left = 3
+corner_radius_bottom_right = 3
+
+[node name="TaskHud" type="Control"]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 76.0
+offset_right = 352.0
+offset_bottom = 220.0
+mouse_filter = 2
+
+[node name="PanelTexture" type="TextureRect" parent="."]
+layout_mode = 0
+offset_right = 324.0
+offset_bottom = 144.0
+mouse_filter = 2
+texture = ExtResource("panel")
+expand_mode = 1
+
+[node name="Eyebrow" type="Label" parent="."]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 15.0
+offset_right = 168.0
+offset_bottom = 35.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.94, 0.63, 0.75, 1)
+theme_override_fonts/font = ExtResource("font")
+theme_override_font_sizes/font_size = 14
+text = "优先解锁"
+
+[node name="TechnologyIcon" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 25.0
+offset_top = 49.0
+offset_right = 60.0
+offset_bottom = 84.0
+mouse_filter = 2
+modulate = Color(0.96, 0.89, 0.91, 1)
+texture = ExtResource("automation")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 0
+offset_left = 74.0
+offset_top = 40.0
+offset_right = 300.0
+offset_bottom = 69.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.99, 0.95, 0.95, 1)
+theme_override_fonts/font = ExtResource("font")
+theme_override_font_sizes/font_size = 22
+text = "完全治理"
+
+[node name="Effect" type="Label" parent="."]
+layout_mode = 0
+offset_left = 74.0
+offset_top = 73.0
+offset_right = 302.0
+offset_bottom = 95.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.78, 0.73, 0.77, 1)
+theme_override_fonts/font = ExtResource("font")
+theme_override_font_sizes/font_size = 14
+text = "改造后自动产糖，停止产怪"
+
+[node name="Progress" type="ProgressBar" parent="."]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 116.0
+offset_right = 156.0
+offset_bottom = 122.0
+mouse_filter = 2
+theme_override_styles/background = SubResource("track")
+theme_override_styles/fill = SubResource("fill")
+max_value = 4500.0
+value = 2850.0
+show_percentage = false
+
+[node name="Coin" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 169.0
+offset_top = 110.0
+offset_right = 185.0
+offset_bottom = 126.0
+mouse_filter = 2
+texture = ExtResource("coin")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Amount" type="Label" parent="."]
+layout_mode = 0
+offset_left = 190.0
+offset_top = 107.0
+offset_right = 300.0
+offset_bottom = 129.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.88, 0.83, 0.85, 1)
+theme_override_fonts/font = ExtResource("font")
+theme_override_font_sizes/font_size = 14
+text = "2,850 / 4,500"
+horizontal_alignment = 2

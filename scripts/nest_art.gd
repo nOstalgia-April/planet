@@ -20,6 +20,9 @@ const SPAWN_CLIPS: Array[StringName] = [&"阶段1产怪", &"阶段2产怪", &"�
 @export var drill_growth: ItemArt
 @export var drill_flower: ItemArt
 @export var drill_spawn: ItemArt
+## Full-animation footprint in local art units. Recheck after replacing animation art
+## with tests/nest_footprint_check.tscn; gameplay reads this without scanning textures.
+@export_range(1.0, 1000.0, 1.0, "or_greater") var maximum_footprint_width: float = 325.0
 
 static var _texture_bounds: Dictionary[Texture2D, Rect2] = {}
 static var _texture_feet: Dictionary[Texture2D, ImageTexture] = {}
@@ -278,7 +281,8 @@ func get_source_texture() -> Texture2D:
 	return _sprite.texture
 
 
-func get_maximum_footprint_width() -> float:
+## Expensive authoring check; never call during scene startup or gameplay.
+func measure_maximum_footprint_width() -> float:
 	var half_width: float = 0.0
 	for art: ItemArt in _get_art_items():
 		var sprite: Sprite2D = art.get_node("画面/贴图") as Sprite2D

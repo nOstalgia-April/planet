@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/场景动画/流星.tscn" id="r001"]
+
+[node name="流星预览" instance=ExtResource("r001")]
+visible = true
+
+[node name="动画播放器" parent="." index="1"]
+autoplay = "播放"

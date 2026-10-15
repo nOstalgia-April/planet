@@ -1,5 +1,5 @@
 extends "res://scripts/ui/technology_page.gd"
-const INTERACTIVE_GRAPH_SIZE: Vector2 = Vector2(1080.0, 850.0)
+const INTERACTIVE_GRAPH_SIZE: Vector2 = Vector2(1080.0, 900.0)
 const INITIAL_VIEW_CENTER: Vector2 = Vector2(530.0, 660.0)
 static var _last_zoom_factor: float = 1.0
 static var _last_view_center: Vector2 = INITIAL_VIEW_CENTER
@@ -58,9 +58,7 @@ func _node_position(id: String) -> Vector2:
 
 func _fit_graph() -> void:
 	var available: Vector2 = _canvas.size - Vector2(32.0, 24.0)
-	var factor: float = minf(
-		available.x / 1000.0, available.y / 520.0
-	)
+	var factor: float = minf(available.x / 1000.0, available.y / 520.0)
 	var target_scale: float = maxf(0.1, factor) * zoom_factor
 	graph.scale = Vector2.ONE * target_scale
 	graph.size = INTERACTIVE_GRAPH_SIZE

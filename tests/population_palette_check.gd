@@ -21,38 +21,48 @@ func _run() -> void:
 	_demo._view.set_process(false)
 	var palette: Palette = _demo._population_palette
 	palette.set_process(false)
+	_check(
+		_demo._planet_art.sprite.material in palette._materials,
+		"The restored globe receives the shared population palette."
+	)
+	_check(
+		palette.core_sprite.material in palette._materials,
+		"The animated core receives the shared population palette."
+	)
+	_check(
+		palette.settings.population_weights == Vector3(0.5, 1.0, 27.0), "Fixed reference weights."
+	)
 	await _check_transition_and_pause(palette)
 	palette.advance_population(Vector3(100, 80, 0), 0.4)
 	_check(palette.dominant_species == 0, "Brief leadership changes do not switch the theme.")
 	palette.advance_population(Vector3(100, 80, 0), 1.3)
 	_check(
 		palette.dominant_species == 1,
-		"One hundred pink units lose to eighty blue units at 75 percent weight."
+		"One hundred pink units lose to eighty blue units at half weight."
 	)
-	palette.advance_population(Vector3(108, 80, 0), 3.0)
+	palette.advance_population(Vector3(164, 80, 0), 3.0)
 	_check(
 		palette.dominant_species == 1, "Small population fluctuations retain the existing theme."
 	)
 	palette.advance_population(Vector3.ZERO, 3.0)
 	_check(palette.dominant_species == 1, "An empty planet retains its last palette.")
 	palette.reset()
-	palette.advance_population(Vector3(80, 60, 4), 2.5)
-	_check(palette.dominant_species == 0, "Four drill units no longer outweigh eighty pink units.")
-	palette.advance_population(Vector3(80, 60, 7), 2.5)
+	palette.advance_population(Vector3(120, 60, 2), 2.5)
+	_check(palette.dominant_species == 0, "Baseline populations keep pink on a tie.")
+	palette.advance_population(Vector3(120, 60, 3), 2.5)
 	_check(
 		palette.dominant_species == 2,
-		"Seven drill units outweigh eighty pink and sixty blue units at ten points each."
+		"One extra drill unit can tip the fixed baseline toward green."
 	)
 	palette.reset()
-	palette.advance_population(Vector3(120, 90, 6), 2.5)
-	_check(
-		palette.dominant_species == 0,
-		"Six drill units no longer outweigh one hundred twenty pink units."
-	)
-	palette.advance_population(Vector3(120, 90, 10), 2.5)
+	palette.advance_population(Vector3(120, 60, 2), 2.5)
+	_check(palette.dominant_species == 0, "Two drill units do not dominate the tier-two baseline.")
+	palette.advance_population(Vector3(120, 90, 2), 2.5)
+	_check(palette.dominant_species == 1, "Extra mucus retains its blue advantage.")
+	palette.advance_population(Vector3(120, 90, 4), 2.5)
 	_check(
 		palette.dominant_species == 2,
-		"Ten drill units outweigh one hundred twenty pink and ninety blue units."
+		"Extra drill population retains its green advantage over extra mucus."
 	)
 	palette.advance_population(Vector3(120, 90, 0), 2.5)
 	_check(palette.dominant_species != 2, "Capturing drill population releases green dominance.")
@@ -76,7 +86,9 @@ func _run() -> void:
 	var exit_brush: TextureRect = _demo._layout._technology.get_node("%Close/Brush") as TextureRect
 	var exit_material: ShaderMaterial = exit_brush.material as ShaderMaterial
 	_check(
-		(exit_material.get_shader_parameter("palette_dark") as Color).is_equal_approx(palette.settings.green[0]),
+		(exit_material.get_shader_parameter("palette_dark") as Color).is_equal_approx(
+			palette.settings.green[0]
+		),
 		"Technology exit graffiti follows the active background theme."
 	)
 	await _check_technology_accent(palette)
@@ -103,6 +115,7 @@ func _check_transition_and_pause(palette: Palette) -> void:
 		not transitioning.is_equal_approx(palette.settings.blue[0]),
 		"A newly accepted theme blends instead of jumping to its final color."
 	)
+	_check_palette_consumers(palette)
 	palette.set_process(true)
 	get_tree().paused = true
 	await get_tree().process_frame
@@ -111,6 +124,7 @@ func _check_transition_and_pause(palette: Palette) -> void:
 	_check(
 		paused_color.is_equal_approx(transitioning), "Pause freezes an in-flight color transition."
 	)
+	_check_palette_consumers(palette)
 	get_tree().paused = false
 	palette.set_process(false)
 	palette.advance_population(Vector3(0, 20, 0), 1.0)
@@ -119,7 +133,19 @@ func _check_transition_and_pause(palette: Palette) -> void:
 		resumed.is_equal_approx(palette.settings.blue[0]),
 		"The transition can finish after resuming."
 	)
+	_check_palette_consumers(palette)
 	palette.reset()
+
+
+func _check_palette_consumers(palette: Palette) -> void:
+	for parameter: String in Palette.PARAMETERS:
+		var expected: Color = palette._materials[0].get_shader_parameter(parameter)
+		for shader_material: ShaderMaterial in palette._materials:
+			var applied: Color = shader_material.get_shader_parameter(parameter)
+			_check(
+				applied.is_equal_approx(expected),
+				"Every palette consumer shares the same current transition color: " + parameter
+			)
 
 
 func _check_technology_accent(palette: Palette) -> void:
@@ -138,7 +164,19 @@ func _check_technology_accent(palette: Palette) -> void:
 	for species: int in range(3):
 		palette.reset()
 		palette.emphasize_species(species, 10.0)
-		palette.advance_population(Vector3(200, 0, 0), palette.settings.transition_seconds)
+		palette.advance_population(Vector3(200, 0, 0), palette.settings.transition_seconds * 0.5)
+		_check_palette_consumers(palette)
+		if species != NestState.Species.SLIME:
+			var intermediate: Color = background.get_shader_parameter("palette_mid")
+			_check(
+				(
+					not intermediate.is_equal_approx(palette.settings.pink[1])
+					and not intermediate.is_equal_approx(palette.settings.colors_for(species)[1])
+				),
+				"Temporary emphasis passes through a shared intermediate color."
+			)
+		palette.advance_population(Vector3(200, 0, 0), palette.settings.transition_seconds * 0.5)
+		_check_palette_consumers(palette)
 		_check(palette.dominant_species == 0, "Temporary emphasis preserves population dominance.")
 		var expected: PackedColorArray = palette.settings.colors_for(species)
 		for index: int in range(Palette.PARAMETERS.size()):
@@ -154,8 +192,12 @@ func _check_technology_accent(palette: Palette) -> void:
 		await get_tree().process_frame
 		await get_tree().process_frame
 		_check(
-			is_equal_approx(palette.accent_remaining, remaining)
-			and (background.get_shader_parameter("palette_mid") as Color).is_equal_approx(frozen),
+			(
+				is_equal_approx(palette.accent_remaining, remaining)
+				and (background.get_shader_parameter("palette_mid") as Color).is_equal_approx(
+					frozen
+				)
+			),
 			"Opening technology preserves the active accent while gameplay is paused."
 		)
 		palette.set_process(false)
@@ -176,9 +218,11 @@ func _check_technology_accent(palette: Palette) -> void:
 		_demo._layout.close_panels()
 		palette.advance_population(Vector3(200, 0, 0), 10.0)
 		_check(
-			palette.accent_species == -1
-			and (background.get_shader_parameter("palette_mid") as Color).is_equal_approx(
-				palette.settings.pink[1]
+			(
+				palette.accent_species == -1
+				and (background.get_shader_parameter("palette_mid") as Color).is_equal_approx(
+					palette.settings.pink[1]
+				)
 			),
 			"Technology returns to the population color after temporary emphasis expires."
 		)
@@ -192,7 +236,9 @@ func _capture_themes() -> void:
 	for species: int in range(3):
 		_demo.restart_run()
 		_demo.run.settings = _demo.run.settings.duplicate() as PrototypeSettings
-		for kind: int in [NestState.Species.MUCUS, NestState.Species.DRILL, NestState.Species.DRILL]:
+		for kind: int in [
+			NestState.Species.MUCUS, NestState.Species.DRILL, NestState.Species.DRILL
+		]:
 			_demo.run._pending_nest_species = kind
 			_demo._on_nest_spawn_requested(kind as NestState.Species)
 			for _frame: int in range(240):

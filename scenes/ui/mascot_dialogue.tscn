@@ -1,0 +1,67 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/mascot_dialogue.gd" id="script"]
+[ext_resource type="PackedScene" path="res://scenes/ui/mascot_presenter.tscn" id="presenter"]
+[ext_resource type="Texture2D" path="res://assets/美术素材库/界面/新增素材/看板娘对话框/IMG_3525.png" id="bubble"]
+[ext_resource type="FontVariation" path="res://fonts/game_font.tres" id="font"]
+
+[sub_resource type="AtlasTexture" id="bubble_crop"]
+atlas = ExtResource("bubble")
+region = Rect2(45, 40, 540, 350)
+
+[node name="MascotDialogue" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("script")
+
+[node name="SpeechBubble" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -810.0
+offset_top = -500.0
+offset_right = -180.0
+offset_bottom = -125.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="Artwork" type="TextureRect" parent="SpeechBubble"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("bubble_crop")
+expand_mode = 1
+
+[node name="Text" type="RichTextLabel" parent="SpeechBubble"]
+layout_mode = 0
+offset_left = 110.0
+offset_top = 105.0
+offset_right = 500.0
+offset_bottom = 280.0
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.10, 0.075, 0.12, 1)
+theme_override_fonts/normal_font = ExtResource("font")
+theme_override_font_sizes/normal_font_size = 32
+theme_override_constants/line_separation = 10
+bbcode_enabled = true
+scroll_active = false
+autowrap_mode = 3
+visible_characters_behavior = 1
+
+[node name="MascotPresenter" parent="." instance=ExtResource("presenter")]
+layout_mode = 1
+display_heights = PackedFloat32Array(320, 280, 150)
+edge_margin = Vector2(42, 16)

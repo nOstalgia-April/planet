@@ -18,11 +18,15 @@ var _pending_action: StringName = &""
 @onready var _music: IconButton = $Toolbar/Music
 @onready var _settings: IconButton = $Toolbar/Settings
 @onready var _modal: Control = $Modal
+@onready var _panel: PanelContainer = $Modal/Center/Panel
+@onready var _panel_material: ShaderMaterial = _panel.material as ShaderMaterial
 @onready var _music_slider: HSlider = %MusicVolume
 @onready var _effects_slider: HSlider = %EffectsVolume
 
 
 func _ready() -> void:
+	_panel.resized.connect(_sync_panel_height)
+	_sync_panel_height()
 	_pause.pressed.connect(pause_toggled.emit)
 	_music.pressed.connect(GamePreferences.toggle_audio)
 	_settings.pressed.connect(set_open.bind(true))
@@ -39,6 +43,14 @@ func _ready() -> void:
 	%ConfirmAction.pressed.connect(_accept_action)
 	GamePreferences.changed.connect(_refresh_preferences)
 	_refresh_preferences()
+
+
+func set_accent(color: Color) -> void:
+	_panel_material.set_shader_parameter("accent", color)
+
+
+func _sync_panel_height() -> void:
+	_panel_material.set_shader_parameter("panel_height", _panel.size.y)
 
 
 func is_open() -> bool:

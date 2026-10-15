@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c7cmkscvxtuk5"
-path="res://.godot/imported/005.png-2aebbd7018607e5a86bb3cd9528c811e.ctex"
+path.bptc="res://.godot/imported/005.png-2aebbd7018607e5a86bb3cd9528c811e.bptc.ctex"
+path.astc="res://.godot/imported/005.png-2aebbd7018607e5a86bb3cd9528c811e.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/场景动画/近景背景颜色/005.png"
-dest_files=["res://.godot/imported/005.png-2aebbd7018607e5a86bb3cd9528c811e.ctex"]
+dest_files=["res://.godot/imported/005.png-2aebbd7018607e5a86bb3cd9528c811e.bptc.ctex", "res://.godot/imported/005.png-2aebbd7018607e5a86bb3cd9528c811e.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

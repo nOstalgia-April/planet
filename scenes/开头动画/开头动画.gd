@@ -1,5 +1,6 @@
 extends Control
 
+const MainMenu = preload("res://scenes/主菜单/主菜单.gd")
 const OPENING_SOUND: String = "event:/Mx/OpeningAnimation"
 # FMOD needs ~0.2 s to start a sound; never hold the first frame longer than this.
 const SOUND_START_TIMEOUT: float = 0.5
@@ -16,6 +17,7 @@ var _waiting_for_sound: float = 0.0
 # Sound timeline (seconds) at the moment the animation started moving; -1 while
 # the first frame is still held.
 var _sound_offset: float = -1.0
+var _preparing_game: bool = false
 
 
 func _ready() -> void:
@@ -31,6 +33,14 @@ func _ready() -> void:
 	if _sound != null:
 		animation_player.speed_scale = 0.0
 	set_process(_sound != null)
+	# Prepare gameplay while the opening is on screen. The menu retrieves this
+	# same request, so Start does not begin all resource IO from scratch.
+	_preparing_game = MainMenu.prepare_scene() == OK
+
+
+func _exit_tree() -> void:
+	if _preparing_game:
+		MainMenu.release_scene(get_tree(), MainMenu.DEFAULT_START_SCENE)
 
 
 # Holds the first frame until the sound starts, then keeps the animation on the

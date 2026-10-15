@@ -3,13 +3,12 @@ extends Button
 enum State { PURCHASED, AVAILABLE, UNAFFORDABLE, LOCKED }
 
 const GlyphScript = preload("res://scripts/ui/technology_glyph.gd")
+const AvailableCueScript = preload("res://scripts/effects/technology_available_cue.gd")
 const ICON_CENTER: Vector2 = Vector2(70.0, 40.0)
 const PRICE_COLORS: Array[Color] = [
 	Color("c6adba"), Color("ffe4f0"), Color("b59aa9"), Color("947987")
 ]
-const INK_COLORS: Array[Color] = [
-	Color("c6adba"), Color.WHITE, Color("b59aa9"), Color("947987")
-]
+const INK_COLORS: Array[Color] = [Color("c6adba"), Color.WHITE, Color("b59aa9"), Color("947987")]
 const MILESTONES: Dictionary[String, String] = {
 	"net_unlock": "解锁工具", "cultivation": "经营巢穴", "automation": "自动产糖"
 }
@@ -28,6 +27,7 @@ var selected: bool = false
 @onready var _halo: TextureRect = $Halo
 @onready var _focus_ink: TextureRect = $FocusInk
 @onready var _purchase_glow: ColorRect = $PurchaseGlow
+@onready var _available_cue: AvailableCueScript = $AvailableCue
 
 
 func _ready() -> void:
@@ -49,10 +49,16 @@ func configure(id: String, title: String, symbol: int, color: Color) -> void:
 	if MILESTONES.has(id):
 		glyph.position -= Vector2(4.0, 4.0)
 		glyph.size += Vector2(8.0, 8.0)
+	if id == "base_value":
+		glyph.position -= Vector2(8.0, 8.0)
+		glyph.size += Vector2(16.0, 16.0)
+		title_label.add_theme_font_size_override("font_size", 22)
 
 
 func refresh(next_state: State, is_selected: bool, current_level: int) -> void:
 	state = next_state
+	if state != State.AVAILABLE:
+		_available_cue.stop()
 	selected = is_selected
 	level = current_level
 	glyph.locked = state == State.LOCKED
@@ -67,6 +73,15 @@ func refresh(next_state: State, is_selected: bool, current_level: int) -> void:
 	$Milestone.visible = revealed and MILESTONES.has(technology_id)
 	glyph.queue_redraw()
 	_refresh_appearance()
+
+
+func play_available_cue() -> void:
+	if state == State.AVAILABLE:
+		_available_cue.play()
+
+
+func stop_available_cue() -> void:
+	_available_cue.stop()
 
 
 func show_price(max_level: int, cost: int) -> void:
@@ -87,7 +102,9 @@ func _refresh_appearance() -> void:
 	_halo.visible = state == State.AVAILABLE or (active and state != State.PURCHASED)
 	_halo.modulate.a = 0.85 if active else 0.55
 	_focus_ink.visible = active
-	title_label.add_theme_color_override("font_color", Color("ffc4e0") if active else INK_COLORS[state])
+	title_label.add_theme_color_override(
+		"font_color", Color("ffc4e0") if active else INK_COLORS[state]
+	)
 	queue_redraw()
 
 

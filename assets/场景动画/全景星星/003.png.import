@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://7yxkcghwok21"
-path="res://.godot/imported/003.png-306502c793fcdc3bc9c6b5f7ac6f38a3.ctex"
+path.bptc="res://.godot/imported/003.png-306502c793fcdc3bc9c6b5f7ac6f38a3.bptc.ctex"
+path.astc="res://.godot/imported/003.png-306502c793fcdc3bc9c6b5f7ac6f38a3.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/场景动画/全景星星/003.png"
-dest_files=["res://.godot/imported/003.png-306502c793fcdc3bc9c6b5f7ac6f38a3.ctex"]
+dest_files=["res://.godot/imported/003.png-306502c793fcdc3bc9c6b5f7ac6f38a3.bptc.ctex", "res://.godot/imported/003.png-306502c793fcdc3bc9c6b5f7ac6f38a3.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

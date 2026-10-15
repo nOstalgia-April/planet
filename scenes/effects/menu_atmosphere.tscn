@@ -1,0 +1,103 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Shader" path="res://shaders/menu_ambient_glow.gdshader" id="1_glow"]
+[ext_resource type="Shader" path="res://shaders/menu_mote.gdshader" id="2_mote"]
+[ext_resource type="Shader" path="res://shaders/godotshaders/menu_atmosphere/variant_1_soft_vignette.gdshader" id="3_vignette"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_glow"]
+shader = ExtResource("1_glow")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_mote"]
+shader = ExtResource("2_mote")
+shader_parameter/softness = 1.0
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_near_mote"]
+shader = ExtResource("2_mote")
+shader_parameter/softness = 0.65
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vignette"]
+shader = ExtResource("3_vignette")
+
+[sub_resource type="Gradient" id="Gradient_texture"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture_mote"]
+gradient = SubResource("Gradient_texture")
+width = 32
+height = 32
+
+[sub_resource type="Gradient" id="Gradient_far_lifetime"]
+offsets = PackedFloat32Array(0, 0.15, 0.48, 0.80, 1)
+colors = PackedColorArray(0.9, 0.3, 0.51, 0, 1, 0.61, 0.72, 0.65, 1, 0.73, 0.77, 0.8, 0.92, 0.32, 0.53, 0.45, 0.8, 0.23, 0.42, 0)
+
+[sub_resource type="Gradient" id="Gradient_near_lifetime"]
+offsets = PackedFloat32Array(0, 0.2, 0.65, 1)
+colors = PackedColorArray(0.8, 0.23, 0.42, 0, 1, 0.36, 0.59, 0.23, 0.66, 0.4, 0.8, 0.16, 0.66, 0.4, 0.8, 0)
+
+[node name="MenuAtmosphere" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 2
+clip_contents = true
+
+[node name="AmbientGlow" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_glow")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="FarMotes" type="CPUParticles2D" parent="."]
+material = SubResource("ShaderMaterial_mote")
+position = Vector2(1030, 560)
+amount = 64
+lifetime = 19.0
+preprocess = 19.0
+local_coords = true
+texture = SubResource("GradientTexture_mote")
+emission_shape = 3
+emission_rect_extents = Vector2(780, 480)
+direction = Vector2(0.3, -1)
+spread = 28.0
+gravity = Vector2(0, 0)
+initial_velocity_min = 5.0
+initial_velocity_max = 13.0
+angular_velocity_min = -12.0
+angular_velocity_max = 12.0
+scale_amount_min = 0.13
+scale_amount_max = 0.30
+color_ramp = SubResource("Gradient_far_lifetime")
+
+[node name="NearMotes" type="CPUParticles2D" parent="."]
+material = SubResource("ShaderMaterial_near_mote")
+position = Vector2(1080, 570)
+amount = 13
+lifetime = 24.0
+preprocess = 24.0
+local_coords = true
+texture = SubResource("GradientTexture_mote")
+emission_shape = 3
+emission_rect_extents = Vector2(820, 480)
+direction = Vector2(-0.24, -1)
+spread = 20.0
+gravity = Vector2(0, 0)
+initial_velocity_min = 8.0
+initial_velocity_max = 16.0
+scale_amount_min = 0.55
+scale_amount_max = 1.1
+color_ramp = SubResource("Gradient_near_lifetime")
+
+[node name="Vignette" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_vignette")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

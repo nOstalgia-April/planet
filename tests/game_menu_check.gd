@@ -48,6 +48,10 @@ func _run() -> void:
 		await _capture("play", resolution)
 		await _click(menu.get_node("Toolbar/Pause"))
 		_check(get_tree().paused, "pause button stops scene tree")
+		await _check_audio_paused(true, "pause button suspends FMOD")
+		_check(
+			GameAudio._master_bus.get_mute() and AudioServer.is_bus_mute(0), "pause silences audio"
+		)
 		var spawn_clock: float = _game.run.nests[0].spawn_clock
 		var position: Vector2 = _game._slimes[0].position
 		await get_tree().create_timer(0.25, true).timeout
@@ -64,8 +68,10 @@ func _run() -> void:
 		_check(get_tree().paused, "closing settings preserves manual pause")
 		await _key(KEY_ESCAPE)
 		_check(not get_tree().paused, "escape resumes manual pause")
+		await _check_audio_paused(false, "escape resumes audio")
 		await _click(menu.get_node("Toolbar/Settings"))
 		_check(get_tree().paused, "settings pauses running game")
+		await _check_audio_paused(true, "settings suspends audio")
 		menu.get_node("%MusicVolume").value = 37.0
 		menu.get_node("%EffectsVolume").value = 24.0
 		await _settle()
@@ -162,6 +168,7 @@ func _run() -> void:
 			)
 			await _capture("technology_failed", resolution)
 		_check(layout.is_technology_open() and get_tree().paused, "technology still pauses")
+		await _check_audio_paused(true, "technology suspends audio")
 		await _key(KEY_ESCAPE)
 		_check(
 			not layout.is_technology_open() and not get_tree().paused,
@@ -177,6 +184,7 @@ func _run() -> void:
 		await _click(menu.get_node("%Restart"))
 		await _click(menu.get_node("%ConfirmAction"))
 		_check(not get_tree().paused and not menu.is_open(), "confirmed restart resumes")
+		await _check_audio_paused(false, "restart resumes audio")
 		_check(_game.run.candy == 0 and _game._slimes.is_empty(), "confirmed restart resets run")
 		_game.queue_free()
 		await _settle()
@@ -206,6 +214,7 @@ func _run() -> void:
 	await _click(_game._layout.game_menu.get_node("%ConfirmAction"))
 	await _settle()
 	_check(not get_tree().paused, "main menu is not paused")
+	await _check_audio_paused(false, "returning to main menu resumes audio")
 	_check(
 		get_tree().current_scene.scene_file_path == "res://scenes/主菜单/主菜单.tscn",
 		"confirmed menu action changes scene"
@@ -289,6 +298,12 @@ func _capture(label: String, resolution: Vector2i) -> void:
 	await RenderingServer.frame_post_draw
 	var path: String = "%s/%s_%dx%d.png" % [OUTPUT, label, resolution.x, resolution.y]
 	_check(get_viewport().get_texture().get_image().save_png(path) == OK, "capture saved")
+
+
+func _check_audio_paused(paused: bool, description: String) -> void:
+	# FMOD applies bus commands asynchronously on its audio thread.
+	await get_tree().create_timer(0.1).timeout
+	_check(GameAudio._master_bus.get_paused() == paused, description)
 
 
 func _check(condition: bool, description: String) -> void:

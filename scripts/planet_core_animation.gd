@@ -36,8 +36,12 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		set_process(false)
 	elif synchronize_music:
-		# Music continues while the tree is paused; the effect follows that same clock.
+		# Follow the music clock, including its pause and resume timing.
 		process_mode = Node.PROCESS_MODE_ALWAYS
+
+
+func set_white_mix(value: float) -> void:
+	_shape_material.set_shader_parameter("core_white_mix", clampf(value, 0.0, 1.0))
 
 
 func _process(delta: float) -> void:
@@ -72,8 +76,10 @@ func seek_seconds(seconds: float) -> void:
 		var local_tile: int = tile % per_page
 		sprite.texture = _pages[_wanted_page]
 		sprite.region_rect = Rect2(
-			Vector2(local_tile % clip.columns, floori(float(local_tile) / clip.columns))
-			* Vector2(clip.tile_size),
+			(
+				Vector2(local_tile % clip.columns, floori(float(local_tile) / clip.columns))
+				* Vector2(clip.tile_size)
+			),
 			Vector2(clip.tile_size)
 		)
 		var region: Rect2 = sprite.region_rect

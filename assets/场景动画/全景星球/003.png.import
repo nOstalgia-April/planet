@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://wu2p5ter1cjv"
-path="res://.godot/imported/003.png-5ed0dacb714aaa9376830f60636ef93a.ctex"
+path.bptc="res://.godot/imported/003.png-5ed0dacb714aaa9376830f60636ef93a.bptc.ctex"
+path.astc="res://.godot/imported/003.png-5ed0dacb714aaa9376830f60636ef93a.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/场景动画/全景星球/003.png"
-dest_files=["res://.godot/imported/003.png-5ed0dacb714aaa9376830f60636ef93a.ctex"]
+dest_files=["res://.godot/imported/003.png-5ed0dacb714aaa9376830f60636ef93a.bptc.ctex", "res://.godot/imported/003.png-5ed0dacb714aaa9376830f60636ef93a.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
