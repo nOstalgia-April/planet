@@ -217,6 +217,7 @@ for ($round = 1; $round -le $Rounds; $round++) {
     if (-not $cacheRegenerated) { $failures.Add('No fresh, nonempty script documentation cache was generated.') }
 
     $failurePatterns = @(
+        '(?im)^.*(?:resources still in use at exit|ObjectDB instances? (?:was|were) leaked|RIDs of type .* were leaked|allocations of type .* were leaked|shaders of type .* were never freed|Pages in use exist at exit|Parameter "RenderingServer::get_singleton\(\)" is null).*$',
         '(?im)^ERROR:.*(?:Error copying library|Can.t open (?:GDExtension )?dynamic library|Failed to create an autoload).*$',
         '(?im)^SCRIPT ERROR:.*$',
         '(?im)^(?:ERROR:\s*)?(?:Failed|Could not|Cannot|Unable) to (?:load|open|parse|import|instantiate) (?:script|resource|scene)\b.*$',

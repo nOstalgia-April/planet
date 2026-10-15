@@ -1,5 +1,7 @@
 extends Node2D
 
+const SharedCache = preload("res://scripts/art_resource_cache.gd")
+
 signal bounds_changed
 signal flower_appeared
 signal production_started(sprite: Sprite2D, amount: int, duration: float)
@@ -24,8 +26,10 @@ const SPAWN_CLIPS: Array[StringName] = [&"阶段1产怪", &"阶段2产怪", &"�
 ## with tests/nest_footprint_check.tscn; gameplay reads this without scanning textures.
 @export_range(1.0, 1000.0, 1.0, "or_greater") var maximum_footprint_width: float = 325.0
 
-static var _texture_bounds: Dictionary[Texture2D, Rect2] = {}
-static var _texture_feet: Dictionary[Texture2D, ImageTexture] = {}
+var _texture_bounds: Dictionary[Texture2D, Rect2] = SharedCache.texture_bounds(
+	&"planet_nest_art_bounds"
+)
+var _texture_feet: Dictionary[Texture2D, ImageTexture] = SharedCache.texture_feet()
 
 var _species: int = 0
 var _display_level: int = 0

@@ -1,6 +1,8 @@
 @tool
 extends Node2D
 
+const SharedCache = preload("res://scripts/art_resource_cache.gd")
+
 const FRAMES: SpriteFrames = preload("res://assets/ecology/nest_mucus/frames.tres")
 const ALPHA_THRESHOLD: float = 0.1
 const SOURCE_ROTATION: float = -0.3
@@ -12,7 +14,7 @@ const SOURCE_ANCHORS: Array[Vector2] = [
 ]
 const SOURCE_WIDTHS: Array[float] = [757.07030, 819.80657, 802.17208]
 
-static var _alpha_masks: Dictionary[Texture2D, BitMap] = {}
+var _alpha_masks: Dictionary[Texture2D, BitMap] = SharedCache.alpha_masks()
 
 @export_enum("1", "2", "3") var variant_index: int = 0:
 	set(value):

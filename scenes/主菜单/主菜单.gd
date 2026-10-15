@@ -1,5 +1,7 @@
 extends Control
 
+const SharedCache = preload("res://scripts/art_resource_cache.gd")
+
 const DEFAULT_START_SCENE: String = "res://features/场景预览/近景游玩预览.tscn"
 
 @export_file("*.tscn") var start_scene: String = DEFAULT_START_SCENE
@@ -54,16 +56,35 @@ func _prepare_game() -> void:
 
 
 static func prepare_scene(path: String = DEFAULT_START_SCENE) -> Error:
-	return ResourceLoader.load_threaded_request(path, "PackedScene", true)
+	# Godot 4.7.2 leaks analyzer temporaries when compiling this dependency
+	# graph on loader workers. Prepare scripts/shaders here; texture IO stays async.
+	_warm_resources(path, {})
+	return ResourceLoader.load_threaded_request(path, "PackedScene")
+
+
+static func _warm_resources(path: String, visited: Dictionary) -> void:
+	if visited.has(path):
+		return
+	visited[path] = true
+	var resources: Dictionary = SharedCache.get_cache(&"planet_prepared_resources")
+	if path.get_extension() in ["gd", "gdshader", "gdshaderinc"] and not resources.has(path):
+		resources[path] = load(path)
+	for dependency: String in ResourceLoader.get_dependencies(path):
+		var target: String = dependency.get_slice("::", dependency.get_slice_count("::") - 1)
+		if target.get_extension() in ["gd", "tscn", "tres", "gdshader", "gdshaderinc"]:
+			_warm_resources(target, visited)
 
 
 static func release_scene(tree: SceneTree, path: String) -> void:
+	# Preview handoffs keep running without waiting for the gameplay preload.
+	# Application shutdown must retrieve it before loaders/rendering disappear.
 	while ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+		if GameLifecycle.quitting:
+			break
 		await tree.process_frame
-	# Balance this scene's request without blocking a preview or a return to menu.
-	# Retain the result through the scene handoff so the next owner can reuse it.
 	var resource: Resource = ResourceLoader.load_threaded_get(path)
-	await tree.process_frame
+	if not GameLifecycle.quitting:
+		await tree.process_frame
 	resource = null
 
 
@@ -124,4 +145,4 @@ func _toggle_previews() -> void:
 
 
 func _quit() -> void:
-	get_tree().quit()
+	GameLifecycle.request_quit()

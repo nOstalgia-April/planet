@@ -1,8 +1,8 @@
 extends "res://scripts/ui/technology_page.gd"
 const INTERACTIVE_GRAPH_SIZE: Vector2 = Vector2(1080.0, 900.0)
 const INITIAL_VIEW_CENTER: Vector2 = Vector2(530.0, 660.0)
-static var _last_zoom_factor: float = 1.0
-static var _last_view_center: Vector2 = INITIAL_VIEW_CENTER
+const SharedCache = preload("res://scripts/art_resource_cache.gd")
+var _view_memory: Dictionary = SharedCache.get_cache(&"planet_technology_view")
 var zoom_factor: float = 1.0
 var view_center: Vector2 = INITIAL_VIEW_CENTER
 var _panning: bool = false
@@ -17,8 +17,8 @@ func _ready() -> void:
 	$Margin/Content/Footer/Hint.text = ""
 	visibility_changed.connect(_cancel_pointer)
 	_canvas.gui_input.connect(_canvas_input)
-	view_center = _last_view_center
-	set_zoom(_last_zoom_factor)
+	view_center = _view_memory.get(&"center", INITIAL_VIEW_CENTER)
+	set_zoom(_view_memory.get(&"zoom", 1.0))
 
 
 func _build_graph() -> void:
@@ -67,13 +67,13 @@ func _fit_graph() -> void:
 
 func set_view_center(value: Vector2) -> void:
 	view_center = value.clamp(Vector2.ZERO, INTERACTIVE_GRAPH_SIZE)
-	_last_view_center = view_center
+	_view_memory[&"center"] = view_center
 	_fit_graph()
 
 
 func set_zoom(value: float) -> void:
 	zoom_factor = clampf(value, 0.45, 2.0)
-	_last_zoom_factor = zoom_factor
+	_view_memory[&"zoom"] = zoom_factor
 	_fit_graph()
 
 

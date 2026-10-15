@@ -1,17 +1,15 @@
-@tool class_name FmodBankExplorer extends Window
+@tool
+class_name FmodBankExplorer extends Window
+signal banks_reload_requested
 
-enum ToDisplayFlags {
-	BUSES = 1,
-	VCA = 2,
-	EVENTS = 4
-}
+enum ToDisplayFlags { BUSES = 1, VCA = 2, EVENTS = 4 }
 
-static var _fmod_icon = load("res://addons/fmod/icons/fmod_icon.svg")
-static var _vca_icon = load("res://addons/fmod/icons/vca_icon.svg")
-static var _bank_icon = load("res://addons/fmod/icons/bank_icon.svg")
-static var _event_icon = load("res://addons/fmod/icons/event_icon.svg")
-static var _bus_icon = load("res://addons/fmod/icons/bus_icon.svg")
-static var _snapshot_icon = load("res://addons/fmod/icons/snapshot_icon.svg")
+var _fmod_icon = load("res://addons/fmod/icons/fmod_icon.svg")
+var _vca_icon = load("res://addons/fmod/icons/vca_icon.svg")
+var _bank_icon = load("res://addons/fmod/icons/bank_icon.svg")
+var _event_icon = load("res://addons/fmod/icons/event_icon.svg")
+var _bus_icon = load("res://addons/fmod/icons/bus_icon.svg")
+var _snapshot_icon = load("res://addons/fmod/icons/snapshot_icon.svg")
 
 signal emit_path_and_guid(path: String, guid: String)
 
@@ -33,15 +31,19 @@ var banks: Array = Array()
 var flags: int = 0
 var search: String = ""
 
+
 func reset_search():
 	%SearchField.text = ""
 	search = ""
+
 
 func _ready():
 	var main_window_size = get_parent().get_window().size
 	size = main_window_size * 0.5
 
-	var copy_texture : Texture = EditorInterface.get_editor_theme().get_icon("ActionCopy", "EditorIcons")
+	var copy_texture: Texture = EditorInterface.get_editor_theme().get_icon(
+		"ActionCopy", "EditorIcons"
+	)
 	copy_guid_button.icon = copy_texture
 	copy_path_button.icon = copy_texture
 	copy_guid_button.visible = false
@@ -57,7 +59,11 @@ func _ready():
 		if selected_fmod_element == null:
 			return
 
-		var path = selected_fmod_element.get_godot_res_path() if selected_fmod_element is FmodBank else selected_fmod_element.get_path()
+		var path = (
+			selected_fmod_element.get_godot_res_path()
+			if selected_fmod_element is FmodBank
+			else selected_fmod_element.get_path()
+		)
 		emit_path_and_guid.emit(path, selected_fmod_element.get_guid())
 	%SelectButton.pressed.connect(emit_path_and_guid_callable)
 	%SelectButton.pressed.connect(close_window)
@@ -75,6 +81,7 @@ func _ready():
 func regenerate_tree(callable: Callable = Callable()):
 	tree.clear()
 	generate_tree(callable)
+
 
 func generate_tree(callable: Callable = Callable()):
 	%SelectButton.visible = should_display_select_button
@@ -151,20 +158,21 @@ func generate_tree(callable: Callable = Callable()):
 
 	%SelectButton.visible = should_display_select_button and %GuidLabel.text != ""
 
-func _add_elements_as_items(elements: Array, parent: TreeItem):
-		for element in elements:
-			var full_path: String = element.get_path()
-			if not full_path.containsn(search):
-				continue
 
-			var child := tree.create_item(parent)
-			var name := full_path.rsplit("/")[-1]
-			child.set_text(0, name)
-			child.set_metadata(0, element)
-			child.set_icon(0, _get_icon_for_fmod_path(full_path))
+func _add_elements_as_items(elements: Array, parent: TreeItem):
+	for element in elements:
+		var full_path: String = element.get_path()
+		if not full_path.containsn(search):
+			continue
+		var child := tree.create_item(parent)
+		var name := full_path.rsplit("/")[-1]
+		child.set_text(0, name)
+		child.set_metadata(0, element)
+		child.set_icon(0, _get_icon_for_fmod_path(full_path))
+
 
 func _add_elements_as_tree(elements: Array, parent: TreeItem):
-	var nodes := { "": parent }
+	var nodes := {"": parent}
 
 	for element in elements:
 		var full_path: String = element.get_path()
@@ -201,6 +209,7 @@ func _add_elements_as_tree(elements: Array, parent: TreeItem):
 				leaf.set_metadata(0, element)
 				leaf.set_icon(0, _get_icon_for_fmod_path(full_path))
 
+
 func _on_item_selected():
 	var metadata = tree.get_selected().get_metadata(0)
 	if metadata == null or !metadata.get_guid():
@@ -223,7 +232,7 @@ func _on_item_selected():
 
 	if metadata is FmodEventDescription:
 		%EventPlayControls.set_fmod_event(metadata)
-		var _show_parameter_controls : bool = %EventParametersDisplay.set_fmod_event(metadata)
+		var _show_parameter_controls: bool = %EventParametersDisplay.set_fmod_event(metadata)
 		%ParametersLabel.visible = _show_parameter_controls
 		%ParametersContainer.visible = _show_parameter_controls
 		return
@@ -232,8 +241,10 @@ func _on_item_selected():
 	%ParametersLabel.visible = false
 	%ParametersContainer.visible = false
 
+
 func _on_copy_path_button():
 	DisplayServer.clipboard_set(%PathLabel.text)
+
 
 func _on_copy_guid_button():
 	DisplayServer.clipboard_set(%GuidLabel.text)
@@ -243,14 +254,16 @@ func on_refresh_banks_button_pressed() -> void:
 	# unload banks
 	banks.clear()
 	tree.clear()
-	FmodBankDatabase.reload_all_banks()
+	banks_reload_requested.emit()
 	generate_tree()
+
 
 func close_window():
 	%EventPlayControls.stop_event()
 	visible = false
 
-static func _get_icon_for_fmod_path(fmod_path: String) -> Texture2D:
+
+func _get_icon_for_fmod_path(fmod_path: String) -> Texture2D:
 	var icon: Texture2D = null
 	if fmod_path.begins_with("bus:/"):
 		icon = _bus_icon
@@ -261,6 +274,7 @@ static func _get_icon_for_fmod_path(fmod_path: String) -> Texture2D:
 	elif fmod_path.begins_with("snapshot:/"):
 		icon = _snapshot_icon
 	return icon
+
 
 static func sort_by_path(a, b):
 	return a.get_path().casecmp_to(b.get_path()) < 0

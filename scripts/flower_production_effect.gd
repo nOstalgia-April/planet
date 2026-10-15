@@ -1,12 +1,16 @@
 extends Node2D
 
+const SharedCache = preload("res://scripts/art_resource_cache.gd")
+
 signal released(amount: int)
 
 @export_range(0.1, 1.0, 0.05) var sweep_fraction: float = 0.85
 @export_range(0.2, 1.0, 0.05) var minimum_sweep_seconds: float = 0.4
 
 # Flower frames are shared by all nests; alpha readback is needed only once per texture.
-static var _texture_bounds: Dictionary[Texture2D, Rect2] = {}
+var _texture_bounds: Dictionary[Texture2D, Rect2] = SharedCache.texture_bounds(
+	&"planet_flower_production_effect_bounds"
+)
 
 var _source: Sprite2D
 var _tween: Tween

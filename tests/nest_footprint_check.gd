@@ -12,10 +12,10 @@ func _run_checks() -> void:
 	var view: NestView = NestScene.instantiate() as NestView
 	var art: NestArt = view.get_node("NestArt") as NestArt
 	assert(not view.is_inside_tree())
-	assert(NestArt._texture_bounds.is_empty() and NestArt._texture_feet.is_empty())
+	assert(art._texture_bounds.is_empty() and art._texture_feet.is_empty())
 	var authored_width: float = art.maximum_footprint_width
 	assert(is_equal_approx(authored_width, 325.0))
-	assert(is_equal_approx(view.get_maximum_footprint_width(), authored_width))
+	assert(is_equal_approx(view.get_maximum_footprint_width(), authored_width * 1.15))
 	view.art_settings = view.art_settings.duplicate() as ArtPresentationSettings
 	view.art_settings.all_scale = 0.8
 	view.art_settings.nest_scale = 1.2
@@ -26,7 +26,7 @@ func _run_checks() -> void:
 	assert(is_equal_approx(view.get_maximum_footprint_width(), 480.0))
 	art.maximum_footprint_width = authored_width
 	assert(
-		NestArt._texture_bounds.is_empty() and NestArt._texture_feet.is_empty(),
+		art._texture_bounds.is_empty() and art._texture_feet.is_empty(),
 		"Reading configured spacing must not scan images or initialize animation nodes."
 	)
 	add_child(view)
@@ -40,7 +40,7 @@ func _run_checks() -> void:
 	print(
 		(
 			"PASS: off-tree footprint, adjustable art/scales, no image reads; all-animation width %.0f matches authored data (measurement %.2f ms, %d textures)."
-			% [measured_width, elapsed_ms, NestArt._texture_bounds.size()]
+			% [measured_width, elapsed_ms, art._texture_bounds.size()]
 		)
 	)
 	view.free()

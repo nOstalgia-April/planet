@@ -1,5 +1,7 @@
 extends RefCounted
 
+const SharedCache = preload("res://scripts/art_resource_cache.gd")
+
 # Retain the existing procedural art, but share its idle body between actors.
 # Six pixels per world unit keeps edges clear at the near-view camera scale.
 const RASTER_SCALE: float = 6.0
@@ -21,12 +23,11 @@ const BODY_POINTS: Array[Vector2] = [
 	Vector2(-0.62, 0.08),
 ]
 
-static var _textures: Dictionary = {}
-static var _shadows: Dictionary = {}
-
 
 static func get_body_rect(size: float) -> Rect2:
-	return Rect2(Vector2(-size - 2.0, -size * 1.5 - 2.0), Vector2(size * 2.0 + 4.0, size * 1.62 + 4.0))
+	return Rect2(
+		Vector2(-size - 2.0, -size * 1.5 - 2.0), Vector2(size * 2.0 + 4.0, size * 1.62 + 4.0)
+	)
 
 
 static func get_shadow_rect(size: float) -> Rect2:
@@ -35,11 +36,15 @@ static func get_shadow_rect(size: float) -> Rect2:
 
 
 static func get_body_texture(size: float, mucus: bool, body: Color, outline: Color) -> Texture2D:
+	var _textures: Dictionary = SharedCache.get_cache(&"planet_slime_bodies")
+	var _shadows: Dictionary = SharedCache.get_cache(&"planet_slime_shadows")
 	var key: Array = [size, mucus, body, outline]
 	if _textures.has(key):
 		return _textures[key] as Texture2D
 	var image: Image = Image.new()
-	var error: Error = image.load_svg_from_string(_make_svg(size, mucus, body, outline), RASTER_SCALE)
+	var error: Error = image.load_svg_from_string(
+		_make_svg(size, mucus, body, outline), RASTER_SCALE
+	)
 	assert(error == OK, "The shared slime body SVG must rasterize successfully.")
 	var shadow_image: Image = Image.new()
 	error = shadow_image.load_svg_from_string(_make_shadow_svg(size), RASTER_SCALE)
@@ -52,7 +57,9 @@ static func get_body_texture(size: float, mucus: bool, body: Color, outline: Col
 		Image.FORMAT_RGBA8
 	)
 	atlas_image.blit_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i.ZERO)
-	atlas_image.blit_rect(shadow_image, Rect2i(Vector2i.ZERO, shadow_image.get_size()), shadow_origin)
+	atlas_image.blit_rect(
+		shadow_image, Rect2i(Vector2i.ZERO, shadow_image.get_size()), shadow_origin
+	)
 	atlas_image.generate_mipmaps()
 	var atlas: ImageTexture = ImageTexture.create_from_image(atlas_image)
 	var body_texture: AtlasTexture = AtlasTexture.new()
@@ -68,7 +75,7 @@ static func get_body_texture(size: float, mucus: bool, body: Color, outline: Col
 
 static func get_shadow_texture(size: float, mucus: bool, body: Color, outline: Color) -> Texture2D:
 	get_body_texture(size, mucus, body, outline)
-	return _shadows[[size, mucus, body, outline]] as Texture2D
+	return SharedCache.get_cache(&"planet_slime_shadows")[[size, mucus, body, outline]] as Texture2D
 
 
 static func _make_shadow_svg(size: float) -> String:
@@ -76,8 +83,13 @@ static func _make_shadow_svg(size: float) -> String:
 	return (
 		'<svg xmlns="http://www.w3.org/2000/svg" width="%.4f" height="%.4f" viewBox="%.4f %.4f %.4f %.4f">%s</svg>'
 		% [
-			bounds.size.x, bounds.size.y, bounds.position.x, bounds.position.y,
-			bounds.size.x, bounds.size.y, _circle(Vector2.ZERO, size * 0.85, Color.WHITE)
+			bounds.size.x,
+			bounds.size.y,
+			bounds.position.x,
+			bounds.position.y,
+			bounds.size.x,
+			bounds.size.y,
+			_circle(Vector2.ZERO, size * 0.85, Color.WHITE)
 		]
 	)
 
@@ -86,14 +98,26 @@ static func _make_svg(size: float, mucus: bool, body: Color, outline: Color) -> 
 	var bounds: Rect2 = get_body_rect(size)
 	var svg: String = (
 		'<svg xmlns="http://www.w3.org/2000/svg" width="%.4f" height="%.4f" viewBox="%.4f %.4f %.4f %.4f">'
-		% [bounds.size.x, bounds.size.y, bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y]
+		% [
+			bounds.size.x,
+			bounds.size.y,
+			bounds.position.x,
+			bounds.position.y,
+			bounds.size.x,
+			bounds.size.y
+		]
 	)
 	var points: PackedVector2Array = PackedVector2Array()
 	for point: Vector2 in BODY_POINTS:
 		points.append(point * size)
-	svg += '<polygon points="%s" %s %s stroke-width="1.9" stroke-linejoin="miter"/>' % [
-		_point_list(points), _color_attributes("fill", body), _color_attributes("stroke", outline)
-	]
+	svg += (
+		'<polygon points="%s" %s %s stroke-width="1.9" stroke-linejoin="miter"/>'
+		% [
+			_point_list(points),
+			_color_attributes("fill", body),
+			_color_attributes("stroke", outline)
+		]
+	)
 	if mucus:
 		for spot: Vector2 in [Vector2(-0.6, -0.4), Vector2(0.6, -0.3), Vector2(0.2, -1.2)]:
 			svg += _circle(spot * size, size * 0.13, Color("7293d9"))
@@ -126,12 +150,14 @@ static func _color_attributes(property: String, color: Color) -> String:
 
 
 static func _circle(center: Vector2, radius: float, color: Color) -> String:
-	return '<circle cx="%.4f" cy="%.4f" r="%.4f" %s/>' % [
-		center.x, center.y, radius, _color_attributes("fill", color)
-	]
+	return (
+		'<circle cx="%.4f" cy="%.4f" r="%.4f" %s/>'
+		% [center.x, center.y, radius, _color_attributes("fill", color)]
+	)
 
 
 static func _line(points: PackedVector2Array, color: Color, width: float) -> String:
-	return '<polyline points="%s" fill="none" %s stroke-width="%.4f" stroke-linejoin="miter"/>' % [
-		_point_list(points), _color_attributes("stroke", color), width
-	]
+	return (
+		'<polyline points="%s" fill="none" %s stroke-width="%.4f" stroke-linejoin="miter"/>'
+		% [_point_list(points), _color_attributes("stroke", color), width]
+	)

@@ -1,9 +1,13 @@
 extends PrototypeSlime
 
+const SharedCache = preload("res://scripts/art_resource_cache.gd")
+
 const ItemArt = preload("res://scripts/物品动画/动画物件.gd")
 const CaptureCue = preload("res://scripts/effects/mole_capture_cue.gd")
 const HOVER_POP_SECONDS: float = 0.2
-static var _visible_texture_bounds: Dictionary[Texture2D, Rect2] = {}
+var _visible_texture_bounds: Dictionary[Texture2D, Rect2] = SharedCache.texture_bounds(
+	&"planet_drill_monster_bounds"
+)
 enum Phase { LAUNCH, DIVE, TRAVEL, PAUSE, EMERGE, EXPOSED }
 
 @export var ordinary_art: ItemArt

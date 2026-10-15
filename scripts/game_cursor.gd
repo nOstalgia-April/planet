@@ -17,6 +17,14 @@ func register_vacuum(vacuum: Node2D) -> void:
 	_vacuum = vacuum
 
 
+func _exit_tree() -> void:
+	# Windows retains cursor textures until explicitly reset; its display server
+	# otherwise drops them after RenderingServer has already been destroyed.
+	for shape: int in range(Input.CURSOR_ARROW, Input.CURSOR_HELP + 1):
+		Input.set_custom_mouse_cursor(null, shape)
+	_vacuum = null
+
+
 func _process(_delta: float) -> void:
 	var using_vacuum: bool = (
 		is_instance_valid(_vacuum)
@@ -24,6 +32,8 @@ func _process(_delta: float) -> void:
 		and not get_tree().paused
 		and get_viewport().gui_get_hovered_control() == null
 	)
-	var mode: Input.MouseMode = Input.MOUSE_MODE_HIDDEN if using_vacuum else Input.MOUSE_MODE_VISIBLE
+	var mode: Input.MouseMode = (
+		Input.MOUSE_MODE_HIDDEN if using_vacuum else Input.MOUSE_MODE_VISIBLE
+	)
 	if Input.mouse_mode != mode:
 		Input.mouse_mode = mode

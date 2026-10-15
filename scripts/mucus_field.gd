@@ -1,6 +1,8 @@
 @tool
 extends Node2D
 
+const SharedCache = preload("res://scripts/art_resource_cache.gd")
+
 @export_range(1.0, 16.0, 0.1) var half_width: float = 2.8
 @export_range(1.0, 20.0, 0.5) var lifetime: float = 7.0
 @export_range(8.0, 140.0, 0.1) var maximum_length: float = 28.8
@@ -13,7 +15,7 @@ const SOURCE_LEFT: int = 80
 const SOURCE_RIGHT: int = 398
 const SOURCE_CENTER_Y: float = 167.5
 const SOURCE_HALF_HEIGHT: float = 23.5
-static var _source_edges: PackedVector2Array = PackedVector2Array()
+var _source_edges: PackedVector2Array = PackedVector2Array()
 @export var edge_color: Color = Color("344991")
 @export var body_color: Color = Color("92b3ef")
 @export var highlight_color: Color = Color("e6f1ff")
@@ -50,6 +52,8 @@ var _render_detail: bool = true
 
 
 func _ready() -> void:
+	var cache: Dictionary = SharedCache.get_cache(&"planet_mucus_edges")
+	_source_edges = cache.get(&"edges", PackedVector2Array())
 	if _source_edges.is_empty() and _edge.texture != null:
 		var source: Image = _edge.texture.get_image()
 		for x: int in range(SOURCE_LEFT, SOURCE_RIGHT + 1):
@@ -60,6 +64,7 @@ func _ready() -> void:
 					top = mini(top, y)
 					bottom = maxi(bottom, y)
 			_source_edges.append(Vector2(top + 0.5, bottom + 0.5))
+		cache[&"edges"] = _source_edges
 	# The ribbons already have soft vertex opacity; per-triangle antialiasing adds
 	# overlapping feather geometry along every internal strip edge.
 	_edge.antialiased = false
@@ -356,7 +361,9 @@ func _write_strip(
 			if polygon.texture != null:
 				var along: float = 1.0 - absf(1.0 - fposmod(distances[index] / texture_length, 2.0))
 				var source_x: float = lerpf(float(SOURCE_LEFT), float(SOURCE_RIGHT), along)
-				var column: int = clampi(roundi(source_x) - SOURCE_LEFT, 0, _source_edges.size() - 1)
+				var column: int = clampi(
+					roundi(source_x) - SOURCE_LEFT, 0, _source_edges.size() - 1
+				)
 				var source_y: float = _source_edges[column][side_index]
 				source_uv = Vector2(source_x + 0.5, source_y)
 				side = (source_y - SOURCE_CENTER_Y) / SOURCE_HALF_HEIGHT
