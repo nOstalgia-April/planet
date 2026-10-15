@@ -827,7 +827,11 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 func _finish_capture(nearest: PrototypeSlime) -> void:
 	var before: int = run.candy
 	var accepted: bool = run.collect_slime(
-		nearest.nest_id, nearest.reward, nearest.population_units, nearest.high_value
+		nearest.nest_id,
+		nearest.reward,
+		nearest.population_units,
+		nearest.high_value,
+		nearest.body_color
 	)
 	assert(accepted, "Collected monster must belong to its source population.")
 	var candy_gained: int = run.candy - before

@@ -10,7 +10,7 @@ signal nest_spawn_requested(species: NestState.Species)
 signal slime_requested(nest_id: int)
 signal automatic_income_received(nest_id: int, amount: int)
 signal combo_stage_completed(stage: int, bonus: int)
-signal combo_progressed
+signal combo_progressed(capture_color: Color)
 signal combo_interrupted
 signal goal_completed
 
@@ -184,7 +184,11 @@ func advance(delta: float) -> void:
 
 
 func collect_slime(
-	nest_id: int, reward: int = -1, population: int = 1, valuable: bool = false
+	nest_id: int,
+	reward: int = -1,
+	population: int = 1,
+	valuable: bool = false,
+	capture_color: Color = Color("ffa6c6")
 ) -> bool:
 	var nest: NestState = get_nest(nest_id)
 	if nest == null or population <= 0 or nest.alive_slimes < population:
@@ -201,7 +205,7 @@ func collect_slime(
 		get_capture_reward(nest.species) * population if reward < 0 else reward
 	)
 	candy += capture_reward
-	_register_manual_capture(capture_reward)
+	_register_manual_capture(capture_reward, capture_color)
 	nest_changed.emit(nest)
 	economy_changed.emit()
 	_check_completion()
@@ -677,14 +681,14 @@ func _reset_combo() -> void:
 	combo_remaining = 0.0
 
 
-func _register_manual_capture(reward: int) -> void:
+func _register_manual_capture(reward: int, capture_color: Color) -> void:
 	if combo_level == 0:
 		return
 	if combo_remaining <= 0.0:
 		combo_remaining = get_combo_window_seconds()
 	combo_count += 1
 	combo_stage_candy += reward
-	combo_progressed.emit()
+	combo_progressed.emit(capture_color)
 	if combo_count < get_combo_target():
 		return
 	_combo_reward_remainder += combo_stage_candy * get_combo_reward_percent()
