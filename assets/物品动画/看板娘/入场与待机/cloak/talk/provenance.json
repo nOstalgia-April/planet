@@ -1,0 +1,88 @@
+{
+  "imported_at": "2026-10-15T12:31:16.760930+00:00",
+  "animation": "talk",
+  "frames_per_second": 8.0,
+  "processing": "Copied unchanged. The complete source canvas and original frame order are preserved.",
+  "frames": [
+    {
+      "frame": 1,
+      "file": "001.png",
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\看板娘补充\\看板娘补充\\阶段1动作_说话\\未命名作品-9.png",
+      "sha256": "6c031095952c8c08f82697feb0c1adb3d83e446aca89e1626753907e5b264ed1",
+      "size": [
+        1327,
+        474
+      ],
+      "alpha_bounds_xyxy": [
+        73,
+        31,
+        617,
+        461
+      ]
+    },
+    {
+      "frame": 2,
+      "file": "002.png",
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\看板娘补充\\看板娘补充\\阶段1动作_说话\\未命名作品-10.png",
+      "sha256": "597d848805909f889fa20b1218faff09b5152e5e789428d16b4d9c9ab025dc8f",
+      "size": [
+        1327,
+        474
+      ],
+      "alpha_bounds_xyxy": [
+        8,
+        57,
+        617,
+        474
+      ]
+    },
+    {
+      "frame": 3,
+      "file": "003.png",
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\看板娘补充\\看板娘补充\\阶段1动作_说话\\未命名作品-11.png",
+      "sha256": "cf5d8edc40a2a3352a4d3cd2fa89094d8d317526a891d176ebab88ffe0130117",
+      "size": [
+        1327,
+        474
+      ],
+      "alpha_bounds_xyxy": [
+        0,
+        31,
+        613,
+        473
+      ]
+    },
+    {
+      "frame": 4,
+      "file": "004.png",
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\看板娘补充\\看板娘补充\\阶段1动作_说话\\未命名作品-12.png",
+      "sha256": "4934f79c6e5c578702fdcd3d6169003612fd6151dfcdc55cca53f4986f2d5179",
+      "size": [
+        1327,
+        474
+      ],
+      "alpha_bounds_xyxy": [
+        8,
+        57,
+        617,
+        474
+      ]
+    },
+    {
+      "frame": 5,
+      "file": "005.png",
+      "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\看板娘补充\\看板娘补充\\阶段1动作_说话\\未命名作品-13.png",
+      "sha256": "73ccad92051dc62b24b26e530a887c1ba09efde333fd569804c6fb8e3da62d36",
+      "size": [
+        1327,
+        474
+      ],
+      "alpha_bounds_xyxy": [
+        73,
+        31,
+        617,
+        461
+      ]
+    }
+  ]
+}

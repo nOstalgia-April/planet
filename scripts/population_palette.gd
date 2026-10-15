@@ -5,6 +5,8 @@ signal display_species_changed(species: int)
 
 const Settings = preload("res://scripts/population_palette_settings.gd")
 const BottomDock = preload("res://scripts/ui/bottom_dock.gd")
+const GameMenu = preload("res://scripts/ui/game_menu.gd")
+const PlanetArt = preload("res://scripts/场景动画/双视角星球.gd")
 const ART_SHADER: Shader = preload("res://shaders/population_art.gdshader")
 const PARAMETERS: PackedStringArray = [
 	"palette_dark", "palette_mid", "palette_ink", "palette_bright", "palette_light"
@@ -14,10 +16,12 @@ const PARAMETERS: PackedStringArray = [
 @export var run: PrototypeRun
 @export var background_sprites: Array[Sprite2D] = []
 @export var core_sprite: Sprite2D
+@export var planet_art: PlanetArt
 @export var technology_background: ColorRect
 @export var button_brushes: Array[TextureRect] = []
 @export var ecology_backdrop: ColorRect
 @export var bottom_dock: BottomDock
+@export var game_menu: GameMenu
 
 var dominant_species: int = NestState.Species.SLIME
 var population_counts: Vector3 = Vector3.ZERO
@@ -36,7 +40,9 @@ var _materials: Array[ShaderMaterial] = []
 func _ready() -> void:
 	assert(settings != null and run != null)
 	assert(core_sprite != null and technology_background != null and ecology_backdrop != null)
-	assert(background_sprites.size() == 2 and button_brushes.size() == 4)
+	assert(game_menu != null)
+	assert(planet_art != null)
+	assert(background_sprites.size() == 2 and button_brushes.size() == 5)
 	assert(settings.pink.size() == 5 and settings.blue.size() == 5 and settings.green.size() == 5)
 	var artwork: ShaderMaterial = ShaderMaterial.new()
 	artwork.shader = ART_SHADER
@@ -46,6 +52,7 @@ func _ready() -> void:
 	for brush: TextureRect in button_brushes:
 		brush.material = artwork
 	_materials.append(core_sprite.material as ShaderMaterial)
+	_materials.append(planet_art.sprite.material as ShaderMaterial)
 	_materials.append(technology_background.material as ShaderMaterial)
 	for shader_material: ShaderMaterial in _materials:
 		assert(shader_material != null)
@@ -134,5 +141,6 @@ func _apply_colors() -> void:
 		for index: int in range(PARAMETERS.size()):
 			shader_material.set_shader_parameter(PARAMETERS[index], _colors[index])
 	ecology_backdrop.color = _colors[0].darkened(0.65)
+	game_menu.set_accent(_colors[1])
 	if bottom_dock != null:
 		bottom_dock.set_accent(_colors[1])

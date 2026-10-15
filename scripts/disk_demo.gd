@@ -5,14 +5,10 @@ signal flower_appeared(nest_id: int, species: int)
 const PipeCursor = preload("res://scripts/pipe_cursor.gd")
 const PlanetViewController = preload("res://scripts/planet_view_controller.gd")
 const GovernedRegion = preload("res://scripts/governed_region.gd")
-const REGION_SCENE: PackedScene = preload("res://scenes/world/governed_region.tscn")
 const MucusField = preload("res://scripts/mucus_field.gd")
-const MUCUS_SCENE: PackedScene = preload("res://scenes/effects/mucus_field.tscn")
-const DRILL_SCENE: PackedScene = preload("res://scenes/world/drill_monster.tscn")
-const TREASURE_SCENE: PackedScene = preload("res://scenes/effects/drill_treasure.tscn")
+const DrillMonster = preload("res://scripts/drill_monster.gd")
 const DrillTreasure = preload("res://scripts/drill_treasure.gd")
 const NestMucusArea = preload("res://scripts/nest_mucus_area.gd")
-const NEST_MUCUS_SCENE: PackedScene = preload("res://scenes/effects/nest_mucus_area.tscn")
 const VacuumAudio = preload("res://scripts/vacuum_audio.gd")
 const GiantFusion = preload("res://scripts/giant_slime_fusion.gd")
 const GiantHarvestEffect = preload("res://scripts/giant_harvest_effect.gd")
@@ -41,6 +37,11 @@ enum NetPhase { IDLE, CASTING, CLOSING, RESULT }
 @export var nest_scene: PackedScene
 @export var collection_scene: PackedScene
 @export var giant_harvest_scene: PackedScene
+@export var region_scene: PackedScene
+@export var mucus_scene: PackedScene
+@export var drill_scene: PackedScene
+@export var treasure_scene: PackedScene
+@export var nest_mucus_scene: PackedScene
 @export_range(0.1, 1.0, 0.05) var net_result_seconds: float = 0.30
 
 var selected_nest_id: int = -1
@@ -55,6 +56,8 @@ var _nest_views: Array[NestView] = []
 var _slimes: Array[PrototypeSlime] = []
 var _capture_targets: Array[PrototypeSlime] = []
 var _was_holding: bool = false
+var _hovered_drill: DrillMonster
+var _drill_press_consumed: bool = false
 var _view_blocks_tool_until_release: bool = false
 var _window_has_focus: bool = true
 var _spawn_directions: Dictionary = {}
@@ -117,6 +120,9 @@ func _ready() -> void:
 	assert(slime_scene != null and nest_scene != null and collection_scene != null)
 	assert(giant_slime_scene != null, "Fusion requires the reusable giant slime scene.")
 	assert(giant_harvest_scene != null, "Giant capture requires its harvest effect scene.")
+	assert(region_scene != null and mucus_scene != null, "Ground effects require their scenes.")
+	assert(drill_scene != null and treasure_scene != null, "Drill encounters require their scenes.")
+	assert(nest_mucus_scene != null, "Mucus nests require their ground area scene.")
 	GameAudio.play_music(GAMEPLAY_MUSIC)
 	# Leaving the game in the overview must not leave near-view sounds muted.
 	tree_exiting.connect(GameAudio.set_near_view_gain.bind(1.0))
@@ -135,8 +141,7 @@ func _ready() -> void:
 	get_viewport().physics_object_picking = true
 	run.economy_changed.connect(_queue_hud_refresh)
 	run.combo_stage_completed.connect(_on_combo_stage_completed)
-	run.combo_progressed.connect(_layout.pulse_combo)
-	run.combo_interrupted.connect(_layout.pulse_combo.bind(true))
+	_pipe.combo_meter.configure(run)
 	run.combo_interrupted.connect(_monster_audio.combo_broken)
 	run.economy_changed.connect(_update_music_stage)
 	run.base_value_changed.connect(_refresh_monster_rewards)
@@ -172,6 +177,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_layout.set_view_switch_enabled(_can_toggle_view())
 	var pointer: Vector2 = get_viewport().get_mouse_position()
+	var holding: bool = update_pointer_release_state()
+	_drive_drill_capture(delta, pointer, holding)
 	_update_nest_hover(pointer)
 	_update_overview_hover(pointer)
 	run.advance(delta)
@@ -190,11 +197,17 @@ func _process(delta: float) -> void:
 	_planet_audio.update_zoom(_view.target_zoom, _view.is_transitioning())
 	_planet_audio.update_rotation(delta, _view.is_dragging(), _world.rotation)
 	var world_position: Vector2 = _world.to_local(get_global_mouse_position())
-	var holding: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
-	if not holding and not _view.is_dragging():
-		_view_blocks_tool_until_release = false
 	holding = holding and not _view.is_dragging() and not _view_blocks_tool_until_release
 	_drive_tool(delta, world_position, holding)
+
+
+func update_pointer_release_state() -> bool:
+	var holding: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	if not holding:
+		_drill_press_consumed = false
+		if not _view.is_dragging():
+			_view_blocks_tool_until_release = false
+	return holding
 
 
 func _update_overview_hover(pointer: Vector2) -> void:
@@ -215,17 +228,24 @@ func _update_overview_hover(pointer: Vector2) -> void:
 func _drive_tool(delta: float, pointer: Vector2, holding: bool) -> void:
 	var just_pressed: bool = holding and not _was_holding
 	_tool_pointer = pointer
-	_pipe.visible = _active_tool == ToolMode.PIPE and _can_collect(pointer, run.get_pipe_radius())
+	var drill_hovered: bool = is_instance_valid(_hovered_drill) and _hovered_drill.can_capture()
+	var over_drill: bool = drill_hovered or (_drill_press_consumed and holding)
+	_pipe.visible = (
+		_active_tool == ToolMode.PIPE
+		and (drill_hovered or _can_collect(pointer, run.get_pipe_radius()))
+	)
 	if _active_tool == ToolMode.PIPE:
 		var tool_radius: float = run.get_pipe_radius()
-		var capturing: bool = _can_collect(pointer, tool_radius)
+		var capturing: bool = not over_drill and _can_collect(pointer, tool_radius)
 		_pipe.radius = tool_radius
-		_pipe.set_tool_state(pointer, pointer, capturing)
+		_pipe.set_tool_state(pointer, pointer, capturing or (drill_hovered and holding))
 		_capture_at(delta, pointer, capturing)
 	else:
 		_capture_at(delta, pointer, false)
 		if (
 			just_pressed
+			and not _drill_press_consumed
+			and not over_drill
 			and _net_phase == NetPhase.IDLE
 			and _can_collect(pointer, run.get_net_radius())
 		):
@@ -236,6 +256,66 @@ func _drive_tool(delta: float, pointer: Vector2, holding: bool) -> void:
 	if _net_phase == NetPhase.IDLE and not _can_collect(pointer, run.get_net_radius()):
 		_net.hide()
 	_was_holding = holding
+
+
+func _can_interact_with_drill(pointer: Vector2) -> bool:
+	return (
+		_can_change_view()
+		and not get_tree().paused
+		and not run.is_complete
+		and not _completion.visible
+		and not _view.is_overview()
+		and not _view.is_transitioning()
+		and not _view.is_dragging()
+		and not _view_blocks_tool_until_release
+		and get_viewport_rect().has_point(pointer)
+		and not _layout.is_over_ui(pointer)
+		and get_viewport().gui_get_hovered_control() == null
+	)
+
+
+func _update_drill_hover(pointer: Vector2) -> void:
+	var target: DrillMonster = null
+	if _can_interact_with_drill(pointer):
+		for candidate: PrototypeSlime in _slimes:
+			if not candidate is DrillMonster:
+				continue
+			var drill: DrillMonster = candidate as DrillMonster
+			if (
+				drill.can_capture()
+				and drill.is_visible_in_tree()
+				and drill.get_capture_hit_rect().has_point(pointer)
+				and (target == null or drill.get_index() > target.get_index())
+			):
+				target = drill
+	if target != _hovered_drill:
+		_clear_drill_hover()
+		_hovered_drill = target
+	if target != null:
+		target.set_capture_hovered(true)
+
+
+func _clear_drill_hover() -> void:
+	if is_instance_valid(_hovered_drill):
+		_hovered_drill.set_capture_hovered(false)
+	_hovered_drill = null
+
+
+func _drive_drill_capture(delta: float, pointer: Vector2, holding: bool) -> bool:
+	_update_drill_hover(pointer)
+	if _hovered_drill == null:
+		return false
+	var drill: DrillMonster = _hovered_drill
+	if not holding:
+		drill.release_capture(0.0)
+		return false
+	_drill_press_consumed = true
+	_clear_nest_selection()
+	_capture_at(0.0, _tool_pointer, false)
+	if drill.apply_capture(delta, drill.capture_hold_seconds, drill.get_capture_point()):
+		_clear_drill_hover()
+		_finish_capture(drill)
+	return true
 
 
 func _start_net(pointer: Vector2) -> void:
@@ -388,6 +468,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse_button: InputEventMouseButton = event as InputEventMouseButton
+		if mouse_button.button_index == MOUSE_BUTTON_LEFT and not mouse_button.pressed:
+			_drill_press_consumed = false
+			if is_instance_valid(_hovered_drill):
+				_hovered_drill.release_capture(0.0)
 	# Handle Tab before GUI focus traversal can consume it.
 	if event is InputEventKey:
 		var key: InputEventKey = event as InputEventKey
@@ -434,6 +520,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _layout.is_over_ui(button.position):
 		return
 	if button.button_index == MOUSE_BUTTON_LEFT and button.pressed:
+		if _drill_press_consumed:
+			get_viewport().set_input_as_handled()
+			return
+		if _drive_drill_capture(0.0, button.position, true):
+			get_viewport().set_input_as_handled()
+			return
 		if (
 			not _window_has_focus
 			or not _view.is_overview()
@@ -461,6 +553,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		):
 			return
 		_view_blocks_tool_until_release = true
+		_clear_drill_hover()
 		_clear_nest_selection()
 		_capture_at(0.0, _tool_pointer, false)
 		_view.begin_drag(button.position)
@@ -501,6 +594,7 @@ func _request_view_steps(steps: float) -> void:
 
 
 func _cancel_view_drag() -> void:
+	_clear_drill_hover()
 	_view_gestures.suppress()
 	_overview.update_hover(Vector2.ZERO, false)
 	_view.end_drag()
@@ -562,6 +656,7 @@ func _get_roaming_screen_half_angle() -> float:
 
 
 func _sync_view_presentation() -> void:
+	_clear_drill_hover()
 	_clear_nest_selection()
 	_capture_at(0.0, _tool_pointer, false)
 	var near_view: bool = not _view.is_overview()
@@ -596,6 +691,8 @@ func _sync_view_projection() -> void:
 
 
 func restart_run() -> void:
+	_clear_drill_hover()
+	_drill_press_consumed = false
 	_layout.reset_pause()
 	_layout.close_panels()
 	_view_gestures.reset()
@@ -673,12 +770,15 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 		var previous: PrototypeSlime = _capture_targets[0]
 		if (
 			is_instance_valid(previous)
+			and previous.species != PrototypeSlime.Species.DRILL
 			and previous.can_capture()
 			and previous.get_capture_distance_squared(target) <= radius_squared
 		):
 			nearest = previous
 	if active and nearest == null:
 		for candidate: PrototypeSlime in _slimes:
+			if candidate.species == PrototypeSlime.Species.DRILL:
+				continue
 			var distance: float = candidate.get_capture_distance_squared(target)
 			if candidate.can_capture() and distance <= nearest_distance:
 				nearest = candidate
@@ -692,7 +792,7 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 			previous.release_capture(delta)
 			_stop_giant_harvest()
 	_capture_targets.clear()
-	_slime_root.set_focus(nearest)
+	_slime_root.set_focus(_hovered_drill if is_instance_valid(_hovered_drill) else nearest)
 	_vacuum_audio.update(delta, nearest != null, active and _is_on_ground_mucus(target))
 	_pipe.set_capture_engaged(nearest != null and nearest.species != PrototypeSlime.Species.DRILL)
 	if nearest == null:
@@ -724,6 +824,10 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 	if not completed:
 		return
 	_stop_giant_harvest()
+	_finish_capture(nearest)
+
+
+func _finish_capture(nearest: PrototypeSlime) -> void:
 	var before: int = run.candy
 	var candy_combo: float = _combo_ladder_progress()
 	_capture_combo_bonus = 0
@@ -819,7 +923,7 @@ func _advance_ground_mucus(delta: float) -> void:
 func _start_mucus_trail(slime: PrototypeSlime) -> MucusField:
 	_active_mucus_trails.erase(slime.get_instance_id())
 	_trim_mucus_history(1)
-	var trail: MucusField = MUCUS_SCENE.instantiate() as MucusField
+	var trail: MucusField = mucus_scene.instantiate() as MucusField
 	_mucus_root.add_child(trail)
 	trail.source_actor_id = slime.get_instance_id()
 	trail.configure(
@@ -931,7 +1035,7 @@ func _update_giant_harvest(slime: PrototypeSlime, previous_progress: float) -> v
 
 
 func _play_drill_treasure(reward: int, source_position: Vector2) -> void:
-	var effect: DrillTreasure = TREASURE_SCENE.instantiate() as DrillTreasure
+	var effect: DrillTreasure = treasure_scene.instantiate() as DrillTreasure
 	_effects.add_child(effect)
 	effect.top_level = true
 	effect.global_transform = Transform2D.IDENTITY
@@ -959,11 +1063,9 @@ func _advance_monster_chatter(delta: float) -> void:
 
 func _prepare_nest_sites() -> void:
 	var measuring_view: NestView = nest_scene.instantiate() as NestView
-	_nests.add_child(measuring_view)
 	var maximum_width: float = (
 		measuring_view.get_maximum_footprint_width() * _view.near_nest_scale.x
 	)
-	_nests.remove_child(measuring_view)
 	measuring_view.free()
 	_nest_site_distance = maxf(
 		maximum_width + run.settings.nest_spacing_margin, run.settings.nest_min_distance
@@ -1030,13 +1132,13 @@ func _present_discovered_nest(_species: NestState.Species, nest_position: Vector
 
 
 func _on_nest_added(nest: NestState) -> void:
-	var region: GovernedRegion = REGION_SCENE.instantiate() as GovernedRegion
+	var region: GovernedRegion = region_scene.instantiate() as GovernedRegion
 	_region_root.add_child(region)
 	region.configure(_planet, nest.position)
 	region.species = nest.species
 	_regions.append(region)
 	if nest.species == NestState.Species.MUCUS:
-		var area: NestMucusArea = NEST_MUCUS_SCENE.instantiate() as NestMucusArea
+		var area: NestMucusArea = nest_mucus_scene.instantiate() as NestMucusArea
 		_mucus_root.add_child(area)
 		area.configure(
 			_planet,
@@ -1082,7 +1184,7 @@ func _on_slime_requested(nest_id: int) -> void:
 	_nest_views[nest_id - 1].pulse_spawn()
 	_monster_audio.monster_spawned(nest.species)
 	var actor_scene: PackedScene = (
-		DRILL_SCENE if nest.species == NestState.Species.DRILL else slime_scene
+		drill_scene if nest.species == NestState.Species.DRILL else slime_scene
 	)
 	var slime: PrototypeSlime = actor_scene.instantiate() as PrototypeSlime
 	_slime_root.add_child(slime)
@@ -1092,8 +1194,7 @@ func _on_slime_requested(nest_id: int) -> void:
 	_spawn_directions[nest_id] = direction_index + 1
 	var species: PrototypeSlime.Species = nest.species as PrototypeSlime.Species
 	var valuable: bool = (
-		run.valuable_level > 0
-		and direction_index % run.settings.valuable_spawn_every == 0
+		run.valuable_level > 0 and direction_index % run.settings.valuable_spawn_every == 0
 	)
 	var reward: int = run.get_capture_reward(nest.species, valuable)
 	slime.configure_species(species, valuable, reward)
@@ -1206,7 +1307,8 @@ func _select_nest(nest_id: int) -> void:
 
 func _update_nest_hover(viewport_position: Vector2) -> void:
 	if (
-		_view.presentation_locked
+		is_instance_valid(_hovered_drill)
+		or _view.presentation_locked
 		or _view.is_overview()
 		or _view.is_transitioning()
 		or _view.is_dragging()
@@ -1265,6 +1367,7 @@ func _refresh_hud() -> void:
 	_quick_pipe_button.disabled = false
 	_quick_net_button.disabled = false
 	_layout.refresh_progression(run)
+	_pipe.combo_meter.refresh()
 	var nest: NestState = run.get_nest(selected_nest_id)
 	if nest == null:
 		_nest_title_label.text = "巢穴"
@@ -1297,8 +1400,7 @@ func _register_purchase_sounds() -> void:
 	for index: int in range(2):
 		var purchase: Button = _layout._tool_dock.upgrades[index]
 		UiAudio.register_purchase(
-			purchase,
-			_is_technology_unaffordable.bind(DiskDemoLayout.BRANCH_IDS[index])
+			purchase, _is_technology_unaffordable.bind(DiskDemoLayout.BRANCH_IDS[index])
 		)
 
 

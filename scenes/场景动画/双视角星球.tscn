@@ -1,8 +1,9 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/场景动画/近景星球.tscn" id="1"]
 [ext_resource type="Script" path="res://scripts/场景动画/双视角星球.gd" id="2"]
 [ext_resource type="Shader" path="res://shaders/planet_art_blend.gdshader" id="3"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/星球复色/亮色背景/未命名作品-1.png" id="paper"]
 [ext_resource type="Texture2D" path="res://assets/场景动画/全景星球/001.png" id="4"]
 [ext_resource type="Texture2D" path="res://assets/场景动画/全景星球/002.png" id="5"]
 [ext_resource type="Texture2D" path="res://assets/场景动画/全景星球/003.png" id="6"]
@@ -20,6 +21,7 @@
 [sub_resource type="ShaderMaterial" id="Blend"]
 resource_local_to_scene = true
 shader = ExtResource("3")
+shader_parameter/core_paper_texture = ExtResource("paper")
 
 [node name="双视角星球" instance=ExtResource("1")]
 script = ExtResource("2")

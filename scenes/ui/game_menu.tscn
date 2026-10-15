@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/game_menu.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/menu_icon_button.gd" id="2"]
@@ -8,14 +8,31 @@
 [ext_resource type="Texture2D" path="res://assets/ui/game_menu/close.tres" id="close"]
 [ext_resource type="Font" path="res://fonts/game_font.tres" id="font"]
 [ext_resource type="PackedScene" path="res://scenes/ui/menu_brush.tscn" id="brush"]
+[ext_resource type="Shader" path="res://shaders/menu_panel.gdshader" id="panel_shader"]
+
+[sub_resource type="ShaderMaterial" id="panel_material"]
+resource_local_to_scene = true
+shader = ExtResource("panel_shader")
+
+[sub_resource type="Gradient" id="grabber_gradient"]
+offsets = PackedFloat32Array(0.78, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0)
+
+[sub_resource type="GradientTexture2D" id="grabber_texture"]
+gradient = SubResource("grabber_gradient")
+width = 16
+height = 16
+fill = 1
+fill_from = Vector2(0.5, 0.5)
+fill_to = Vector2(0.5, 0)
 
 [sub_resource type="StyleBoxFlat" id="panel"]
-bg_color = Color(0.065, 0.082, 0.24, 0.98)
+bg_color = Color(0.12, 0.12, 0.12, 0.98)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.36, 0.39, 0.85, 1)
+border_color = Color(0.34, 0.34, 0.34, 1)
 corner_radius_top_left = 28
 corner_radius_top_right = 36
 corner_radius_bottom_left = 36
@@ -24,11 +41,11 @@ content_margin_left = 30.0
 content_margin_right = 30.0
 content_margin_top = 22.0
 content_margin_bottom = 26.0
-shadow_color = Color(0.01, 0.015, 0.06, 0.5)
+shadow_color = Color(0, 0, 0, 0.5)
 shadow_size = 16
 
 [sub_resource type="StyleBoxFlat" id="button"]
-bg_color = Color(0.16, 0.19, 0.42, 1)
+bg_color = Color(0.19, 0.19, 0.19, 1)
 corner_radius_top_left = 12
 corner_radius_top_right = 12
 corner_radius_bottom_left = 12
@@ -39,7 +56,7 @@ content_margin_top = 10.0
 content_margin_bottom = 10.0
 
 [sub_resource type="StyleBoxFlat" id="hover"]
-bg_color = Color(0.12, 0.23, 0.95, 1)
+bg_color = Color(0.36, 0.36, 0.36, 1)
 corner_radius_top_left = 12
 corner_radius_top_right = 12
 corner_radius_bottom_left = 12
@@ -50,7 +67,7 @@ content_margin_top = 10.0
 content_margin_bottom = 10.0
 
 [sub_resource type="StyleBoxFlat" id="track"]
-bg_color = Color(0.28, 0.3, 0.5, 1)
+bg_color = Color(0.27, 0.27, 0.27, 1)
 content_margin_top = 3.0
 content_margin_bottom = 3.0
 corner_radius_top_left = 3
@@ -61,7 +78,7 @@ corner_radius_bottom_right = 3
 [sub_resource type="Theme" id="theme"]
 default_font = ExtResource("font")
 default_font_size = 18
-Label/colors/font_color = Color(0.97, 0.97, 1, 1)
+Label/colors/font_color = Color(0.97, 0.97, 0.97, 1)
 Button/colors/font_color = Color(1, 1, 1, 1)
 Button/colors/font_hover_color = Color(1, 1, 1, 1)
 Button/colors/font_pressed_color = Color(1, 1, 1, 1)
@@ -73,6 +90,8 @@ Button/styles/focus = SubResource("hover")
 HSlider/styles/slider = SubResource("track")
 HSlider/styles/grabber_area = SubResource("hover")
 HSlider/styles/grabber_area_highlight = SubResource("hover")
+HSlider/icons/grabber = SubResource("grabber_texture")
+HSlider/icons/grabber_highlight = SubResource("grabber_texture")
 
 [node name="GameMenu" type="Control"]
 process_mode = 3
@@ -153,7 +172,7 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.015, 0.02, 0.08, 0.72)
+color = Color(0, 0, 0, 0.72)
 
 [node name="Center" type="CenterContainer" parent="Modal"]
 layout_mode = 1
@@ -163,6 +182,7 @@ anchor_bottom = 1.0
 mouse_filter = 2
 
 [node name="Panel" type="PanelContainer" parent="Modal/Center"]
+material = SubResource("panel_material")
 custom_minimum_size = Vector2(480, 0)
 layout_mode = 2
 theme_override_styles/panel = SubResource("panel")

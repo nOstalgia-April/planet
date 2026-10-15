@@ -5,6 +5,7 @@ const PlanetRestoration = preload("res://scripts/planet_restoration.gd")
 const PopulationPalette = preload("res://scripts/population_palette.gd")
 const HorizonTerrain = preload("res://scripts/horizon_terrain.gd")
 const NestDiscovery = preload("res://scripts/nest_discovery_presentation.gd")
+const VictoryMeteors = preload("res://scripts/victory_meteor_presentation.gd")
 
 @export var start_in_overview: bool = false
 
@@ -15,10 +16,13 @@ const NestDiscovery = preload("res://scripts/nest_discovery_presentation.gd")
 @onready var _restoration: PlanetRestoration = $PlanetRestoration
 @onready var _population_palette: PopulationPalette = $PopulationPalette
 @onready var _nest_discovery: NestDiscovery = $NestDiscoveryPresentation
+@onready var _victory: VictoryMeteors = $VictoryMeteorPresentation
 
 
 func _ready() -> void:
 	_restoration.palette_changed.connect(_on_palette_changed)
+	_victory.started.connect(_on_restoration_started)
+	_victory.finished.connect(_on_victory_finished)
 	super._ready()
 	flower_appeared.connect(_restoration.reveal_flower)
 	_restoration.color_fill_started.connect(_planet_audio.color_recovered)
@@ -55,6 +59,7 @@ func _exit_tree() -> void:
 
 
 func restart_run() -> void:
+	_victory.reset()
 	_nest_discovery.cancel()
 	_monster_audio.stop_new_nest()
 	_restoration.reset()
@@ -89,17 +94,30 @@ func _on_palette_changed(progress: float) -> void:
 
 
 func _show_completion() -> void:
+	if _victory.phase != VictoryMeteors.Phase.IDLE:
+		return
 	# A final capture can happen during the flower's growth animation.
 	# Let all earned reveals finish before the victory panel covers the globe.
 	var waiting_for_flower: bool = false
 	for nest: NestState in run.nests:
 		if nest.is_tamed and nest.species not in _restoration.unlocked_species:
 			waiting_for_flower = true
-	if _restoration.phase != PlanetRestoration.Phase.IDLE or waiting_for_flower:
+	if (
+		_restoration.phase != PlanetRestoration.Phase.IDLE
+		or waiting_for_flower
+		or _nest_discovery.phase != NestDiscovery.Phase.IDLE
+		or _view.presentation_locked
+	):
+		if _completion_tween != null:
+			_completion_tween.kill()
 		_completion_tween = create_tween()
 		_completion_tween.tween_interval(0.25)
 		_completion_tween.tween_callback(_show_completion)
 		return
+	_victory.play()
+
+
+func _on_victory_finished() -> void:
 	super._show_completion()
 
 

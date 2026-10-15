@@ -159,7 +159,7 @@ func _check_page() -> void:
 	demo._layout._technology.select_node("combo_unlock")
 	demo._layout._technology._nodes[demo._layout._technology.selected_key].pressed.emit()
 	_check(
-		demo.run.combo_level == 2 and demo._layout._combo_timer.max_value == 5.0,
+		demo.run.combo_level == 2 and demo.run.get_combo_window_seconds() == 5.0,
 		"ladder upgrades retain the five-second timer"
 	)
 	if _capture:

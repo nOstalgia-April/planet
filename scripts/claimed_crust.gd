@@ -63,12 +63,19 @@ var _rebuild_pending: bool = false
 func _ready() -> void:
 	super._ready()
 	_terrain = sprite.texture.get_image()
+	# The planet can use VRAM compression, but CPU flow sampling needs pixels.
+	if _terrain.is_compressed():
+		var error: Error = _terrain.decompress()
+		if error != OK:
+			push_error("无法解压地壳采样贴图：" + error_string(error))
+			_terrain = null
+			return
 	_terrain.resize(512, roundi(512.0 * float(_terrain.get_height()) / float(_terrain.get_width())))
 	rebuild_flow()
 
 
 func _queue_flow() -> void:
-	if not is_node_ready() or _rebuild_pending:
+	if not is_node_ready() or _rebuild_pending or _terrain == null:
 		return
 	_rebuild_pending = true
 	rebuild_flow.call_deferred()
@@ -76,6 +83,9 @@ func _queue_flow() -> void:
 
 func rebuild_flow() -> void:
 	_rebuild_pending = false
+	if _terrain == null:
+		push_error("地壳采样贴图未准备成功，无法重建染色流场。")
+		return
 	var builder: FlowField = FlowField.new()
 	flow_image = builder.build(
 		shape_seed,

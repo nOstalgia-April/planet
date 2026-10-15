@@ -1,3 +1,4 @@
+@tool
 extends RefCounted
 
 const GRID: Vector2i = Vector2i(560, 240)

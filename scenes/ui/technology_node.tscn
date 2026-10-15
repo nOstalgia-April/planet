@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/technology_node.gd" id="1_node"]
 [ext_resource type="Script" path="res://scripts/ui/technology_glyph.gd" id="2_glyph"]
@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" path="res://assets/ui/technology/halo.tres" id="5_halo"]
 [ext_resource type="Material" path="res://resources/candy_grain_outline.tres" id="6_outline"]
 [ext_resource type="PackedScene" path="res://scenes/ui/technology_purchase_glow.tscn" id="7_glow"]
+[ext_resource type="PackedScene" path="res://scenes/effects/technology_available_cue.tscn" id="8_cue"]
 
 [sub_resource type="StyleBoxEmpty" id="Empty"]
 
@@ -57,6 +58,9 @@ offset_right = 88.0
 offset_bottom = 60.0
 mouse_filter = 2
 script = ExtResource("2_glyph")
+
+[node name="AvailableCue" parent="." instance=ExtResource("8_cue")]
+position = Vector2(70, 40)
 
 [node name="Title" type="Label" parent="."]
 offset_top = 82.0

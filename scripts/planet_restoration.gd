@@ -12,6 +12,7 @@ signal background_restore_started
 const PlanetView = preload("res://scripts/planet_view_controller.gd")
 const PlanetArt = preload("res://scripts/场景动画/双视角星球.gd")
 const HorizonTerrain = preload("res://scripts/horizon_terrain.gd")
+const PlanetCore = preload("res://scripts/planet_core_animation.gd")
 
 enum Phase { IDLE, CONFIRM, CAMERA, FILL, FINISH, BACKGROUND, HOLD, TERRAIN }
 
@@ -19,7 +20,7 @@ enum Phase { IDLE, CONFIRM, CAMERA, FILL, FINISH, BACKGROUND, HOLD, TERRAIN }
 @export var view: PlanetView
 @export var art: PlanetArt
 @export var bright_background: Node2D
-@export var core: Node2D
+@export var core: PlanetCore
 @export var terrain: HorizonTerrain
 @export_range(0.0, 3.0, 0.05) var confirmation_seconds: float = 0.8
 @export_range(0.0, 3.0, 0.05) var terrain_seconds: float = 0.9
@@ -91,6 +92,7 @@ func reset() -> void:
 	terrain.reset_colors()
 	bright_background.modulate.a = 0.0
 	core.modulate.a = 1.0
+	core.set_white_mix(0.0)
 	palette_changed.emit(0.0)
 
 
@@ -147,6 +149,8 @@ func _process(delta: float) -> void:
 		Phase.BACKGROUND:
 			var progress: float = smoothstep(0.0, 1.0, _progress(background_seconds))
 			bright_background.modulate.a = progress
+			art.set_white_mix(progress)
+			core.set_white_mix(progress)
 			palette_changed.emit(progress)
 			if progress >= 1.0:
 				_background_complete = true

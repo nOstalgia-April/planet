@@ -1,0 +1,41 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://features/shader_gallery/menu_atmosphere_shader_gallery.gd" id="1_gallery"]
+[ext_resource type="PackedScene" path="res://scenes/主菜单/主菜单.tscn" id="2_menu"]
+[ext_resource type="Theme" path="res://resources/场景预览主题.tres" id="3_theme"]
+
+[node name="MenuAtmosphereShaderGallery" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_gallery")
+
+[node name="Menu" parent="." instance=ExtResource("2_menu")]
+layout_mode = 1
+
+[node name="PreviewControls" type="CanvasLayer" parent="."]
+layer = 50
+
+[node name="Selector" type="OptionButton" parent="PreviewControls"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -220.0
+offset_top = 24.0
+offset_right = -24.0
+offset_bottom = 72.0
+grow_horizontal = 0
+theme = ExtResource("3_theme")
+theme_override_font_sizes/font_size = 22
+mouse_default_cursor_shape = 2
+item_count = 3
+selected = 2
+popup/item_0/text = "原图"
+popup/item_0/id = 0
+popup/item_1/text = "仅氛围光"
+popup/item_1/id = 1
+popup/item_2/text = "完整效果"
+popup/item_2/id = 2

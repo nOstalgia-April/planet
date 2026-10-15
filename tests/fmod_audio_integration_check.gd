@@ -3,6 +3,7 @@ extends Node
 const DemoScript = preload("res://scripts/disk_demo.gd")
 const DemoScene: PackedScene = preload("res://scenes/disk_demo.tscn")
 const MenuScene: PackedScene = preload("res://scenes/主菜单/主菜单.tscn")
+const MenuScript = preload("res://scenes/主菜单/主菜单.gd")
 const TechnologyPage = preload("res://scripts/ui/technology_page.gd")
 const PlanetAudio = preload("res://scripts/planet_audio.gd")
 
@@ -10,6 +11,7 @@ var _failures: int = 0
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_run_checks.call_deferred()
 
 
@@ -17,12 +19,15 @@ func _run_checks() -> void:
 	var tree: SceneTree = get_tree()
 	var root: Window = tree.root
 	_check(GameAudio.banks_loaded, "The main game banks load successfully.")
-	var menu: Control = MenuScene.instantiate() as Control
+	var menu: MenuScript = MenuScene.instantiate() as MenuScript
 	root.add_child(menu)
 	tree.current_scene = menu
 	await tree.process_frame
+	while not menu._loading_scene.is_empty():
+		await tree.process_frame
 	_check(GameAudio._music_path == "event:/Mx/Mx_MainMenu", "The menu starts its music.")
 	_check(GameAudio._music != null and GameAudio._music.is_valid(), "Menu music is valid.")
+	await _check_audio_pause()
 	tree.current_scene = null
 	menu.queue_free()
 	await tree.process_frame
@@ -40,7 +45,8 @@ func _run_checks() -> void:
 	demo.run.candy = 0
 	page.selected_key = "valuable"
 	_check(
-		not demo._is_technology_unaffordable(page.selected_key), "A locked research is not unaffordable."
+		not demo._is_technology_unaffordable(page.selected_key),
+		"A locked research is not unaffordable."
 	)
 	demo.run.candy = 1000
 	_check(demo.run.purchase_technology("cultivation"), "Cultivation unlocks global research.")
@@ -49,7 +55,8 @@ func _run_checks() -> void:
 		page.selected_key = id
 		page.refresh(demo.run)
 		_check(
-			demo._is_technology_unaffordable(page.selected_key), "Global research checks its cost: " + id
+			demo._is_technology_unaffordable(page.selected_key),
+			"Global research checks its cost: " + id
 		)
 		page._nodes[id].pressed.emit()
 		demo.run.candy = 1000
@@ -80,12 +87,13 @@ func _run_checks() -> void:
 	demo._planet_audio.update_rotation(0.01, true, demo._world.rotation + 0.02)
 	demo._layout._show_technology()
 	_check(
-		demo._planet_audio._rotate == null, "Opening the paused technology page stops rotation audio."
+		demo._planet_audio._rotate == null,
+		"Opening the paused technology page stops rotation audio."
 	)
+	demo._layout.close_panels()
 	await tree.create_timer(0.4).timeout
 	_check(is_equal_approx(GameAudio._music_volume, 1.0), "Gameplay music fades fully in.")
 	_check(GameAudio._fading_out.is_empty(), "The previous music finishes fading out.")
-	demo._layout.close_panels()
 	_check_loading_audio(demo._vacuum_audio)
 	demo._vacuum_audio.update(0.1, true, true)
 	demo._vacuum_audio.update_loading(demo, 0.5)
@@ -96,12 +104,15 @@ func _run_checks() -> void:
 	tree.current_scene = null
 	demo.queue_free()
 	await tree.process_frame
-	menu = MenuScene.instantiate() as Control
+	menu = MenuScene.instantiate() as MenuScript
 	root.add_child(menu)
 	tree.current_scene = menu
 	await tree.process_frame
+	while not menu._loading_scene.is_empty():
+		await tree.process_frame
 	_check(
-		GameAudio._music_path == "event:/Mx/Mx_MainMenu", "Returning to the menu switches music back."
+		GameAudio._music_path == "event:/Mx/Mx_MainMenu",
+		"Returning to the menu switches music back."
 	)
 	tree.current_scene = null
 	menu.queue_free()
@@ -111,6 +122,73 @@ func _run_checks() -> void:
 			"PASS: FMOD banks, music crossfades, monster/UI/net events, global research, collection visuals, rotation audio and vacuum reset."
 		)
 	tree.quit(0 if _failures == 0 else 1)
+
+
+func _check_audio_pause() -> void:
+	var tree: SceneTree = get_tree()
+	var enabled: bool = GamePreferences.audio_enabled
+	var music_volume: float = GamePreferences.music_volume
+	var effects_volume: float = GamePreferences.effects_volume
+	var editor_muted: bool = GameAudio._editor_muted
+	var effect: FmodEvent = GameAudio.start_loop("event:/Earth_Rotate")
+	await tree.create_timer(0.4).timeout
+	tree.paused = true
+	# The audio autoload queues the bus change, then FMOD consumes it next frame.
+	await tree.process_frame
+	await tree.process_frame
+	await tree.create_timer(0.15).timeout
+	_check(GameAudio._master_bus.get_paused(), "Pause suspends the FMOD master bus.")
+	_check(GameAudio._master_bus.get_mute(), "Pause silences all FMOD output.")
+	_check(AudioServer.is_bus_mute(0), "Pause silences native audio output.")
+	var music_position: int = GameAudio._music.get_timeline_position()
+	var effect_position: int = effect.get_timeline_position()
+	var fade_volume: float = GameAudio._music_volume
+	await tree.create_timer(0.25).timeout
+	_check(
+		GameAudio._music.get_timeline_position() == music_position,
+		"Paused music holds its playback position."
+	)
+	_check(
+		effect.get_timeline_position() == effect_position,
+		"Paused effects hold their playback position."
+	)
+	_check(GameAudio._music_volume == fade_volume, "Pause freezes music fades.")
+	GameAudio.set_editor_muted(false)
+	GamePreferences.changed.emit()
+	_check(GameAudio._master_bus.get_mute(), "Changing audio settings cannot unmute a paused game.")
+	tree.paused = false
+	await tree.process_frame
+	await tree.process_frame
+	await tree.create_timer(0.15).timeout
+	_check(not GameAudio._master_bus.get_paused(), "Resume unpauses FMOD.")
+	_check(
+		GameAudio._music.get_timeline_position() > music_position,
+		"Resume continues the same music."
+	)
+	_check(GameAudio._master_bus.get_mute() == (not enabled), "Resume respects the audio switch.")
+	_check(
+		AudioServer.is_bus_mute(0) == (not enabled or is_zero_approx(effects_volume)),
+		"Resume restores native audio preferences."
+	)
+	_check(
+		(
+			GamePreferences.audio_enabled == enabled
+			and GamePreferences.music_volume == music_volume
+			and GamePreferences.effects_volume == effects_volume
+		),
+		"Pause and resume preserve saved audio preferences."
+	)
+	GameAudio.set_editor_muted(true)
+	tree.paused = true
+	await tree.create_timer(0.05).timeout
+	tree.paused = false
+	await tree.create_timer(0.05).timeout
+	_check(
+		GameAudio._master_bus.get_mute() and AudioServer.is_bus_mute(0),
+		"Resuming preserves editor mute."
+	)
+	GameAudio.set_editor_muted(editor_muted)
+	GameAudio.stop_loop(effect)
 
 
 func _check_rotation_audio(demo: DemoScript) -> void:
@@ -162,12 +240,15 @@ func _check_candy_bursts(audio: Node) -> void:
 	var last_gap: float = float(queued[-1]["time"]) - float(queued[-2]["time"])
 	_check(last_gap < audio.candy_first_gap_seconds, "Candy sound gaps shrink over a run.")
 	_check(
-		is_equal_approx(audio._candy_value(1.0), audio._candy_value_range.x)
-		and is_equal_approx(audio._candy_value(1000.0), audio._candy_value_range.y),
+		(
+			is_equal_approx(audio._candy_value(1.0), audio._candy_value_range.x)
+			and is_equal_approx(audio._candy_value(1000.0), audio._candy_value_range.y)
+		),
 		"Candy value maps 1 candy to the bottom and rich monsters to the top."
 	)
 	while not audio._scheduled_candy.is_empty():
 		await get_tree().process_frame
+
 
 # Vacuum_Loading follows one monster's capture bar and restarts per monster.
 func _check_loading_audio(audio: Node) -> void:

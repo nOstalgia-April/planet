@@ -3,6 +3,7 @@ extends Node2D
 const SurfaceProjection = preload("res://scripts/surface_projection.gd")
 const VacuumSkin = preload("res://scripts/vacuum_skin.gd")
 const ComboBurst = preload("res://scripts/combo_burst.gd")
+const ComboMeter = preload("res://scripts/ui/combo_meter.gd")
 const ComboBurstScene: PackedScene = preload("res://scenes/effects/combo_burst.tscn")
 const REFERENCE_RADIUS: float = 24.0
 
@@ -32,11 +33,16 @@ var _combo_bursts: Array[Vector2i] = []
 
 @onready var _art_root: Node2D = $ArtRoot
 @onready var _art: VacuumSkin = $ArtRoot/吸尘器
+@onready var combo_meter: ComboMeter = $ArtRoot/ComboMeter
 
 
 func _ready() -> void:
 	_art.position = (Vector2(141.5, 143.0) - mouth_pixel) * art_scale
 	_art.scale = Vector2.ONE * art_scale
+	var tool_image: Image = _art.default_frames[0].get_image()
+	if tool_image.is_compressed():
+		tool_image.decompress()
+	combo_meter.fit_tool_width(float(tool_image.get_used_rect().size.x) * art_scale)
 	_art.finished.connect(_on_transport_finished)
 	visibility_changed.connect(_sync_animation)
 	_update_visual_compensation()
@@ -128,6 +134,7 @@ func _advance_combo_burst(delta: float) -> void:
 
 
 func reset_skin() -> void:
+	combo_meter.reset_feedback()
 	_last_capture_skin = VacuumSkin.SkinKind.DEFAULT
 	_combo_active = false
 	_combo_hold = 0.0

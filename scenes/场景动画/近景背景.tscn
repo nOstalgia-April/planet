@@ -1,8 +1,10 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/场景动画/近景背景颜色.tscn" id="r001"]
 
 [ext_resource type="PackedScene" path="res://scenes/场景动画/近景背景暗角.tscn" id="r002"]
+
+[ext_resource type="PackedScene" path="res://scenes/场景动画/近景星星.tscn" id="stars"]
 
 [node name="近景背景" type="Node2D"]
 
@@ -18,3 +20,5 @@ autoplay = "待机"
 
 [node name="动画播放器" parent="暗角" index="1"]
 autoplay = "待机"
+
+[node name="星星" parent="." instance=ExtResource("stars")]

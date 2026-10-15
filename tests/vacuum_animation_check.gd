@@ -3,7 +3,7 @@ extends Node
 const DemoScript = preload("res://scripts/disk_demo.gd")
 const PipeCursor = preload("res://scripts/pipe_cursor.gd")
 const VacuumSkin = preload("res://scripts/vacuum_skin.gd")
-const DemoScene: PackedScene = preload("res://scenes/disk_demo.tscn")
+const DemoScene: PackedScene = preload("res://features/场景预览/近景游玩预览.tscn")
 const NET_ANCHOR: Vector2 = Vector2(0.0, -235.0)
 
 var _failures: int = 0
@@ -220,10 +220,7 @@ func _check_skin_states(demo: DemoScript) -> void:
 		demo._drive_tool(demo.run.get_pipe_capture_seconds(), actor.get_capture_point(), false)
 		art._process(art.transition_seconds)
 	_check(
-		(
-			demo.run.combo_count == 0
-			and art.requested_skin == VacuumSkin.SkinKind.RAINBOW
-		),
+		demo.run.combo_count == 0 and art.requested_skin == VacuumSkin.SkinKind.RAINBOW,
 		"The actual combo threshold requests rainbow skin."
 	)
 	art._process(art.transition_seconds)

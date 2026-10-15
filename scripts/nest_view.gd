@@ -118,7 +118,9 @@ func get_collection_point() -> Vector2:
 
 
 func get_maximum_footprint_width() -> float:
-	return _art.get_maximum_footprint_width() * art_settings.get_maximum_nest_scale()
+	# Site layout reads this before the view enters the tree and runs _ready.
+	var art: NestArt = $NestArt
+	return art.maximum_footprint_width * art_settings.get_maximum_nest_scale()
 
 
 func _refresh_art() -> void:

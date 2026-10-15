@@ -32,6 +32,7 @@ func _run() -> void:
 	_game.run.purchase_technology("cultivation")
 	_game.run.purchase_technology("automation")
 	await get_tree().process_frame
+	_check_core_white(0.0, "Initial scene")
 	await _capture("initial")
 	for _stage: int in range(3):
 		_check(_game.run.upgrade_nest(1), "fixture upgrades succeed")
@@ -39,9 +40,13 @@ func _run() -> void:
 		_game._restoration.unlocked_species.is_empty(),
 		"wait for the actual flower, not the purchase"
 	)
-	for _frame: int in range(480):
-		if not _game._restoration.unlocked_species.is_empty():
-			break
+	# The three growth clips take about 2.17 seconds; fast rendering can exhaust
+	# a frame-count limit before the real flower animation finishes.
+	var flower_deadline_msec: int = Time.get_ticks_msec() + 10000
+	while (
+		_game._restoration.unlocked_species.is_empty()
+		and Time.get_ticks_msec() < flower_deadline_msec
+	):
 		await get_tree().process_frame
 	_check(_game._restoration.unlocked_species == [0], "real flower completion unlocks pink once")
 	_check(_game._view.presentation_locked, "flower reveal locks player camera input")
@@ -129,6 +134,7 @@ func _run() -> void:
 		"all colors retain the colored background while an existing nest is not automated"
 	)
 	_check(_game._restoration.core.modulate.a == 0.0, "old core does not obscure restored globe")
+	_check_core_white(0.0, "Three colors before full automation")
 	var rotation: float = _game._world.rotation
 	_game._view._process(1.0)
 	_check(not is_equal_approx(rotation, _game._world.rotation), "completed globe rotates")
@@ -154,12 +160,20 @@ func _run() -> void:
 		is_equal_approx(_game._restoration.bright_background.modulate.a, 0.5),
 		"background fades to white after full automation"
 	)
+	_check_core_white(0.5, "Three-color white transition midpoint")
 	_game._restoration._process(0.5)
 	_game._restoration._process(1.2)
 	_check(
 		_game._restoration.bright_background.modulate.a == 1.0,
 		"all current nests automated enables white even with monsters remaining"
 	)
+	_check_core_white(1.0, "Three-color white transition complete")
+	for species: int in range(3):
+		_game._population_palette.emphasize_species(species, 10.0)
+		_game._population_palette.advance_population(Vector3.ZERO, 0.5)
+		_check_core_white(1.0, "Temporary emphasis during white presentation")
+		_game._population_palette.advance_population(Vector3.ZERO, 0.5)
+		_check_core_white(1.0, "Temporary emphasis settled during white presentation")
 	await _capture("complete")
 	_game._view.zoom_steps(1.0, false)
 	await _capture("complete_near")
@@ -170,6 +184,7 @@ func _run() -> void:
 		_game._restoration.bright_background.modulate.a == 0.0,
 		"restart restores original background"
 	)
+	_check_core_white(0.0, "Restart after three-color white presentation")
 	_game._restoration.reveal_flower(1, 0)
 	_game.restart_run()
 	_game._restoration._process(10.0)
@@ -205,7 +220,9 @@ func _run() -> void:
 	_game._restoration._process(0.0)
 	_game._restoration._process(2.4)
 	_game._restoration._process(1.2)
-	_game._restoration._process(1.0)
+	_game._restoration._process(0.5)
+	_check_core_white(0.5, "Single-species white transition midpoint")
+	_game._restoration._process(0.5)
 	_game._restoration._process(1.2)
 	_check(
 		(
@@ -214,6 +231,13 @@ func _run() -> void:
 		),
 		"all current nests automated enables white without unlocking all three colors"
 	)
+	_check(
+		_game._planet_art.restored_mix == 0.0 and _game._restoration.core.modulate.a == 1.0,
+		"Single-species white presentation keeps the original animated core visible."
+	)
+	_check_core_white(1.0, "Single-species white transition complete")
+	_game.restart_run()
+	_check_core_white(0.0, "Restart after single-species white presentation")
 	_game.queue_free()
 	await get_tree().process_frame
 	for failure: String in _failures:
@@ -223,6 +247,23 @@ func _run() -> void:
 			"PASS: monster-clear victory, flower trigger, color queue, automation-gated white background, rotation and restart."
 		)
 	get_tree().quit(0 if _failures.is_empty() else 1)
+
+
+func _check_core_white(expected: float, context: String) -> void:
+	var core_material: ShaderMaterial = (
+		_game._population_palette.core_sprite.material as ShaderMaterial
+	)
+	var globe_material: ShaderMaterial = _game._planet_art.sprite.material as ShaderMaterial
+	var core_white: float = core_material.get_shader_parameter("core_white_mix")
+	var globe_white: float = globe_material.get_shader_parameter("core_white_mix")
+	_check(
+		(
+			is_equal_approx(core_white, expected)
+			and is_equal_approx(globe_white, expected)
+			and is_equal_approx(_game._restoration.bright_background.modulate.a, expected)
+		),
+		context + ": both core materials remain synchronized with the white background."
+	)
 
 
 func _check_victory() -> void:

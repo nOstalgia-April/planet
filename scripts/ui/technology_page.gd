@@ -42,6 +42,7 @@ var _run: PrototypeRun
 var _nodes: Dictionary[String, NodeScript] = {}
 var _hovered_key: String = ""
 var _detail_pointer: Vector2 = Vector2.ZERO
+var _opening_cue_pending: bool = true
 
 @onready var graph: GraphScript = %Graph
 @onready var _canvas: Control = %Canvas
@@ -60,7 +61,17 @@ func _ready() -> void:
 	%Close.pressed.connect(func() -> void: close_requested.emit())
 	_canvas.resized.connect(_fit_graph)
 	_fit_graph.call_deferred()
-	visibility_changed.connect(_hide_details)
+	visibility_changed.connect(_on_visibility_changed)
+
+
+func _on_visibility_changed() -> void:
+	_hide_details()
+	if not is_visible_in_tree():
+		_opening_cue_pending = true
+		for node: NodeScript in _nodes.values():
+			node.stop_available_cue()
+	elif _run != null:
+		refresh(_run)
 
 
 func refresh(run: PrototypeRun) -> void:
@@ -76,6 +87,10 @@ func refresh(run: PrototypeRun) -> void:
 	_refresh_details()
 	_refresh_goal()
 	graph.queue_redraw()
+	if _opening_cue_pending and is_visible_in_tree():
+		_opening_cue_pending = false
+		for node: NodeScript in _nodes.values():
+			node.play_available_cue()
 
 
 func has_available_technology() -> bool:
@@ -216,6 +231,10 @@ func _state_for(id: String) -> NodeScript.State:
 
 
 func _refresh_details() -> void:
+	# Economy updates also arrive while this panel is closed. Refresh the
+	# description and prerequisite controls when the player actually opens it.
+	if not _detail.visible:
+		return
 	var id: String = selected_key
 	var node: NodeScript = _nodes[id]
 	_detail_icon.symbol = node.glyph.symbol

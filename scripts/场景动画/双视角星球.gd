@@ -73,10 +73,15 @@ func set_restored_mix(value: float) -> void:
 	_blend_material.set_shader_parameter("restored_mix", restored_mix)
 
 
+func set_white_mix(value: float) -> void:
+	_blend_material.set_shader_parameter("core_white_mix", clampf(value, 0.0, 1.0))
+
+
 func reset_colors() -> void:
 	for species: int in range(3):
 		set_color_progress(species, 0.0)
 	set_restored_mix(0.0)
+	set_white_mix(0.0)
 
 
 func set_zoom(zoom: float) -> void:

@@ -15,6 +15,8 @@
 [ext_resource type="PackedScene" path="res://scenes/effects/nest_discovery_presentation.tscn" id="discovery"]
 
 [ext_resource type="PackedScene" path="res://scenes/场景动画/山丘树木.tscn" id="terrain"]
+[ext_resource type="PackedScene" path="res://scenes/场景动画/流星.tscn" id="meteors"]
+[ext_resource type="Script" path="res://scripts/victory_meteor_presentation.gd" id="victory"]
 
 [node name="近景游玩预览" unique_id=41260423 instance=ExtResource("r001")]
 script = ExtResource("r002")
@@ -53,9 +55,6 @@ theme_override_colors/font_color = Color(0.9187172, 0.95208365, 0.92662764, 1)
 [node name="PassiveLabel" parent="HUD/Interface/Economy" index="2"]
 theme_override_colors/font_color = Color(0.3507027, 0.3507027, 0.3507027, 1)
 
-[node name="ComboChip" parent="HUD/Interface" index="1"]
-visible = true
-
 [node name="美术背景" type="CanvasLayer" parent="." index="6" unique_id=1470940560]
 layer = -10
 
@@ -73,6 +72,13 @@ visible = false
 [node name="亮色背景" parent="美术背景/地壳裁剪/画布" instance=ExtResource("bright")]
 modulate = Color(1, 1, 1, 0)
 
+[node name="流星" parent="美术背景/地壳裁剪/画布" instance=ExtResource("meteors")]
+
+[node name="VictoryMeteorPresentation" type="Node" parent="." node_paths=PackedStringArray("view", "meteors")]
+script = ExtResource("victory")
+view = NodePath("../PlanetViewController")
+meteors = NodePath("../美术背景/地壳裁剪/画布/流星")
+
 [node name="PlanetRestoration" parent="." node_paths=PackedStringArray("run", "view", "art", "bright_background", "core", "terrain") instance=ExtResource("restoration")]
 run = NodePath("../Run")
 view = NodePath("../PlanetViewController")
@@ -81,15 +87,17 @@ bright_background = NodePath("../美术背景/地壳裁剪/画布/亮色背景")
 core = NodePath("../World/PlanetSurface/星球画面/星球核心")
 terrain = NodePath("../World/HorizonTerrain")
 
-[node name="PopulationPalette" parent="." node_paths=PackedStringArray("run", "background_sprites", "core_sprite", "technology_background", "button_brushes", "ecology_backdrop", "bottom_dock") instance=ExtResource("palette")]
+[node name="PopulationPalette" parent="." node_paths=PackedStringArray("run", "background_sprites", "core_sprite", "planet_art", "technology_background", "button_brushes", "ecology_backdrop", "bottom_dock", "game_menu") instance=ExtResource("palette")]
 run = NodePath("../Run")
 background_sprites = [NodePath("../美术背景/地壳裁剪/画布/近景背景/颜色/贴图"), NodePath("../美术背景/地壳裁剪/画布/全景背景/贴图")]
 core_sprite = NodePath("../World/PlanetSurface/星球画面/星球核心/画面")
+planet_art = NodePath("../World/PlanetSurface/星球画面")
 technology_background = NodePath("../HUD/Interface/Technology/Background")
-button_brushes = [NodePath("../HUD/Interface/GameMenu/Toolbar/Pause/Brush"), NodePath("../HUD/Interface/GameMenu/Toolbar/Music/Brush"), NodePath("../HUD/Interface/GameMenu/Toolbar/Settings/Brush"), NodePath("../HUD/Interface/Technology/Margin/Content/Header/Close/Brush")]
+button_brushes = [NodePath("../HUD/Interface/GameMenu/Toolbar/Pause/Brush"), NodePath("../HUD/Interface/GameMenu/Toolbar/Music/Brush"), NodePath("../HUD/Interface/GameMenu/Toolbar/Settings/Brush"), NodePath("../HUD/Interface/Technology/Margin/Content/Header/Close/Brush"), NodePath("../HUD/Interface/GameMenu/Modal/Center/Panel/Content/Header/CloseSettings/Brush")]
 ecology_backdrop = NodePath("../OverviewEcology/Backdrop/Color")
 
 bottom_dock = NodePath("../HUD/Interface/ToolDock")
+game_menu = NodePath("../HUD/Interface/GameMenu")
 
 [node name="NestDiscoveryPresentation" parent="." node_paths=PackedStringArray("run", "view", "palette") instance=ExtResource("discovery")]
 run = NodePath("../Run")

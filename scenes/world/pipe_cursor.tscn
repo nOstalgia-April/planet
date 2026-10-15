@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/pipe_cursor.gd" id="1_pipe"]
 [ext_resource type="PackedScene" path="res://scenes/场景动画/吸尘器.tscn" id="2_art"]
+[ext_resource type="PackedScene" path="res://scenes/ui/combo_meter.tscn" id="3_combo"]
 
 [node name="Pipe" type="Node2D"]
 position = Vector2(480, 400)
@@ -12,5 +13,8 @@ script = ExtResource("1_pipe")
 [node name="吸尘器" parent="ArtRoot" instance=ExtResource("2_art")]
 position = Vector2(5.544, -6.768)
 scale = Vector2(0.144, 0.144)
+
+[node name="ComboMeter" parent="ArtRoot" instance=ExtResource("3_combo")]
+position = Vector2(5.5, -30)
 
 [node name="Bursts" type="Node2D" parent="."]

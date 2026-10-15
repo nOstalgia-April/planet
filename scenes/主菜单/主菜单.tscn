@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scenes/主菜单/主菜单.gd" id="r001"]
 
@@ -9,6 +9,8 @@
 [ext_resource type="Texture2D" path="res://assets/场景动画/主菜单/左侧底板.png" id="r004"]
 
 [ext_resource type="Texture2D" path="res://assets/场景动画/主菜单/选中底板.png" id="r007"]
+
+[ext_resource type="PackedScene" path="res://scenes/effects/menu_atmosphere.tscn" id="menu_atmosphere"]
 
 [sub_resource type="AtlasTexture" id="r005"]
 atlas = ExtResource("r004")
@@ -55,6 +57,8 @@ texture = ExtResource("r002")
 mouse_filter = 2
 expand_mode = 1
 
+[node name="Atmosphere" parent="画布" instance=ExtResource("menu_atmosphere")]
+
 [node name="中文名" type="Label" parent="画布"]
 offset_left = 720.0
 offset_top = 616.0
@@ -70,8 +74,10 @@ offset_left = 92.0
 offset_top = 640.0
 offset_right = 402.0
 offset_bottom = 736.0
-text = "start"
+text = "开始游戏"
 theme_override_font_sizes/font_size = 32
+theme_override_colors/font_disabled_color = Color(0.9, 0.88, 0.88, 1)
+theme_override_styles/disabled = SubResource("r006")
 theme_override_styles/normal = SubResource("r006")
 theme_override_styles/hover = SubResource("r009")
 theme_override_styles/pressed = SubResource("r009")
@@ -83,6 +89,7 @@ offset_right = 402.0
 offset_bottom = 866.0
 text = "预览"
 theme_override_font_sizes/font_size = 32
+theme_override_styles/disabled = SubResource("r006")
 theme_override_styles/normal = SubResource("r006")
 theme_override_styles/hover = SubResource("r009")
 theme_override_styles/pressed = SubResource("r009")

@@ -22,6 +22,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
+GameLifecycle="*res://scripts/game_lifecycle.gd"
 FmodManager="*res://addons/fmod/FmodManager.gd"
 GamePreferences="*res://scripts/game_preferences.gd"
 GameAudio="*res://scripts/fmod_audio.gd"

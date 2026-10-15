@@ -50,6 +50,7 @@ var _effect_is_near_view: Array[bool] = []
 var _near_view_gain: float = 1.0
 var _master_bus: FmodBus
 var _editor_muted: bool = false
+var _game_paused: bool = false
 
 # Holding the references keeps the banks loaded; dropping them unloads.
 var _banks: Array[FmodBank] = []
@@ -88,6 +89,7 @@ func _ready() -> void:
 		)
 	banks_loaded = true
 	_master_bus = FmodServer.get_bus("bus:/")
+	_master_bus.set_paused(get_tree().paused)
 	for description: Dictionary in FmodServer.get_global_parameter_desc_list():
 		_global_parameters[description["name"]] = true
 	for bank: FmodBank in _banks:
@@ -279,6 +281,15 @@ func get_music_position_seconds(event_path: String) -> float:
 
 
 func _process(delta: float) -> void:
+	var paused: bool = get_tree().paused
+	if paused != _game_paused:
+		_game_paused = paused
+		if _master_bus != null:
+			_master_bus.set_paused(paused)
+		_apply_master_mute()
+	# Freeze transitions and fades along with the FMOD timelines.
+	if paused:
+		return
 	_advance_music_duck(delta)
 	if _transition != null:
 		_transition_elapsed += delta
@@ -315,8 +326,10 @@ func _is_transition_ending() -> bool:
 		return true
 	return (
 		_transition_length > 0.0
-		and _transition.get_timeline_position() / 1000.0
-		>= _transition_length - transition_music_lead_seconds
+		and (
+			_transition.get_timeline_position() / 1000.0
+			>= _transition_length - transition_music_lead_seconds
+		)
 	)
 
 
@@ -398,7 +411,7 @@ func _capture_editor_message(message: String, data: Array) -> bool:
 
 
 func _apply_master_mute() -> void:
-	var muted: bool = _editor_muted or not GamePreferences.audio_enabled
+	var muted: bool = _editor_muted or _game_paused or not GamePreferences.audio_enabled
 	if _master_bus != null:
 		_master_bus.set_mute(muted)
 	AudioServer.set_bus_mute(0, muted or is_zero_approx(GamePreferences.effects_volume))

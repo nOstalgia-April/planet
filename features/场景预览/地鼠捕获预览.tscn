@@ -1,0 +1,60 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://features/场景预览/近景游玩预览.tscn" id="1"]
+[ext_resource type="Script" path="res://features/场景预览/地鼠捕获预览.gd" id="2"]
+[ext_resource type="Theme" path="res://resources/场景预览主题.tres" id="3"]
+
+[sub_resource type="ButtonGroup" id="Kind"]
+
+[node name="地鼠捕获预览" instance=ExtResource("1")]
+script = ExtResource("2")
+
+[node name="PreviewControls" type="CanvasLayer" parent="."]
+layer = 30
+
+[node name="Controls" type="VBoxContainer" parent="PreviewControls"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 28.0
+offset_bottom = 120.0
+grow_horizontal = 2
+mouse_filter = 2
+theme = ExtResource("3")
+theme_override_constants/separation = 12
+
+[node name="Buttons" type="HBoxContainer" parent="PreviewControls/Controls"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="Ordinary" type="Button" parent="PreviewControls/Controls/Buttons"]
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("Kind")
+button_pressed = true
+text = "普通地鼠"
+
+[node name="Valuable" type="Button" parent="PreviewControls/Controls/Buttons"]
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("Kind")
+text = "高价值地鼠"
+
+[node name="Retry" type="Button" parent="PreviewControls/Controls/Buttons"]
+layout_mode = 2
+text = "重新出土 · R"
+
+[node name="Result" type="Label" parent="PreviewControls/Controls"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.94, 0.8, 1)
+theme_override_colors/font_shadow_color = Color(0.24, 0.14, 0.2, 1)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+text = "捕获 0  ·  糖果 0"
+horizontal_alignment = 1
+
+[connection signal="pressed" from="PreviewControls/Controls/Buttons/Ordinary" to="." method="_set_preview_kind" binds=[false]]
+[connection signal="pressed" from="PreviewControls/Controls/Buttons/Valuable" to="." method="_set_preview_kind" binds=[true]]
+[connection signal="pressed" from="PreviewControls/Controls/Buttons/Retry" to="." method="_restart_preview_actor"]

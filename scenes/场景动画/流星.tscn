@@ -1,0 +1,45 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/场景动画/帧动画.gd" id="r001"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/流星/001.png" id="r002"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/流星/002.png" id="r003"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/流星/003.png" id="r004"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/流星/004.png" id="r005"]
+
+[sub_resource type="Animation" id="r006"]
+resource_name = "播放"
+length = 1.0
+loop_mode = 0
+step = 0.25
+tracks/0/type = "value"
+tracks/0/path = NodePath("贴图:texture")
+tracks/0/interp = 0
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0.0, 0.25, 0.5, 0.75),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("r002"), ExtResource("r003"), ExtResource("r004"), ExtResource("r005")]
+}
+
+[sub_resource type="AnimationLibrary" id="r007"]
+_data = {
+&"播放": SubResource("r006")
+}
+
+[node name="流星" type="Node2D" node_paths=PackedStringArray("animation_player")]
+visible = false
+script = ExtResource("r001")
+animation_player = NodePath("动画播放器")
+clip = &"播放"
+frames_per_second = 4.0
+frame_count = 4
+
+[node name="贴图" type="Sprite2D" parent="."]
+texture = ExtResource("r002")
+centered = false
+
+[node name="动画播放器" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("r007")
+}

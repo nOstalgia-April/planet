@@ -1,12 +1,20 @@
 extends Control
 
-@export_file("*.tscn") var start_scene: String = "res://features/场景预览/近景游玩预览.tscn"
+const SharedCache = preload("res://scripts/art_resource_cache.gd")
 
-# Scene being loaded in the background after "开始"; empty when idle.
+const DEFAULT_START_SCENE: String = "res://features/场景预览/近景游玩预览.tscn"
+
+@export_file("*.tscn") var start_scene: String = DEFAULT_START_SCENE
+
+# Each scene owns one request reference; ResourceLoader shares the actual IO.
 var _loading_scene: String = ""
+var _start_requested: bool = false
+var _prepared_scene: PackedScene
 
 @onready var _canvas: Control = $画布
 @onready var _preview_panel: Control = $画布/预览选择
+@onready var _start_button: Button = $画布/开始
+@onready var _preview_button: Button = $画布/预览
 
 
 func _ready() -> void:
@@ -15,7 +23,7 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_fit_canvas)
 	_fit_canvas()
 	GameAudio.play_music("event:/Mx/Mx_MainMenu")
-	set_process(false)
+	_prepare_game()
 
 
 func _fit_canvas() -> void:
@@ -25,34 +33,105 @@ func _fit_canvas() -> void:
 
 
 func _start() -> void:
-	if not _loading_scene.is_empty():
+	if _start_requested:
 		return
-	# The gameplay music is prepared now and enters as the transition fades.
-	GameAudio.play_transition("event:/GameStart_Transition", "event:/Mx/Mx_GamePlay")
-	# Load in the background so the main thread keeps running and the music
-	# handoff stays on time; the menu ignores input until the scene is ready.
-	if ResourceLoader.load_threaded_request(start_scene) != OK:
-		_open_scene(start_scene)
+	_start_requested = true
+	_start_button.disabled = true
+	_start_button.text = "准备中…"
+	_preview_button.disabled = true
+	_preview_panel.hide()
+	if _prepared_scene != null:
+		_enter_game.call_deferred()
+		return
+	if _loading_scene.is_empty():
+		_prepare_game()
+
+
+func _prepare_game() -> void:
+	if prepare_scene(start_scene) != OK:
+		_loading_failed()
 		return
 	_loading_scene = start_scene
-	get_viewport().gui_disable_input = true
 	set_process(true)
 
 
+static func prepare_scene(path: String = DEFAULT_START_SCENE) -> Error:
+	# Godot 4.7.2 leaks analyzer temporaries when compiling this dependency
+	# graph on loader workers. Prepare scripts/shaders here; texture IO stays async.
+	_warm_resources(path, {})
+	return ResourceLoader.load_threaded_request(path, "PackedScene")
+
+
+static func _warm_resources(path: String, visited: Dictionary) -> void:
+	if visited.has(path):
+		return
+	visited[path] = true
+	var resources: Dictionary = SharedCache.get_cache(&"planet_prepared_resources")
+	if path.get_extension() in ["gd", "gdshader", "gdshaderinc"] and not resources.has(path):
+		resources[path] = load(path)
+	for dependency: String in ResourceLoader.get_dependencies(path):
+		var target: String = dependency.get_slice("::", dependency.get_slice_count("::") - 1)
+		if target.get_extension() in ["gd", "tscn", "tres", "gdshader", "gdshaderinc"]:
+			_warm_resources(target, visited)
+
+
+static func release_scene(tree: SceneTree, path: String) -> void:
+	# Preview handoffs keep running without waiting for the gameplay preload.
+	# Application shutdown must retrieve it before loaders/rendering disappear.
+	while ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+		if GameLifecycle.quitting:
+			break
+		await tree.process_frame
+	var resource: Resource = ResourceLoader.load_threaded_get(path)
+	if not GameLifecycle.quitting:
+		await tree.process_frame
+	resource = null
+
+
+func _exit_tree() -> void:
+	if not _loading_scene.is_empty():
+		release_scene(get_tree(), _loading_scene)
+
+
 func _process(_delta: float) -> void:
+	var progress: Array = []
 	var status: ResourceLoader.ThreadLoadStatus = ResourceLoader.load_threaded_get_status(
-		_loading_scene
+		_loading_scene, progress
 	)
 	if status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+		if _start_requested and not progress.is_empty():
+			_start_button.text = "准备中 %d%%" % mini(99, int(float(progress[0]) * 100.0))
 		return
 	var path: String = _loading_scene
 	_loading_scene = ""
 	set_process(false)
-	get_viewport().gui_disable_input = false
 	if status == ResourceLoader.THREAD_LOAD_LOADED:
-		get_tree().change_scene_to_packed(ResourceLoader.load_threaded_get(path) as PackedScene)
+		_prepared_scene = ResourceLoader.load_threaded_get(path) as PackedScene
+		if _start_requested:
+			_enter_game.call_deferred()
 	else:
-		_open_scene(path)
+		if status == ResourceLoader.THREAD_LOAD_FAILED:
+			ResourceLoader.load_threaded_get(path)
+		_loading_failed()
+
+
+func _enter_game() -> void:
+	GameAudio.play_transition("event:/GameStart_Transition", "event:/Mx/Mx_GamePlay")
+	var result: Error = get_tree().change_scene_to_packed(_prepared_scene)
+	if result != OK:
+		_loading_failed()
+
+
+func _loading_failed() -> void:
+	_loading_scene = ""
+	_start_requested = false
+	_prepared_scene = null
+	set_process(false)
+	_start_button.disabled = false
+	_start_button.text = "重试"
+	_preview_button.disabled = false
+	GameAudio.play_music("event:/Mx/Mx_MainMenu")
+	push_error("无法准备游戏场景：" + start_scene)
 
 
 func _open_scene(path: String) -> void:
@@ -66,4 +145,4 @@ func _toggle_previews() -> void:
 
 
 func _quit() -> void:
-	get_tree().quit()
+	GameLifecycle.request_quit()

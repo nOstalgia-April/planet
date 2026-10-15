@@ -1,0 +1,14 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="PackedScene" path="res://features/场景预览/近景游玩预览.tscn" id="game"]
+[ext_resource type="PackedScene" path="res://features/task_hud_preview/task_hud.tscn" id="hud"]
+[ext_resource type="Script" path="res://features/task_hud_preview/task_hud_preview.gd" id="script"]
+
+[node name="TaskHudPreview" type="Node"]
+script = ExtResource("script")
+
+[node name="Game" parent="." instance=ExtResource("game")]
+
+[node name="TaskHud" parent="Game/HUD/Interface" instance=ExtResource("hud")]
+
+[editable path="Game"]

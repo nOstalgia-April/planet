@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b5k6827orudyf"
-path="res://.godot/imported/005.png-705ae39a29b89d687edcb5a5f629fc44.ctex"
+path.bptc="res://.godot/imported/005.png-705ae39a29b89d687edcb5a5f629fc44.bptc.ctex"
+path.astc="res://.godot/imported/005.png-705ae39a29b89d687edcb5a5f629fc44.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/场景动画/近景背景暗角/005.png"
-dest_files=["res://.godot/imported/005.png-705ae39a29b89d687edcb5a5f629fc44.ctex"]
+dest_files=["res://.godot/imported/005.png-705ae39a29b89d687edcb5a5f629fc44.bptc.ctex", "res://.godot/imported/005.png-705ae39a29b89d687edcb5a5f629fc44.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

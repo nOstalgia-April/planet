@@ -1,4 +1,4 @@
-[gd_scene load_steps=28 format=3]
+[gd_scene load_steps=33 format=3]
 
 [ext_resource type="Script" path="res://scripts/disk_demo.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/prototype_run.gd" id="2_run"]
@@ -31,6 +31,11 @@
 
 [ext_resource type="PackedScene" path="res://scenes/ui/bottom_dock.tscn" id="25_dock"]
 [ext_resource type="PackedScene" path="res://scenes/ui/view_shortcut.tscn" id="27_view_shortcut"]
+[ext_resource type="PackedScene" path="res://scenes/world/governed_region.tscn" id="28_region"]
+[ext_resource type="PackedScene" path="res://scenes/effects/mucus_field.tscn" id="29_mucus"]
+[ext_resource type="PackedScene" path="res://scenes/world/drill_monster.tscn" id="30_drill"]
+[ext_resource type="PackedScene" path="res://scenes/effects/drill_treasure.tscn" id="31_treasure"]
+[ext_resource type="PackedScene" path="res://scenes/effects/nest_mucus_area.tscn" id="32_nest_mucus"]
 
 [node name="DiskDemo" type="Node2D"]
 script = ExtResource("1_main")
@@ -39,6 +44,11 @@ giant_slime_scene = ExtResource("20_giant")
 nest_scene = ExtResource("6_nest")
 collection_scene = ExtResource("7_collection")
 giant_harvest_scene = ExtResource("21_harvest")
+region_scene = ExtResource("28_region")
+mucus_scene = ExtResource("29_mucus")
+drill_scene = ExtResource("30_drill")
+treasure_scene = ExtResource("31_treasure")
+nest_mucus_scene = ExtResource("32_nest_mucus")
 
 [node name="Run" type="Node" parent="."]
 unique_name_in_owner = true
@@ -173,32 +183,6 @@ text = "0 DPS"
 vertical_alignment = 1
 unique_name_in_owner = true
 theme_override_colors/font_color = Color(0.25, 0.31, 0.26, 1)
-
-[node name="ComboChip" type="PanelContainer" parent="HUD/Interface"]
-visible = false
-layout_mode = 0
-theme_type_variation = &"BranchPanel"
-
-[node name="Content" type="VBoxContainer" parent="HUD/Interface/ComboChip"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 6
-
-[node name="ComboLabel" type="Label" parent="HUD/Interface/ComboChip/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.60, 0.36, 0.18, 1)
-theme_override_font_sizes/font_size = 15
-text = "I · 0 / 3 · 待吸入"
-
-[node name="ComboTimerBar" type="ProgressBar" parent="HUD/Interface/ComboChip/Content"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 5)
-layout_mode = 2
-mouse_filter = 2
-max_value = 3.0
-show_percentage = false
 
 [node name="StatusLabel" type="Label" parent="HUD/Interface"]
 layout_mode = 0

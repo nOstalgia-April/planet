@@ -20,6 +20,8 @@ func _run() -> void:
 		_game.set_process(false)
 		_game._view.set_process(false)
 		_game._layout.close_panels()
+		_game._window_has_focus = true
+		_game._view_blocks_tool_until_release = false
 		_game._slime_root.set_process(false)
 		await get_tree().process_frame
 		_game._apply_layout()
@@ -30,12 +32,17 @@ func _run() -> void:
 		var back: PrototypeSlime = _spawn(Vector2(940, 815), 0)
 		var front: PrototypeSlime = _spawn(Vector2(958, 848), 1)
 		var isolated: PrototypeSlime = _spawn(Vector2(1370, 835), 0)
-		var mole: Drill = _game.DRILL_SCENE.instantiate() as Drill
+		var mole: Drill = _game.drill_scene.instantiate() as Drill
 		_game._slime_root.add_child(mole)
 		mole.setup(1, Vector2.UP * 220.0, _game._planet)
 		mole.presentation_scale = _game._view.near_slime_scale
 		_place(mole, Vector2(930, 825))
 		_game._slimes.append(mole)
+		_check(
+			_game._slime_root._bodies.size() == _game._slime_root.get_child_count(),
+			"depth cache tracks every existing and newly spawned actor"
+		)
+		var cached_body: RefCounted = _game._slime_root._bodies[0]
 		var stages: Array[StringName] = [&"跳出", &"钻地", &"鼓包", &"鼓包", &"跳出", &"夹夹"]
 		for phase: int in range(stages.size()):
 			mole._enter_phase(phase as Drill.Phase, 5.0, stages[phase])
@@ -49,15 +56,23 @@ func _run() -> void:
 				"mole animation never jumps above front contact"
 			)
 			await _capture("mole_%d" % phase, resolution)
+		_check(_game._slime_root._bodies[0] == cached_body, "frames reuse the actor depth record")
 		_check(back.modulate.r < front.modulate.r, "overlapped rear body is subdued")
 		_check(is_equal_approx(isolated.modulate.r, 1.0), "isolated body retains source color")
 		var original: Vector2 = mole.position
-		_game._capture_at(0.03, mole.get_capture_point(), true)
+		var mole_point: Vector2 = mole.get_capture_hit_rect().get_center()
+		_game._update_drill_hover(mole_point)
+		_game._drive_drill_capture(0.1, mole_point, true)
+		_game._capture_at(0.0, mole.get_capture_point(), false)
 		_game._slime_root._process(1.0)
-		_check(_game._capture_targets == [mole], "real pipe selects the exposed mole")
+		_check(
+			_game._hovered_drill == mole and mole.capture_progress > 0.0,
+			"held capture route selects the exposed mole"
+		)
 		_check(mole.get_index() > front.get_index(), "active mole renders above crowd")
 		_check(is_equal_approx(mole.modulate.r, 1.0), "active mole retains full color")
 		await _capture("mole_capture", resolution)
+		_game._update_drill_hover(Vector2(-100, -100))
 		_game._capture_at(0.0, mole.get_capture_point(), false)
 		mole.position = original
 		mole.refresh_presentation()
@@ -100,13 +115,17 @@ func _run() -> void:
 		_game.restart_run()
 		_game._slime_root._process(1.0)
 		_check(_game._slime_root.get_child_count() == 0, "restart clears ordering and focus")
+		_check(
+			_game._slime_root._bodies.is_empty() and _game._slime_root._visible_bodies.is_empty(),
+			"restart removes cached actors and visible bodies"
+		)
 		_game.queue_free()
 		await get_tree().process_frame
 	for failure: String in _failures:
 		push_error(failure)
 	print(
 		(
-			"PASS: crowd depth, all six mole phases, suction/release, rotation and restart at two sizes."
+			"PASS: crowd depth, all six mole phases, hold/leave, rotation and restart at two sizes."
 			if _failures.is_empty()
 			else "FAIL: monster depth"
 		)

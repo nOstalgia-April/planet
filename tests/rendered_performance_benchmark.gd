@@ -74,15 +74,23 @@ func _run() -> void:
 func _prepare_phase(phase: String) -> void:
 	seed(601026)
 	var scene_demo: DemoScript = DemoScene.instantiate() as DemoScript
-	var slime_scene: PackedScene = scene_demo.slime_scene
-	var nest_scene: PackedScene = scene_demo.nest_scene
-	var collection_scene: PackedScene = scene_demo.collection_scene
+	# Script replacement resets exports. Preserve the scene's actual bindings,
+	# including dependencies added after this benchmark was written.
+	var scene_dependencies: Dictionary[StringName, PackedScene] = {}
+	for property: Dictionary in scene_demo.get_property_list():
+		if (
+			(int(property["usage"]) & PROPERTY_USAGE_STORAGE) == 0
+			or property["hint"] != PROPERTY_HINT_RESOURCE_TYPE
+			or property["hint_string"] != "PackedScene"
+		):
+			continue
+		var property_name: StringName = StringName(property["name"])
+		scene_dependencies[property_name] = scene_demo.get(property_name) as PackedScene
 	var net_result_seconds: float = scene_demo.net_result_seconds
 	scene_demo.set_script(BenchmarkDemoScript)
 	_demo = scene_demo as BenchmarkDemoScript
-	_demo.slime_scene = slime_scene
-	_demo.nest_scene = nest_scene
-	_demo.collection_scene = collection_scene
+	for property_name: StringName in scene_dependencies:
+		_demo.set(property_name, scene_dependencies[property_name])
 	_demo.net_result_seconds = net_result_seconds
 	var run: PrototypeRun = _demo.get_node("Run") as PrototypeRun
 	run.settings = run.settings.duplicate() as PrototypeSettings

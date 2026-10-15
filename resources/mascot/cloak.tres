@@ -1,4 +1,4 @@
-[gd_resource type="SpriteFrames" load_steps=9 format=3]
+[gd_resource type="SpriteFrames" load_steps=14 format=3]
 
 [ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/cloak/enter/001.png" id="enter_0"]
 [ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/cloak/enter/002.png" id="enter_1"]
@@ -8,7 +8,13 @@
 [ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/cloak/enter/006.png" id="enter_5"]
 [ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/cloak/idle/001.png" id="idle_0"]
 [ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/cloak/idle/002.png" id="idle_1"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/cloak/talk/001.png" id="talk_0"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/cloak/talk/002.png" id="talk_1"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/cloak/talk/003.png" id="talk_2"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/cloak/talk/004.png" id="talk_3"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/cloak/talk/005.png" id="talk_4"]
 
 [resource]
 animations = [{"frames": [{"duration": 1.0, "texture": ExtResource("enter_0")}, {"duration": 1.0, "texture": ExtResource("enter_1")}, {"duration": 1.0, "texture": ExtResource("enter_2")}, {"duration": 1.0, "texture": ExtResource("enter_3")}, {"duration": 1.0, "texture": ExtResource("enter_4")}, {"duration": 1.0, "texture": ExtResource("enter_5")}], "loop": false, "name": &"enter", "speed": 8.0},
-{"frames": [{"duration": 1.0, "texture": ExtResource("idle_0")}, {"duration": 1.0, "texture": ExtResource("idle_1")}], "loop": true, "name": &"idle", "speed": 1.6666666667}]
+{"frames": [{"duration": 1.0, "texture": ExtResource("idle_0")}, {"duration": 1.0, "texture": ExtResource("idle_1")}], "loop": true, "name": &"idle", "speed": 1.6666666667},
+{"frames": [{"duration": 1.0, "texture": ExtResource("talk_0")}, {"duration": 1.0, "texture": ExtResource("talk_1")}, {"duration": 1.0, "texture": ExtResource("talk_2")}, {"duration": 1.0, "texture": ExtResource("talk_3")}, {"duration": 1.0, "texture": ExtResource("talk_4")}], "loop": true, "name": &"talk", "speed": 8.0}]

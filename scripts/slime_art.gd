@@ -1,7 +1,11 @@
 extends Node2D
 
+const SharedCache = preload("res://scripts/art_resource_cache.gd")
+
 const ItemArt = preload("res://scripts/物品动画/动画物件.gd")
-static var _texture_bounds: Dictionary[Texture2D, Rect2] = {}
+var _texture_bounds: Dictionary[Texture2D, Rect2] = SharedCache.texture_bounds(
+	&"planet_slime_art_bounds"
+)
 
 @export var pink: ItemArt
 @export var mucus: ItemArt

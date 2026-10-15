@@ -19,7 +19,6 @@ var _manual_pause: bool = false
 
 var _shop_layout_queued: bool = false
 var _nest_anchor: Rect2 = Rect2()
-var _combo_feedback: Tween
 var _run: PrototypeRun
 
 @onready var _nest_card: Control = $NestCard
@@ -29,8 +28,6 @@ var _run: PrototypeRun
 @onready var _technology_badge: TextureRect = $ToolDock/Technology/Badge
 @onready var game_menu: GameMenu = $GameMenu
 @onready var _completion: Control = %Completion
-@onready var _combo_label: Label = %ComboLabel
-@onready var _combo_timer: ProgressBar = %ComboTimerBar
 @onready var _view_shortcut: Control = $ViewShortcut
 @onready var _view_switch: TextureButton = $ViewShortcut/Button
 
@@ -87,7 +84,6 @@ func apply_layout(viewport_size: Vector2) -> Rect2:
 	position = Vector2.ZERO
 	size = viewport_size / interface_scale
 	_place($Economy, Rect2(28.0, 24.0, 210.0, 34.0))
-	_place($ComboChip, Rect2(28.0, 72.0, 246.0, 58.0))
 	_place(_view_shortcut, Rect2(24.0, size.y * 0.5 - 44.0, 64.0, 88.0))
 	_place($StatusLabel, Rect2(270.0, size.y - 160.0, size.x - 540.0, 30.0))
 	_place(_tool_dock, Rect2(size.x * 0.5 - 300.0, size.y - 82.0, 600.0, 76.0))
@@ -106,38 +102,13 @@ func refresh_progression(run: PrototypeRun) -> void:
 	_run = run
 	_technology.refresh(run)
 	_technology_badge.visible = _technology.has_unlocked_candidate()
-	$ComboChip.tooltip_text = (
-		"每段 %s 秒 · 达标额外结算本段糖果。\n巨型计 1 只，全部价值参与奖励。最高段完成后循环，小数奖励累计到账。"
-		% String.num(run.get_combo_window_seconds(), 1).trim_suffix(".0")
-	)
 	_tool_dock.refresh(run)
 	refresh_timers(run)
 	_queue_shop_layout()
 
 
 func refresh_timers(run: PrototypeRun) -> void:
-	$ComboChip.visible = run.combo_level > 0
-	var remaining: String = "%.1f 秒" % run.combo_remaining if run.combo_remaining > 0.0 else "待吸入"
-	_combo_label.text = (
-		"%s · %d / %d · %s"
-		% [
-			["I", "II", "III", "IV"][run.combo_stage],
-			run.combo_count,
-			run.get_combo_target(),
-			remaining
-		]
-	)
-	_combo_timer.max_value = run.get_combo_window_seconds()
-	_combo_timer.value = run.combo_remaining
 	_tool_dock.refresh_timers(run)
-
-
-func pulse_combo(interrupted: bool = false) -> void:
-	if _combo_feedback != null:
-		_combo_feedback.kill()
-	_combo_label.modulate = Color("aaa3a0") if interrupted else Color("f4bc78")
-	_combo_feedback = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_STOP)
-	_combo_feedback.tween_property(_combo_label, "modulate", Color.WHITE, 0.35)
 
 
 func is_over_ui(viewport_position: Vector2) -> bool:
@@ -149,7 +120,7 @@ func is_over_ui(viewport_position: Vector2) -> bool:
 		return true
 	if _tool_dock.contains_pointer(viewport_position):
 		return true
-	var blocking_controls: Array[Control] = [_nest_card, $Economy, $ComboChip, _view_shortcut]
+	var blocking_controls: Array[Control] = [_nest_card, $Economy, _view_shortcut]
 	for panel: Control in blocking_controls:
 		if panel.is_visible_in_tree() and panel.get_global_rect().has_point(viewport_position):
 			return true

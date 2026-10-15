@@ -7,6 +7,7 @@
 !/artifacts/.gitkeep
 !/artifacts/.gdignore
 /output/
+/artifacts.zip
 
 # Local reference originals; runtime artwork remains tracked
 /assets/globe_preview/source/*

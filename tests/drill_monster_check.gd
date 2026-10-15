@@ -19,7 +19,7 @@ func _run_checks() -> void:
 	await _check_live()
 	if _failures.is_empty():
 		print(
-			"PASS: proportional drill discovery, four-nest cap, 1/2/4 population, travel, capture gating, treasure, art and restart"
+			"PASS: drill discovery, population, travel, real held capture, release/leave, input gates, treasure, art and restart"
 		)
 	else:
 		for failure: String in _failures:
@@ -138,6 +138,7 @@ func _check_live() -> void:
 	demo._view.set_process(false)
 	demo._layout.set_process(false)
 	demo._layout.close_panels()
+	demo._window_has_focus = true
 	await get_tree().process_frame
 	demo.run._pending_nest_species = NestState.Species.DRILL
 	demo._on_nest_spawn_requested(NestState.Species.DRILL)
@@ -210,73 +211,343 @@ func _check_live() -> void:
 		demo._slimes.has(actor) and nest.alive_slimes == 1,
 		"The real net path leaves the drill untouched."
 	)
+	_check_input_gates(demo, actor)
+	_check_escape(demo, actor)
 	if "--capture" in OS.get_cmdline_user_args():
-		await _capture(demo, actor)
-	await _check_capture_lock(demo, actor)
-	for level: int in range(SETTINGS.pipe_capture_seconds.size()):
-		demo.run.pipe_level = level
-		actor.art.show_frame(&"夹夹", 0)
-		var exposed_size: Vector2 = actor.get_visual_rect().size
-		_check(
-			is_equal_approx(demo._capture_seconds_for(actor), 0.2),
-			"Drill capture estimate stays at 0.2 seconds at every pipe level."
-		)
-		demo._capture_at(0.1, actor.get_capture_point(), true)
-		_check(
-			not actor.consumed and is_equal_approx(actor.capture_progress, 0.5),
-			"Real pipe reaches half progress after 0.1 seconds at every upgrade level."
-		)
-		_check(actor.art._suction, "Half-captured drill shows its suction expression.")
-		_check(
-			actor.get_visual_rect().size.distance_to(exposed_size) < 0.02,
-			"Suction keeps the approved small size at every pipe level."
-		)
-		demo._capture_at(0.0, actor.get_capture_point(), false)
-		_check(
-			actor.capture_progress == 0.0 and not actor.art._suction,
-			"Release resets progress and restores the drill expression."
-		)
-	var before: int = demo.run.candy
-	var captured_position: Vector2 = actor.position
-	demo._pipe.show()
-	demo._pipe.reset_transport()
-	actor.phase_remaining = 0.001
-	demo._capture_at(0.19, actor.get_capture_point() + Vector2(2.0, 0.0), true)
-	actor._process(0.15)
-	_check(not actor.consumed, "Even the fastest pipe cannot capture drill before 0.2 seconds.")
-	demo._capture_at(0.011, actor.get_capture_point(), true)
-	_check(actor.position.is_equal_approx(captured_position), "Capture completes in place.")
-	_check(
-		demo._slimes.is_empty() and nest.alive_slimes == 0,
-		"The real pipe catches exposed drill and frees its nest slot."
-	)
-	_check(demo.run.candy - before in [10, 30, 100], "Real pipe awards one randomized treasure.")
-	_check(demo._effects.get_child_count() > 0, "Capture creates the burst-and-return effect.")
-	var treasure: DrillTreasure = demo._effects.get_child(-1) as DrillTreasure
-	_check(
-		treasure != null
-		and treasure.to_global(treasure._origin).distance_to(
-			demo._world.to_global(actor.get_capture_point())
-		) < 0.02,
-		"Candy starts at the captured drill instead of the vacuum."
-	)
-	_check(
-		demo._pipe.transport_state == demo._pipe.TransportState.IDLE
-		and not demo._pipe._pending_transport,
-		"Drill converts directly to candy without starting vacuum transport."
-	)
+		await _capture_feedback(demo, actor)
+	_check_hold_capture(demo, actor, nest)
 	if "--capture" in OS.get_cmdline_user_args():
-		await get_tree().create_timer(0.25).timeout
-		await RenderingServer.frame_post_draw
-		root.get_texture().get_image().save_png("res://artifacts/drill_treasure_1920x1080.png")
+		for size: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
+			root.size = size
+			demo._apply_layout()
+			await _capture("caught", size)
 	await _check_valuable_live(demo, nest)
 	demo.restart_run()
 	_check(
-		demo._slimes.is_empty() and demo._effects.get_child_count() == 0,
-		"Restart clears drill actors and pending visuals."
+		(
+			demo._slimes.is_empty()
+			and demo._effects.get_child_count() == 0
+			and demo._hovered_drill == null
+		),
+		"Restart clears drill actors, feedback and pending visuals."
 	)
 	demo.queue_free()
 	await get_tree().process_frame
+
+
+func _check_input_gates(demo: DemoScript, actor: Drill) -> void:
+	# Manual stepping settles the no-button-held frame after discovery.
+	demo._view_blocks_tool_until_release = false
+	demo._window_has_focus = true
+	var point: Vector2 = actor.get_capture_hit_rect().get_center()
+	_mouse(point, false)
+	_drive_interaction(demo, point, 0.0)
+	_check(demo._hovered_drill == actor, "Exposed mole is selected through its screen rect.")
+	_check(actor.capture_cue.visible, "Hover reveals the hold-left-button prompt.")
+	var mouse_icon: Sprite2D = actor.capture_cue.get_node("Visual/Mouse/Body") as Sprite2D
+	_check(
+		mouse_icon.texture.get_size() == Vector2(16.0, 16.0),
+		"The current pixel mouse icon is imported at 16 by 16 pixels."
+	)
+	print("Mole hint texture: ", mouse_icon.texture.get_size())
+	_check_pipe_position(demo, point, "Hover")
+	for control: Control in actor.capture_cue.find_children("*", "Control", true, false):
+		_check(
+			control.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+			"Every control in the head prompt ignores mouse input."
+		)
+	for level: int in range(SETTINGS.pipe_capture_seconds.size()):
+		demo.run.pipe_level = level
+		demo._capture_at(2.0, actor.get_capture_point(), true)
+		demo._drive_drill_capture(2.0, point, demo.update_pointer_release_state())
+		_check(
+			not actor.consumed and actor.capture_progress == 0.0,
+			"Hover suction at every pipe level cannot capture or advance the mole."
+		)
+	var stable_rect: Rect2 = actor.get_capture_hit_rect()
+	actor._process(0.1)
+	_check(
+		actor.get_capture_hit_rect().is_equal_approx(stable_rect),
+		"Hover bounce preserves the target rect."
+	)
+	_check(
+		not actor.get_visual_rect().is_equal_approx(stable_rect),
+		"Hover moves artwork without moving the target."
+	)
+	var feedback: Transform2D = (
+		actor._get_base_art_transform().affine_inverse() * actor.art.transform
+	)
+	_check(
+		feedback.get_scale().is_equal_approx(Vector2.ONE),
+		"Hover pop does not squash or stretch the artwork."
+	)
+	demo._window_has_focus = false
+	_expect_blocked(demo, actor, point, "Unfocused window")
+	demo._window_has_focus = true
+	demo._view.presentation_locked = true
+	_expect_blocked(demo, actor, point, "Discovery presentation")
+	demo._view.presentation_locked = false
+	demo._view_blocks_tool_until_release = true
+	_expect_blocked(demo, actor, point, "View gesture latch")
+	demo._view_blocks_tool_until_release = false
+	demo._view.begin_drag(point)
+	_expect_blocked(demo, actor, point, "Planet drag")
+	demo._view.end_drag()
+	demo._view_blocks_tool_until_release = false
+	demo._completion.show()
+	_expect_blocked(demo, actor, point, "Completion panel")
+	demo._completion.hide()
+	demo._layout._toggle_pause()
+	_expect_blocked(demo, actor, point, "Pause")
+	demo._layout._toggle_pause()
+	demo._layout._show_technology()
+	_expect_blocked(demo, actor, point, "Technology panel")
+	demo._layout.close_panels()
+	_expect_blocked(demo, actor, Vector2(-100, -100), "Outside viewport")
+	_expect_blocked(demo, actor, demo._layout._view_switch.get_global_rect().get_center(), "HUD")
+	demo._view.focus_surface(actor.position.angle(), false)
+	demo._view.zoom_steps(-1.0)
+	_expect_blocked(demo, actor, point, "View transition")
+	demo._view._process(demo._view.transition_seconds)
+	_expect_blocked(demo, actor, point, "Overview")
+	demo._view.focus_surface(actor.position.angle(), false)
+	demo._view_blocks_tool_until_release = false
+	actor._update_surface_rotation()
+	actor.refresh_presentation()
+	demo._window_has_focus = true
+	point = actor.get_capture_hit_rect().get_center()
+	_mouse(point, true)
+	_drive_hold(demo, actor, point, 0.1)
+	_check(actor.capture_progress > 0.0, "Physical mouse hold starts partial capture.")
+	demo._layout._show_technology()
+	demo._drive_drill_capture(1.0, point, demo.update_pointer_release_state())
+	_check(
+		actor.capture_progress == 0.0 and not actor.art._suction,
+		"Opening a panel resets held capture."
+	)
+	_mouse(point, false)
+	demo._layout.close_panels()
+	_check(
+		not demo.update_pointer_release_state(),
+		"Mouse-up clears physical hold state after a modal."
+	)
+
+
+func _expect_blocked(demo: DemoScript, actor: Drill, point: Vector2, label: String) -> void:
+	# Also prove each blocked state cancels an already active capture.
+	actor.set_capture_hovered(true)
+	actor.apply_capture(0.1, 0.1, actor.get_capture_point())
+	demo._hovered_drill = actor
+	demo._drive_drill_capture(1.0, point, true)
+	_check(
+		demo._hovered_drill == null and not actor.capture_cue.visible,
+		label + " hides the mole prompt."
+	)
+	_check(
+		not actor.consumed and actor.capture_progress == 0.0 and not actor.art._suction,
+		label + " cancels progress and rejects held capture."
+	)
+
+
+func _check_escape(demo: DemoScript, actor: Drill) -> void:
+	actor._enter_phase(Drill.Phase.EXPOSED, 0.15, &"夹夹")
+	var point: Vector2 = actor.get_capture_hit_rect().get_center()
+	_mouse(point, true)
+	_drive_hold(demo, actor, point, 0.08)
+	_check(actor.capture_progress > 0.0 and actor.art._suction, "Holding begins crying feedback.")
+	var remaining: float = actor.phase_remaining
+	actor._process(0.4)
+	_check(
+		actor.phase == Drill.Phase.EXPOSED and is_equal_approx(actor.phase_remaining, remaining),
+		"Active suction pauses the escape timer."
+	)
+	_mouse(point, false)
+	_check(
+		actor.capture_progress == 0.0 and not actor.art._suction,
+		"The actual mouse-up event immediately resets progress and expression."
+	)
+	actor._process(0.2)
+	_check(actor.phase == Drill.Phase.DIVE, "Releasing resumes the escape timer.")
+	_check(
+		not actor.apply_capture(10.0, 0.1, actor.position), "Buried mole rejects capture directly."
+	)
+	_mouse(point, true)
+	demo._drive_drill_capture(10.0, point, demo.update_pointer_release_state())
+	_check(
+		not actor.consumed and actor.capture_progress == 0.0, "Buried mole rejects real held input."
+	)
+	_mouse(point, false)
+	actor._enter_phase(Drill.Phase.EXPOSED, 0.15, &"夹夹")
+	_mouse(point, true)
+	_drive_hold(demo, actor, point, 0.08)
+	demo._drive_drill_capture(0.4, Vector2(-100, -100), demo.update_pointer_release_state())
+	_check(
+		actor.capture_progress == 0.0 and not actor.art._suction and not actor.capture_cue.visible,
+		"Leaving while held resets progress, expression and prompt."
+	)
+	actor._process(0.2)
+	_check(actor.phase == Drill.Phase.DIVE, "Leaving also resumes the escape timer.")
+	_mouse(point, false)
+	actor._enter_phase(Drill.Phase.EXPOSED, actor.exposed_seconds, &"夹夹")
+	_check(
+		not actor.apply_capture(1.0, 0.1, actor.position),
+		"An unhovered exposed mole rejects direct capture."
+	)
+	_check(not actor.art._suction and actor.capture_progress == 0.0, "New emergence starts fresh.")
+
+
+func _check_hold_capture(demo: DemoScript, actor: Drill, nest: NestState) -> void:
+	actor._enter_phase(Drill.Phase.EXPOSED, actor.exposed_seconds, &"夹夹")
+	var point: Vector2 = actor.get_capture_hit_rect().get_center()
+	var stable_rect: Rect2 = actor.get_capture_hit_rect()
+	var captured_position: Vector2 = actor.position
+	var before: int = demo.run.candy
+	demo._pipe.reset_transport()
+	demo._update_drill_hover(point)
+	_check(is_equal_approx(actor.capture_hold_seconds, 0.5), "Default hold takes 0.5 seconds.")
+	var overlap: PrototypeSlime = demo.slime_scene.instantiate() as PrototypeSlime
+	demo._slime_root.add_child(overlap)
+	overlap.setup(1, actor.position, demo._planet)
+	overlap.configure_species(PrototypeSlime.Species.SLIME, false, 1)
+	overlap.presentation_scale = actor.presentation_scale
+	overlap.position = actor.position
+	overlap._update_surface_rotation()
+	overlap.position += _world_pointer(demo, point) - overlap.get_capture_point()
+	overlap.set_process(false)
+	demo._slimes.append(overlap)
+	_check(
+		(
+			overlap.can_capture()
+			and overlap.get_capture_distance_squared(_world_pointer(demo, point)) < 0.01
+		),
+		"Ordinary capture fixture overlaps the hovered mole."
+	)
+	_drive_interaction(demo, point, 1.0)
+	_check(
+		not overlap.consumed and overlap.capture_progress == 0.0,
+		"Hovering a mole keeps the visible pipe from also capturing an ordinary monster."
+	)
+	for tap: int in range(5):
+		_mouse(point, true)
+		_drive_hold(demo, actor, point, 0.06)
+		_mouse(point, false)
+	_check(
+		actor.capture_progress == 0.0 and not actor.consumed and demo.run.candy == before,
+		"Separate quick taps cannot accumulate capture or award treasure."
+	)
+	_mouse(point, true)
+	_check(actor.capture_progress == 0.0, "Mouse down alone does not advance capture.")
+	_drive_hold(demo, actor, point, actor.capture_hold_seconds * 0.5)
+	_check(is_equal_approx(actor.capture_progress, 0.5), "Held duration fills half the progress.")
+	_check(actor.art._suction and not actor.consumed, "Partial held capture uses crying art.")
+	_check_pipe_position(demo, point, "Holding")
+	var moved_point: Vector2 = point + Vector2(stable_rect.size.x * 0.15, 0.0)
+	_drive_interaction(demo, moved_point, 0.0)
+	_check_pipe_position(demo, moved_point, "Moving during hold")
+	_check(
+		(
+			not overlap.consumed
+			and overlap.capture_progress == 0.0
+			and demo._capture_targets.is_empty()
+		),
+		"Held mole capture never also advances the overlapping ordinary monster."
+	)
+	_check(
+		actor.get_capture_hit_rect().is_equal_approx(stable_rect),
+		"Crying preserves the target rect."
+	)
+	_check(
+		actor.position.is_equal_approx(captured_position),
+		"Suction keeps the mole at its ground contact."
+	)
+	_mouse(point, false)
+	_check(actor.capture_progress == 0.0, "Release resets partial capture immediately.")
+	# Ordinary capture finishes with PIPE; valuable capture also exercises the selected net.
+	demo.run.net_unlocked = true
+	demo._select_tool(DemoScript.ToolMode.NET if actor.high_value else DemoScript.ToolMode.PIPE)
+	_mouse(point, true)
+	_drive_hold(demo, actor, point, actor.capture_hold_seconds - 0.001)
+	demo._drive_tool(0.0, actor.get_capture_point(), demo.update_pointer_release_state())
+	_check(
+		not actor.consumed and actor.capture_progress > 0.99 and demo.run.candy == before,
+		"Capture does not settle before the full hold duration."
+	)
+	_check(
+		demo._net_phase == DemoScript.NetPhase.IDLE and demo.run.can_cast_net(),
+		"Holding a mole does not cast the selected area net."
+	)
+	_drive_hold(demo, actor, point, 0.002)
+	_check(
+		(
+			actor.consumed
+			and demo._slimes.size() == 1
+			and demo._slimes.has(overlap)
+			and nest.alive_slimes == 0
+		),
+		"Finishing the hold consumes exactly one mole and frees its nest slot."
+	)
+	_check(
+		not overlap.consumed and overlap.capture_progress == 0.0,
+		"The completion frame cannot capture the overlapping ordinary monster."
+	)
+	var earned: int = demo.run.candy - before
+	var multiplier: int = demo.run.get_base_value()
+	if actor.high_value:
+		multiplier *= SETTINGS.valuable_reward_multiplier
+	_check(
+		earned in [10 * multiplier, 30 * multiplier, 100 * multiplier],
+		"Held capture settles one correct ordinary or valuable treasure reward."
+	)
+	_drive_interaction(demo, point, 2.0)
+	_mouse(point, false)
+	_check(demo.run.candy == before + earned, "Extra held time cannot settle a mole twice.")
+	_check(demo._effects.get_child_count() > 0, "Completed hold creates treasure return feedback.")
+	var treasure: DrillTreasure = demo._effects.get_child(-1) as DrillTreasure
+	_check(
+		(
+			treasure != null
+			and (
+				treasure.to_global(treasure._origin).distance_to(
+					demo._world.to_global(actor.get_capture_point())
+				)
+				< 0.02
+			)
+		),
+		"Treasure originates at the captured mole."
+	)
+	_check(
+		(
+			demo._pipe.transport_state == demo._pipe.TransportState.IDLE
+			and not demo._pipe._pending_transport
+		),
+		"Treasure settles without starting ordinary vacuum transport."
+	)
+	demo._slimes.erase(overlap)
+	overlap.queue_free()
+	demo._select_tool(DemoScript.ToolMode.PIPE)
+
+
+func _drive_hold(demo: DemoScript, actor: Drill, point: Vector2, seconds: float) -> void:
+	_drive_interaction(demo, point, seconds)
+	actor._process(seconds)
+
+
+func _drive_interaction(demo: DemoScript, point: Vector2, seconds: float) -> void:
+	var holding: bool = demo.update_pointer_release_state()
+	demo._drive_drill_capture(seconds, point, holding)
+	demo._drive_tool(seconds, _world_pointer(demo, point), holding)
+
+
+func _world_pointer(demo: DemoScript, point: Vector2) -> Vector2:
+	return demo._world.get_global_transform_with_canvas().affine_inverse() * point
+
+
+func _check_pipe_position(demo: DemoScript, point: Vector2, label: String) -> void:
+	_check(demo._pipe.visible, label + " keeps the selected vacuum visible.")
+	_check(
+		demo._pipe.get_global_transform_with_canvas().origin.distance_to(point) < 0.01,
+		label + " keeps the vacuum mouth at the current pointer."
+	)
 
 
 func _check_valuable_live(demo: DemoScript, nest: NestState) -> void:
@@ -295,32 +566,13 @@ func _check_valuable_live(demo: DemoScript, nest: NestState) -> void:
 				actor.get_source_texture().resource_path.contains("高价值怪物/地鼠"),
 				"Every visible drill pose retains the upgraded individual."
 			)
-	actor._enter_phase(Drill.Phase.TRAVEL, 3.0, &"鼓包")
-	_check(
-		actor.high_value and not actor.can_capture(),
-		"Underground drill retains its value and capture gate."
-	)
 	actor._enter_phase(Drill.Phase.EXPOSED, actor.exposed_seconds, &"夹夹")
 	actor.position = demo._planet.project_to_surface(nest.position * 0.9)
 	actor._update_surface_rotation()
 	actor.refresh_presentation()
-	await _check_capture_lock(demo, actor)
-	_check(
-		actor.get_source_texture().resource_path.contains("高价值怪物/地鼠"),
-		"Cancelled suction restores upgraded art."
-	)
-	var before: int = demo.run.candy
-	demo._capture_at(0.2, actor.get_capture_point(), true)
-	var earned: int = demo.run.candy - before
-	var multiplier: int = demo.run.get_base_value() * SETTINGS.valuable_reward_multiplier
-	_check(
-		earned in [10 * multiplier, 30 * multiplier, 100 * multiplier],
-		"Real pipe multiplies valuable treasure once."
-	)
-	_check(
-		demo._slimes.is_empty() and nest.alive_slimes == 0,
-		"Valuable capture frees its population slot."
-	)
+	if "--capture" in OS.get_cmdline_user_args():
+		await _capture_feedback(demo, actor)
+	_check_hold_capture(demo, actor, nest)
 	demo.run._advance_nest_population(nest, demo.run.get_nest_spawn_interval(nest.nest_id))
 	var ordinary: Drill = demo._slimes[-1] as Drill
 	_check(
@@ -329,111 +581,49 @@ func _check_valuable_live(demo: DemoScript, nest: NestState) -> void:
 	)
 
 
-func _check_capture_lock(demo: DemoScript, actor: Drill) -> void:
-	for pointer_leaves: bool in [false, true]:
-		actor._enter_phase(Drill.Phase.EXPOSED, 0.01, &"夹夹")
-		actor.art.animation_player.advance(0.25)
-		var resume_time: float = actor.art.animation_player.current_animation_position
-		var captured_position: Vector2 = actor.position
-		var offset: Vector2 = Vector2(demo.run.get_pipe_radius() * 0.4, 0.0)
-		demo._capture_at(0.05, actor.get_capture_point() + offset, true)
-		_check(
-			actor.get_source_texture().resource_path
-			== "res://assets/物品动画/%s/地鼠/吸入/001.png"
-			% ("高价值怪物" if actor.high_value else "高清怪兽"),
-			"The first capture tick immediately displays the actual suction texture."
-		)
-		demo._capture_at(0.05, actor.get_capture_point() - offset, true)
-		actor._process(0.2)
-		await get_tree().create_timer(0.15).timeout
-		_check(
-			actor.phase == Drill.Phase.EXPOSED and is_equal_approx(actor.phase_remaining, 0.01),
-			"Slow frames cannot advance the exposed timer or start diving during capture."
-		)
-		_check(
-			actor.position.is_equal_approx(captured_position)
-			and is_equal_approx(actor.capture_progress, 0.5),
-			"Moving the vacuum and slow behavior updates leave the drill in place."
-		)
-		_check(
-			actor.art.animation_player.assigned_animation == &"吸入"
-			and not actor.art.animation_player.is_playing(),
-			"Capture freezes animation playback on the suction expression."
-		)
-		if "--capture" in OS.get_cmdline_user_args() and not pointer_leaves:
-			await RenderingServer.frame_post_draw
-			root.get_texture().get_image().save_png("res://artifacts/drill_suction_in_place.png")
-		var pointer: Vector2 = actor.get_capture_point()
-		if pointer_leaves:
-			pointer += Vector2(10000.0, 0.0)
-		demo._capture_at(0.0, pointer, pointer_leaves)
-		_check(
-			actor.capture_progress == 0.0
-			and actor.art.animation_player.assigned_animation == &"夹夹"
-			and actor.art.animation_player.is_playing()
-			and is_equal_approx(actor.art.animation_player.current_animation_position, resume_time),
-			"Cancelling or leaving range restores the paused pose and clears capture progress."
-		)
-		actor._process(0.02)
-		_check(actor.phase == Drill.Phase.DIVE, "Release resumes the remaining exposed timer.")
-	actor._enter_phase(Drill.Phase.EXPOSED, actor.exposed_seconds, &"夹夹")
-
-
-func _capture(demo: DemoScript, actor: Drill) -> void:
-	# Let the production squash finish before checking the resting silhouette.
+func _capture_feedback(demo: DemoScript, actor: Drill) -> void:
 	demo._nest_views[2]._art._spawn.animation_player.advance(1.0)
 	for size: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
 		root.size = size
 		demo._apply_layout()
 		actor._update_surface_rotation()
-		actor._sync_art()
-		demo._pipe.hide()
-		for frame: int in range(4):
-			await get_tree().process_frame
-		await RenderingServer.frame_post_draw
-		root.get_texture().get_image().save_png(
-			"res://artifacts/drill_monster_%dx%d.png" % [size.x, size.y]
-		)
-	var nest_view: NestView = demo._nest_views[2]
-	for level: int in range(4):
-		nest_view.update_state(level, level == 3, 3)
-		nest_view._art.set_stage(level, false)
+		actor._enter_phase(Drill.Phase.EXPOSED, actor.exposed_seconds, &"夹夹")
+		var point: Vector2 = actor.get_capture_hit_rect().get_center()
+		_mouse(point, false)
+		_drive_interaction(demo, point, 0.0)
+		actor._process(0.08)
+		await _capture("%s_hover" % ("valuable" if actor.high_value else "ordinary"), size)
+		_mouse(point, true)
+		_drive_hold(demo, actor, point, actor.capture_hold_seconds * 0.25)
+		await _capture("%s_hold_cry" % ("valuable" if actor.high_value else "ordinary"), size)
+		_drive_hold(demo, actor, point, actor.capture_hold_seconds * 0.55)
+		await _capture("%s_hold_progress" % ("valuable" if actor.high_value else "ordinary"), size)
+		_mouse(point, false)
+	actor._enter_phase(Drill.Phase.EXPOSED, actor.exposed_seconds, &"夹夹")
+
+
+func _capture(label: String, size: Vector2i) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	for frame: int in range(3):
 		await get_tree().process_frame
-		await RenderingServer.frame_post_draw
-		root.get_texture().get_image().save_png("res://artifacts/drill_nest_stage_%d.png" % level)
-		if level < 3:
-			nest_view.pulse_spawn()
-			nest_view._art._spawn.animation_player.advance(0.25)
-			await RenderingServer.frame_post_draw
-			root.get_texture().get_image().save_png(
-				"res://artifacts/drill_nest_spawn_%d.png" % level
-			)
-	nest_view.update_state(0, false, 3)
-	nest_view._art.set_stage(0, false)
-	for phase_name: String in ["launch", "dive", "tunnel", "emerge", "exposed", "suction"]:
-		match phase_name:
-			"launch":
-				actor.launch(Vector2.RIGHT)
-				actor._process(0.5)
-			"dive":
-				actor._advance_phase()
-			"tunnel":
-				actor._advance_phase()
-			"emerge":
-				actor._enter_phase(Drill.Phase.EMERGE, 1.0, &"跳出")
-			"exposed":
-				actor._enter_phase(Drill.Phase.EXPOSED, actor.exposed_seconds, &"夹夹")
-			"suction":
-				actor.apply_capture(
-					0.1, demo.run.get_pipe_capture_seconds(), actor.get_capture_point()
-				)
-		actor.art.animation_player.advance(0.4)
-		actor._sync_art()
-		await get_tree().process_frame
-		await RenderingServer.frame_post_draw
-		root.get_texture().get_image().save_png("res://artifacts/drill_phase_%s.png" % phase_name)
-	actor.capture_progress = 0.0
-	actor.release_capture(0.0)
+	await RenderingServer.frame_post_draw
+	DirAccess.make_dir_recursive_absolute("res://artifacts/mole_hold_refine_20261015")
+	var path: String = (
+		"res://artifacts/mole_hold_refine_20261015/%s_%dx%d.png" % [label, size.x, size.y]
+	)
+	_check(root.get_texture().get_image().save_png(path) == OK, "Fresh capture saved.")
+	print("CAPTURE: ", path)
+
+
+func _mouse(point: Vector2, pressed: bool) -> void:
+	var event: InputEventMouseButton = InputEventMouseButton.new()
+	event.position = point
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = pressed
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+	Input.parse_input_event(event)
+	Input.flush_buffered_events()
 
 
 func _check(condition: bool, message: String) -> void:

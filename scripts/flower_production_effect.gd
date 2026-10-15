@@ -1,9 +1,16 @@
 extends Node2D
 
+const SharedCache = preload("res://scripts/art_resource_cache.gd")
+
 signal released(amount: int)
 
 @export_range(0.1, 1.0, 0.05) var sweep_fraction: float = 0.85
 @export_range(0.2, 1.0, 0.05) var minimum_sweep_seconds: float = 0.4
+
+# Flower frames are shared by all nests; alpha readback is needed only once per texture.
+var _texture_bounds: Dictionary[Texture2D, Rect2] = SharedCache.texture_bounds(
+	&"planet_flower_production_effect_bounds"
+)
 
 var _source: Sprite2D
 var _tween: Tween
@@ -58,7 +65,9 @@ func _sync_frame() -> void:
 	_light.texture = _source.texture
 	if _last_texture != _source.texture:
 		_last_texture = _source.texture
-		var used: Rect2 = Rect2(_source.texture.get_image().get_used_rect())
+		if not _texture_bounds.has(_last_texture):
+			_texture_bounds[_last_texture] = Rect2(_last_texture.get_image().get_used_rect())
+		var used: Rect2 = _texture_bounds[_last_texture]
 		_material.set_shader_parameter(
 			"vertical_bounds", Vector2(used.position.y, used.end.y) / _source.texture.get_height()
 		)
