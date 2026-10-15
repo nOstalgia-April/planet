@@ -6,4 +6,5 @@
 [ext_resource type="Texture2D" path="res://assets/物品动画/看板娘/入场与待机/small/idle/004.png" id="idle_3"]
 
 [resource]
-animations = [{"frames": [{"duration": 1.0, "texture": ExtResource("idle_0")}, {"duration": 1.0, "texture": ExtResource("idle_1")}, {"duration": 1.0, "texture": ExtResource("idle_2")}, {"duration": 1.0, "texture": ExtResource("idle_3")}], "loop": true, "name": &"idle", "speed": 5.0}]
+animations = [{"frames": [{"duration": 1.0, "texture": ExtResource("idle_0")}, {"duration": 1.0, "texture": ExtResource("idle_1")}, {"duration": 1.0, "texture": ExtResource("idle_2")}, {"duration": 1.0, "texture": ExtResource("idle_3")}], "loop": true, "name": &"idle", "speed": 5.0},
+{"frames": [{"duration": 1.0, "texture": ExtResource("idle_0")}, {"duration": 1.0, "texture": ExtResource("idle_1")}, {"duration": 1.0, "texture": ExtResource("idle_2")}, {"duration": 1.0, "texture": ExtResource("idle_3")}], "loop": true, "name": &"talk", "speed": 8.0}]

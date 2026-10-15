@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://features/mascot_audio_preview/phase_two_audio_preview.tscn" id="preview"]
+
+[node name="PhaseThreeAudioPreview" instance=ExtResource("preview")]
+talk_event_path = ""
+
+[node name="MascotDialogue" parent="DialogueLayer"]
+form_index = 2
+lines = PackedStringArray("……原来这颗星球，本来这么漂亮。", "刚落地的时候，我只顾着看哪里有糖了。", "现在没那么多力气了，倒是终于能坐下来，数清楚大家了。", "你已经上报星际督查局了？……他们会把我们怎么样？", "口头警告，还有救援教育？", "……原来飞船遇难，可以申请星际救援啊。", "好吧。下次先求救，不乱吃，也不随便挖窝了。", "那个……申请救援的时候，能不能顺便申请一顿饭？我们这次会按数量领的。")
