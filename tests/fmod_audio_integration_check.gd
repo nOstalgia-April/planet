@@ -75,6 +75,7 @@ func _run_checks() -> void:
 	_check(demo._monster_audio._golden_ready, "Golden_Mon is available.")
 	await _check_candy_bursts(demo._monster_audio)
 	_check_combo_audio(demo)
+	_check_path_resolution()
 	demo._play_collection_reward(2, Vector2.ZERO)
 	var reward_effect: CollectionEffect = (
 		demo._effects.get_child(demo._effects.get_child_count() - 1) as CollectionEffect
@@ -132,39 +133,38 @@ func _check_audio_pause() -> void:
 	var editor_muted: bool = GameAudio._editor_muted
 	var effect: FmodEvent = GameAudio.start_loop("event:/Earth_Rotate")
 	await tree.create_timer(0.4).timeout
+	# Menus (settings, technology page) pause the game: gameplay sounds hold
+	# their place while music and UI keep playing under a low-pass.
 	tree.paused = true
-	# The audio autoload queues the bus change, then FMOD consumes it next frame.
 	await tree.process_frame
 	await tree.process_frame
-	await tree.create_timer(0.15).timeout
-	_check(GameAudio._master_bus.get_paused(), "Pause suspends the FMOD master bus.")
-	_check(GameAudio._master_bus.get_mute(), "Pause silences all FMOD output.")
-	_check(AudioServer.is_bus_mute(0), "Pause silences native audio output.")
+	await tree.create_timer(0.4, true).timeout
+	_check(
+		not GameAudio._master_bus.get_paused()
+		and GameAudio._master_bus.get_mute() == (not enabled),
+		"Pausing keeps FMOD output running."
+	)
+	_check(is_equal_approx(GameAudio._music_menu, 1.0), "Pausing pushes Music_Menu to 1.")
 	var music_position: int = GameAudio._music.get_timeline_position()
 	var effect_position: int = effect.get_timeline_position()
-	var fade_volume: float = GameAudio._music_volume
-	await tree.create_timer(0.25).timeout
+	await tree.create_timer(0.25, true).timeout
 	_check(
-		GameAudio._music.get_timeline_position() == music_position,
-		"Paused music holds its playback position."
+		GameAudio._music.get_timeline_position() > music_position,
+		"Music keeps playing while paused."
 	)
 	_check(
 		effect.get_timeline_position() == effect_position,
-		"Paused effects hold their playback position."
+		"Gameplay sounds hold their place while paused."
 	)
-	_check(GameAudio._music_volume == fade_volume, "Pause freezes music fades.")
-	GameAudio.set_editor_muted(false)
-	GamePreferences.changed.emit()
-	_check(GameAudio._master_bus.get_mute(), "Changing audio settings cannot unmute a paused game.")
 	tree.paused = false
 	await tree.process_frame
 	await tree.process_frame
-	await tree.create_timer(0.15).timeout
-	_check(not GameAudio._master_bus.get_paused(), "Resume unpauses FMOD.")
+	await tree.create_timer(0.4).timeout
 	_check(
-		GameAudio._music.get_timeline_position() > music_position,
-		"Resume continues the same music."
+		effect.get_timeline_position() > effect_position,
+		"Gameplay sounds continue after the pause."
 	)
+	_check(is_zero_approx(GameAudio._music_menu), "Resuming releases Music_Menu.")
 	_check(GameAudio._master_bus.get_mute() == (not enabled), "Resume respects the audio switch.")
 	_check(
 		AudioServer.is_bus_mute(0) == (not enabled or is_zero_approx(effects_volume)),
@@ -267,6 +267,16 @@ func _check_loading_audio(audio: Node) -> void:
 	_check(audio._loading != instance, "A new monster restarts the loading loop.")
 	audio.update_loading(null, 0.0)
 	_check(audio._loading == null, "Finishing or losing the target stops the loading loop.")
+	_check(audio._big_slime == null, "An ordinary monster plays no BigSilmeSuck.")
+	audio.update_loading(first, 0.6, true)
+	var big: FmodEvent = audio._big_slime
+	_check(big != null and big.is_valid(), "A giant adds the BigSilmeSuck loop.")
+	_check(
+		is_equal_approx(big.get_parameter_by_name("Loading_Progress"), 0.6),
+		"BigSilmeSuck follows the giant's capture bar."
+	)
+	audio.update_loading(null, 0.0)
+	_check(audio._big_slime == null, "BigSilmeSuck stops with the loading loop.")
 	audio.update_peel(first, 0.3)
 	var peel: FmodEvent = audio._peel
 	_check(peel != null and peel.is_valid(), "Pulling a monster off mucus starts the peel loop.")
@@ -306,14 +316,31 @@ func _check_combo_audio(demo: Node) -> void:
 	run._reset_combo()
 	run.combo_level = 0
 	var played_before: int = demo._monster_audio._combo_clear_count
-	run.combo_stage_completed.emit(2, 10)
+	demo._pipe.combo_burst_started.emit(2)
 	_check(
 		demo._monster_audio._combo_clear_count == played_before + 1,
-		"Combo_StageClear plays the moment a stage clears."
+		"Combo_StageClear plays as the combo burst appears."
 	)
 	_check(
 		run.combo_interrupted.is_connected(demo._monster_audio.combo_broken),
 		"Combo_Break follows a combo timeout."
+	)
+
+# A path whose FMOD folder moved still reaches its event by name.
+func _check_path_resolution() -> void:
+	var moved: String = "event:/SomeOldFolder/SuckUp_Pop"
+	var resolved: String = GameAudio.resolve_event_path(moved)
+	_check(
+		resolved.get_file() == "SuckUp_Pop" and FmodServer.check_event_path(resolved),
+		"A moved event is found by its name."
+	)
+	_check(GameAudio.has_events([moved]), "Moved events still count as available.")
+	var loop: FmodEvent = GameAudio.start_loop("event:/OldFolder/Earth_Rotate")
+	_check(loop != null and loop.is_valid(), "Loops start from a moved path.")
+	GameAudio.stop_loop(loop)
+	_check(
+		GameAudio.resolve_event_path("event:/No_Such_Event") == "event:/No_Such_Event",
+		"An unknown name is left unresolved."
 	)
 
 func _check(condition: bool, message: String) -> void:

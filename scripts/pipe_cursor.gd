@@ -9,6 +9,9 @@ const REFERENCE_RADIUS: float = 24.0
 
 enum TransportState { IDLE, SINGLE, CONTINUOUS }
 
+# A combo stage's burst appears on screen; queued stages report one by one.
+signal combo_burst_started(stage: int)
+
 @export_range(1.0, 40.0, 0.1) var radius: float = 9.6
 @export_range(0.2, 1.0, 0.05) var feedback_scale: float = 0.55
 @export_range(1.0, 2.0, 0.05) var particle_spread: float = 1.5
@@ -126,6 +129,7 @@ func _advance_combo_burst(delta: float) -> void:
 		burst.global_transform = Transform2D.IDENTITY
 		burst.global_position = _art.get_global_transform_with_canvas().origin
 		burst.play(_combo_reward.x, _combo_reward.y)
+		combo_burst_started.emit(_combo_reward.x)
 		_combo_burst_played = true
 	_combo_hold = maxf(0.0, _combo_hold - delta)
 	if _combo_hold == 0.0:

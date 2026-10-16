@@ -29,6 +29,13 @@ func _ready() -> void:
 
 func _run() -> void:
 	GamePreferences.reset_defaults()
+	_check(
+		(
+			is_equal_approx(GamePreferences.music_volume, 0.9)
+			and is_equal_approx(GamePreferences.effects_volume, 0.9)
+		),
+		"default music and effects volumes are 90 percent"
+	)
 	DirAccess.make_dir_recursive_absolute(OUTPUT)
 	for resolution: Vector2i in [Vector2i(1920, 1080), Vector2i(1280, 800)]:
 		get_tree().root.size = resolution
@@ -48,10 +55,8 @@ func _run() -> void:
 		await _capture("play", resolution)
 		await _click(menu.get_node("Toolbar/Pause"))
 		_check(get_tree().paused, "pause button stops scene tree")
-		await _check_audio_paused(true, "pause button suspends FMOD")
-		_check(
-			GameAudio._master_bus.get_mute() and AudioServer.is_bus_mute(0), "pause silences audio"
-		)
+		# Pausing keeps music and UI audible; gameplay sounds freeze.
+		await _check_audio_paused(false, "pause button keeps music and UI audio")
 		var spawn_clock: float = _game.run.nests[0].spawn_clock
 		var position: Vector2 = _game._slimes[0].position
 		await get_tree().create_timer(0.25, true).timeout
@@ -71,7 +76,7 @@ func _run() -> void:
 		await _check_audio_paused(false, "escape resumes audio")
 		await _click(menu.get_node("Toolbar/Settings"))
 		_check(get_tree().paused, "settings pauses running game")
-		await _check_audio_paused(true, "settings suspends audio")
+		await _check_audio_paused(false, "settings keeps music and UI audio")
 		menu.get_node("%MusicVolume").value = 37.0
 		menu.get_node("%EffectsVolume").value = 24.0
 		await _settle()
@@ -86,14 +91,14 @@ func _run() -> void:
 			is_equal_approx(GameAudio._music.get_volume(), GameAudio._music_volume * 0.37),
 			"FMOD music gain matches slider"
 		)
-		var effect: FmodEvent = GameAudio.start_loop("event:/Earth_Rotate")
+		var effect: FmodEvent = GameAudio.start_loop("event:/AnimationSystem/Earth_Rotate")
 		_check(is_equal_approx(effect.get_volume(), 0.24), "FMOD effects gain matches slider")
 		GamePreferences.set_effects_volume(0.0)
 		_check(is_zero_approx(effect.get_volume()), "existing effect can be muted")
 		_check(AudioServer.is_bus_mute(0), "fallback effects also mute")
 		GameAudio.stop_loop(effect)
 		GamePreferences.set_effects_volume(0.24)
-		effect = GameAudio.start_loop("event:/Earth_Rotate")
+		effect = GameAudio.start_loop("event:/AnimationSystem/Earth_Rotate")
 		await _click(menu.get_node("%Controls"))
 		await _capture("controls", resolution)
 		await _key(KEY_ESCAPE)
@@ -168,7 +173,8 @@ func _run() -> void:
 			)
 			await _capture("technology_failed", resolution)
 		_check(layout.is_technology_open() and get_tree().paused, "technology still pauses")
-		await _check_audio_paused(true, "technology suspends audio")
+		# The technology page freezes gameplay sounds but keeps music and UI audible.
+		await _check_audio_paused(false, "technology keeps music and UI audio")
 		await _key(KEY_ESCAPE)
 		_check(
 			not layout.is_technology_open() and not get_tree().paused,

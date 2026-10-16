@@ -5,20 +5,20 @@ extends Node
 # reversing direction restarts it from the top. ZoomIn / ZoomOut play when the
 # camera starts an animated switch between the near view and the overview.
 
-const ROTATE_EVENT: String = "event:/Earth_Rotate"
+const ROTATE_EVENT: String = "event:/AnimationSystem/Earth_Rotate"
 const ZOOM_IN_EVENT: String = "event:/UI/ZoomIn"
 const ZOOM_OUT_EVENT: String = "event:/UI/ZoomOut"
 # Planet color restoration: Stage1 for the first species color this run,
 # Stage2 for the later ones, Stage3 for the final turn to white.
-const COLOR_RECOVER_FIRST_EVENT: String = "event:/ColorSystem/ColorRecover_Stage1"
-const COLOR_RECOVER_LATER_EVENT: String = "event:/ColorSystem/ColorRecover_Stage2"
-const COLOR_RECOVER_WHITE_EVENT: String = "event:/ColorSystem/ColorRecover_Stage3"
+const COLOR_RECOVER_FIRST_EVENT: String = "event:/AnimationSystem/ColorRecover_Stage1"
+const COLOR_RECOVER_LATER_EVENT: String = "event:/AnimationSystem/ColorRecover_Stage2"
+const COLOR_RECOVER_WHITE_EVENT: String = "event:/AnimationSystem/ColorRecover_Stage3"
 # Background palette turning to a species' colors (pink, blue, green), indexed
 # by NestState.Species.
 const COLOR_CHANGE_EVENTS: PackedStringArray = [
-	"event:/ColorSystem/ColorChange_Slime",
-	"event:/ColorSystem/ColorChange_Mucus",
-	"event:/ColorSystem/ColorChange_Drill",
+	"event:/AnimationSystem/ColorChange_Slime",
+	"event:/AnimationSystem/ColorChange_Mucus",
+	"event:/AnimationSystem/ColorChange_Drill",
 ]
 # The victory panel after every monster is cleared.
 const CLEAR_MONSTER_EVENT: String = "event:/UI/Clear_Monster"

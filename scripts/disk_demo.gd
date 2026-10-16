@@ -143,6 +143,8 @@ func _ready() -> void:
 	run.combo_stage_completed.connect(_on_combo_stage_completed)
 	_pipe.combo_meter.configure(run)
 	run.combo_interrupted.connect(_monster_audio.combo_broken)
+	# Combo_StageClear sounds with the on-screen burst, which may queue.
+	_pipe.combo_burst_started.connect(_monster_audio.combo_stage_cleared)
 	run.economy_changed.connect(_update_music_stage)
 	run.base_value_changed.connect(_refresh_monster_rewards)
 	run.nest_added.connect(_on_nest_added)
@@ -818,7 +820,9 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 		_vacuum_audio.update_peel(null, 0.0)
 	var previous_capture_progress: float = nearest.capture_progress
 	var completed: bool = nearest.apply_capture(capture_delta, base_seconds, target)
-	_vacuum_audio.update_loading(null if completed else nearest, nearest.capture_progress)
+	_vacuum_audio.update_loading(
+		null if completed else nearest, nearest.capture_progress, nearest.population_units > 1
+	)
 	if nearest.population_units > 1:
 		_update_giant_harvest(nearest, previous_capture_progress)
 	if not completed:
@@ -988,8 +992,6 @@ func _refresh_overview() -> void:
 
 func _on_combo_stage_completed(stage: int, bonus: int) -> void:
 	_capture_combo_bonus += bonus
-	# The sound marks the stage clear itself; the burst visual may still queue.
-	_monster_audio.combo_stage_cleared(stage)
 	_pipe.play_combo_burst(stage, bonus)
 
 

@@ -3,21 +3,21 @@ extends Node
 signal changed
 
 const SAVE_PATH: String = "user://preferences.cfg"
+# Music and effects sliders at every launch, after Defaults, and when
+# unmuting with both sliders at zero.
+const DEFAULT_VOLUME: float = 0.9
 
-var music_volume: float = 0.8
-var effects_volume: float = 0.8
+var music_volume: float = DEFAULT_VOLUME
+var effects_volume: float = DEFAULT_VOLUME
 var audio_enabled: bool = true
 var fullscreen: bool = false
 
 
 func _ready() -> void:
 	var config: ConfigFile = ConfigFile.new()
+	# Audio always starts on at the default volumes; slider changes last only
+	# for this session. Only the display mode carries over between launches.
 	if config.load(SAVE_PATH) == OK:
-		music_volume = clampf(float(config.get_value("audio", "music", 0.8)), 0.0, 1.0)
-		effects_volume = clampf(float(config.get_value("audio", "effects", 0.8)), 0.0, 1.0)
-		audio_enabled = bool(
-			config.get_value("audio", "enabled", config.get_value("audio", "music_enabled", true))
-		)
 		fullscreen = bool(config.get_value("display", "fullscreen", false))
 	_apply_display()
 
@@ -40,8 +40,8 @@ func toggle_audio() -> void:
 	var volumes_zero: bool = is_zero_approx(music_volume) and is_zero_approx(effects_volume)
 	audio_enabled = not audio_enabled or volumes_zero
 	if audio_enabled and volumes_zero:
-		music_volume = 0.8
-		effects_volume = 0.8
+		music_volume = DEFAULT_VOLUME
+		effects_volume = DEFAULT_VOLUME
 	_save()
 
 
@@ -52,8 +52,8 @@ func set_fullscreen(enabled: bool) -> void:
 
 
 func reset_defaults() -> void:
-	music_volume = 0.8
-	effects_volume = 0.8
+	music_volume = DEFAULT_VOLUME
+	effects_volume = DEFAULT_VOLUME
 	audio_enabled = true
 	fullscreen = false
 	_apply_display()

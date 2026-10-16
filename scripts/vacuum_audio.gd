@@ -5,13 +5,16 @@ extends Node
 
 const VACUUM_ON_EVENT: String = "event:/Vacuum/Vacuum_On"
 const VACUUM_OFF_EVENT: String = "event:/Vacuum/Vacuum_Off"
-const SLIME_ENTER_EVENT: String = "event:/Slime_Enter"
-const SLIME_EXIT_EVENT: String = "event:/Slime_Exit"
+const SLIME_ENTER_EVENT: String = "event:/Vacuum/Slime_Enter"
+const SLIME_EXIT_EVENT: String = "event:/Vacuum/Slime_Exit"
 const IN_SLIME_PARAMETER: String = "InSlime"
 # Loops while one monster is being sucked in; Loading_Progress follows its
 # capture bar (0-1). Each monster gets its own instance.
 const LOADING_EVENT: String = "event:/Vacuum/Vacuum_Loading"
 const LOADING_PARAMETER: String = "Loading_Progress"
+# Extra loop on top of Vacuum_Loading while the target is a giant slime; it
+# shares Loading_Progress and starts and stops with the loading loop.
+const BIG_SLIME_EVENT: String = "event:/Vacuum/BigSilmeSuck"
 # Loops while a monster stuck in mucus is pulled free; MucusPeel_Progress
 # follows its peel bar (0-1). PeelSnap plays once as it comes free.
 const PEEL_EVENT: String = "event:/Vacuum/Mucus_Peel"
@@ -29,6 +32,8 @@ var _release_elapsed: float = 0.0
 var _loading_ready: bool = false
 var _loading: FmodEvent
 var _loading_target_id: int = 0
+var _big_slime_ready: bool = false
+var _big_slime: FmodEvent
 var _peel_ready: bool = false
 var _peel: FmodEvent
 var _peel_target_id: int = 0
@@ -39,6 +44,7 @@ func _ready() -> void:
 		[VACUUM_ON_EVENT, VACUUM_OFF_EVENT, SLIME_ENTER_EVENT, SLIME_EXIT_EVENT]
 	)
 	_loading_ready = GameAudio.has_events([LOADING_EVENT])
+	_big_slime_ready = GameAudio.has_events([BIG_SLIME_EVENT])
 	_peel_ready = GameAudio.has_events([PEEL_EVENT, PEEL_SNAP_EVENT])
 
 
@@ -71,7 +77,8 @@ func _exit_tree() -> void:
 
 
 # target: the monster whose capture bar is filling, or null when none is.
-func update_loading(target: Object, progress: float) -> void:
+# giant: the target is a fused giant slime, which adds BigSilmeSuck.
+func update_loading(target: Object, progress: float, giant: bool = false) -> void:
 	if not _loading_ready:
 		return
 	if target == null:
@@ -84,14 +91,22 @@ func update_loading(target: Object, progress: float) -> void:
 		if _loading == null:
 			return
 		_loading_target_id = target.get_instance_id()
-	_loading.set_parameter_by_name(LOADING_PARAMETER, clampf(progress, 0.0, 1.0))
+		if giant and _big_slime_ready:
+			_big_slime = GameAudio.start_loop(BIG_SLIME_EVENT)
+	var value: float = clampf(progress, 0.0, 1.0)
+	_loading.set_parameter_by_name(LOADING_PARAMETER, value)
+	if _big_slime != null:
+		_big_slime.set_parameter_by_name(LOADING_PARAMETER, value)
 
 
 # Stops through FMOD's own fade-out (AHDSR release, if any).
 func stop_loading() -> void:
 	if _loading != null:
 		GameAudio.stop_loop(_loading)
+	if _big_slime != null:
+		GameAudio.stop_loop(_big_slime)
 	_loading = null
+	_big_slime = null
 	_loading_target_id = 0
 
 

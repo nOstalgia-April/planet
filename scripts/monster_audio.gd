@@ -34,7 +34,7 @@ const CANDY_EVENT: String = "event:/Candy/Candy_Acquire"
 const NET_CAST_EVENT: String = "event:/Net/Net_Cast"
 const GOLDEN_EVENT: String = "event:/Candy/Golden_Mon"
 # Plays with the new-nest presentation (slow-down, planet turn, close-up).
-const NEW_NEST_EVENT: String = "event:/New_Nest"
+const NEW_NEST_EVENT: String = "event:/Nest/New_Nest"
 const NET_CAPTURE_EVENT: String = "event:/Net/Net_Capture"
 # Indexed by the nest's new level - 1; the last one is the upgrade that tames it.
 const NEST_LEVEL_UP_EVENTS: PackedStringArray = [
@@ -266,7 +266,9 @@ func _candy_value(candy_per_monster: float) -> float:
 
 
 func _has_parameter(event_path: String, parameter_name: String) -> bool:
-	var description: FmodEventDescription = FmodServer.get_event(event_path)
+	var description: FmodEventDescription = FmodServer.get_event(
+		GameAudio.resolve_event_path(event_path)
+	)
 	if description == null:
 		return false
 	for index: int in range(description.get_parameter_count()):
@@ -281,7 +283,9 @@ func _find_candy_value_parameter() -> void:
 			_candy_value_range = Vector2(global["minimum"], global["maximum"])
 			_candy_value_global = true
 			return
-	var description: FmodEventDescription = FmodServer.get_event(CANDY_EVENT)
+	var description: FmodEventDescription = FmodServer.get_event(
+		GameAudio.resolve_event_path(CANDY_EVENT)
+	)
 	if description == null:
 		return
 	for index: int in range(description.get_parameter_count()):

@@ -10,6 +10,9 @@ const BANK_NAMES: PackedStringArray = ["Master.strings.bank", "Master.bank", "Pr
 
 const MAX_FADE_STEP: float = 1.0 / 30.0
 const MUSIC_DUCK_PARAMETER: String = "Music_Duck"
+# Global 0-1, held at 1 while a menu pauses the game (settings, technology
+# page); FMOD maps it to a low-pass on the music.
+const MUSIC_MENU_PARAMETER: String = "Music_Menu"
 # Safety net: music held back by a transition starts anyway after this long.
 const TRANSITION_TIMEOUT_SECONDS: float = 15.0
 # Near-view gameplay sounds. They keep running in the planet overview but are
@@ -17,7 +20,6 @@ const TRANSITION_TIMEOUT_SECONDS: float = 15.0
 const NEAR_VIEW_PREFIXES: PackedStringArray = [
 	"event:/Monsters/",
 	"event:/Vacuum/",
-	"event:/Slime_",
 	"event:/Candy/",
 	"event:/Nest/Slime_NestAppear",
 	"event:/Nest/Mucus_NestAppear",
@@ -36,13 +38,20 @@ const NEAR_VIEW_PREFIXES: PackedStringArray = [
 # Music_Duck (global, 0-1) dips the music during presentations; FMOD maps it to
 # volume and a low-pass. The game eases it over this many seconds each way.
 @export_range(0.0, 3.0, 0.05) var music_duck_fade_seconds: float = 0.4
+@export_range(0.0, 3.0, 0.05) var music_menu_fade_seconds: float = 0.3
 
 var banks_loaded: bool = false
 # Names of the global parameters defined by the loaded banks.
 var _global_parameters: Dictionary = {}
+# Event name -> every loaded path with that name, so a path whose folder moved
+# in FMOD still finds its event (see resolve_event_path).
+var _paths_by_name: Dictionary = {}
+# Requested path -> path actually used, so each lookup and warning runs once.
+var _resolved_paths: Dictionary = {}
 var _effects_elapsed: float = 0.0
 var _music_ducked: bool = false
 var _music_duck: float = 0.0
+var _music_menu: float = 0.0
 var _effect_descriptions: Array[FmodEventDescription] = []
 # Parallel to _effect_descriptions: whether each one is a near-view sound.
 var _effect_is_near_view: Array[bool] = []
@@ -50,7 +59,11 @@ var _effect_is_near_view: Array[bool] = []
 var _near_view_gain: float = 1.0
 var _master_bus: FmodBus
 var _editor_muted: bool = false
+# A paused game (settings, technology page) freezes gameplay sounds in place
+# while music and UI sounds keep playing.
 var _game_paused: bool = false
+# Parallel to _effect_descriptions: UI sounds keep playing while gameplay freezes.
+var _effect_is_ui: Array[bool] = []
 
 # Holding the references keeps the banks loaded; dropping them unloads.
 var _banks: Array[FmodBank] = []
@@ -89,15 +102,18 @@ func _ready() -> void:
 		)
 	banks_loaded = true
 	_master_bus = FmodServer.get_bus("bus:/")
-	_master_bus.set_paused(get_tree().paused)
 	for description: Dictionary in FmodServer.get_global_parameter_desc_list():
 		_global_parameters[description["name"]] = true
 	for bank: FmodBank in _banks:
 		for description: FmodEventDescription in bank.get_description_list():
 			var path: String = description.get_path()
-			if not path.begins_with("event:/Mx/Mx_"):
+			if not _paths_by_name.has(path.get_file()):
+				_paths_by_name[path.get_file()] = PackedStringArray()
+			_paths_by_name[path.get_file()].append(path)
+			if not path.get_file().begins_with("Mx_"):
 				_effect_descriptions.append(description)
 				_effect_is_near_view.append(_is_near_view(path))
+				_effect_is_ui.append(path.begins_with("event:/UI/"))
 	_apply_preferences()
 
 
@@ -115,9 +131,32 @@ func _exit_tree() -> void:
 	_fading_out.clear()
 	_effect_descriptions.clear()
 	_effect_is_near_view.clear()
+	_effect_is_ui.clear()
 	_master_bus = null
 	_banks.clear()
 	banks_loaded = false
+
+
+# The path to use for event_path: itself when it exists, otherwise the one
+# loaded event with the same name, wherever FMOD's folders moved it. A name
+# found in several folders is ambiguous and left unresolved.
+func resolve_event_path(event_path: String) -> String:
+	if not banks_loaded:
+		return event_path
+	if _resolved_paths.has(event_path):
+		return _resolved_paths[event_path]
+	var resolved: String = event_path
+	if not FmodServer.check_event_path(event_path):
+		var matches: PackedStringArray = _paths_by_name.get(
+			event_path.get_file(), PackedStringArray()
+		)
+		if matches.size() == 1:
+			resolved = matches[0]
+			push_warning("FMOD event %s moved; using %s" % [event_path, resolved])
+		elif matches.size() > 1:
+			push_warning("FMOD event name is ambiguous: %s in %s" % [event_path, matches])
+	_resolved_paths[event_path] = resolved
+	return resolved
 
 
 # Returns true only when every listed event exists in the loaded banks.
@@ -125,7 +164,7 @@ func has_events(event_paths: PackedStringArray) -> bool:
 	if not banks_loaded:
 		return false
 	for event_path: String in event_paths:
-		if not FmodServer.check_event_path(event_path):
+		if not FmodServer.check_event_path(resolve_event_path(event_path)):
 			push_warning("FMOD event missing: %s" % event_path)
 			return false
 	return true
@@ -143,6 +182,7 @@ func play_now(event_path: String) -> void:
 # timeline (for example to sync visuals). The instance is already released: it
 # finishes on its own, including its tail, even across scene changes.
 func start_event(event_path: String) -> FmodEvent:
+	event_path = resolve_event_path(event_path)
 	if not banks_loaded or not FmodServer.check_event_path(event_path):
 		return null
 	var instance: FmodEvent = FmodServer.create_event_instance(event_path)
@@ -160,6 +200,7 @@ func start_event(event_path: String) -> FmodEvent:
 func play(event_path: String, parameters: Dictionary = {}, volume_scale: float = 1.0) -> void:
 	if not banks_loaded:
 		return
+	event_path = resolve_event_path(event_path)
 	var instance: FmodEvent = FmodServer.create_event_instance(event_path)
 	if instance == null:
 		return
@@ -188,6 +229,7 @@ func set_near_view_gain(gain: float) -> void:
 # event. A local one is only set while event_path is the track playing, since
 # other music events may not define it.
 func set_music_parameter(event_path: String, parameter_name: String, value: float) -> void:
+	event_path = resolve_event_path(event_path)
 	if _global_parameters.has(parameter_name):
 		set_global(parameter_name, value)
 	elif event_path == _music_path and _music != null and _music.is_valid():
@@ -204,6 +246,7 @@ func set_global(parameter_name: String, value: float) -> void:
 func start_loop(event_path: String) -> FmodEvent:
 	if not banks_loaded:
 		return null
+	event_path = resolve_event_path(event_path)
 	var instance: FmodEvent = FmodServer.create_event_instance(event_path)
 	if instance != null:
 		instance.set_volume(_effects_gain(_is_near_view(event_path)))
@@ -221,6 +264,7 @@ func stop_loop(instance: FmodEvent) -> void:
 # Starts a looping music event and crossfades from any other music. Asking for
 # the track that is already playing keeps it going.
 func play_music(event_path: String) -> void:
+	event_path = resolve_event_path(event_path)
 	if event_path == _music_path and _music != null and _music.is_valid():
 		return
 	if _transition != null:
@@ -252,6 +296,7 @@ func stop_music() -> void:
 # call) starts as the transition ends. The current music is stopped through
 # FMOD (its own fade-out, if any) because a scene load may follow immediately.
 func play_transition(event_path: String, next_music_path: String = "") -> void:
+	event_path = resolve_event_path(event_path)
 	if not has_events([event_path]):
 		return
 	if _music != null and _music.is_valid():
@@ -275,6 +320,7 @@ func play_transition(event_path: String, next_music_path: String = "") -> void:
 
 ## Returns -1 when this track is unavailable. FMOD owns looping, pausing and seeking.
 func get_music_position_seconds(event_path: String) -> float:
+	event_path = resolve_event_path(event_path)
 	if _music_path != event_path or _music == null or not _music.is_valid():
 		return -1.0
 	return float(_music.get_timeline_position()) / 1000.0
@@ -284,10 +330,9 @@ func _process(delta: float) -> void:
 	var paused: bool = get_tree().paused
 	if paused != _game_paused:
 		_game_paused = paused
-		if _master_bus != null:
-			_master_bus.set_paused(paused)
-		_apply_master_mute()
-	# Freeze transitions and fades along with the FMOD timelines.
+		_set_gameplay_frozen(paused)
+	_advance_music_menu(delta)
+	# Freeze transitions and fades along with the gameplay timelines.
 	if paused:
 		return
 	_advance_music_duck(delta)
@@ -334,6 +379,7 @@ func _is_transition_ending() -> bool:
 
 
 func _prepare_pending_music(event_path: String) -> void:
+	event_path = resolve_event_path(event_path)
 	if event_path == _pending_music_path:
 		return
 	_discard_pending_music()
@@ -381,6 +427,16 @@ func set_music_ducked(ducked: bool) -> void:
 	_music_ducked = ducked
 
 
+func _advance_music_menu(delta: float) -> void:
+	var target: float = 1.0 if _game_paused else 0.0
+	if is_equal_approx(_music_menu, target):
+		return
+	var step: float = 1.0 if music_menu_fade_seconds <= 0.0 else delta / music_menu_fade_seconds
+	_music_menu = move_toward(_music_menu, target, step)
+	if _global_parameters.has(MUSIC_MENU_PARAMETER):
+		set_global(MUSIC_MENU_PARAMETER, _music_menu)
+
+
 func _advance_music_duck(delta: float) -> void:
 	var target: float = 1.0 if _music_ducked else 0.0
 	if is_equal_approx(_music_duck, target):
@@ -410,8 +466,19 @@ func _capture_editor_message(message: String, data: Array) -> bool:
 	return true
 
 
+# Holds every playing gameplay sound in place (music and UI excluded) and lets
+# them continue from there when the pause ends.
+func _set_gameplay_frozen(frozen: bool) -> void:
+	for index: int in range(_effect_descriptions.size()):
+		var description: FmodEventDescription = _effect_descriptions[index]
+		if _effect_is_ui[index] or description.get_instance_count() == 0:
+			continue
+		for instance: FmodEvent in description.get_instance_list():
+			instance.set_paused(frozen)
+
+
 func _apply_master_mute() -> void:
-	var muted: bool = _editor_muted or _game_paused or not GamePreferences.audio_enabled
+	var muted: bool = _editor_muted or not GamePreferences.audio_enabled
 	if _master_bus != null:
 		_master_bus.set_mute(muted)
 	AudioServer.set_bus_mute(0, muted or is_zero_approx(GamePreferences.effects_volume))

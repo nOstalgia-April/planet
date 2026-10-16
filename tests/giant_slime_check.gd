@@ -462,6 +462,10 @@ func _check_harvest_stream() -> void:
 	demo._capture_at(step, pointer, true)
 	var stream: HarvestEffect = demo._giant_harvest
 	_check(stream != null and stream.emitted_bursts > 0, "A partial giant capture emits candy.")
+	_check(
+		demo._vacuum_audio._loading != null and demo._vacuum_audio._big_slime != null,
+		"Sucking a giant plays BigSilmeSuck with Vacuum_Loading."
+	)
 	var first_bursts: int = stream.emitted_bursts
 	var original_height: float = giant._get_body_center_offset().length()
 	demo._capture_at(step, giant.get_capture_point() + Vector2(1.0, 0.0), true)

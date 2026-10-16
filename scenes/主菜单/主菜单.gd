@@ -116,7 +116,9 @@ func _process(_delta: float) -> void:
 
 
 func _enter_game() -> void:
-	GameAudio.play_transition("event:/GameStart_Transition", "event:/Mx/Mx_GamePlay")
+	GameAudio.play_transition(
+		"event:/AnimationSystem/GameStart_Transition", "event:/Mx/Mx_GamePlay"
+	)
 	var result: Error = get_tree().change_scene_to_packed(_prepared_scene)
 	if result != OK:
 		_loading_failed()
