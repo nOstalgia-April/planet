@@ -16,7 +16,6 @@ enum Phase { HIDDEN, ENTERING, OPENING, TYPING, HOLDING, FINISHED, IDLE }
 @export_range(1.0, 40.0, 1.0) var characters_per_second: float = 15.0
 @export_range(0.0, 1.0, 0.01) var punctuation_pause: float = 0.22
 @export_range(0.05, 1.0, 0.01) var bubble_open_seconds: float = 0.24
-@export_range(0.0, 8.0, 0.1) var line_hold_seconds: float = 2.2
 
 var phase: Phase = Phase.HIDDEN
 var line_index: int = -1
@@ -25,6 +24,7 @@ var _phase_elapsed: float = 0.0
 var _next_character_at: float = 0.0
 var _glyph_pop: GlyphPop = GlyphPop.new()
 var _playback_version: int = 0
+var _dialogue_click_pressed: bool = false
 
 @onready var presenter: Presenter = $MascotPresenter
 @onready var bubble: Control = $SpeechBubble
@@ -53,9 +53,31 @@ func _process(delta: float) -> void:
 				_start_line(0)
 		Phase.TYPING:
 			_reveal_characters()
-		Phase.HOLDING:
-			if _phase_elapsed >= line_hold_seconds:
-				advance()
+
+
+func _input(event: InputEvent) -> void:
+	if not event is InputEventMouseButton:
+		return
+	var mouse: InputEventMouseButton = event as InputEventMouseButton
+	if mouse.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if not mouse.pressed:
+		if _dialogue_click_pressed:
+			_dialogue_click_pressed = false
+			get_viewport().set_input_as_handled()
+		return
+	if not is_visible_in_tree() or phase not in [Phase.TYPING, Phase.HOLDING]:
+		return
+	# GUI input runs after _input; leave menu buttons and their artwork to the GUI.
+	var hovered: Control = get_viewport().gui_get_hovered_control()
+	while hovered != null:
+		if hovered is BaseButton or hovered is Range:
+			return
+		hovered = hovered.get_parent_control()
+	_dialogue_click_pressed = true
+	# Consume before emitting signals: the last line can resume gameplay immediately.
+	get_viewport().set_input_as_handled()
+	advance()
 
 
 func play(dialogue_lines: PackedStringArray, replay_entrance: bool = true) -> void:
@@ -84,7 +106,7 @@ func play(dialogue_lines: PackedStringArray, replay_entrance: bool = true) -> vo
 
 func advance() -> void:
 	if phase == Phase.TYPING:
-		# A single advance reveals this line; it never also skips the reading pause.
+		# A single advance reveals this line; the next click confirms it.
 		while _glyph_pop.revealed_at.size() < lines[line_index].length():
 			_glyph_pop.revealed_at.append(_glyph_pop.clock - _glyph_pop.pop_seconds)
 		text_label.visible_characters = lines[line_index].length()

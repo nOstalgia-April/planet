@@ -22,6 +22,9 @@ func _ready() -> void:
 func _run() -> void:
 	_capture = "--capture" in OS.get_cmdline_user_args()
 	_output = "res://artifacts/mascot_audio_%d" % int(Time.get_unix_time_from_system())
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--output="):
+			_output = argument.trim_prefix("--output=")
 	if _capture:
 		assert(DisplayServer.get_name() != "headless")
 		DirAccess.make_dir_recursive_absolute(_output)
@@ -84,13 +87,19 @@ func _check_preview(index: int) -> void:
 	_check(preview.dialogue.line_index == 0, "Completing a line does not skip it.")
 	_check(preview.dialogue.presenter.sprite.animation == &"idle", "Complete lines return to idle.")
 	await _check_layout(preview.dialogue, "%d_full_line" % index)
+	var advance_button: Control = preview.get_node("UI/Toolbar/Advance") as Control
+	_click(advance_button.get_global_transform_with_canvas() * (advance_button.size * 0.5))
+	_check(preview.dialogue.line_index == 1, "The menu Advance button advances exactly once.")
+	_check(preview.dialogue.phase == Dialogue.Phase.TYPING, "The next line is not also completed.")
+	var replay_button: Control = preview.get_node("UI/Toolbar/Replay") as Control
+	_click(replay_button.get_global_transform_with_canvas() * (replay_button.size * 0.5))
+	_check(preview.dialogue.phase == Dialogue.Phase.ENTERING, "The menu Replay button still works.")
 	_lines.clear()
 	preview.replay()
 	_check(preview.dialogue.phase == Dialogue.Phase.ENTERING, "Replay restarts the entrance.")
 	for speaker: Dialogue in speakers:
 		speaker.characters_per_second = 200.0
 		speaker.punctuation_pause = 0.0
-		speaker.line_hold_seconds = 0.08
 	var deadline: int = Time.get_ticks_msec() + 22000
 	while Time.get_ticks_msec() < deadline:
 		if index == 0:
@@ -98,6 +107,9 @@ func _check_preview(index: int) -> void:
 				break
 		elif preview.dialogue.phase == Dialogue.Phase.IDLE:
 			break
+		for speaker: Dialogue in speakers:
+			if speaker.phase == Dialogue.Phase.HOLDING and speaker._phase_elapsed >= 0.08:
+				_click(Vector2(80.0, 180.0))
 		await get_tree().process_frame
 	var expected_count: int = [13, 10, 8][index]
 	_check(
@@ -179,6 +191,21 @@ func _key(code: Key) -> void:
 	get_viewport().push_input(event, true)
 	event.pressed = false
 	get_viewport().push_input(event, true)
+
+
+func _click(position: Vector2) -> void:
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = position
+	motion.global_position = position
+	get_viewport().push_input(motion, true)
+	var click: InputEventMouseButton = InputEventMouseButton.new()
+	click.position = position
+	click.global_position = position
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	get_viewport().push_input(click, true)
+	click.pressed = false
+	get_viewport().push_input(click, true)
 
 
 func _on_line_started(_index: int, text: String) -> void:

@@ -54,9 +54,10 @@ func _run() -> void:
 	_check(_dialogue.text_label.visible_characters == 0, "Entrance contains no dialogue text.")
 	if _capture_enabled:
 		await _check_background_input(fixture)
-	await _check_automatic_sequence()
+	await _check_manual_sequence()
 	if _dialogue.phase == Dialogue.Phase.FINISHED:
 		await _check_restart_and_stop()
+		await _check_mouse_input()
 		await _check_line_started_advance()
 	_dialogue.stop()
 	fixture.queue_free()
@@ -121,7 +122,7 @@ func _check_background_input(preview: Node) -> void:
 	get_tree().paused = false
 
 
-func _check_automatic_sequence() -> void:
+func _check_manual_sequence() -> void:
 	var entrance_captured: bool = false
 	var opening_seen: bool = false
 	var partial_seen: Array[bool] = [false, false]
@@ -181,7 +182,13 @@ func _check_automatic_sequence() -> void:
 					if _capture_enabled:
 						await get_tree().create_timer(0.25).timeout
 					await _capture_stage("%02d_line_%d_complete" % [3 + index * 2, index + 1], true)
-	_check(_dialogue.phase == Dialogue.Phase.FINISHED, "The automatic sequence completes in time.")
+					await get_tree().create_timer(2.5).timeout
+					_check(
+						_dialogue.phase == Dialogue.Phase.HOLDING and _dialogue.line_index == index,
+						"A complete line waits beyond the former automatic delay for confirmation."
+					)
+					_click(Vector2(80.0, 180.0))
+	_check(_dialogue.phase == Dialogue.Phase.FINISHED, "The click-confirmed sequence completes.")
 	_check(
 		_started_indices == PackedInt32Array([0, 1]), "Lines start once in their original order."
 	)
@@ -204,6 +211,67 @@ func _check_automatic_sequence() -> void:
 	_dialogue.advance()
 	_dialogue.advance()
 	_check(_completion_count == 1, "Completion emits once, including repeated advance calls.")
+
+
+func _check_mouse_input() -> void:
+	# Include a GUI blocker, as used by audio previews, and a button with child artwork.
+	var layer: CanvasLayer = CanvasLayer.new()
+	layer.layer = 100
+	get_tree().root.add_child(layer)
+	var blocker: Control = Control.new()
+	layer.add_child(blocker)
+	blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var button: Button = Button.new()
+	button.position = Vector2(20.0, 20.0)
+	button.size = Vector2(120.0, 50.0)
+	layer.add_child(button)
+	var artwork: Control = Control.new()
+	button.add_child(artwork)
+	artwork.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	artwork.mouse_filter = Control.MOUSE_FILTER_PASS
+	_dialogue.play(PackedStringArray(EXPECTED_LINES))
+	if not await _wait_for_first_line():
+		layer.queue_free()
+		return
+	_dialogue.set_process(false)
+	var before: int = _dialogue.text_label.visible_characters
+	_click(Vector2(60.0, 40.0))
+	_check(_dialogue.text_label.visible_characters == before, "Menu artwork cannot complete text.")
+	_check(_dialogue.phase == Dialogue.Phase.TYPING, "Menu clicks leave typing active.")
+	_click(Vector2(80.0, 180.0), MOUSE_BUTTON_RIGHT)
+	_check(_dialogue.phase == Dialogue.Phase.TYPING, "Right clicks cannot confirm dialogue.")
+	_click(Vector2(80.0, 180.0))
+	_check(_dialogue.phase == Dialogue.Phase.HOLDING, "A left click completes the current line.")
+	_check(_dialogue.line_index == 0, "The completion click does not skip to the next line.")
+	_click(Vector2(60.0, 40.0))
+	_check(_dialogue.line_index == 0, "Menu clicks cannot confirm a completed line.")
+	_click(Vector2(700.0, 400.0))
+	_check(_dialogue.line_index == 1, "A second screen click starts the next line.")
+	_click(Vector2(80.0, 180.0))
+	_click(Vector2(80.0, 180.0))
+	_check(_dialogue.phase == Dialogue.Phase.FINISHED, "The final line also needs confirmation.")
+	_dialogue.stop()
+	_click(Vector2(80.0, 180.0))
+	_check(_dialogue.phase == Dialogue.Phase.HIDDEN, "Hidden dialogue ignores screen clicks.")
+	_dialogue.set_process(true)
+	layer.queue_free()
+	await get_tree().process_frame
+
+
+func _click(position: Vector2, button: MouseButton = MOUSE_BUTTON_LEFT) -> void:
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = position
+	motion.global_position = position
+	get_viewport().push_input(motion, true)
+	var click: InputEventMouseButton = InputEventMouseButton.new()
+	click.position = position
+	click.global_position = position
+	click.button_index = button
+	click.pressed = true
+	get_viewport().push_input(click, true)
+	var release: InputEventMouseButton = click.duplicate() as InputEventMouseButton
+	release.pressed = false
+	get_viewport().push_input(release, true)
 
 
 func _check_restart_and_stop() -> void:
@@ -387,7 +455,7 @@ func _finish() -> void:
 		print("CAPTURES: ", _output_directory)
 	if _failures.is_empty():
 		print(
-			"PASS: mascot entrance, bubble opening, automatic typing/talk/idle, original lines, completion, replay and stop/play."
+			"PASS: mascot entrance, typing/talk/idle, click completion and confirmation, menu exclusion, replay and stop/play."
 		)
 	else:
 		print("FAIL: mascot dialogue checks: ", _failures)
