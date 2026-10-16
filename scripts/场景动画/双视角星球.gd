@@ -77,7 +77,12 @@ func set_white_mix(value: float) -> void:
 	_blend_material.set_shader_parameter("core_white_mix", clampf(value, 0.0, 1.0))
 
 
+func set_ending_presentation(enabled: bool) -> void:
+	_blend_material.set_shader_parameter("original_restored_core", enabled)
+
+
 func reset_colors() -> void:
+	set_ending_presentation(false)
 	for species: int in range(3):
 		set_color_progress(species, 0.0)
 	set_restored_mix(0.0)

@@ -3,7 +3,7 @@ extends Node
 const Demo = preload("res://scripts/disk_demo.gd")
 const Trail = preload("res://scripts/mucus_field.gd")
 const DEMO_SCENE: PackedScene = preload("res://features/场景预览/近景游玩预览.tscn")
-const TRAIL_SCENE: PackedScene = preload("res://scenes/effects/mucus_field.tscn")
+const TRAIL_SCENE: PackedScene = preload("res://scenes/effects/mucus_field_legacy.tscn")
 const SLIME_SCENE: PackedScene = preload("res://scenes/world/slime.tscn")
 
 var _demo: Demo
@@ -32,10 +32,14 @@ func _build() -> void:
 		var origin: Vector2 = Vector2(-79.0 + index * 61.0, -233.0 + (index % 2) * 7.0)
 		var trail: Trail = TRAIL_SCENE.instantiate() as Trail
 		_demo._mucus_root.add_child(trail)
-		trail.configure(_demo._planet, origin, index, _demo.run.settings.mucus_trail_half_width, 7.0)
+		trail.configure(
+			_demo._planet, origin, index, _demo.run.settings.mucus_trail_half_width, 7.0
+		)
 		for step: int in range(1, 29):
 			trail.advance(0.07, false)
-			trail.append_ground_point(origin + Vector2(step * 0.86, sin(step * 0.12 + index) * 3.0), false)
+			trail.append_ground_point(
+				origin + Vector2(step * 0.86, sin(step * 0.12 + index) * 3.0), false
+			)
 		trail.advance(0.45)
 		var end: Vector2 = trail.get_ground_points()[-1]
 		_actor(end, PrototypeSlime.Species.MUCUS)

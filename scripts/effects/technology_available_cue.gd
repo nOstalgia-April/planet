@@ -16,6 +16,10 @@ func _ready() -> void:
 		play.call_deferred()
 
 
+func set_color(color: Color) -> void:
+	_material.set_shader_parameter("light_color", color)
+
+
 func play() -> void:
 	stop()
 	show()

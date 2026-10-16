@@ -16,6 +16,6 @@ void fragment() {
 	float wave = exp(-pow((radius - wave_radius) / 0.022, 2.0));
 	float wave_fade = smoothstep(0.04, 0.14, progress) * pow(1.0 - progress, 1.5);
 	float alpha = (flash * (rim * 0.85 + bloom * 0.32) + wave * wave_fade * 0.8);
-	vec3 light = mix(light_color.rgb, vec3(1.0, 0.94, 0.98), rim * 0.75);
+	vec3 light = mix(light_color.rgb, vec3(1.0), rim * 0.75);
 	COLOR = vec4(light, alpha * strength * light_color.a);
 }

@@ -17,6 +17,7 @@ func _run_checks() -> void:
 	_check_nest_opening_delay()
 	_check_bursts_and_population_tiers()
 	_check_random_spawn_cooldowns()
+	_check_scheduled_opening_bursts()
 	_check_nest_research_requirements()
 	_check_automatic_income()
 	_check_continuous_pipe_combo()
@@ -234,6 +235,36 @@ func _check_random_spawn_cooldowns() -> void:
 	_check(
 		run.get_nest_spawn_interval(1) == SETTINGS.spawn_intervals[0],
 		"Disabling jitter restores fixed intervals on a new run."
+	)
+	run.free()
+
+
+func _check_scheduled_opening_bursts() -> void:
+	var run: PrototypeRun = _create_run()
+	var first: NestState = run.get_nest(1)
+	var second: NestState = run.get_nest(2)
+	run.schedule_next_spawn(first.nest_id, 0.35)
+	run.schedule_next_spawn(second.nest_id, 1.10)
+	run.advance(0.34)
+	_check(first.alive_slimes == 0 and second.alive_slimes == 0, "Both opening bursts wait.")
+	run.advance(0.02)
+	_check(first.alive_slimes > 0 and second.alive_slimes == 0, "The first nest bursts at 0.35s.")
+	var first_count: int = first.alive_slimes
+	run.advance(0.73)
+	_check(
+		first.alive_slimes == first_count and second.alive_slimes == 0,
+		"The second nest waits independently until its scheduled burst."
+	)
+	run.advance(0.02)
+	_check(
+		first.alive_slimes == first_count and second.alive_slimes > 0,
+		"The second nest bursts at 1.10s without repeating the first burst."
+	)
+	var second_count: int = second.alive_slimes
+	run.advance(1.0)
+	_check(
+		first.alive_slimes == first_count and second.alive_slimes == second_count,
+		"Scheduled opening delays are consumed once, then normal cooldowns resume."
 	)
 	run.free()
 

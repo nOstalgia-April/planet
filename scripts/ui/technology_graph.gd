@@ -1,13 +1,13 @@
 extends Control
 
 const NodeScript = preload("res://scripts/ui/technology_node.gd")
-const LINE_COLOR: Color = Color("f0a0c5")
 const LINE_WIDTH: float = 1.5
 const DASH_LENGTH: float = 4.0
 const DASH_GAP: float = 5.0
 const TOP_CLEARANCE: float = 74.0
 const PRICE_CLEARANCE: float = 4.0
 
+var line_color: Color = Color("f0a0c5")
 var nodes: Dictionary[String, NodeScript] = {}
 var links: Array[Vector2i] = []
 var node_keys: PackedStringArray = PackedStringArray()
@@ -23,10 +23,13 @@ func _draw() -> void:
 			destination.position
 			+ Vector2(NodeScript.ICON_CENTER.x, destination.size.y + PRICE_CLEARANCE)
 		)
-		if destination.state == NodeScript.State.LOCKED and destination.technology_id != "automation":
+		if (
+			destination.state == NodeScript.State.LOCKED
+			and destination.technology_id != "automation"
+		):
 			end = destination.position + NodeScript.ICON_CENTER + Vector2(0.0, 46.0)
 		var points: PackedVector2Array = _curve_points(start, end, float(index) * 1.7)
-		var color: Color = LINE_COLOR
+		var color: Color = line_color
 		color.a = 0.22 if destination.state == NodeScript.State.LOCKED else 0.38
 		if destination.state == NodeScript.State.AVAILABLE:
 			color.a = 0.65

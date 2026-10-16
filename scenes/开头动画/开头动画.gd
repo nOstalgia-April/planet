@@ -8,23 +8,26 @@ const SOUND_START_TIMEOUT: float = 0.5
 # playing; beyond this drift the animation jumps to the sound's position.
 const MAX_DRIFT_SECONDS: float = 0.05
 
-@export var main_menu: PackedScene
 @export var animation_player: AnimationPlayer
 
-# The opening sound outlives this scene, so its tail carries into the main menu.
+# The opening sound outlives this scene, so its tail carries into gameplay.
 var _sound: FmodEvent
+var _syncing_sound: bool = false
 var _waiting_for_sound: float = 0.0
 # Sound timeline (seconds) at the moment the animation started moving; -1 while
 # the first frame is still held.
 var _sound_offset: float = -1.0
 var _preparing_game: bool = false
+var _prepared_scene: PackedScene
+var _animation_finished: bool = false
+var _entering_game: bool = false
 
 
 func _ready() -> void:
-	assert(main_menu != null)
 	assert(animation_player != null)
 	RenderingServer.set_default_clear_color(Color.BLACK)
 	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+	GameAudio.stop_music()
 	animation_player.animation_finished.connect(_on_animation_finished)
 	animation_player.play(&"开头")
 	animation_player.advance(0.0)
@@ -32,10 +35,11 @@ func _ready() -> void:
 	_sound = GameAudio.start_event(OPENING_SOUND)
 	if _sound != null:
 		animation_player.speed_scale = 0.0
-	set_process(_sound != null)
-	# Prepare gameplay while the opening is on screen. The menu retrieves this
-	# same request, so Start does not begin all resource IO from scratch.
+	_syncing_sound = _sound != null
+	# The menu prepares the opening; gameplay loads while the animation plays.
 	_preparing_game = MainMenu.prepare_scene() == OK
+	if not _preparing_game:
+		_loading_failed()
 
 
 func _exit_tree() -> void:
@@ -43,11 +47,22 @@ func _exit_tree() -> void:
 		MainMenu.release_scene(get_tree(), MainMenu.DEFAULT_START_SCENE)
 
 
+func _input(_event: InputEvent) -> void:
+	get_viewport().set_input_as_handled()
+
+
+func _process(delta: float) -> void:
+	if _preparing_game:
+		_poll_game()
+	if _syncing_sound:
+		_sync_sound(delta)
+
+
 # Holds the first frame until the sound starts, then keeps the animation on the
 # sound's clock.
-func _process(delta: float) -> void:
+func _sync_sound(delta: float) -> void:
 	if not _sound.is_valid():
-		set_process(false)
+		_syncing_sound = false
 		animation_player.speed_scale = 1.0
 		return
 	var sound_seconds: float = _sound.get_timeline_position() / 1000.0
@@ -62,16 +77,48 @@ func _process(delta: float) -> void:
 	var target: float = sound_seconds - _sound_offset
 	var length: float = animation_player.current_animation_length
 	if target >= length - MAX_DRIFT_SECONDS:
-		set_process(false)
+		_syncing_sound = false
 	elif absf(animation_player.current_animation_position - target) > MAX_DRIFT_SECONDS:
 		animation_player.seek(target, true)
 
 
-func _on_animation_finished(_animation_name: StringName) -> void:
-	_enter_main_menu.call_deferred()
+func _poll_game() -> void:
+	var path: String = MainMenu.DEFAULT_START_SCENE
+	var status: ResourceLoader.ThreadLoadStatus = ResourceLoader.load_threaded_get_status(path)
+	if status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+		return
+	_preparing_game = false
+	if status == ResourceLoader.THREAD_LOAD_LOADED:
+		_prepared_scene = ResourceLoader.load_threaded_get(path) as PackedScene
+		_try_enter_game()
+	else:
+		if status == ResourceLoader.THREAD_LOAD_FAILED:
+			ResourceLoader.load_threaded_get(path)
+		_loading_failed()
 
 
-func _enter_main_menu() -> void:
-	var result: Error = get_tree().change_scene_to_packed(main_menu)
+func _on_animation_finished(animation_name: StringName) -> void:
+	if animation_name != &"开头":
+		return
+	_animation_finished = true
+	_try_enter_game()
+
+
+func _try_enter_game() -> void:
+	if not _animation_finished or _prepared_scene == null or _entering_game:
+		return
+	_entering_game = true
+	_enter_game.call_deferred()
+
+
+func _enter_game() -> void:
+	GameAudio.play_transition("event:/GameStart_Transition", "event:/Mx/Mx_GamePlay")
+	var result: Error = get_tree().change_scene_to_packed(_prepared_scene)
 	if result != OK:
-		push_error("无法进入主菜单：%d" % result)
+		_loading_failed()
+
+
+func _loading_failed() -> void:
+	set_process(false)
+	push_error("无法准备游戏场景：" + MainMenu.DEFAULT_START_SCENE)
+	get_tree().change_scene_to_file.call_deferred("res://scenes/主菜单/主菜单.tscn")

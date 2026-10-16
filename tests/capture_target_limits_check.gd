@@ -1,23 +1,23 @@
-extends SceneTree
+extends Node
 
 const DemoScript = preload("res://scripts/disk_demo.gd")
 const DemoScene: PackedScene = preload("res://scenes/disk_demo.tscn")
 const CLUSTER_SIZE: int = 7
-const TARGET: Vector2 = Vector2(0.0, -175.0)
+var _target: Vector2 = Vector2.ZERO
 
 var _failures: int = 0
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	_run_checks.call_deferred()
 
 
 func _run_checks() -> void:
 	var demo: DemoScript = DemoScene.instantiate() as DemoScript
-	root.add_child(demo)
-	current_scene = demo
+	get_tree().root.add_child(demo)
+	get_tree().current_scene = demo
 	demo.set_process(false)
-	await process_frame
+	await get_tree().process_frame
 	_check_nearest_only(demo)
 	_check_overlapping_targets(demo)
 	_check_serial_timing(demo)
@@ -26,14 +26,14 @@ func _run_checks() -> void:
 	for child: Node in demo.get_node("Audio").get_children():
 		if child is AudioStreamPlayer:
 			child.stop()
-	current_scene = null
+	get_tree().current_scene = null
 	demo.queue_free()
-	await process_frame
+	await get_tree().process_frame
 	if _failures == 0:
 		print(
 			"PASS: no peripheral pulling, one stable center target, serial timing and independent technology."
 		)
-	quit(0 if _failures == 0 else 1)
+	get_tree().quit(0 if _failures == 0 else 1)
 
 
 func _check_nearest_only(demo: DemoScript) -> void:
@@ -42,10 +42,10 @@ func _check_nearest_only(demo: DemoScript) -> void:
 	for index: int in range(CLUSTER_SIZE):
 		_place_body(
 			cluster[index],
-			TARGET + Vector2(demo.run.get_pipe_radius() * (1.0 / 6.0 + float(index) / 3.0), 0.0)
+			_target + Vector2(demo.run.get_pipe_radius() * (1.0 / 6.0 + float(index) / 3.0), 0.0)
 		)
 		original_points.append(cluster[index].get_capture_point())
-	demo._capture_at(0.05, TARGET, true)
+	demo._capture_at(0.05, _target, true)
 	_check(
 		_progressing(cluster) == 1 and cluster[0].capture_progress > 0.0,
 		"Only the nearest center body receives real pipe progress."
@@ -60,14 +60,14 @@ func _check_nearest_only(demo: DemoScript) -> void:
 			"Unselected neighbors never move or progress from vacuum suction, even inside the center."
 		)
 	_check(demo.run.candy == 0, "Incomplete center processing creates no wallet income.")
-	_place_body(cluster[1], TARGET)
+	_place_body(cluster[1], _target)
 	var progress: float = cluster[0].capture_progress
-	demo._capture_at(0.05, TARGET, true)
+	demo._capture_at(0.05, _target, true)
 	_check(
 		cluster[0].capture_progress > progress and is_zero_approx(cluster[1].capture_progress),
 		"A new closer arrival cannot interrupt the center actor being processed."
 	)
-	_place_body(cluster[2], TARGET + Vector2.RIGHT * 60.0)
+	_place_body(cluster[2], _target + Vector2.RIGHT * 60.0)
 	demo._capture_at(0.05, cluster[2].get_capture_point(), true)
 	_check(
 		(
@@ -77,13 +77,17 @@ func _check_nearest_only(demo: DemoScript) -> void:
 		),
 		"Moving the processing center away cancels the old selection."
 	)
-	demo._capture_at(0.01, TARGET, false)
+	demo._capture_at(0.01, _target, false)
 	_check(
 		_progressing(cluster) == 0 and demo.run.candy == 0,
 		"Stopping clears incomplete captures without collecting them."
 	)
 	for actor: PrototypeSlime in cluster:
 		var previous: Vector2 = actor.position
+		_check(
+			demo._planet.contains_surface_point(previous, demo._planet.activity_edge_inset),
+			"Movement checks must start with the actor's foot on the current walkable crust."
+		)
 		actor._process(0.01)
 		_check(
 			actor.position.distance_to(previous) <= actor.wander_speed * 0.03,
@@ -94,10 +98,10 @@ func _check_nearest_only(demo: DemoScript) -> void:
 func _check_overlapping_targets(demo: DemoScript) -> void:
 	var cluster: Array[PrototypeSlime] = _prepare(demo)
 	for actor: PrototypeSlime in cluster:
-		_place_body(actor, TARGET)
+		_place_body(actor, _target)
 	var initial_population: int = demo._slimes.size()
 	var seconds: float = demo.run.get_pipe_capture_seconds()
-	demo._capture_at(seconds * 20.0, TARGET, true)
+	demo._capture_at(seconds * 20.0, _target, true)
 	_check(
 		(
 			demo.run.candy == demo.run.settings.slime_reward
@@ -113,7 +117,7 @@ func _check_overlapping_targets(demo: DemoScript) -> void:
 		surviving_progress == 0,
 		"Overlapping neighbors remain unprocessed after the selected body is removed."
 	)
-	demo._capture_at(seconds * 20.0, TARGET, true)
+	demo._capture_at(seconds * 20.0, _target, true)
 	_check(
 		demo.run.candy == 2 * demo.run.settings.slime_reward,
 		"The next call processes and pays the next single body while input stays held."
@@ -124,7 +128,7 @@ func _check_serial_timing(demo: DemoScript) -> void:
 	for pipe_level: int in range(demo.run.settings.pipe_capture_seconds.size()):
 		var cluster: Array[PrototypeSlime] = _prepare(demo, pipe_level)
 		for actor: PrototypeSlime in cluster:
-			_place_body(actor, TARGET)
+			_place_body(actor, _target)
 		var delta: float = 1.0 / 60.0
 		var elapsed: float = 0.0
 		var seconds: float = demo.run.get_pipe_capture_seconds()
@@ -132,7 +136,7 @@ func _check_serial_timing(demo: DemoScript) -> void:
 		var reward: int = demo.run.settings.slime_reward
 		while demo.run.candy < cluster.size() * reward and elapsed < deadline:
 			var before: int = demo.run.candy
-			demo._capture_at(delta, TARGET, true)
+			demo._capture_at(delta, _target, true)
 			elapsed += delta
 			_check(
 				demo.run.candy - before in [0, reward],
@@ -176,8 +180,8 @@ func _check_independent_technology(demo: DemoScript) -> void:
 			),
 			"Pipe technology changes only serial capture speed."
 		)
-		_place_body(cluster[0], TARGET + Vector2.RIGHT * (demo.run.get_pipe_radius() + 0.01))
-		demo._capture_at(0.1, TARGET, true)
+		_place_body(cluster[0], _target + Vector2.RIGHT * (demo.run.get_pipe_radius() + 0.01))
+		demo._capture_at(0.1, _target, true)
 		_check(
 			is_zero_approx(cluster[0].capture_progress) and demo.run.candy == 0,
 			"Every pipe level excludes a body just outside the fixed radius."
@@ -206,11 +210,11 @@ func _check_independent_technology(demo: DemoScript) -> void:
 func _check_outside_range(demo: DemoScript) -> void:
 	var cluster: Array[PrototypeSlime] = _prepare(demo, 6)
 	var radius: float = demo.run.get_pipe_radius()
-	_place_body(cluster[0], TARGET + Vector2.RIGHT * (radius + 0.01))
-	_place_body(cluster[1], TARGET + Vector2.RIGHT * 69.0)
+	_place_body(cluster[0], _target + Vector2.RIGHT * (radius + 0.01))
+	_place_body(cluster[1], _target + Vector2.RIGHT * 69.0)
 	var original_points: Array[Vector2] = [cluster[0].position, cluster[1].position]
 	for frame: int in range(120):
-		demo._capture_at(1.0 / 60.0, TARGET, true)
+		demo._capture_at(1.0 / 60.0, _target, true)
 	_check(
 		demo.run.candy == 0 and _progressing(cluster) == 0,
 		"Actors just outside the center never accumulate capture progress or rewards."
@@ -220,8 +224,8 @@ func _check_outside_range(demo: DemoScript) -> void:
 			cluster[index].position.is_equal_approx(original_points[index]),
 			"The removed outer attraction zone never moves an actor toward the pipe."
 		)
-	_place_body(cluster[0], TARGET + Vector2.RIGHT * (radius - 0.01))
-	demo._capture_at(demo.run.get_pipe_capture_seconds(), TARGET, true)
+	_place_body(cluster[0], _target + Vector2.RIGHT * (radius - 0.01))
+	demo._capture_at(demo.run.get_pipe_capture_seconds(), _target, true)
 	_check(
 		demo.run.candy == demo.run.settings.slime_reward,
 		"Only an actor inside the center can be processed and rewarded."
@@ -237,12 +241,18 @@ func _prepare(demo: DemoScript, pipe_level: int = 0) -> Array[PrototypeSlime]:
 		demo._slimes.size() >= CLUSTER_SIZE,
 		"Spawn signals provide real actors for the range checks."
 	)
+	var bounds: Vector2 = demo._planet.get_activity_radius_bounds(-PI / 2.0)
+	var ground_radius: float = (bounds.x + bounds.y) * 0.5
+	var reference: PrototypeSlime = demo._slimes[0]
+	reference.restore_to_surface(Vector2.UP * ground_radius)
+	_target = reference.get_capture_point()
 	var cluster: Array[PrototypeSlime] = []
 	for index: int in range(demo._slimes.size()):
 		var actor: PrototypeSlime = demo._slimes[index]
 		actor._process(actor.launch_seconds)
 		actor.set_process(false)
-		_place_body(actor, TARGET + Vector2(150.0 + float(index) * 30.0, 0.0))
+		actor.restore_to_surface(Vector2.from_angle(float(index) * 0.15) * ground_radius)
+		actor.set_process(false)
 		if index < CLUSTER_SIZE:
 			_check(
 				(

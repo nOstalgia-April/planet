@@ -1,0 +1,253 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/ending_credits.gd" id="script"]
+[ext_resource type="FontFile" path="res://fonts/NotoSansSC-Regular.otf" id="font"]
+[ext_resource type="SpriteFrames" path="res://resources/mascot/cloak.tres" id="mascot"]
+
+[sub_resource type="StyleBoxFlat" id="button_normal"]
+content_margin_left = 24.0
+content_margin_top = 12.0
+content_margin_right = 24.0
+content_margin_bottom = 12.0
+bg_color = Color(0.09, 0.16, 0.23, 0.65)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.82, 0.92, 0.96, 0.55)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+
+[sub_resource type="StyleBoxFlat" id="button_hover"]
+content_margin_left = 24.0
+content_margin_top = 12.0
+content_margin_right = 24.0
+content_margin_bottom = 12.0
+bg_color = Color(0.13, 0.25, 0.32, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.9, 0.98, 1, 0.95)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+
+[sub_resource type="StyleBoxFlat" id="button_focus"]
+draw_center = false
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.94, 0.99, 1, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+
+[sub_resource type="StyleBoxEmpty" id="skip_normal"]
+content_margin_left = 18.0
+content_margin_top = 10.0
+content_margin_right = 18.0
+content_margin_bottom = 10.0
+
+[sub_resource type="Theme" id="credits_theme"]
+default_font = ExtResource("font")
+default_font_size = 26
+Label/colors/font_color = Color(1, 1, 1, 1)
+Label/colors/font_outline_color = Color(0.1, 0.16, 0.23, 0.88)
+Label/colors/font_shadow_color = Color(0.04, 0.1, 0.17, 0.75)
+Label/constants/line_spacing = 10
+Label/constants/outline_size = 3
+Label/constants/shadow_offset_x = 0
+Label/constants/shadow_offset_y = 2
+Button/colors/font_color = Color(1, 1, 1, 1)
+Button/colors/font_hover_color = Color(1, 1, 1, 1)
+Button/colors/font_pressed_color = Color(0.84, 0.96, 1, 1)
+Button/colors/font_focus_color = Color(1, 1, 1, 1)
+Button/colors/font_outline_color = Color(0.07, 0.13, 0.2, 0.9)
+Button/constants/outline_size = 2
+Button/font_sizes/font_size = 22
+Button/styles/normal = SubResource("button_normal")
+Button/styles/hover = SubResource("button_hover")
+Button/styles/pressed = SubResource("button_hover")
+Button/styles/focus = SubResource("button_focus")
+
+[node name="EndingCredits" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+clip_contents = true
+mouse_filter = 0
+theme = SubResource("credits_theme")
+script = ExtResource("script")
+
+[node name="Roll" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 210.0
+offset_top = 824.0
+offset_right = 1070.0
+offset_bottom = 1932.0
+mouse_filter = 2
+theme_override_constants/separation = 72
+
+[node name="Cast" type="VBoxContainer" parent="Roll"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 20
+
+[node name="Title" type="Label" parent="Roll/Cast"]
+layout_mode = 2
+mouse_filter = 2
+text = "角色名单"
+horizontal_alignment = 1
+
+[node name="Names" type="Label" parent="Roll/Cast"]
+layout_mode = 2
+mouse_filter = 2
+text = "史莱姆：小粉
+粘液怪：小蓝
+钻头怪：小黄"
+horizontal_alignment = 1
+
+[node name="Project" type="VBoxContainer" parent="Roll"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 20
+
+[node name="Title" type="Label" parent="Roll/Project"]
+layout_mode = 2
+mouse_filter = 2
+text = "项目信息"
+horizontal_alignment = 1
+
+[node name="Details" type="Label" parent="Roll/Project"]
+layout_mode = 2
+mouse_filter = 2
+text = "委托项目：星际家政 · 紧急清扫委托
+任务地点：M星
+委托单位：星际督查局
+执行小队：星际家政0101小组"
+horizontal_alignment = 1
+
+[node name="Team" type="VBoxContainer" parent="Roll"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 20
+
+[node name="Title" type="Label" parent="Roll/Team"]
+layout_mode = 2
+mouse_filter = 2
+text = "制作名单"
+horizontal_alignment = 1
+
+[node name="Names" type="Label" parent="Roll/Team"]
+layout_mode = 2
+mouse_filter = 2
+text = "游戏策划：常常、小墨
+视觉美术：aji、精盐
+角色设计：精盐
+场景美术：aji
+动画制作：aji、精盐
+程序开发：常常
+声音设计/作曲：fred
+音频交互程序：fred
+文案：小墨"
+horizontal_alignment = 1
+
+[node name="Thanks" type="VBoxContainer" parent="Roll"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 20
+
+[node name="Title" type="Label" parent="Roll/Thanks"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 30
+text = "特别感谢"
+horizontal_alignment = 1
+
+[node name="Message" type="Label" parent="Roll/Thanks"]
+layout_mode = 2
+mouse_filter = 2
+text = "所有参与本次星际清扫任务的伙伴"
+horizontal_alignment = 1
+
+[node name="MascotHolder" type="Control" parent="Roll/Thanks"]
+custom_minimum_size = Vector2(0, 156)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Center" type="Control" parent="Roll/Thanks/MascotHolder"]
+layout_mode = 1
+anchor_left = 0.5
+anchor_right = 0.5
+offset_top = 4.0
+offset_bottom = 4.0
+mouse_filter = 2
+
+[node name="Sprite" type="AnimatedSprite2D" parent="Roll/Thanks/MascotHolder/Center"]
+position = Vector2(-103.62769, -13.341289)
+scale = Vector2(0.31026253, 0.31026253)
+sprite_frames = ExtResource("mascot")
+animation = &"idle"
+centered = false
+
+[node name="Actions" type="HBoxContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -112.0
+offset_right = 300.0
+offset_bottom = -56.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="Replay" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "再玩一次"
+
+[node name="Close" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "看看星球"
+
+[node name="Menu" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "返回主菜单"
+
+[node name="Skip" type="Button" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -160.0
+offset_top = -104.0
+offset_right = -40.0
+offset_bottom = -52.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_styles/normal = SubResource("skip_normal")
+theme_override_styles/hover = SubResource("skip_normal")
+theme_override_styles/pressed = SubResource("skip_normal")
+text = "跳过"

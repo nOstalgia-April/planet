@@ -2,10 +2,10 @@ extends Node
 
 const Core = preload("res://scripts/planet_core_animation.gd")
 const CoreScene: PackedScene = preload("res://scenes/场景动画/星球核心.tscn")
+const OUTPUT_ROOT: String = "res://artifacts/core_crisp_20261016/validation/shape"
 
 var _views: Array[SubViewport] = []
 var _cores: Array[Core] = []
-var _reference_center: Image
 
 
 func _ready() -> void:
@@ -13,6 +13,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	assert(DirAccess.make_dir_recursive_absolute(OUTPUT_ROOT) == OK)
 	for index: int in range(2):
 		var viewport: SubViewport = SubViewport.new()
 		viewport.size = Vector2i(356, 300)
@@ -34,18 +35,12 @@ func _run() -> void:
 		await _seek(frame)
 		var before: Image = _views[0].get_texture().get_image()
 		var after: Image = _views[1].get_texture().get_image()
-		var center: Image = after.get_region(Rect2i(148, 134, 60, 60))
-		if _reference_center == null:
-			_reference_center = center
-		assert(
-			center.get_data() == _reference_center.get_data(),
-			"The inner disk must not change between frames."
-		)
+		_check_inner_disk(after, frame)
 		_check_outer_extent(before, after, frame)
-		assert(before.save_png("res://artifacts/core_shape_before_%04d.png" % frame) == OK)
-		assert(after.save_png("res://artifacts/core_shape_after_%04d.png" % frame) == OK)
+		assert(before.save_png(OUTPUT_ROOT.path_join("before_%04d.png" % frame)) == OK)
+		assert(after.save_png(OUTPUT_ROOT.path_join("after_%04d.png" % frame)) == OK)
 	if "--animation" in OS.get_cmdline_user_args():
-		DirAccess.make_dir_recursive_absolute("res://artifacts/core_shape_motion")
+		DirAccess.make_dir_recursive_absolute(OUTPUT_ROOT.path_join("motion"))
 		for frame: int in range(30, 120):
 			await _seek(frame)
 			var comparison: Image = Image.create(712, 300, false, Image.FORMAT_RGBA8)
@@ -53,9 +48,13 @@ func _run() -> void:
 				var image: Image = _views[index].get_texture().get_image()
 				image.convert(Image.FORMAT_RGBA8)
 				comparison.blit_rect(image, Rect2i(0, 0, 356, 300), Vector2i(index * 356, 0))
-			assert(comparison.save_png("res://artifacts/core_shape_motion/%03d.png" % frame) == OK)
+			assert(comparison.save_png(OUTPUT_ROOT.path_join("motion/%03d.png" % frame)) == OK)
+	for viewport: SubViewport in _views:
+		viewport.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
 	print(
-		"PASS: rendered stable core, half-strength outer radii, multiple frames and atlas boundaries."
+		"PASS: fixed opaque core, half-strength outer radii, multiple frames and atlas boundaries."
 	)
 	get_tree().quit()
 
@@ -71,6 +70,19 @@ func _seek(frame: int) -> void:
 			assert(Time.get_ticks_msec() < deadline, "Shape preview atlas load timed out.")
 			await get_tree().process_frame
 	await RenderingServer.frame_post_draw
+
+
+func _check_inner_disk(image: Image, frame: int) -> void:
+	# Pigment may flow, but every pixel safely inside the fixed disk stays opaque.
+	# Checking the full interior catches shrinkage beyond the old 60x60 center crop.
+	for y: int in range(107, 223):
+		for x: int in range(120, 236):
+			var offset: Vector2 = Vector2(x, y) + Vector2(0.5, 0.5) - Vector2(178.0, 164.5)
+			if offset.length() <= 56.5:
+				assert(
+					image.get_pixel(x, y).a >= 0.99,
+					"Core alpha must remain opaque: frame=%d pixel=(%d,%d)" % [frame, x, y]
+				)
 
 
 func _check_outer_extent(before: Image, after: Image, frame: int) -> void:

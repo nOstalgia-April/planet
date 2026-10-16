@@ -180,7 +180,7 @@ func _run_checks() -> void:
 		await process_frame
 		await RenderingServer.frame_post_draw
 		_save_frame("disk_demo_restored.png")
-	demo.get_node("%ReplayButton").pressed.emit()
+	demo._completion.replay_requested.emit()
 	_check(not demo.run.is_complete and demo.run.candy == 0, "replay resets rules")
 	_check(not completion.visible and views.get_child_count() == 3, "replay resets visuals")
 	await process_frame

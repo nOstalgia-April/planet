@@ -19,6 +19,7 @@ func _run_checks() -> void:
 	var tree: SceneTree = get_tree()
 	var root: Window = tree.root
 	_check(GameAudio.banks_loaded, "The main game banks load successfully.")
+	await _check_effect_instance_lifetimes()
 	var menu: MenuScript = MenuScene.instantiate() as MenuScript
 	root.add_child(menu)
 	tree.current_scene = menu
@@ -125,6 +126,38 @@ func _run_checks() -> void:
 	tree.quit(0 if _failures == 0 else 1)
 
 
+func _check_effect_instance_lifetimes() -> void:
+	var near_view_gain: float = GameAudio._near_view_gain
+	var audio_enabled: bool = GamePreferences.audio_enabled
+	var effects_volume: float = GamePreferences.effects_volume
+	GamePreferences.audio_enabled = true
+	GamePreferences.effects_volume = 0.37
+	GamePreferences.changed.emit()
+	GameAudio.set_near_view_gain(1.0)
+	var effect: FmodEvent = GameAudio.start_loop("event:/Vacuum/Vacuum_Loading")
+	_check(effect != null and effect.is_valid(), "A managed effect is available during the check.")
+	# Vacuum_On starts Vacuum_Loop inside FMOD, without creating a Godot wrapper.
+	GameAudio.play("event:/Vacuum/Vacuum_On")
+	for index: int in range(8):
+		GameAudio.play("event:/UI/Button_Hover")
+		await get_tree().create_timer(0.025).timeout
+	await get_tree().create_timer(0.25).timeout
+	GameAudio._apply_effects_volume()
+	_check(is_equal_approx(effect.get_volume(), 0.37), "Valid effects still receive their volume.")
+	GameAudio.set_near_view_gain(0.0)
+	_check(is_zero_approx(effect.get_volume()), "Overview still silences valid near-view effects.")
+	GameAudio.set_near_view_gain(1.0)
+	_check(is_equal_approx(effect.get_volume(), 0.37), "Near view restores valid effect volume.")
+	GameAudio.play("event:/Vacuum/Vacuum_Off")
+	GameAudio.stop_loop(effect)
+	await get_tree().create_timer(0.25).timeout
+	GameAudio._apply_effects_volume()
+	GameAudio.set_near_view_gain(near_view_gain)
+	GamePreferences.audio_enabled = audio_enabled
+	GamePreferences.effects_volume = effects_volume
+	GamePreferences.changed.emit()
+
+
 func _check_audio_pause() -> void:
 	var tree: SceneTree = get_tree()
 	var enabled: bool = GamePreferences.audio_enabled
@@ -134,14 +167,16 @@ func _check_audio_pause() -> void:
 	var effect: FmodEvent = GameAudio.start_loop("event:/Earth_Rotate")
 	await tree.create_timer(0.4).timeout
 	# Menus (settings, technology page) pause the game: gameplay sounds hold
-	# their place while music and UI keep playing under a low-pass.
+	# their place along with music, while UI sounds remain available.
 	tree.paused = true
 	await tree.process_frame
 	await tree.process_frame
 	await tree.create_timer(0.4, true).timeout
 	_check(
-		not GameAudio._master_bus.get_paused()
-		and GameAudio._master_bus.get_mute() == (not enabled),
+		(
+			not GameAudio._master_bus.get_paused()
+			and GameAudio._master_bus.get_mute() == (not enabled)
+		),
 		"Pausing keeps FMOD output running."
 	)
 	_check(is_equal_approx(GameAudio._music_menu, 1.0), "Pausing pushes Music_Menu to 1.")
@@ -149,8 +184,11 @@ func _check_audio_pause() -> void:
 	var effect_position: int = effect.get_timeline_position()
 	await tree.create_timer(0.25, true).timeout
 	_check(
-		GameAudio._music.get_timeline_position() > music_position,
-		"Music keeps playing while paused."
+		(
+			GameAudio._music.get_paused()
+			and GameAudio._music.get_timeline_position() == music_position
+		),
+		"Music holds its place while paused."
 	)
 	_check(
 		effect.get_timeline_position() == effect_position,
@@ -160,6 +198,13 @@ func _check_audio_pause() -> void:
 	await tree.process_frame
 	await tree.process_frame
 	await tree.create_timer(0.4).timeout
+	_check(
+		(
+			not GameAudio._music.get_paused()
+			and GameAudio._music.get_timeline_position() > music_position
+		),
+		"Music continues from its paused position."
+	)
 	_check(
 		effect.get_timeline_position() > effect_position,
 		"Gameplay sounds continue after the pause."
@@ -292,12 +337,15 @@ func _check_loading_audio(audio: Node) -> void:
 	first.free()
 	second.free()
 
+
 # Candy_Combo climbs the whole ladder a quarter per stage, counting the capture
 # being paid, and the stage-clear sound follows the on-screen burst.
 func _check_combo_audio(demo: Node) -> void:
 	var run: PrototypeRun = demo.run
 	run.combo_level = 0
-	_check(is_zero_approx(demo._combo_ladder_progress()), "No combo research keeps Candy_Combo at 0.")
+	_check(
+		is_zero_approx(demo._combo_ladder_progress()), "No combo research keeps Candy_Combo at 0."
+	)
 	run.combo_level = 4
 	run.combo_stage = 0
 	run.combo_count = 0
@@ -326,6 +374,7 @@ func _check_combo_audio(demo: Node) -> void:
 		"Combo_Break follows a combo timeout."
 	)
 
+
 # A path whose FMOD folder moved still reaches its event by name.
 func _check_path_resolution() -> void:
 	var moved: String = "event:/SomeOldFolder/SuckUp_Pop"
@@ -342,6 +391,7 @@ func _check_path_resolution() -> void:
 		GameAudio.resolve_event_path("event:/No_Such_Event") == "event:/No_Such_Event",
 		"An unknown name is left unresolved."
 	)
+
 
 func _check(condition: bool, message: String) -> void:
 	if not condition:

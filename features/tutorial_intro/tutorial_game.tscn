@@ -1,0 +1,41 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://features/场景预览/近景游玩预览.tscn" id="game"]
+[ext_resource type="Script" path="res://features/tutorial_intro/tutorial_game.gd" id="game_script"]
+[ext_resource type="Script" path="res://features/tutorial_intro/tutorial_intro.gd" id="intro"]
+[ext_resource type="PackedScene" path="res://scenes/ui/mascot_dialogue.tscn" id="dialogue"]
+[ext_resource type="PackedScene" path="res://features/tutorial_intro/tool_spotlight.tscn" id="spotlight"]
+[ext_resource type="PackedScene" path="res://features/tutorial_intro/compact_mascot_dialogue.tscn" id="compact"]
+
+[node name="TutorialGame" instance=ExtResource("game")]
+script = ExtResource("game_script")
+start_in_overview = true
+
+[node name="TutorialIntro" type="Node" parent="." node_paths=PackedStringArray("game")]
+process_mode = 3
+script = ExtResource("intro")
+game = NodePath("..")
+intro_lines = PackedStringArray("喂——小心脚下！你差点踩到我们家刚冒出来的小家伙的巢穴！", "你是……清扫员？来帮我们治理巢穴和生态的？", "太好了！这里吃得好、住得好，就是大家生得有点太好了。", "我刚数完这一窝，那边又冒出来三窝。喊都喊不回来！", "这些小家伙吃糖，也会产糖。糖能给飞船和工具供能。", "尤其是这里的糖！吃完以后，连我都比以前有精神了。", "你帮我把外面乱跑的家伙收拢一下，再整理整理巢穴就行。", "动作轻一点啊。它们只是比较活泼……还有比较多。")
+vacuum_lines = PackedStringArray("你手上那个就是吸尘器？先试着把这几只乱跑的收进去吧。")
+reaction_lines = PackedStringArray("……哦，原来里面装得下！那我就放心了。")
+closing_lines = PackedStringArray("收获的这些糖你就拿着吧，算帮忙的报酬。别全吃了，听说你们那里可以用糖果升级科技。", "拿糖给吸尘器和捕捉网升升级，干活能省不少力气。", "不过先说好，叫出来多少，你可得接住多少。")
+
+[node name="TutorialLayer" type="CanvasLayer" parent="TutorialIntro"]
+layer = 30
+
+[node name="ToolSpotlight" parent="TutorialIntro/TutorialLayer" node_paths=PackedStringArray("target") instance=ExtResource("spotlight")]
+target = NodePath("../../../HUD/Interface/ToolDock/Pipe/Button")
+
+[node name="MascotDialogue" parent="TutorialIntro/TutorialLayer" instance=ExtResource("dialogue")]
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+grow_horizontal = 1
+grow_vertical = 1
+autoplay = false
+
+[node name="Text" parent="TutorialIntro/TutorialLayer/MascotDialogue/SpeechBubble"]
+theme_override_font_sizes/normal_font_size = 28
+theme_override_constants/line_separation = 6
+
+[node name="CompactDialogue" parent="TutorialIntro/TutorialLayer" instance=ExtResource("compact")]

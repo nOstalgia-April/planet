@@ -1,0 +1,31 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/dock_shortcut_right.gd" id="script"]
+[ext_resource type="Shader" path="res://shaders/dock_shortcut_right.gdshader" id="shader"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock_20261016/shortcut.tres" id="texture"]
+
+[sub_resource type="ShaderMaterial" id="material"]
+shader = ExtResource("shader")
+
+[node name="Shortcut" type="Button"]
+offset_left = 140.0
+offset_top = 12.0
+offset_right = 192.0
+offset_bottom = 64.0
+focus_mode = 0
+mouse_default_cursor_shape = 2
+theme_override_font_sizes/font_size = 26
+script = ExtResource("script")
+
+[node name="Backing" type="TextureRect" parent="."]
+show_behind_parent = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+material = SubResource("material")
+texture = ExtResource("texture")
+expand_mode = 1

@@ -1,5 +1,19 @@
 # 星球生态治理 Demo
 
+## 2026-10-17 七段剧情完整流程预览
+
+主菜单「预览 → 4. 看板娘完整流程」现使用新稿 19 句：开场 3 句、巢穴培育 2 句、完全治理 3 句、首次复色 2 句、第二次复色 2 句、第三次复色 3 句、救援安置 4 句。科技教学在购买后关闭科技树时出现；复色切远景时开始对白，复色演出与最后一句确认均完成后自动回近景。第三次复色让她服气，救援安置等三色恢复、全巢穴自动化、怪物收齐及胜利流星完成后再出现，之后进入片尾。
+
+对白期间背景保持正常速度的 50%，角色动作与打字保持正常速度，玩法输入、产糖与刷怪暂停；手动暂停仍冻结场景。开场／收尾、教学、复色分别使用大、中小、右侧紧凑布局，沿用现有三种形态与气泡素材。独立入口 `features/tutorial_intro/full_flow_preview.tscn` 可 F6；左键／空格／Enter 补全及确认，空闲时 **N** 快速推进到下一段，**R** 重开，**Esc** 返回主菜单。N 通过实际科技购买、巢穴升级和收集触发流程，仅用于这个预览。
+
+新稿集中在 `features/tutorial_intro/story_flow.tscn`；正式「开始游戏」及三个旧音效试听入口保留各自当前行为。
+
+Godot 4.7.2 实机检查通过：七段触发、逐句确认、先结束对白时等待复色、半速背景与正常速度角色、暂停、重播、菜单返回、胜利条件与片尾顺序；已检查 1920×1080 和 1280×800 画面。真实图形编辑器连续三轮恢复 37 个已保存场景并重建脚本文档缓存通过。检查发现的鼠标配色初始化读取已移至运行时，保持现有配色效果。
+
+## 2026-10-17 看板娘流程移入预览
+
+「开始游戏」播放片头后直接进入正常游玩，不再执行看板娘对白、减速、工具高亮或首次捕捉教学。主菜单「预览」新增「4. 看板娘完整流程（Esc 返回）」，保留原引导与交互供后续优化；三个说话音效入口继续保留。完整流程的独立 F6 入口为 `features/tutorial_intro/full_flow_preview.tscn`。
+
 ## 2026-10-17 看板娘对白点击确认
 
 正式教程及三个说话音效预览共用点击交互：左键点击屏幕非菜单按钮区域，打字时立即补全当前句，整句显示后再次点击进入下一句。对白不再按时间自动换句，最后一句也需要确认；菜单按钮按原有功能响应。
@@ -625,7 +639,7 @@ godot --headless --path . tests/overview_ecology_check.tscn
 godot --headless --path . --script tests/full_planet_activity_check.gd
 godot --headless --path . --script tests/wide_crust_view_check.gd
 godot --headless --path . --script tests/overview_cluster_ui_check.gd
-godot --headless --path . --script tests/capture_target_limits_check.gd
+godot --headless --path . tests/capture_target_limits_check.tscn
 godot --headless --path . --script tests/pipe_attraction_rules_check.gd
 godot --headless --path . --script tests/planet_view_controls_check.gd
 godot --headless --path . --script tests/attraction_ui_check.gd

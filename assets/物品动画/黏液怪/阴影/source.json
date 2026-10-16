@@ -1,0 +1,35 @@
+{
+  "source_directory": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\234\\234\\粘液怪粘液",
+  "source_frame_directory": "粘液（5帧",
+  "available_frames": 3,
+  "frames_per_second": 5,
+  "reference_body_bounds": [
+    175,
+    204,
+    377,
+    269
+  ],
+  "runtime_body_bounds": [
+    -49,
+    -68,
+    98,
+    68
+  ],
+  "frames": [
+    {
+      "file": "001.png",
+      "source": "未命名作品-1.png",
+      "sha256": "9929d2f51cfb02762f43240627924da831947aafbeaad39a7483a970222db255"
+    },
+    {
+      "file": "002.png",
+      "source": "未命名作品-2.png",
+      "sha256": "526173b77807c0499645c795d1b1280bab2db83405c8ccc2f0bea6f18ef98e93"
+    },
+    {
+      "file": "003.png",
+      "source": "未命名作品-3.png",
+      "sha256": "f3256d06afbee5eba43834f15ffaba1b055021160d57c829ae971c2b72d84623"
+    }
+  ]
+}

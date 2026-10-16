@@ -288,7 +288,8 @@ func _check_ground_contact_and_capture(demo: DemoScript) -> void:
 	)
 	# Visual assertions request visible detail; offscreen uploads are deferred.
 	trail.refresh_surface(false, true)
-	var edge: PackedVector2Array = trail._edge.polygon
+	# The full ribbon mesh includes transparent margins; use the sampled paint outline.
+	var edge: PackedVector2Array = trail._hit_vertices
 	_check(
 		edge[0].distance_to(edge[1]) < edge[-2].distance_to(edge[-1]) * 0.5,
 		"the historical tail is visibly narrower than the fresh band near the source"

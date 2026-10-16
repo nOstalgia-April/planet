@@ -1,0 +1,10 @@
+{
+  "provided_on": "2026-10-16",
+  "source_file": "bb632448debce2990f35ff971e4b0d40.mp4",
+  "sha256": "4bf4555943c39b74104918d92819014fd2ecdbbabb34dca3fae6c7d6df3ec0e8",
+  "reference": "用户提供的14.88秒结算参考：正式星球及流星背景，中央名单上滚，末尾特别感谢与看板娘。",
+  "adopted": "沿用当前游戏正式星球与流星演出，结算时显示彩色地球原图的深蓝中心；Noto Sans 白色名单居中上滚，滚速42逻辑像素/秒，开头停留1秒；末尾特别感谢复用当前斗篷看板娘待机素材。",
+  "text_authority": "2026-10-16 本轮用户文字优先于视频内旧署名，声音设计/作曲与音频交互程序分列，文案为小墨。",
+  "preview_scene": "res://features/ending_preview/ending_preview.tscn",
+  "editable_credits_scene": "res://scenes/ui/ending_credits.tscn"
+}

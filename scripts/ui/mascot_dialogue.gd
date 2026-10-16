@@ -11,6 +11,7 @@ enum Phase { HIDDEN, ENTERING, OPENING, TYPING, HOLDING, FINISHED, IDLE }
 
 @export var lines: PackedStringArray = PackedStringArray()
 @export var autoplay: bool = true
+@export var ignore_time_scale: bool = false
 @export_range(0, 2, 1) var form_index: int = 0
 @export_group("Timing")
 @export_range(1.0, 40.0, 1.0) var characters_per_second: float = 15.0
@@ -32,6 +33,7 @@ var _dialogue_click_pressed: bool = false
 
 
 func _ready() -> void:
+	presenter.ignore_time_scale = ignore_time_scale
 	presenter.entrance_finished.connect(_on_entrance_finished)
 	bubble.hide()
 	if autoplay and not lines.is_empty():
@@ -42,6 +44,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if ignore_time_scale:
+		delta /= Engine.time_scale
 	_phase_elapsed += delta
 	_glyph_pop.clock += delta
 	match phase:

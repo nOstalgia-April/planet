@@ -1,6 +1,8 @@
 class_name CollectionEffect
 extends Node2D
 
+signal finished
+
 @export_range(0.1, 1.5, 0.01) var duration: float = 0.48
 @export var flight_ease: Tween.EaseType = Tween.EASE_IN
 @export var color: Color = Color("d7e8bb")
@@ -81,6 +83,7 @@ func _finish() -> void:
 		_tween.tween_interval(0.75)
 		_tween.tween_callback(_run_preview)
 	else:
+		finished.emit()
 		queue_free()
 
 

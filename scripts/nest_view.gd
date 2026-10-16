@@ -212,3 +212,18 @@ func get_hover_rect() -> Rect2:
 		_selection_shape.get_global_transform_with_canvas()
 		* Rect2(-_selection_rect.size * 0.5, _selection_rect.size)
 	)
+
+
+func get_hover_polygon() -> PackedVector2Array:
+	var half_size: Vector2 = _selection_rect.size * 0.5
+	return (
+		_selection_shape.get_global_transform_with_canvas()
+		* PackedVector2Array(
+			[
+				Vector2(-half_size.x, -half_size.y),
+				Vector2(half_size.x, -half_size.y),
+				half_size,
+				Vector2(-half_size.x, half_size.y),
+			]
+		)
+	)

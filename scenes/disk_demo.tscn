@@ -1,4 +1,4 @@
-[gd_scene load_steps=33 format=3]
+[gd_scene load_steps=35 format=3]
 
 [ext_resource type="Script" path="res://scripts/disk_demo.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/prototype_run.gd" id="2_run"]
@@ -32,10 +32,13 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/bottom_dock.tscn" id="25_dock"]
 [ext_resource type="PackedScene" path="res://scenes/ui/view_shortcut.tscn" id="27_view_shortcut"]
 [ext_resource type="PackedScene" path="res://scenes/world/governed_region.tscn" id="28_region"]
-[ext_resource type="PackedScene" path="res://scenes/effects/mucus_field.tscn" id="29_mucus"]
+[ext_resource type="PackedScene" path="res://scenes/effects/mucus_field_legacy.tscn" id="29_mucus"]
 [ext_resource type="PackedScene" path="res://scenes/world/drill_monster.tscn" id="30_drill"]
 [ext_resource type="PackedScene" path="res://scenes/effects/drill_treasure.tscn" id="31_treasure"]
 [ext_resource type="PackedScene" path="res://scenes/effects/nest_mucus_area.tscn" id="32_nest_mucus"]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/nest_upgrade_button.tscn" id="33_nest_upgrade"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ending_credits.tscn" id="34_ending"]
 
 [node name="DiskDemo" type="Node2D"]
 script = ExtResource("1_main")
@@ -206,146 +209,20 @@ unique_name_in_owner = true
 visible = false
 layout_mode = 1
 
-[node name="NestCard" type="PanelContainer" parent="HUD/Interface"]
+[node name="NestCard" type="Control" parent="HUD/Interface"]
 visible = false
 layout_mode = 0
-offset_left = 920.0
-offset_top = 423.0
-offset_right = 1240.0
-offset_bottom = 700.0
-mouse_filter = 0
-
-[node name="Content" type="VBoxContainer" parent="HUD/Interface/NestCard"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 12
-
-[node name="Header" type="HBoxContainer" parent="HUD/Interface/NestCard/Content"]
-layout_mode = 2
+offset_right = 88.0
+offset_bottom = 104.0
 mouse_filter = 2
 
-[node name="NestTitleLabel" type="Label" parent="HUD/Interface/NestCard/Content/Header"]
+[node name="NestButton" parent="HUD/Interface/NestCard" instance=ExtResource("33_nest_upgrade")]
 unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 2
-theme_override_font_sizes/font_size = 20
-text = "巢穴"
+layout_mode = 0
 
-[node name="CloseNestButton" type="Button" parent="HUD/Interface/NestCard/Content/Header"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(44, 44)
-layout_mode = 2
-theme_type_variation = &"QuietButton"
-theme_override_font_sizes/font_size = 16
-text = "×"
-tooltip_text = "关闭"
-
-[node name="NestLevelLabel" type="Label" parent="HUD/Interface/NestCard/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.41, 0.47, 0.38, 1)
-theme_override_font_sizes/font_size = 16
-
-[node name="NestBenefitLabel" type="Label" parent="HUD/Interface/NestCard/Content"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 44)
-layout_mode = 2
-size_flags_vertical = 3
-mouse_filter = 2
-theme_override_font_sizes/font_size = 17
-text = "悬停巢穴查看升级"
-autowrap_mode = 3
-
-[node name="NestButton" type="Button" parent="HUD/Interface/NestCard/Content"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-mouse_filter = 0
-disabled = true
-text = "驯化"
-
-[node name="Completion" type="Control" parent="HUD/Interface"]
+[node name="Completion" parent="HUD/Interface" instance=ExtResource("34_ending")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 0
-
-[node name="Shade" type="ColorRect" parent="HUD/Interface/Completion"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-color = Color(0.13, 0.19, 0.14, 0.50)
-
-[node name="Center" type="CenterContainer" parent="HUD/Interface/Completion"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-
-[node name="Panel" type="PanelContainer" parent="HUD/Interface/Completion/Center"]
-custom_minimum_size = Vector2(540, 292)
-layout_mode = 2
-mouse_filter = 2
-
-[node name="Content" type="VBoxContainer" parent="HUD/Interface/Completion/Center/Panel"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 22
-
-[node name="CompletionTitle" type="Label" parent="HUD/Interface/Completion/Center/Panel/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.27, 0.44, 0.32, 1)
-theme_override_font_sizes/font_size = 34
-text = "绿色回来了"
-horizontal_alignment = 1
-autowrap_mode = 3
-
-[node name="CompletionDetail" type="Label" parent="HUD/Interface/Completion/Center/Panel/Content"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 76)
-layout_mode = 2
-size_flags_vertical = 3
-mouse_filter = 2
-text = "五个巢穴都开出了花。"
-horizontal_alignment = 1
-vertical_alignment = 1
-autowrap_mode = 3
-
-[node name="Actions" type="HBoxContainer" parent="HUD/Interface/Completion/Center/Panel/Content"]
-layout_mode = 2
-mouse_filter = 2
-
-[node name="ReplayButton" type="Button" parent="HUD/Interface/Completion/Center/Panel/Content/Actions"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 0
-text = "再玩一次"
-
-[node name="CloseVictoryButton" type="Button" parent="HUD/Interface/Completion/Center/Panel/Content/Actions"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 0
-theme_type_variation = &"QuietButton"
-text = "看看星球"
 
 [node name="GameMenu" parent="HUD/Interface" instance=ExtResource("24_menu")]

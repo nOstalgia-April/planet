@@ -15,10 +15,22 @@ func _ready() -> void:
 
 
 func _run_checks() -> void:
+	if "--release-check" in OS.get_cmdline_user_args():
+		await _check_harvest_stream()
+		await _check_capture_timing()
+		await _check_small_giant_release()
+		if _failures == 0:
+			print(
+				"PASS: giant release boundary, all pipe levels, both species, single payout and retained early progress."
+			)
+		get_tree().quit(0 if _failures == 0 else 1)
+		return
 	if "--capture-interrupt" in OS.get_cmdline_user_args():
 		await _check_harvest_stream()
 		if _failures == 0:
-			print("PASS: stationary giant, retained size, roaming, resumed harvest and single payout.")
+			print(
+				"PASS: stationary giant, retained size, roaming, resumed harvest and single payout."
+			)
 		get_tree().quit(0 if _failures == 0 else 1)
 		return
 	_check_global_research()
@@ -31,6 +43,7 @@ func _run_checks() -> void:
 	await _check_live_settlement()
 	await _check_harvest_stream()
 	await _check_capture_timing()
+	await _check_small_giant_release()
 	await _check_mucus_capture_session()
 	await _check_mucus_exit()
 	if "--capture" in OS.get_cmdline_user_args():
@@ -299,8 +312,12 @@ func _check_all_nests() -> void:
 	)
 	demo._resolve_net()
 	_check(
-		demo.run.candy == before and demo.run.get_nest(4).alive_slimes == 12
-		and demo._net_caught_count == 0 and demo._slimes.has(giant),
+		(
+			demo.run.candy == before
+			and demo.run.get_nest(4).alive_slimes == 12
+			and demo._net_caught_count == 0
+			and demo._slimes.has(giant)
+		),
 		"A net preserves a mixed giant's value, body and occupied population."
 	)
 	demo._capture_at(demo._capture_seconds_for(giant) + 0.01, giant.get_capture_point(), true)
@@ -449,8 +466,8 @@ func _check_harvest_stream() -> void:
 	var original_position: Vector2 = giant.position
 	var body_transform: Transform2D = giant.transform * giant._get_art_transform()
 	var body_bounds: Rect2 = giant.slime_art.get_art_bounds()
-	var pointer: Vector2 = body_transform * (
-		body_bounds.get_center() + Vector2(body_bounds.size.x * 0.3, 0.0)
+	var pointer: Vector2 = (
+		body_transform * (body_bounds.get_center() + Vector2(body_bounds.size.x * 0.3, 0.0))
 	)
 	_check(
 		is_zero_approx(giant.get_capture_distance_squared(pointer)),
@@ -490,16 +507,20 @@ func _check_harvest_stream() -> void:
 			"In-progress candy has no false payout label."
 		)
 	giant._process(0.3)
-	_check(giant.position.is_equal_approx(original_position), "Slow frames keep a held giant still.")
+	_check(
+		giant.position.is_equal_approx(original_position), "Slow frames keep a held giant still."
+	)
 	var retained_progress: float = giant.capture_progress
 	var retained_scale: Vector2 = giant._get_art_transform().get_scale()
 	await _save_harvest_stage(demo, giant, "suction")
 	demo._capture_at(0.0, pointer + Vector2(10000.0, 0.0), true)
 	_check(
-		demo._giant_harvest == null
-		and stream._finished
-		and is_equal_approx(giant.capture_progress, retained_progress)
-		and giant._get_art_transform().get_scale().is_equal_approx(retained_scale),
+		(
+			demo._giant_harvest == null
+			and stream._finished
+			and is_equal_approx(giant.capture_progress, retained_progress)
+			and giant._get_art_transform().get_scale().is_equal_approx(retained_scale)
+		),
 		"Leaving the body stops emission and retains the remaining size and progress."
 	)
 	_check(
@@ -512,9 +533,11 @@ func _check_harvest_stream() -> void:
 	giant._process(0.25)
 	giant.refresh_presentation()
 	_check(
-		not giant.position.is_equal_approx(original_position)
-		and is_equal_approx(giant.capture_progress, retained_progress)
-		and giant.ground_shadow.visible,
+		(
+			not giant.position.is_equal_approx(original_position)
+			and is_equal_approx(giant.capture_progress, retained_progress)
+			and giant.ground_shadow.visible
+		),
 		"The smaller giant resumes roaming with a matching ground shadow."
 	)
 	await _save_harvest_stage(demo, giant, "released")
@@ -525,17 +548,20 @@ func _check_harvest_stream() -> void:
 	_check(demo._giant_harvest != stream, "Resuming uses a fresh visual stream.")
 	var resumed: HarvestEffect = demo._giant_harvest
 	_check(
-		is_equal_approx(giant.capture_progress, retained_progress + 0.2)
-		and resumed.get_child_count()
-		== (resumed.emitted_bursts - first_bursts) * resumed.candies_per_burst,
+		(
+			is_equal_approx(giant.capture_progress, retained_progress + 0.2)
+			and (
+				resumed.get_child_count()
+				== (resumed.emitted_bursts - first_bursts) * resumed.candies_per_burst
+			)
+		),
 		"Resume continues progress and emits only newly absorbed candy."
 	)
 	demo._capture_at(0.0, giant.get_capture_point(), false)
 	var remaining_seconds: float = demo._capture_seconds_for(giant)
 	_check(
 		is_equal_approx(
-			remaining_seconds,
-			giant.get_capture_seconds(demo.run.get_pipe_capture_seconds()) * 0.4
+			remaining_seconds, giant.get_capture_seconds(demo.run.get_pipe_capture_seconds()) * 0.4
 		),
 		"A second interruption preserves progress and reports only the remaining duration."
 	)
@@ -616,12 +642,82 @@ func _check_capture_timing() -> void:
 	await get_tree().process_frame
 
 
+func _check_small_giant_release() -> void:
+	var demo: DemoScript = _make_demo()
+	for level: int in range(demo.run.settings.pipe_capture_seconds.size()):
+		for species: PrototypeSlime.Species in [
+			PrototypeSlime.Species.SLIME, PrototypeSlime.Species.MUCUS
+		]:
+			demo.restart_run()
+			demo.run.pipe_level = level
+			demo.run.combo_level = 1
+			var giant: PrototypeSlime = _spawn_weighted(demo, 12, 12)
+			giant.configure_species(species, false, 12)
+			giant.configure_fusion(12, 12, 12)
+			var seconds: float = giant.get_capture_seconds(demo.run.get_pipe_capture_seconds())
+			var threshold: float = (1.0 - 1.0 / giant.giant_body_multiplier) / 0.8
+			var outside: Vector2 = giant.position + Vector2(10000.0, 0.0)
+			demo._capture_at(seconds * (threshold - 0.01), giant.get_capture_point(), true)
+			var retained: float = giant.capture_progress
+			demo._capture_at(0.0, outside, true)
+			_check(
+				(
+					demo._slimes.has(giant)
+					and is_equal_approx(giant.capture_progress, retained)
+					and demo.run.candy == 0
+				),
+				"Leaving before normal size retains the giant and its progress at every pipe level."
+			)
+			demo._capture_at(seconds * 0.01, giant.get_capture_point(), true)
+			_check(giant.can_finish_capture_on_release(), "Normal size enables release completion.")
+			demo._capture_at(0.0, giant.get_capture_point(), true)
+			_check(
+				demo.run.candy == 0,
+				"Holding a small giant still requires its full capture duration."
+			)
+			var neighbor: PrototypeSlime = _spawn_weighted(demo, 1, 1)
+			neighbor.position = outside
+			var pointer: Vector2 = neighbor.get_capture_point()
+			# Cover both crossing directly onto another body and releasing the button.
+			var active: bool = level % 2 == 0
+			demo._capture_at(seconds, pointer, active)
+			_check(
+				(
+					not demo._slimes.has(giant)
+					and giant.consumed
+					and demo.run.candy == 12
+					and demo.run.get_nest(1).alive_slimes == 1
+				),
+				"Leaving at normal size settles the whole giant and releases its population exactly once."
+			)
+			_check(
+				(
+					is_zero_approx(neighbor.capture_progress)
+					and demo._capture_targets.is_empty()
+					and demo.run.combo_count == 1
+				),
+				"Release completion does not also capture the next body or double-count the combo."
+			)
+			_check(
+				(
+					demo._giant_harvest == null
+					and demo._vacuum_audio._loading == null
+					and demo._vacuum_audio._big_slime == null
+				),
+				"Release completion stops the giant stream and its loading sounds."
+			)
+			demo._capture_at(0.0, outside, false)
+			_check(demo.run.candy == 12, "Subsequent release ticks cannot pay the giant again.")
+	get_tree().current_scene = null
+	demo.queue_free()
+	await get_tree().process_frame
+
+
 func _check_mucus_capture_session() -> void:
 	var demo: DemoScript = _make_demo()
 	_offscreen_pair(demo, NestState.Species.MUCUS)
 	var actor: PrototypeSlime = demo._slimes.back()
-	var home: Vector2 = demo.run.get_nest(actor.nest_id).position
-	actor.position = home - home.normalized() * 20.0
+	actor.position = _prepare_nest_mucus_point(demo, 0)
 	actor.population_units = 12
 	demo.run.get_nest(actor.nest_id).alive_slimes += 11
 	_check(demo._is_on_ground_mucus(actor.position), "The target starts inside real nest mucus.")
@@ -657,49 +753,69 @@ func _check_mucus_capture_session() -> void:
 	)
 	demo._capture_at(0.0, pointer, false)
 	_check(
-		actor.capture_progress > 0.8 and actor.is_anchored(),
-		"An interrupted giant keeps its remaining size while mucus can reattach."
+		actor.consumed and not demo._slimes.has(actor),
+		"Releasing a giant below ordinary size completes capture before mucus can reattach."
 	)
 	get_tree().current_scene = null
 	demo.queue_free()
 	await get_tree().process_frame
 
 
+func _prepare_nest_mucus_point(demo: DemoScript, variant: int) -> Vector2:
+	var area: DemoScript.NestMucusArea = demo._nest_mucus_areas.back()
+	area.variant_index = variant
+	# These checks exercise suction on a formed pool, after its growth animation.
+	var frames: int = area.FRAMES.get_frame_count(area._animation())
+	area._process(area.frame_seconds * float(frames))
+	area.set_process(false)
+	var point: Vector2 = (
+		area.home_position - area.home_position.normalized() * area.coverage_radius * 0.5
+	)
+	_check(
+		(
+			demo._planet.contains_surface_point(point, demo._planet.activity_edge_inset)
+			and area.contains_ground_point(point)
+		),
+		"The mucus fixture must lie on current walkable soil and opaque pool paint."
+	)
+	return point
+
+
 func _check_mucus_exit() -> void:
 	var demo: DemoScript = _make_demo()
 	_offscreen_pair(demo, NestState.Species.MUCUS)
 	var actor: PrototypeSlime = demo._slimes.back()
-	var home: Vector2 = demo.run.get_nest(actor.nest_id).position
-	var wet_position: Vector2 = home - home.normalized() * 20.0
 	var dry_position: Vector2 = demo._planet.get_nest_position(PI)
 	_check(not demo._is_on_ground_mucus(dry_position), "The exit fixture is outside all mucus.")
-	for base_seconds: float in demo.run.settings.pipe_capture_seconds:
-		demo.run.settings.pipe_capture_seconds[0] = base_seconds
-		for population: int in [1, 12, 36]:
-			actor.release_capture(0.0)
-			actor.capture_progress = 0.0
-			actor.detached_remaining = 0.0
-			actor.population_units = population
-			actor.position = wet_position
-			demo._capture_targets.assign([actor])
-			var seconds: float = base_seconds * (5.0 if population > 1 else 1.0)
-			demo._capture_at(seconds * 0.4, actor.get_capture_point(), true)
-			_check(
-				is_equal_approx(actor.peel_progress, 0.4) and actor.capture_progress == 0.0,
-				"Ordinary and giant mucus timing follows suction upgrades independently of population."
-			)
-			actor.position = dry_position
-			demo._capture_at(seconds * 0.1, actor.get_capture_point(), true)
-			_check(
-				actor.peel_progress == 0.0 and is_equal_approx(actor.capture_progress, 0.1),
-				"Leaving mucus discards the unfinished peel and starts body suction immediately."
-			)
-			actor.position = wet_position
-			demo._capture_at(seconds * 0.1, actor.get_capture_point(), true)
-			_check(
-				actor.peel_progress == 0.0 and is_equal_approx(actor.capture_progress, 0.2),
-				"Returning to mucus cannot add another peel during the same suction session."
-			)
+	for variant: int in range(3):
+		var wet_position: Vector2 = _prepare_nest_mucus_point(demo, variant)
+		for base_seconds: float in SETTINGS.pipe_capture_seconds:
+			demo.run.settings.pipe_capture_seconds[0] = base_seconds
+			for population: int in [1, 12, 36]:
+				actor.release_capture(0.0)
+				actor.capture_progress = 0.0
+				actor.detached_remaining = 0.0
+				actor.population_units = population
+				actor.position = wet_position
+				demo._capture_targets.assign([actor])
+				var seconds: float = base_seconds * (5.0 if population > 1 else 1.0)
+				demo._capture_at(seconds * 0.4, actor.get_capture_point(), true)
+				_check(
+					is_equal_approx(actor.peel_progress, 0.4) and actor.capture_progress == 0.0,
+					"Ordinary and giant mucus timing follows suction upgrades independently of population."
+				)
+				actor.position = dry_position
+				demo._capture_at(seconds * 0.1, actor.get_capture_point(), true)
+				_check(
+					actor.peel_progress == 0.0 and is_equal_approx(actor.capture_progress, 0.1),
+					"Leaving mucus discards the unfinished peel and starts body suction immediately."
+				)
+				actor.position = wet_position
+				demo._capture_at(seconds * 0.1, actor.get_capture_point(), true)
+				_check(
+					actor.peel_progress == 0.0 and is_equal_approx(actor.capture_progress, 0.2),
+					"Returning to mucus cannot add another peel during the same suction session."
+				)
 	get_tree().current_scene = null
 	demo.queue_free()
 	await get_tree().process_frame
@@ -766,8 +882,7 @@ func _check_population_settlement() -> void:
 	_check(run.candy == 0 and nest.alive_slimes == 12, "Rejected harvests preserve both totals.")
 	run.net_unlocked = true
 	_check(
-		run.collect_net_batch([1], [24], [12]) == 0
-		and run.candy == 0 and nest.alive_slimes == 12,
+		run.collect_net_batch([1], [24], [12]) == 0 and run.candy == 0 and nest.alive_slimes == 12,
 		"Net settlement rejects fused population even when called directly."
 	)
 	_check(run.collect_slime(1, -1, 12), "A weighted harvest releases all population units.")

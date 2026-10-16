@@ -15,7 +15,7 @@ func _run_checks() -> void:
 	assert(art._texture_bounds.is_empty() and art._texture_feet.is_empty())
 	var authored_width: float = art.maximum_footprint_width
 	assert(is_equal_approx(authored_width, 325.0))
-	assert(is_equal_approx(view.get_maximum_footprint_width(), authored_width * 1.15))
+	assert(is_equal_approx(view.get_maximum_footprint_width(), authored_width * 1.05))
 	view.art_settings = view.art_settings.duplicate() as ArtPresentationSettings
 	view.art_settings.all_scale = 0.8
 	view.art_settings.nest_scale = 1.2

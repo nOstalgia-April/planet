@@ -3,11 +3,13 @@ extends Node
 const Intro = preload("res://scenes/开头动画/开头动画.gd")
 const Menu = preload("res://scenes/主菜单/主菜单.gd")
 const Audio = preload("res://scripts/fmod_audio.gd")
+const MENU_PATH: String = "res://scenes/主菜单/主菜单.tscn"
 const INTRO_PATH: String = "res://scenes/开头动画/开头动画.tscn"
-const FRAME_COUNTS: Array[int] = [4, 6, 3, 3, 7, 13, 9, 14]
-const FRAME_RATES: Array[float] = [4.0, 3.0, 3.0, 4.0, 5.0, 4.5, 5.0, 5.0]
+const FRAME_COUNTS: Array[int] = [4, 4, 3, 3, 7, 11, 9]
+const FRAME_RATES: Array[float] = [4.0, 3.0, 3.0, 4.0, 5.0, 4.5, 5.0]
 
 var _tree: SceneTree
+var _capture_directory: String = ""
 
 
 func _ready() -> void:
@@ -17,33 +19,43 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	assert(ProjectSettings.get_setting("application/run/main_scene") == INTRO_PATH)
-	assert(_tree.change_scene_to_file(INTRO_PATH) == OK)
+	assert(ProjectSettings.get_setting("application/run/main_scene") == MENU_PATH)
+	assert(_tree.change_scene_to_file(MENU_PATH) == OK)
 	await _tree.scene_changed
-	var intro: Intro = _tree.current_scene as Intro
 	var audio: Audio = _tree.root.get_node("GameAudio") as Audio
+	var menu: Menu = _tree.current_scene as Menu
+	assert(menu != null)
+	assert(audio._music_path == "event:/Mx/Mx_MainMenu", "启动先显示主菜单并播放菜单音乐。")
+	(menu.get_node("画布/开始") as Button).pressed.emit()
+	await _tree.scene_changed
+	assert(_tree.current_scene.scene_file_path == INTRO_PATH)
+	var intro: Intro = _tree.current_scene as Intro
 	assert(intro != null)
 	var player: AnimationPlayer = intro.animation_player
 	var picture: TextureRect = intro.get_node("画面") as TextureRect
 	var clip: Animation = player.get_animation(&"开头")
 	assert(player.is_playing())
 	assert(clip.loop_mode == Animation.LOOP_NONE)
-	assert(clip.track_get_key_count(0) == 59)
-	assert(audio._music_path.is_empty(), "菜单音乐应在动画结束后开始。")
-	# The intro holds its first frame (speed 0) until the opening sound is playing.
-	# This check drives the animation by hand, so it releases that hold first.
-	intro.set_process(false)
-	player.speed_scale = 1.0
+	assert(clip.track_get_key_count(0) == 41)
+	assert(audio._music_path.is_empty(), "进入片头后菜单音乐应淡出。")
 	if "--natural" in OS.get_cmdline_user_args():
 		var started_at: int = Time.get_ticks_msec()
 		await _tree.scene_changed
-		assert(_tree.current_scene is Menu)
-		assert(audio._music_path == "event:/Mx/Mx_MainMenu")
+		assert(_tree.current_scene.scene_file_path == Menu.DEFAULT_START_SCENE)
+		_assert_gameplay_music(audio)
 		var duration: float = float(Time.get_ticks_msec() - started_at) / 1000.0
 		assert(absf(duration - clip.length) < 1.0, "正常播放必须按实际时长结束。")
-		print("PASS: natural opening playback entered the menu after %.2f seconds." % duration)
+		print(
+			(
+				"PASS: menu Start played the opening and entered gameplay after %.2f seconds."
+				% duration
+			)
+		)
 		_tree.quit()
 		return
+	# Drive the animation manually, while keeping gameplay's background load poll active.
+	intro._syncing_sound = false
+	player.speed_scale = 1.0
 	player.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	var elapsed: float = 0.0
 	var key: int = 0
@@ -64,26 +76,36 @@ func _run() -> void:
 	player.advance(clip.length - 0.01)
 	await _tree.process_frame
 	assert(_tree.current_scene == intro, "最后一帧播放结束前必须留在开头动画。")
-	assert(picture.texture.resource_path.ends_with("p8/014.png"))
+	assert(picture.texture.resource_path.ends_with("p7/009.png"))
 	player.advance(0.02)
 	await _tree.scene_changed
-	assert(_tree.current_scene is Menu, "播放结束必须自动进入原主菜单。")
-	assert(audio._music_path == "event:/Mx/Mx_MainMenu")
+	assert(_tree.current_scene.scene_file_path == Menu.DEFAULT_START_SCENE, "片头播放结束必须自动进入正式游戏。")
+	assert(not _tree.current_scene.has_node("TutorialIntro"), "正式游戏不挂载看板娘引导。")
+	assert(not _tree.paused and is_equal_approx(Engine.time_scale, 1.0))
+	assert(_tree.current_scene.is_processing() and _tree.current_scene.is_processing_input())
+	_assert_gameplay_music(audio)
 	if "--capture" in OS.get_cmdline_user_args():
-		await _capture("menu")
-	var menu: Menu = _tree.current_scene as Menu
-	var start_scene: String = menu.start_scene
-	(menu.get_node("画布/开始") as Button).pressed.emit()
-	await _tree.scene_changed
-	assert(_tree.current_scene.scene_file_path == start_scene)
+		await _capture("gameplay")
 	var game_menu: Control = _tree.current_scene.get_node("HUD/Interface/GameMenu")
 	game_menu.set_open(true)
 	game_menu.get_node("%MainMenu").pressed.emit()
 	game_menu.get_node("%ConfirmAction").pressed.emit()
 	await _tree.scene_changed
 	assert(_tree.current_scene is Menu, "返回菜单不能重播开头动画。")
-	print("PASS: startup, all 59 frames/rates, final-frame hold, menu music, Start and return.")
+	print(
+		"PASS: menu startup, Start, all 41 frames/rates, final-frame hold, gameplay music and return."
+	)
 	_tree.quit()
+
+
+func _assert_gameplay_music(audio: Audio) -> void:
+	assert(
+		(
+			audio._music_path == "event:/Mx/Mx_GamePlay"
+			or audio._pending_music_path == "event:/Mx/Mx_GamePlay"
+		),
+		"游戏音乐应紧接片头结束后的转场音效。"
+	)
 
 
 func _capture_intro(intro: Intro, player: AnimationPlayer) -> void:
@@ -96,12 +118,21 @@ func _capture_intro(intro: Intro, player: AnimationPlayer) -> void:
 		var picture: TextureRect = intro.get_node("画面") as TextureRect
 		assert(picture.size == intro.size)
 		assert(picture.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
-		for sample in [10.6389, 10.8389, 11.0389, 12.2389, 13.4389]:
+		for sample in [2.001, 2.334, 7.707, 7.929, 9.529]:
 			player.seek(sample, true)
 			await _capture("intro_%dx%d_%.1f" % [dimensions.x, dimensions.y, sample])
 
 
 func _capture(label: String) -> void:
+	if _capture_directory.is_empty():
+		_capture_directory = (
+			"res://artifacts/opening_animation_%d_%d"
+			% [int(Time.get_unix_time_from_system()), Time.get_ticks_usec()]
+		)
+		assert(DirAccess.make_dir_recursive_absolute(_capture_directory) == OK)
+		print("CAPTURE: " + _capture_directory)
+	await _tree.process_frame
+	await _tree.process_frame
 	await RenderingServer.frame_post_draw
-	var destination: String = "res://artifacts/opening_animation_part2_20261013_%s.png" % label
+	var destination: String = "%s/%s.png" % [_capture_directory, label]
 	assert(_tree.root.get_texture().get_image().save_png(destination) == OK)

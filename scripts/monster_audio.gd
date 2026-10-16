@@ -174,8 +174,7 @@ func _schedule_spawn_bursts() -> void:
 
 func _play_due_triggers() -> void:
 	while (
-		not _recent_triggers.is_empty()
-		and _clock - _recent_triggers[0] >= trigger_window_seconds
+		not _recent_triggers.is_empty() and _clock - _recent_triggers[0] >= trigger_window_seconds
 	):
 		_recent_triggers.pop_front()
 	var waiting: Array[Dictionary] = []
@@ -241,7 +240,9 @@ func _queue_candy(monsters: int, candy: int, combo: float, delay: float = 0.0) -
 		time += gap
 		gap = maxf(candy_min_gap_seconds, gap * candy_gap_decay)
 		volume *= candy_volume_decay
-	_scheduled_candy.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["time"] < b["time"])
+	_scheduled_candy.sort_custom(
+		func(a: Dictionary, b: Dictionary) -> bool: return a["time"] < b["time"]
+	)
 	_play_due_candy()
 
 

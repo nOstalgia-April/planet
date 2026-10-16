@@ -1,6 +1,7 @@
 extends Node2D
 
 signal flower_appeared(nest_id: int, species: int)
+signal vacuum_capture_completed(nest_id: int, candy_gained: int, feedback: CollectionEffect)
 
 const PipeCursor = preload("res://scripts/pipe_cursor.gd")
 const PlanetViewController = preload("res://scripts/planet_view_controller.gd")
@@ -9,6 +10,7 @@ const MucusField = preload("res://scripts/mucus_field.gd")
 const DrillMonster = preload("res://scripts/drill_monster.gd")
 const DrillTreasure = preload("res://scripts/drill_treasure.gd")
 const NestMucusArea = preload("res://scripts/nest_mucus_area.gd")
+const NestUpgradeButton = preload("res://scripts/ui/nest_upgrade_button.gd")
 const VacuumAudio = preload("res://scripts/vacuum_audio.gd")
 const GiantFusion = preload("res://scripts/giant_slime_fusion.gd")
 const GiantHarvestEffect = preload("res://scripts/giant_harvest_effect.gd")
@@ -16,6 +18,7 @@ const MonsterAudio = preload("res://scripts/monster_audio.gd")
 const PlanetAudio = preload("res://scripts/planet_audio.gd")
 const MonsterDepth = preload("res://scripts/monster_depth.gd")
 const ViewGestureFilter = preload("res://scripts/view_gesture_filter.gd")
+const EndingCredits = preload("res://scripts/ui/ending_credits.gd")
 
 # Music stages drive the global FMOD parameter GameStage (0 / 1 / 2); its Seek
 # modulator in FMOD turns each step into a crossfade between the music layers.
@@ -102,14 +105,9 @@ var _view_gestures: ViewGestureFilter = ViewGestureFilter.new()
 @onready var _passive_label: Label = %PassiveLabel
 @onready var _quick_pipe_button: Button = $HUD/Interface/ToolDock/Pipe/Button
 @onready var _quick_net_button: Button = $HUD/Interface/ToolDock/Net/Button
-@onready var _nest_title_label: Label = %NestTitleLabel
-@onready var _nest_level_label: Label = %NestLevelLabel
-@onready var _nest_benefit_label: Label = %NestBenefitLabel
-@onready var _nest_button: Button = %NestButton
+@onready var _nest_button: NestUpgradeButton = %NestButton
 @onready var _status_label: Label = %StatusLabel
-@onready var _completion: Control = %Completion
-@onready var _completion_title: Label = %CompletionTitle
-@onready var _completion_detail: Label = %CompletionDetail
+@onready var _completion: EndingCredits = %Completion
 @onready var _collect_sound: AudioStreamPlayer = $Audio/CollectSound
 @onready var _upgrade_sound: AudioStreamPlayer = $Audio/UpgradeSound
 @onready var _tame_sound: AudioStreamPlayer = $Audio/TameSound
@@ -165,8 +163,9 @@ func _ready() -> void:
 	_layout.view_switch_requested.connect(_toggle_view_shortcut)
 	_view.view_changed.connect(_sync_view_presentation)
 	_view.projection_changed.connect(_sync_view_projection)
-	%ReplayButton.pressed.connect(restart_run)
-	%CloseVictoryButton.pressed.connect(_close_victory)
+	_completion.replay_requested.connect(restart_run)
+	_completion.close_requested.connect(_close_victory)
+	_completion.menu_requested.connect(_layout.game_menu.menu_requested.emit)
 	_overview.configure(_planet, _world)
 	RenderingServer.set_default_clear_color(Color("e9e8df"))
 	get_viewport().size_changed.connect(_apply_layout)
@@ -729,7 +728,7 @@ func restart_run() -> void:
 	_net.hide()
 	_pipe.show()
 	_spawn_directions.clear()
-	_completion.hide()
+	_completion.reset()
 	_status_label.text = ""
 	_status_label.modulate.a = 1.0
 	_prepare_nest_sites()
@@ -766,6 +765,22 @@ func _update_music_stage() -> void:
 func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 	var radius: float = run.get_pipe_radius()
 	var radius_squared: float = radius * radius
+	var base_seconds: float = run.get_pipe_capture_seconds()
+	if not _capture_targets.is_empty():
+		var previous: PrototypeSlime = _capture_targets[0]
+		if (
+			is_instance_valid(previous)
+			and previous.can_finish_capture_on_release()
+			and (not active or previous.get_capture_distance_squared(target) > radius_squared)
+		):
+			var previous_progress: float = previous.capture_progress
+			previous.apply_capture(previous.get_capture_seconds(base_seconds), base_seconds, target)
+			_update_giant_harvest(previous, previous_progress)
+			_stop_giant_harvest()
+			_vacuum_audio.update_loading(null, 0.0)
+			_vacuum_audio.update_peel(null, 0.0)
+			_finish_capture(previous)
+			return
 	var nearest: PrototypeSlime = null
 	var nearest_distance: float = radius_squared
 	if active and not _capture_targets.is_empty():
@@ -805,7 +820,6 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 	_capture_targets.append(nearest)
 	nearest.on_mucus = _is_on_ground_mucus(nearest.position)
 	var capture_delta: float = delta
-	var base_seconds: float = run.get_pipe_capture_seconds()
 	var peel_seconds: float = nearest.get_capture_seconds(base_seconds)
 	if nearest.is_anchored():
 		capture_delta = maxf(0.0, delta - (1.0 - nearest.peel_progress) * peel_seconds)
@@ -832,18 +846,17 @@ func _capture_at(delta: float, target: Vector2, active: bool) -> void:
 
 
 func _finish_capture(nearest: PrototypeSlime) -> void:
+	var nest_id: int = nearest.nest_id
+	var is_vacuum_capture: bool = nearest.species != PrototypeSlime.Species.DRILL
 	var before: int = run.candy
 	var candy_combo: float = _combo_ladder_progress()
 	_capture_combo_bonus = 0
 	var accepted: bool = run.collect_slime(
-		nearest.nest_id,
-		nearest.reward,
-		nearest.population_units,
-		nearest.high_value,
-		nearest.body_color
+		nest_id, nearest.reward, nearest.population_units, nearest.high_value, nearest.body_color
 	)
 	assert(accepted, "Collected monster must belong to its source population.")
 	var candy_gained: int = run.candy - before
+	var feedback: CollectionEffect = null
 	if nearest.high_value:
 		_monster_audio.golden_collected()
 	if nearest.species == PrototypeSlime.Species.DRILL:
@@ -851,7 +864,9 @@ func _finish_capture(nearest: PrototypeSlime) -> void:
 	else:
 		_pipe.show_capture_skin(nearest.species)
 		_pipe.play_capture()
-		_play_collection_reward(nearest.reward, nearest.get_capture_point(), nearest.body_color)
+		feedback = _play_collection_reward(
+			nearest.reward, nearest.get_capture_point(), nearest.body_color
+		)
 	_pipe.set_capture_engaged(false)
 	_capture_targets.clear()
 	_slimes.erase(nearest)
@@ -868,6 +883,8 @@ func _finish_capture(nearest: PrototypeSlime) -> void:
 	else:
 		_collect_sound.pitch_scale = randf_range(0.92, 1.12)
 		_collect_sound.play()
+	if accepted and is_vacuum_capture:
+		vacuum_capture_completed.emit(nest_id, candy_gained, feedback)
 
 
 func _capture_seconds_for(slime: PrototypeSlime) -> float:
@@ -1009,9 +1026,9 @@ func _combo_ladder_progress() -> float:
 
 func _play_collection_reward(
 	reward: int, source_position: Vector2, color: Color = Color("d7e8bb")
-) -> void:
+) -> CollectionEffect:
 	if _view.is_overview():
-		return
+		return null
 	var effect: CollectionEffect = collection_scene.instantiate() as CollectionEffect
 	effect.color = color
 	_effects.add_child(effect)
@@ -1022,6 +1039,7 @@ func _play_collection_reward(
 		_candy_label.get_global_transform_with_canvas() * (_candy_label.size * 0.5)
 	)
 	effect.play(origin, destination, reward)
+	return effect
 
 
 func _update_giant_harvest(slime: PrototypeSlime, previous_progress: float) -> void:
@@ -1308,7 +1326,7 @@ func _on_flower_production_released(nest_id: int, amount: int) -> void:
 func _select_nest(nest_id: int) -> void:
 	selected_nest_id = nest_id
 	_refresh_hud()
-	_layout.show_nest_details(_nest_views[nest_id - 1].get_hover_rect())
+	_layout.show_nest_details(_nest_views[nest_id - 1].get_hover_polygon())
 
 
 func _update_nest_hover(viewport_position: Vector2) -> void:
@@ -1322,9 +1340,10 @@ func _update_nest_hover(viewport_position: Vector2) -> void:
 	):
 		_clear_nest_selection()
 		return
-	if selected_nest_id >= 0 and _layout.is_over_nest_details(viewport_position):
-		_layout.show_nest_details(_nest_views[selected_nest_id - 1].get_hover_rect())
-		return
+	if selected_nest_id >= 0:
+		_layout.show_nest_details(_nest_views[selected_nest_id - 1].get_hover_polygon())
+		if _layout.is_over_nest_details(viewport_position):
+			return
 	if _layout.is_over_ui(viewport_position):
 		_clear_nest_selection()
 		return
@@ -1333,12 +1352,7 @@ func _update_nest_hover(viewport_position: Vector2) -> void:
 			if selected_nest_id != view.nest_id:
 				_select_nest(view.nest_id)
 			else:
-				_layout.show_nest_details(view.get_hover_rect())
-			return
-	if selected_nest_id >= 0:
-		var selected_view: NestView = _nest_views[selected_nest_id - 1]
-		if selected_view.get_hover_rect().has_point(viewport_position):
-			_layout.show_nest_details(selected_view.get_hover_rect())
+				_layout.show_nest_details(view.get_hover_polygon())
 			return
 	_clear_nest_selection()
 
@@ -1375,31 +1389,14 @@ func _refresh_hud() -> void:
 	_layout.refresh_progression(run)
 	_pipe.combo_meter.refresh()
 	var nest: NestState = run.get_nest(selected_nest_id)
-	if nest == null:
-		_nest_title_label.text = "巢穴"
-		_nest_level_label.text = "悬停巢穴查看升级"
-		_nest_benefit_label.text = ""
-		_nest_button.text = "驯化"
-		_nest_button.disabled = true
-		return
-	_nest_title_label.text = ("%s巢穴 %02d" % [["史莱姆", "黏液怪", "钻头怪"][nest.species], nest.nest_id])
-	if nest.is_tamed:
-		_nest_level_label.text = "完全治理"
-		_nest_benefit_label.text = "停止产怪 · 自动产糖"
-		_nest_button.text = "自动产糖中"
-		_nest_button.disabled = true
-		return
-	var stage_names: Array[String] = ["野生", "培育中", "强化培育"]
-	_nest_level_label.text = stage_names[nest.level]
-	var next_level: int = nest.level + 1
-	if next_level == run.settings.nest_upgrade_costs.size():
-		_nest_benefit_label.text = "下一阶段：完全治理\n停止产怪 · 自动产糖"
-	else:
-		_nest_benefit_label.text = "下一阶段：%s" % stage_names[next_level]
-	var nest_cost: int = run.get_nest_upgrade_cost(selected_nest_id)
-	var requirement: String = run.get_nest_upgrade_requirement(selected_nest_id)
-	_nest_button.text = "升级 · %d 糖果" % nest_cost if requirement.is_empty() else requirement
-	_nest_button.disabled = run.candy < nest_cost or not requirement.is_empty()
+	_nest_button.refresh(
+		nest,
+		run.get_nest_upgrade_cost(selected_nest_id),
+		run.get_nest_upgrade_requirement(selected_nest_id),
+		run.candy
+	)
+	if not _nest_button.visible:
+		_layout.hide_nest_details()
 
 
 func _register_purchase_sounds() -> void:
@@ -1493,14 +1490,15 @@ func _on_goal_completed() -> void:
 
 
 func _show_completion() -> void:
+	if _completion.visible:
+		return
 	_layout.close_panels()
+	_clear_nest_selection()
+	_cancel_view_drag()
 	if not _planet_audio.monsters_cleared():
 		_finish_sound.play()
-	_completion_title.text = "星球清扫完成"
-	_completion_detail.text = "场上所有怪物已清除。"
-	_completion.show()
-	%ReplayButton.grab_focus()
+	_completion.play()
 
 
 func _close_victory() -> void:
-	_completion.hide()
+	_completion.reset()

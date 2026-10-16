@@ -4,12 +4,12 @@ extends Node2D
 
 const SurfaceProjection = preload("res://scripts/surface_projection.gd")
 const SlimeArt = preload("res://scripts/slime_art.gd")
-const POPULATION_FONT: Font = preload("res://fonts/game_font.tres")
 # P(-z < N(0, 1) < z) = 0.75.
 const NORMAL_CENTRAL_75_Z: float = 1.15034938
 
 @export var slime_art: SlimeArt
 @export var ground_shadow: Node2D
+@export var mucus_ground_shadow: Node2D
 @export_range(0.1, 1.0, 0.01) var slime_art_scale: float = 0.36
 @export var art_settings: ArtPresentationSettings = preload("res://resources/art_presentation.tres")
 
@@ -33,6 +33,7 @@ var on_mucus: bool = false
 
 signal left_screen(slime: PrototypeSlime)
 signal landed(slime: PrototypeSlime)
+signal launch_landed(slime: PrototypeSlime)
 
 @export_range(8.0, 30.0, 0.5) var body_size: float = 15.0:
 	set(value):
@@ -125,21 +126,27 @@ func _sync_slime_art() -> void:
 
 
 func _sync_ground_shadow() -> void:
-	if ground_shadow == null:
+	if ground_shadow != null and species != Species.SLIME:
+		ground_shadow.hide()
+	if mucus_ground_shadow != null and species != Species.MUCUS:
+		mucus_ground_shadow.hide()
+	var active_shadow: Node2D = mucus_ground_shadow if species == Species.MUCUS else ground_shadow
+	if active_shadow == null:
 		return
-	ground_shadow.visible = (
-		species == Species.SLIME
+	active_shadow.visible = (
+		species != Species.DRILL
 		and not _flying
 		and not _suction_active
 		and (population_units > 1 or capture_progress <= 0.0)
 	)
-	if not ground_shadow.visible:
+	if not active_shadow.visible:
 		return
 	var lift: float = sin(clampf(_launch_elapsed / launch_seconds, 0.0, 1.0) * PI)
-	var multiplier: float = slime_art_scale * body_size / 15.0 * get_presentation_scale()
+	var normal_size: float = 18.0 if species == Species.MUCUS else 15.0
+	var multiplier: float = slime_art_scale * body_size / normal_size * get_presentation_scale()
 	if population_units > 1:
 		multiplier *= lerpf(1.0, 0.2, capture_progress)
-	ground_shadow.transform = (
+	active_shadow.transform = (
 		SurfaceProjection.get_visual_compensation(self)
 		* Transform2D(
 			0.0,
@@ -148,7 +155,7 @@ func _sync_ground_shadow() -> void:
 			Vector2(0.0, get_presentation_sink())
 		)
 	)
-	ground_shadow.modulate.a = lerpf(1.0, 0.65, maxf(lift, peel_progress))
+	active_shadow.modulate.a = lerpf(1.0, 0.65, maxf(lift, peel_progress))
 
 
 func get_source_texture() -> Texture2D:
@@ -423,11 +430,7 @@ func get_capture_distance_squared(target: Vector2) -> float:
 func _get_body_center_offset() -> Vector2:
 	if slime_art != null:
 		return _get_art_transform() * slime_art.get_art_bounds().get_center()
-	var height_scale: float = (
-		lerpf(1.0, 0.2, capture_progress)
-		if population_units > 1
-		else 1.0
-	)
+	var height_scale: float = lerpf(1.0, 0.2, capture_progress) if population_units > 1 else 1.0
 	return (
 		SurfaceProjection.get_visual_compensation(self)
 		* Vector2(
@@ -502,6 +505,15 @@ func get_capture_seconds(base_seconds: float) -> float:
 	return base_seconds * (giant_capture_multiplier if population_units > 1 else 1.0)
 
 
+func can_finish_capture_on_release() -> bool:
+	return (
+		population_units > 1
+		and can_capture()
+		and capture_progress > 0.0
+		and giant_body_multiplier * lerpf(1.0, 0.2, capture_progress) <= 1.0 + 0.00001
+	)
+
+
 func apply_capture(delta: float, capture_seconds: float, target: Vector2) -> bool:
 	if consumed:
 		return false
@@ -546,6 +558,8 @@ func _advance_launch(delta: float) -> void:
 	var progress: float = _launch_elapsed / launch_seconds
 	var travel_progress: float = 1.0 - (1.0 - progress) * (1.0 - progress)
 	position = _project_to_surface(_launch_start.lerp(_launch_end, travel_progress))
+	if _launch_elapsed >= launch_seconds:
+		launch_landed.emit(self)
 
 
 func _advance_fall(delta: float) -> void:
@@ -670,7 +684,7 @@ func _draw() -> void:
 	_sync_slime_art()
 	var compensation: Transform2D = SurfaceProjection.get_visual_compensation(self)
 	var shrink: float = lerpf(1.0, 0.2, capture_progress)
-	if not _flying and species != Species.SLIME:
+	if not _flying and species == Species.DRILL:
 		draw_set_transform_matrix(
 			(
 				compensation
@@ -705,25 +719,3 @@ func _draw() -> void:
 			1.5,
 			true
 		)
-	_draw_population_marker()
-
-
-func _draw_population_marker() -> void:
-	if population_units <= 1:
-		return
-	draw_set_transform_matrix(Transform2D.IDENTITY)
-	var art_bounds: Rect2 = _get_art_transform() * slime_art.get_art_bounds()
-	var caption: String = "×%d" % population_units
-	var font_size: int = maxi(8, roundi(9.0 * get_presentation_scale()))
-	var width: float = (
-		POPULATION_FONT.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
-	)
-	var origin: Vector2 = Vector2(
-		art_bounds.get_center().x - width * 0.5, art_bounds.position.y - 3.0
-	)
-	draw_string_outline(
-		POPULATION_FONT, origin, caption, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 2, outline_color
-	)
-	draw_string(
-		POPULATION_FONT, origin, caption, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color("fff6df")
-	)

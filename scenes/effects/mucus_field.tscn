@@ -1,14 +1,19 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/mucus_field.gd" id="1"]
-[ext_resource type="Texture2D" path="res://assets/ecology/mucus_cutout/008.png" id="2"]
-[ext_resource type="Shader" path="res://shaders/mucus_trail.gdshader" id="3"]
+[ext_resource type="Texture2D" path="res://assets/ecology/mucus_trail/blue_strip.png" id="2"]
+[ext_resource type="Shader" path="res://shaders/mucus_trail_blue_brush.gdshader" id="3"]
+[ext_resource type="Texture2D" path="res://assets/ecology/mucus_trail/blue_tail.png" id="4"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_trail"]
 shader = ExtResource("3")
+shader_parameter/tail_texture = ExtResource("4")
 
 [node name="MucusTrail" type="Node2D"]
 script = ExtResource("1")
+source_region = Rect2i(280, 641, 1800, 367)
+tail_texture = ExtResource("4")
+tail_source_region = Rect2i(859, 841, 936, 175)
 
 [node name="Outline" type="Polygon2D" parent="."]
 material = SubResource("ShaderMaterial_trail")

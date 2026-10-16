@@ -3,7 +3,9 @@ extends Control
 const SharedCache = preload("res://scripts/art_resource_cache.gd")
 
 const DEFAULT_START_SCENE: String = "res://features/场景预览/近景游玩预览.tscn"
+const OPENING_SCENE: String = "res://scenes/开头动画/开头动画.tscn"
 
+# A custom entry is a direct preview/check target; the normal game always plays its opening.
 @export_file("*.tscn") var start_scene: String = DEFAULT_START_SCENE
 
 # Each scene owns one request reference; ResourceLoader shares the actual IO.
@@ -48,17 +50,23 @@ func _start() -> void:
 
 
 func _prepare_game() -> void:
-	if prepare_scene(start_scene) != OK:
+	var entry_scene: String = _entry_scene_path()
+	if prepare_scene(entry_scene) != OK:
 		_loading_failed()
 		return
-	_loading_scene = start_scene
+	_loading_scene = entry_scene
 	set_process(true)
+
+
+func _entry_scene_path() -> String:
+	return OPENING_SCENE if start_scene == DEFAULT_START_SCENE else start_scene
 
 
 static func prepare_scene(path: String = DEFAULT_START_SCENE) -> Error:
 	# Godot 4.7.2 leaks analyzer temporaries when compiling this dependency
 	# graph on loader workers. Prepare scripts/shaders here; texture IO stays async.
 	_warm_resources(path, {})
+	# Keep the request asynchronous, but avoid parallel subresource compilation.
 	return ResourceLoader.load_threaded_request(path, "PackedScene")
 
 
@@ -116,9 +124,10 @@ func _process(_delta: float) -> void:
 
 
 func _enter_game() -> void:
-	GameAudio.play_transition(
-		"event:/AnimationSystem/GameStart_Transition", "event:/Mx/Mx_GamePlay"
-	)
+	if start_scene != DEFAULT_START_SCENE:
+		GameAudio.play_transition(
+			"event:/AnimationSystem/GameStart_Transition", "event:/Mx/Mx_GamePlay"
+		)
 	var result: Error = get_tree().change_scene_to_packed(_prepared_scene)
 	if result != OK:
 		_loading_failed()
@@ -133,7 +142,7 @@ func _loading_failed() -> void:
 	_start_button.text = "重试"
 	_preview_button.disabled = false
 	GameAudio.play_music("event:/Mx/Mx_MainMenu")
-	push_error("无法准备游戏场景：" + start_scene)
+	push_error("无法准备开始场景：" + _entry_scene_path())
 
 
 func _open_scene(path: String) -> void:

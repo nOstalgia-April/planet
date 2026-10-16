@@ -1,0 +1,505 @@
+[gd_scene load_steps=31 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/dock_cooldown.tscn" id="cooldown"]
+
+
+[ext_resource type="Texture2D" path="res://assets/ui/candy_coin.png" id="coin"]
+[ext_resource type="Material" path="res://resources/candy_grain_outline.tres" id="coin_outline"]
+
+[ext_resource type="Script" path="res://scripts/ui/bottom_dock_supplied_art.gd" id="script"]
+[ext_resource type="Shader" path="res://shaders/dock_supplied_art.gdshader" id="shader"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock_20261016/body.tres" id="pipe_slot"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock_20261016/body.tres" id="net_slot"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock_20261016/technology.tres" id="technology"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock_20261016/upgrade.tres" id="upgrade"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock/vacuum.tres" id="vacuum"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock/badge.tres" id="badge"]
+[ext_resource type="Texture2D" path="res://assets/ui/technology/net.tres" id="net"]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/dock_selection.tscn" id="selection"]
+
+[ext_resource type="Shader" path="res://shaders/dock_supplied_art.gdshader" id="backing_shader"]
+
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock_20261016/frame.tres" id="art_frame"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock_20261016/shortcut.tres" id="art_shortcut"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock_20261016/shortcut_active.tres" id="art_shortcut_active"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock_20261016/arrow.tres" id="art_arrow"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock_20261016/technology_active.tres" id="art_technology_active"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock_20261016/planet.tres" id="art_planet"]
+[ext_resource type="Texture2D" path="res://assets/ui/bottom_dock_20261016/planet_active.tres" id="art_planet_active"]
+[ext_resource type="Shader" path="res://shaders/dock_supplied_selection.gdshader" id="art_selection"]
+
+[sub_resource type="ShaderMaterial" id="backing_material"]
+shader = ExtResource("backing_shader")
+
+[sub_resource type="ShaderMaterial" id="material"]
+shader = ExtResource("shader")
+
+[sub_resource type="ShaderMaterial" id="shortcut_material"]
+shader = ExtResource("backing_shader")
+shader_parameter/has_active_texture = true
+shader_parameter/active_texture = ExtResource("art_shortcut_active")
+
+[sub_resource type="ShaderMaterial" id="technology_material"]
+shader = ExtResource("backing_shader")
+shader_parameter/has_active_texture = true
+shader_parameter/active_texture = ExtResource("art_technology_active")
+
+[sub_resource type="ShaderMaterial" id="planet_material"]
+shader = ExtResource("backing_shader")
+shader_parameter/has_active_texture = true
+shader_parameter/active_texture = ExtResource("art_planet_active")
+
+[sub_resource type="ShaderMaterial" id="selection_material"]
+shader = ExtResource("art_selection")
+
+[sub_resource type="StyleBoxFlat" id="tooltip_panel"]
+bg_color = Color(0.04, 0.035, 0.045, 0.98)
+content_margin_left = 12.0
+content_margin_top = 9.0
+content_margin_right = 12.0
+content_margin_bottom = 9.0
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+
+[sub_resource type="Theme" id="dock_theme"]
+TooltipPanel/styles/panel = SubResource("tooltip_panel")
+TooltipLabel/colors/font_color = Color(1, 1, 1, 1)
+TooltipLabel/font_sizes/font_size = 14
+
+[node name="ToolDock" type="Control"]
+process_mode = 1
+layout_mode = 0
+mouse_filter = 2
+script = ExtResource("script")
+theme = SubResource("dock_theme")
+
+[node name="Pipe" type="Control" parent="."]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 190.0
+offset_bottom = 76.0
+mouse_filter = 2
+
+[node name="Button" type="Button" parent="Pipe"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 190.0
+offset_bottom = 76.0
+toggle_mode = true
+
+[node name="Frame" type="TextureRect" parent="Pipe/Button"]
+layout_mode = 0
+offset_top = 14.0
+offset_right = 166.0
+offset_bottom = 76.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("art_frame")
+
+[node name="Selected" parent="Pipe/Button" instance=ExtResource("selection")]
+layout_mode = 0
+texture = ExtResource("art_frame")
+selected = false
+offset_left = 0.0
+offset_top = 14.0
+offset_right = 166.0
+offset_bottom = 76.0
+material = SubResource("selection_material")
+
+[node name="Backing" type="TextureRect" parent="Pipe/Button"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 7.0
+offset_right = 174.0
+offset_bottom = 69.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("pipe_slot")
+material = SubResource("backing_material")
+
+[node name="Icon" type="TextureRect" parent="Pipe/Button"]
+layout_mode = 0
+offset_left = 22.0
+offset_top = 22.0
+offset_right = 52.0
+offset_bottom = 54.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("vacuum")
+stretch_mode = 5
+
+[node name="Detail" type="Label" parent="Pipe/Button"]
+layout_mode = 0
+offset_left = 64.0
+offset_top = 28.0
+offset_right = 141.0
+offset_bottom = 48.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1,1,1,1)
+theme_override_font_sizes/font_size = 14
+
+[node name="Status" type="Label" parent="Pipe/Button"]
+visible = false
+layout_mode = 0
+offset_left = 64.0
+offset_top = 40.0
+offset_right = 141.0
+offset_bottom = 58.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+
+[node name="Shortcut" type="Button" parent="Pipe"]
+layout_mode = 0
+focus_mode = 0
+mouse_default_cursor_shape = 2
+offset_left = 130.0
+offset_top = 9.0
+offset_right = 194.0
+offset_bottom = 71.0
+
+[node name="Backing" type="TextureRect" parent="Pipe/Shortcut"]
+layout_mode = 0
+offset_right = 64.0
+offset_bottom = 62.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("art_shortcut")
+material = SubResource("shortcut_material")
+
+[node name="Arrow" type="TextureRect" parent="Pipe/Shortcut"]
+visible = false
+layout_mode = 0
+offset_left = 20.0
+offset_top = 23.4
+offset_right = 37.1
+offset_bottom = 41.4
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("art_arrow")
+
+[node name="Key" type="Label" parent="Pipe/Shortcut"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 64.0
+offset_bottom = 62.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 28
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Reveal" type="Control" parent="Pipe"]
+z_index = -1
+layout_mode = 0
+offset_left = 0.0
+offset_top = -48.0
+offset_right = 166.0
+offset_bottom = 76.0
+mouse_filter = 2
+clip_contents = true
+
+[node name="Purchase" type="Button" parent="Pipe/Reveal"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 166.0
+offset_bottom = 48.0
+focus_mode = 0
+
+[node name="Backing" type="TextureRect" parent="Pipe/Reveal/Purchase"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 166.0
+offset_bottom = 125.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("upgrade")
+material = SubResource("material")
+
+[node name="Caption" type="HBoxContainer" parent="Pipe/Reveal/Purchase"]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 8.0
+offset_right = 162.0
+offset_bottom = 38.0
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="Level" type="Label" parent="Pipe/Reveal/Purchase/Caption"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "2 级 ·"
+
+[node name="Coin" type="TextureRect" parent="Pipe/Reveal/Purchase/Caption"]
+texture_filter = 4
+material = ExtResource("coin_outline")
+custom_minimum_size = Vector2(19, 19)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("coin")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Cost" type="Label" parent="Pipe/Reveal/Purchase/Caption"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "10"
+
+[node name="Net" type="Control" parent="."]
+layout_mode = 0
+offset_left = 410.0
+offset_top = 0.0
+offset_right = 600.0
+offset_bottom = 76.0
+mouse_filter = 2
+
+[node name="Button" type="Button" parent="Net"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 190.0
+offset_bottom = 76.0
+toggle_mode = true
+
+[node name="Frame" type="TextureRect" parent="Net/Button"]
+layout_mode = 0
+offset_top = 14.0
+offset_right = 166.0
+offset_bottom = 76.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("art_frame")
+
+[node name="Selected" parent="Net/Button" instance=ExtResource("selection")]
+layout_mode = 0
+texture = ExtResource("art_frame")
+selected = false
+offset_left = 0.0
+offset_top = 14.0
+offset_right = 166.0
+offset_bottom = 76.0
+material = SubResource("selection_material")
+
+[node name="Backing" type="TextureRect" parent="Net/Button"]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 7.0
+offset_right = 174.0
+offset_bottom = 69.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("net_slot")
+material = SubResource("backing_material")
+
+[node name="Cooldown" parent="Net/Button" instance=ExtResource("cooldown")]
+offset_left = 8.0
+offset_top = 7.0
+offset_right = 174.0
+offset_bottom = 69.0
+texture = ExtResource("net_slot")
+
+[node name="Icon" type="TextureRect" parent="Net/Button"]
+layout_mode = 0
+offset_left = 22.0
+offset_top = 22.0
+offset_right = 52.0
+offset_bottom = 54.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("net")
+stretch_mode = 5
+
+[node name="Detail" type="Label" parent="Net/Button"]
+layout_mode = 0
+offset_left = 64.0
+offset_top = 28.0
+offset_right = 141.0
+offset_bottom = 48.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1,1,1,1)
+theme_override_font_sizes/font_size = 14
+
+[node name="Status" type="Label" parent="Net/Button"]
+visible = false
+layout_mode = 0
+offset_left = 64.0
+offset_top = 40.0
+offset_right = 141.0
+offset_bottom = 58.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+
+[node name="Shortcut" type="Button" parent="Net"]
+layout_mode = 0
+focus_mode = 0
+mouse_default_cursor_shape = 2
+offset_left = 130.0
+offset_top = 9.0
+offset_right = 194.0
+offset_bottom = 71.0
+
+[node name="Backing" type="TextureRect" parent="Net/Shortcut"]
+layout_mode = 0
+offset_right = 64.0
+offset_bottom = 62.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("art_shortcut")
+material = SubResource("shortcut_material")
+
+[node name="Arrow" type="TextureRect" parent="Net/Shortcut"]
+visible = false
+layout_mode = 0
+offset_left = 20.0
+offset_top = 23.4
+offset_right = 37.1
+offset_bottom = 41.4
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("art_arrow")
+
+[node name="Key" type="Label" parent="Net/Shortcut"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 64.0
+offset_bottom = 62.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 28
+text = "2"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Reveal" type="Control" parent="Net"]
+z_index = -1
+layout_mode = 0
+offset_left = 0.0
+offset_top = -48.0
+offset_right = 166.0
+offset_bottom = 76.0
+mouse_filter = 2
+clip_contents = true
+
+[node name="Purchase" type="Button" parent="Net/Reveal"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 166.0
+offset_bottom = 48.0
+focus_mode = 0
+
+[node name="Backing" type="TextureRect" parent="Net/Reveal/Purchase"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 166.0
+offset_bottom = 125.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("upgrade")
+material = SubResource("material")
+
+[node name="Caption" type="HBoxContainer" parent="Net/Reveal/Purchase"]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 8.0
+offset_right = 162.0
+offset_bottom = 38.0
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="Level" type="Label" parent="Net/Reveal/Purchase/Caption"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "2 级 ·"
+
+[node name="Coin" type="TextureRect" parent="Net/Reveal/Purchase/Caption"]
+texture_filter = 4
+material = ExtResource("coin_outline")
+custom_minimum_size = Vector2(19, 19)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("coin")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Cost" type="Label" parent="Net/Reveal/Purchase/Caption"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "10"
+
+[node name="Technology" type="Button" parent="."]
+layout_mode = 0
+offset_left = 213.0
+offset_top = 14.0
+offset_right = 387.0
+offset_bottom = 76.0
+tooltip_text = "科技树"
+
+[node name="Backing" type="TextureRect" parent="Technology"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 174.0
+offset_bottom = 62.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("technology")
+material = SubResource("technology_material")
+
+[node name="Caption" type="Label" parent="Technology"]
+layout_mode = 0
+offset_right = 164.0
+offset_bottom = 62.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 24
+text = "科技"
+horizontal_alignment = 1
+vertical_alignment = 1
+offset_left = 73.0
+offset_top = 0.0
+modulate = Color(0, 0, 0, 1)
+
+[node name="Planet" type="TextureRect" parent="Technology"]
+layout_mode = 0
+offset_left = 25.0
+offset_top = 12.0
+offset_right = 77.0
+offset_bottom = 47.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("art_planet")
+material = SubResource("planet_material")
+
+[node name="Badge" type="TextureRect" parent="Technology"]
+layout_mode = 0
+offset_left = 158.0
+offset_top = -10.0
+offset_right = 181.0
+offset_bottom = 14.0
+mouse_filter = 2
+expand_mode = 1
+texture = ExtResource("badge")
+visible = false

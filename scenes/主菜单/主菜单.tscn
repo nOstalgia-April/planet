@@ -136,6 +136,12 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 text = "3. 第三阶段入场与说话"
 
+[node name="看板娘完整流程" type="Button" parent="画布/预览选择/列表"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "4. 看板娘完整流程（Esc 返回）"
+
 [connection signal="pressed" from="画布/开始" to="." method="_start"]
 
 [connection signal="pressed" from="画布/预览" to="." method="_toggle_previews"]
@@ -147,3 +153,5 @@ text = "3. 第三阶段入场与说话"
 [connection signal="pressed" from="画布/预览选择/列表/第二阶段说话" to="." method="_open_scene" binds=["res://features/mascot_audio_preview/phase_two_audio_preview.tscn"]]
 
 [connection signal="pressed" from="画布/预览选择/列表/第三阶段说话" to="." method="_open_scene" binds=["res://features/mascot_audio_preview/phase_three_audio_preview.tscn"]]
+
+[connection signal="pressed" from="画布/预览选择/列表/看板娘完整流程" to="." method="_open_scene" binds=["res://features/tutorial_intro/full_flow_preview.tscn"]]

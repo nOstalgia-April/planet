@@ -9,17 +9,18 @@ const PlanetView = preload("res://scripts/planet_view_controller.gd")
 const PopulationPalette = preload("res://scripts/population_palette.gd")
 const MonsterBubble = preload("res://scripts/overview_monster_bubble.gd")
 
-enum Phase { IDLE, WAITING, ANTICIPATE, TURN, LAND, ZOOM, RISE, RECOVER }
+enum Phase { IDLE, WAITING, ANTICIPATE, TURN, LAND, ZOOM, HOLD, RISE, RECOVER }
 
 @export var run: PrototypeRun
 @export var view: PlanetView
 @export var palette: PopulationPalette
 @export var bubble: MonsterBubble
 @export_group("Timing")
-@export_range(0.0, 3.0, 0.05) var anticipation_seconds: float = 1.0
+@export_range(0.0, 3.0, 0.05) var anticipation_seconds: float = 2.0
 @export_range(0.0, 3.0, 0.05) var turn_seconds: float = 0.9
 @export_range(0.0, 1.0, 0.02) var landing_seconds: float = 0.16
 @export_range(0.0, 2.0, 0.05) var zoom_seconds: float = 0.45
+@export_range(0.0, 3.0, 0.05) var bubble_hold_seconds: float = 1.0
 @export_range(0.0, 2.0, 0.05) var emergence_seconds: float = 0.85
 @export_range(0.0, 2.0, 0.05) var recovery_seconds: float = 0.55
 @export_range(0.0, 30.0, 0.5) var accent_seconds: float = 10.0
@@ -123,7 +124,7 @@ func _process(delta: float) -> void:
 	_try_start()
 	if phase < Phase.ANTICIPATE:
 		return
-	# Warning stays one real second while the world slows down. SceneTree pause
+	# Presentation timing uses real seconds while the world slows down. SceneTree pause
 	# still freezes this node and every phase normally.
 	var real_delta: float = delta / maxf(Engine.time_scale, 0.001)
 	_elapsed += real_delta
@@ -148,6 +149,9 @@ func _process(delta: float) -> void:
 				_enter(Phase.ZOOM)
 		Phase.ZOOM:
 			if not view.is_transitioning():
+				_enter(Phase.HOLD)
+		Phase.HOLD:
+			if _progress(bubble_hold_seconds) >= 1.0:
 				_reveal()
 		Phase.RISE:
 			var progress: float = _progress(emergence_seconds)

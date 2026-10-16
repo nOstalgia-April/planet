@@ -60,7 +60,7 @@ var _near_view_gain: float = 1.0
 var _master_bus: FmodBus
 var _editor_muted: bool = false
 # A paused game (settings, technology page) freezes gameplay sounds in place
-# while music and UI sounds keep playing.
+# along with music, while UI sounds keep playing.
 var _game_paused: bool = false
 # Parallel to _effect_descriptions: UI sounds keep playing while gameplay freezes.
 var _effect_is_ui: Array[bool] = []
@@ -277,6 +277,7 @@ func play_music(event_path: String) -> void:
 	if _music == null:
 		return
 	_music.set_volume(0.0)
+	_music.set_paused(get_tree().paused)
 	_music.start()
 	_music_path = event_path
 	_music_volume = 0.0
@@ -466,15 +467,21 @@ func _capture_editor_message(message: String, data: Array) -> bool:
 	return true
 
 
-# Holds every playing gameplay sound in place (music and UI excluded) and lets
-# them continue from there when the pause ends.
+# Holds music and gameplay sounds in place, keeping UI sounds responsive.
+# Pending music stays paused until its transition ends.
 func _set_gameplay_frozen(frozen: bool) -> void:
+	if _music != null and _music.is_valid():
+		_music.set_paused(frozen)
+	for instance: FmodEvent in _fading_out:
+		if instance.is_valid():
+			instance.set_paused(frozen)
 	for index: int in range(_effect_descriptions.size()):
 		var description: FmodEventDescription = _effect_descriptions[index]
 		if _effect_is_ui[index] or description.get_instance_count() == 0:
 			continue
 		for instance: FmodEvent in description.get_instance_list():
-			instance.set_paused(frozen)
+			if instance != null and instance.is_valid():
+				instance.set_paused(frozen)
 
 
 func _apply_master_mute() -> void:
@@ -503,7 +510,9 @@ func _apply_effects_volume() -> void:
 			continue
 		var gain: float = _effects_gain(_effect_is_near_view[index])
 		for instance: FmodEvent in description.get_instance_list():
-			instance.set_volume(gain)
+			# Native playback may outlive its Godot wrapper or end during enumeration.
+			if instance != null and instance.is_valid():
+				instance.set_volume(gain)
 
 
 func _effects_gain(near_view: bool) -> float:

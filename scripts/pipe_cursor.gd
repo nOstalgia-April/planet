@@ -1,5 +1,8 @@
 extends Node2D
 
+signal transport_finished
+signal transport_cancelled
+
 const SurfaceProjection = preload("res://scripts/surface_projection.gd")
 const VacuumSkin = preload("res://scripts/vacuum_skin.gd")
 const ComboBurst = preload("res://scripts/combo_burst.gd")
@@ -71,6 +74,7 @@ func set_capture_engaged(engaged: bool) -> void:
 
 # Called only after a monster has actually been collected.
 func play_capture() -> void:
+	_art.notify_capture()
 	if transport_state == TransportState.IDLE:
 		transport_state = (TransportState.CONTINUOUS if _capture_engaged else TransportState.SINGLE)
 		_art.play()
@@ -86,7 +90,7 @@ func show_capture_skin(species: PrototypeSlime.Species) -> void:
 		PrototypeSlime.Species.MUCUS:
 			_last_capture_skin = VacuumSkin.SkinKind.BLUE
 		PrototypeSlime.Species.DRILL:
-			_last_capture_skin = VacuumSkin.SkinKind.DEFAULT
+			_last_capture_skin = VacuumSkin.SkinKind.TEAL
 	set_combo_active(_combo_active)
 
 
@@ -150,11 +154,14 @@ func reset_skin() -> void:
 	_art.reset_skin()
 
 
-func reset_transport() -> void:
+func reset_transport(cancelled: bool = true) -> void:
+	var was_running: bool = transport_state != TransportState.IDLE
 	transport_state = TransportState.IDLE
 	_capture_engaged = false
 	_pending_transport = false
 	_art.seek_frame(0)
+	if cancelled and was_running:
+		transport_cancelled.emit()
 
 
 func _process(delta: float) -> void:
@@ -176,7 +183,8 @@ func _on_transport_finished() -> void:
 		transport_state = (TransportState.CONTINUOUS if _capture_engaged else TransportState.SINGLE)
 		_art.play()
 	else:
-		reset_transport()
+		reset_transport(false)
+		transport_finished.emit()
 
 
 func _update_visual_compensation() -> void:

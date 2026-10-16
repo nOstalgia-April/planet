@@ -24,6 +24,7 @@ func _ready() -> void:
 	_victory.started.connect(_on_restoration_started)
 	_victory.finished.connect(_on_victory_finished)
 	super._ready()
+	_completion.visibility_changed.connect(_sync_ending_art)
 	flower_appeared.connect(_restoration.reveal_flower)
 	_restoration.color_fill_started.connect(_planet_audio.color_recovered)
 	_restoration.background_restore_started.connect(_planet_audio.planet_turned_white)
@@ -119,6 +120,11 @@ func _show_completion() -> void:
 
 func _on_victory_finished() -> void:
 	super._show_completion()
+
+
+func _sync_ending_art() -> void:
+	# Keep the original drawing for credits without changing restoration or population colors.
+	_planet_art.set_ending_presentation(_completion.visible)
 
 
 func _sync_art() -> void:

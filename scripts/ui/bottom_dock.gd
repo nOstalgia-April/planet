@@ -172,7 +172,15 @@ func _update_accent(index: int) -> void:
 		upgrades[index].get_node("Backing").material as ShaderMaterial
 	)
 	var locked: bool = states[index] in [ToolState.LOCKED_READY, ToolState.LOCKED_SHORT]
-	backing_material.set_shader_parameter("accent", unlock_color if locked else _accent)
+	var color: Color = unlock_color if locked else _accent
+	backing_material.set_shader_parameter("accent", color)
+	(upgrades[index].get_node("Caption") as Control).modulate = (
+		Color.from_hsv(color.h, 0.24, 0.85) if upgrades[index].disabled else Color.WHITE
+	)
+	for label_name: String in ["Level", "Cost"]:
+		var label: Label = upgrades[index].get_node("Caption/" + label_name) as Label
+		label.add_theme_color_override("font_outline_color", Color(0.03, 0.03, 0.04, 0.9))
+		label.add_theme_constant_override("outline_size", 0 if upgrades[index].disabled else 2)
 	(buttons[index].get_node("Selected") as Selection).self_modulate = Color.from_hsv(
 		_accent.h, 0.58, 1.0
 	)

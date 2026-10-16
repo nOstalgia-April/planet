@@ -17,15 +17,15 @@ scale = Vector2(1.55, 1.55)
 [node name="皮肤" type="HBoxContainer" parent="."]
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -180.0
+offset_left = -240.0
 offset_top = 40.0
-offset_right = 180.0
+offset_right = 240.0
 offset_bottom = 90.0
 alignment = 1
 
 [node name="默认" type="Button" parent="皮肤"]
 layout_mode = 2
-text = "默认"
+text = "灰色"
 
 [node name="粉色" type="Button" parent="皮肤"]
 layout_mode = 2
@@ -39,7 +39,12 @@ text = "蓝色"
 layout_mode = 2
 text = "彩色"
 
+[node name="青色" type="Button" parent="皮肤"]
+layout_mode = 2
+text = "青色"
+
 [connection signal="pressed" from="皮肤/默认" to="." method="_select_skin" binds=[0]]
 [connection signal="pressed" from="皮肤/粉色" to="." method="_select_skin" binds=[1]]
 [connection signal="pressed" from="皮肤/蓝色" to="." method="_select_skin" binds=[2]]
 [connection signal="pressed" from="皮肤/彩色" to="." method="_select_skin" binds=[3]]
+[connection signal="pressed" from="皮肤/青色" to="." method="_select_skin" binds=[4]]

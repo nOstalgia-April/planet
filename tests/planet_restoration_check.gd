@@ -25,7 +25,9 @@ func _run() -> void:
 	_game._view.set_process(false)
 	_game._restoration.set_process(false)
 	var fill_stages: Array[int] = []
-	_game._restoration.color_fill_started.connect(func(stage: int) -> void: fill_stages.append(stage))
+	_game._restoration.color_fill_started.connect(
+		func(stage: int) -> void: fill_stages.append(stage)
+	)
 	var white_starts: Array[int] = [0]
 	_game._restoration.background_restore_started.connect(func() -> void: white_starts[0] += 1)
 	_game.run.candy = 100000

@@ -12,13 +12,22 @@ const BRANCH_IDS: PackedStringArray = ["pipe", "net", "governance", "combo"]
 const PageScript = preload("res://scripts/ui/technology_page.gd")
 const DockScript = preload("res://scripts/ui/bottom_dock.gd")
 const GameMenu = preload("res://scripts/ui/game_menu.gd")
+const EndingCredits = preload("res://scripts/ui/ending_credits.gd")
 const VIEW_ZOOM_OUT: Texture2D = preload("res://assets/ui/game_menu/view_switch.tres")
 const VIEW_ZOOM_IN: Texture2D = preload("res://assets/ui/game_menu/zoom_in.tres")
 
+var dock_intro_progress: float = 1.0:
+	set(value):
+		dock_intro_progress = clampf(value, 0.0, 1.2)
+		if is_node_ready():
+			_place_tool_dock()
+
 var _manual_pause: bool = false
+var _presentation_paused: bool = false
 
 var _shop_layout_queued: bool = false
-var _nest_anchor: Rect2 = Rect2()
+var _nest_anchor: PackedVector2Array = PackedVector2Array()
+var _nest_hover_polygon: PackedVector2Array = PackedVector2Array()
 var _run: PrototypeRun
 
 @onready var _nest_card: Control = $NestCard
@@ -27,7 +36,7 @@ var _run: PrototypeRun
 @onready var _technology_button: Button = $ToolDock/Technology
 @onready var _technology_badge: TextureRect = $ToolDock/Technology/Badge
 @onready var game_menu: GameMenu = $GameMenu
-@onready var _completion: Control = %Completion
+@onready var _completion: EndingCredits = %Completion
 @onready var _view_shortcut: Control = $ViewShortcut
 @onready var _view_switch: TextureButton = $ViewShortcut/Button
 
@@ -44,10 +53,22 @@ func _ready() -> void:
 	_technology_button.pressed.connect(_show_technology)
 	_technology.close_requested.connect(close_panels)
 	_technology.technology_upgrade_requested.connect(technology_upgrade_requested.emit)
-	%CloseNestButton.pressed.connect(close_panels)
-	_nest_card.minimum_size_changed.connect(_queue_shop_layout)
 	_tool_dock.upgrade_requested.connect(quick_upgrade_requested.emit)
 	_view_switch.pressed.connect(view_switch_requested.emit)
+	_completion.visibility_changed.connect(_sync_completion_presentation)
+	_sync_completion_presentation()
+
+
+func _sync_completion_presentation() -> void:
+	var ending: bool = _completion.is_visible_in_tree()
+	$Economy.visible = not ending
+	$StatusLabel.visible = not ending
+	_tool_dock.visible = not ending
+	game_menu.visible = not ending and not is_technology_open()
+	if ending:
+		_nest_card.hide()
+		_tool_dock.suppress(true)
+		_view_shortcut.hide()
 
 
 func _process(_delta: float) -> void:
@@ -86,7 +107,7 @@ func apply_layout(viewport_size: Vector2) -> Rect2:
 	_place($Economy, Rect2(28.0, 24.0, 210.0, 34.0))
 	_place(_view_shortcut, Rect2(24.0, size.y * 0.5 - 44.0, 64.0, 88.0))
 	_place($StatusLabel, Rect2(270.0, size.y - 160.0, size.x - 540.0, 30.0))
-	_place(_tool_dock, Rect2(size.x * 0.5 - 300.0, size.y - 82.0, 600.0, 76.0))
+	_place_tool_dock()
 	_place_shops()
 	return Rect2(
 		Vector2(48.0, 72.0) * interface_scale,
@@ -96,6 +117,11 @@ func apply_layout(viewport_size: Vector2) -> Rect2:
 
 func get_tool_clearance_rect() -> Rect2:
 	return _tool_dock.get_global_rect().grow(32.0 * scale.x)
+
+
+func _place_tool_dock() -> void:
+	var dock_y: float = size.y - 82.0 + (1.0 - dock_intro_progress) * 130.0
+	_place(_tool_dock, Rect2(size.x * 0.5 - 300.0, dock_y, 600.0, 76.0))
 
 
 func refresh_progression(run: PrototypeRun) -> void:
@@ -120,16 +146,22 @@ func is_over_ui(viewport_position: Vector2) -> bool:
 		return true
 	if _tool_dock.contains_pointer(viewport_position):
 		return true
-	var blocking_controls: Array[Control] = [_nest_card, $Economy, _view_shortcut]
+	if _nest_card.is_visible_in_tree():
+		var local_pointer: Vector2 = (
+			_nest_card.get_global_transform_with_canvas().affine_inverse() * viewport_position
+		)
+		if Rect2(Vector2.ZERO, _nest_card.size).has_point(local_pointer):
+			return true
+	var blocking_controls: Array[Control] = [$Economy, _view_shortcut]
 	for panel: Control in blocking_controls:
 		if panel.is_visible_in_tree() and panel.get_global_rect().has_point(viewport_position):
 			return true
 	return false
 
 
-func show_nest_details(anchor: Rect2) -> void:
+func show_nest_details(anchor: PackedVector2Array) -> void:
 	_nest_anchor = anchor
-	_nest_card.show()
+	_nest_card.visible = %NestButton.visible
 	_place_shops()
 
 
@@ -138,10 +170,9 @@ func hide_nest_details() -> void:
 
 
 func is_over_nest_details(viewport_position: Vector2) -> bool:
-	return (
-		_nest_card.is_visible_in_tree()
-		and _nest_card.get_global_rect().has_point(viewport_position)
-	)
+	if not _nest_card.is_visible_in_tree():
+		return false
+	return Geometry2D.is_point_in_polygon(viewport_position, _nest_hover_polygon)
 
 
 func close_panels() -> void:
@@ -169,7 +200,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var key_event: InputEventKey = event as InputEventKey
 	if not key_event.pressed or key_event.echo or key_event.keycode != KEY_ESCAPE:
 		return
-	if game_menu.is_open():
+	if _completion.is_visible_in_tree():
+		_completion.finish_credits()
+	elif game_menu.is_open():
 		game_menu.handle_escape()
 	elif is_technology_open() or _nest_card.is_visible_in_tree():
 		close_panels()
@@ -190,10 +223,19 @@ func reset_pause() -> void:
 	_sync_pause()
 
 
+func set_presentation_paused(paused: bool) -> void:
+	if _presentation_paused == paused:
+		return
+	_presentation_paused = paused
+	_sync_pause()
+
+
 func _sync_pause() -> void:
-	var paused: bool = _manual_pause or is_technology_open() or game_menu.is_open()
+	var paused: bool = (
+		_manual_pause or _presentation_paused or is_technology_open() or game_menu.is_open()
+	)
 	get_tree().paused = paused
-	game_menu.visible = not is_technology_open()
+	game_menu.visible = not is_technology_open() and not _completion.is_visible_in_tree()
 	game_menu.set_paused(paused)
 	if paused:
 		_nest_card.hide()
@@ -215,22 +257,40 @@ func _queue_shop_layout() -> void:
 
 func _settle_shop_layout() -> void:
 	_shop_layout_queued = false
+	# A deferred layout can be flushed while the world releases rendering resources.
+	if not is_inside_tree() or is_queued_for_deletion():
+		return
 	_place_shops()
 
 
 func _place_shops() -> void:
-	if not _nest_anchor.has_area():
-		_place(_nest_card, Rect2(size.x - 368.0, size.y * 0.5 - 150.0, 320.0, 300.0))
+	if _nest_anchor.is_empty():
 		return
-	var local_anchor: Rect2 = get_global_transform_with_canvas().affine_inverse() * _nest_anchor
-	var card_size: Vector2 = Vector2(320.0, 300.0)
-	var card_position: Vector2 = Vector2(
-		local_anchor.end.x - 4.0, local_anchor.get_center().y - card_size.y * 0.5
+	var to_local: Transform2D = get_global_transform_with_canvas().affine_inverse()
+	var local_anchor: PackedVector2Array = to_local * _nest_anchor
+	var tangent: Vector2 = (local_anchor[1] - local_anchor[0]).normalized()
+	var outward: Vector2 = Vector2(tangent.y, -tangent.x)
+	var card_size: Vector2 = %NestButton.size
+	var top_center: Vector2 = (local_anchor[0] + local_anchor[1]) * 0.5
+	_nest_card.rotation = tangent.angle()
+	_place(
+		_nest_card,
+		Rect2(top_center + outward * (card_size.y + 2.0) - tangent * card_size.x * 0.5, card_size)
 	)
-	if card_position.x + card_size.x > size.x - 16.0:
-		card_position.x = local_anchor.position.x - card_size.x + 4.0
-	card_position = card_position.clamp(Vector2.ONE * 16.0, size - card_size - Vector2.ONE * 16.0)
-	_place(_nest_card, Rect2(card_position.round(), card_size))
+	# Convex hull joins the whole nest to the button, including diagonal pointer paths.
+	var points: PackedVector2Array = _nest_anchor.duplicate()
+	var button_transform: Transform2D = _nest_card.get_global_transform_with_canvas()
+	var padded: Rect2 = Rect2(Vector2.ZERO, card_size).grow(10.0)
+	var button_corners: PackedVector2Array = PackedVector2Array(
+		[
+			padded.position,
+			Vector2(padded.end.x, padded.position.y),
+			padded.end,
+			Vector2(padded.position.x, padded.end.y),
+		]
+	)
+	points.append_array(button_transform * button_corners)
+	_nest_hover_polygon = Geometry2D.convex_hull(points)
 
 
 func _place(control: Control, rectangle: Rect2) -> void:

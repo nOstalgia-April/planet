@@ -2,6 +2,7 @@ extends Node
 
 const Play = preload("res://features/场景预览/游玩预览.gd")
 const Palette = preload("res://scripts/population_palette.gd")
+const NodeScript = preload("res://scripts/ui/technology_node.gd")
 const IconButton = preload("res://scripts/ui/menu_icon_button.gd")
 const PLAY: PackedScene = preload("res://features/场景预览/近景游玩预览.tscn")
 var _failures: Array[String] = []
@@ -147,6 +148,42 @@ func _check_palette_consumers(palette: Palette) -> void:
 				"Every palette consumer shares the same current transition color: " + parameter
 			)
 
+	var page: Control = _demo._layout._technology
+	var light: Color = palette._colors[4]
+	_check(
+		page._detail.material == page._node_art, "Hover tooltip artwork shares the active palette."
+	)
+	for node: NodeScript in page._nodes.values():
+		_check(node.accent.is_equal_approx(light), "Existing technology nodes follow the blend.")
+		_check(
+			node.price_label.get_theme_color("font_color").is_equal_approx(
+				Palette.Settings.ui_color(NodeScript.PRICE_COLORS[node.state], light)
+			),
+			"Technology prices retain their state contrast in the current palette."
+		)
+		var halo: ShaderMaterial = node._halo.material as ShaderMaterial
+		_check(
+			(halo.get_shader_parameter("palette_bright") as Color).is_equal_approx(
+				palette._colors[3]
+			),
+			"Node halos and selection artwork receive the same blended palette."
+		)
+	var dock: Control = _demo._layout._tool_dock
+	for index: int in range(2):
+		var locked: bool = (
+			dock.states[index] in [dock.ToolState.LOCKED_READY, dock.ToolState.LOCKED_SHORT]
+		)
+		var accent: Color = dock.unlock_color if locked else palette._colors[1]
+		var expected: Color = (
+			Color.from_hsv(accent.h, 0.24, 0.85) if dock.upgrades[index].disabled else Color.WHITE
+		)
+		_check(
+			(dock.upgrades[index].get_node("Caption") as Control).modulate.is_equal_approx(
+				expected
+			),
+			"Quick upgrade captions follow their backing, including insufficient funds."
+		)
+
 
 func _check_technology_accent(palette: Palette) -> void:
 	var background: ShaderMaterial = palette.technology_background.material as ShaderMaterial
@@ -158,6 +195,9 @@ func _check_technology_accent(palette: Palette) -> void:
 	var directory: String = (
 		"res://artifacts/technology_accent_%d" % int(Time.get_unix_time_from_system())
 	)
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--capture-output="):
+			directory = argument.trim_prefix("--capture-output=")
 	if capture:
 		DirAccess.make_dir_recursive_absolute(directory)
 		print("Technology accent captures: ", directory)
@@ -185,7 +225,29 @@ func _check_technology_accent(palette: Palette) -> void:
 				applied.is_equal_approx(expected[index]),
 				"Technology background follows every temporary accent color."
 			)
+		if capture:
+			_demo.run.net_unlocked = true
+			_demo.run.candy = (
+				1000 if "--capture-affordable-dock" in OS.get_cmdline_user_args() else 0
+			)
+			_demo.run.economy_changed.emit()
+			_demo._layout._tool_dock.set_process(false)
+			_demo._layout.set_near_view(true, false)
+			_demo._layout._tool_dock.suppress(false)
+			_demo._layout._tool_dock.show_upgrade(1)
+			await get_tree().create_timer(0.3).timeout
+
+			await _save(directory, "%d_dock" % species)
 		_demo._layout._show_technology()
+		_demo._layout._technology._show_details("pipe")
+		_check_palette_consumers(palette)
+		var selected: NodeScript = _demo._layout._technology._nodes["pipe"]
+		_check(
+			selected.title_label.get_theme_color("font_color").is_equal_approx(
+				Palette.Settings.ui_color(Color("ffc4e0"), expected[4])
+			),
+			"Hover and economy refresh keep the current themed title color."
+		)
 		var frozen: Color = background.get_shader_parameter("palette_mid")
 		var remaining: float = palette.accent_remaining
 		palette.set_process(true)
@@ -208,8 +270,11 @@ func _check_technology_accent(palette: Palette) -> void:
 			_demo.run.economy_changed.emit()
 			_demo._layout._technology._show_details("giant")
 			_check(
-				_demo._layout._technology._detail_effect.text.contains("巨型只能用吸管收割"),
-				"The visible giant research explains its capture restriction."
+				(
+					_demo._layout._technology._detail_effect.text
+					== _demo.run.get_technology_description("giant")
+				),
+				"The visible giant research uses the current gameplay description."
 			)
 			for dimensions: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
 				get_window().size = dimensions

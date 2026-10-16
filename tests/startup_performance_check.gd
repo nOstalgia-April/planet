@@ -4,18 +4,21 @@ extends Node
 const MENU_PATH: String = "res://scenes/主菜单/主菜单.tscn"
 const INTRO_PATH: String = "res://scenes/开头动画/开头动画.tscn"
 const Menu = preload("res://scenes/主菜单/主菜单.gd")
+const Intro = preload("res://scenes/开头动画/开头动画.gd")
 var _frames: Array[float] = []
 var _previous: int = 0
 var _label: String = "run"
 var _capture: bool = false
 var _profile: bool = false
-var _intro: bool = false
 var _warm_menu: bool = false
 var _large: bool = false
 var _capture_loading: bool = false
 var _observed_menu: Menu
+var _observed_intro: Intro
 var _menu_shown_at: int = 0
 var _resource_ready_at: int = 0
+var _opening_shown_at: int = 0
+var _game_ready_at: int = 0
 var _scene_switched_at: int = 0
 var _first_game_draw_at: int = 0
 
@@ -34,7 +37,8 @@ func _ready() -> void:
 		elif argument == "--profile":
 			_profile = true
 		elif argument == "--intro":
-			_intro = true
+			# Retained for existing commands; the normal startup now always includes the opening.
+			pass
 		elif argument == "--warm-menu":
 			_warm_menu = true
 		elif argument == "--large":
@@ -60,8 +64,14 @@ func _process(_delta: float) -> void:
 
 
 func _record_resource_ready() -> void:
-	if is_instance_valid(_observed_menu) and _observed_menu._prepared_scene != null:
+	if (
+		_resource_ready_at == 0
+		and is_instance_valid(_observed_menu)
+		and _observed_menu._prepared_scene != null
+	):
 		_resource_ready_at = Time.get_ticks_usec()
+	if is_instance_valid(_observed_intro) and _observed_intro._prepared_scene != null:
+		_game_ready_at = Time.get_ticks_usec()
 		set_process(false)
 
 
@@ -69,6 +79,9 @@ func _record_scene_change() -> void:
 	var path: String = get_tree().current_scene.scene_file_path
 	if path == MENU_PATH:
 		_menu_shown_at = Time.get_ticks_usec()
+	elif path == INTRO_PATH:
+		_opening_shown_at = Time.get_ticks_usec()
+		_observed_intro = get_tree().current_scene as Intro
 	elif path == Menu.DEFAULT_START_SCENE:
 		_scene_switched_at = Time.get_ticks_usec()
 
@@ -84,10 +97,8 @@ func _run() -> void:
 	tree.root.mode = Window.MODE_WINDOWED
 	tree.root.size = Vector2i(1920, 1080) if _large else Vector2i(1280, 800)
 	tree.root.set_flag(Window.FLAG_MOUSE_PASSTHROUGH, true)
-	assert(tree.change_scene_to_file(INTRO_PATH if _intro else MENU_PATH) == OK)
+	assert(tree.change_scene_to_file(MENU_PATH) == OK)
 	await tree.scene_changed
-	if _intro:
-		await tree.scene_changed
 	assert(tree.current_scene.scene_file_path == MENU_PATH)
 	_observed_menu = tree.current_scene as Menu
 	set_process(true)
@@ -119,9 +130,13 @@ func _run() -> void:
 				)
 				assert(tree.root.get_texture().get_image().save_png(path) == OK)
 		tree.root.size = Vector2i(1920, 1080) if _large else Vector2i(1280, 800)
-	if tree.current_scene == menu:
+	while (
+		tree.current_scene == null or tree.current_scene.scene_file_path != Menu.DEFAULT_START_SCENE
+	):
 		await tree.scene_changed
 	assert(_resource_ready_at > 0, "Observe resource readiness before deferred scene entry.")
+	assert(_opening_shown_at > 0, "Start must show the opening before entering gameplay.")
+	assert(_game_ready_at > 0, "Gameplay prepares in the background while the opening plays.")
 	var scene_ms: float = float(_scene_switched_at - started) / 1000.0
 	assert(tree.current_scene.scene_file_path == Menu.DEFAULT_START_SCENE)
 	assert(not tree.root.gui_disable_input)
@@ -129,7 +144,7 @@ func _run() -> void:
 	var first_draw_ms: float = float(_first_game_draw_at - started) / 1000.0
 	# A warm menu can be ready before the click. Exclude that idle time from the
 	# actual scene-entry segment, while preserving raw ready-to-scene timestamps.
-	var entry_ready_at: int = maxi(started, _resource_ready_at)
+	var entry_ready_at: int = maxi(started, _game_ready_at)
 	var loading_frames: Array[float] = _frames.duplicate()
 	_frames.clear()
 	for frame: int in range(180):
@@ -148,6 +163,11 @@ func _run() -> void:
 						"scene_ms": scene_ms,
 						"first_draw_ms": first_draw_ms,
 						"menu_to_click_ms": float(started - _menu_shown_at) / 1000.0,
+						"click_to_opening_ms": float(_opening_shown_at - started) / 1000.0,
+						"opening_to_game_ready_ms":
+						float(_game_ready_at - _opening_shown_at) / 1000.0,
+						"opening_to_game_scene_ms":
+						float(_scene_switched_at - _opening_shown_at) / 1000.0,
 						"menu_to_resources_ready_ms":
 						float(_resource_ready_at - _menu_shown_at) / 1000.0,
 						"resources_ready_before_click": _resource_ready_at <= started,

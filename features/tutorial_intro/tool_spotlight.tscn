@@ -1,0 +1,18 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://features/tutorial_intro/tool_spotlight.gd" id="script"]
+[ext_resource type="Shader" path="res://features/tutorial_intro/tool_spotlight.gdshader" id="shader"]
+
+[sub_resource type="ShaderMaterial" id="material"]
+shader = ExtResource("shader")
+
+[node name="ToolSpotlight" type="ColorRect"]
+visible = false
+material = SubResource("material")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("script")

@@ -1,0 +1,97 @@
+{
+  "source": "C:\\Users\\ROG\\Documents\\xwechat_files\\wxid_n7y8raitb6rf22_a015\\msg\\file\\2026-10\\UI新增\\UI新增\\底端ui",
+  "regions": {
+    "frame": [
+      1,
+      [
+        16,
+        69,
+        150,
+        56
+      ]
+    ],
+    "upgrade": [
+      2,
+      [
+        16,
+        14,
+        150,
+        113
+      ]
+    ],
+    "body": [
+      3,
+      [
+        25,
+        63,
+        151,
+        56
+      ]
+    ],
+    "shortcut": [
+      4,
+      [
+        139,
+        68,
+        71,
+        69
+      ]
+    ],
+    "shortcut_active": [
+      5,
+      [
+        139,
+        68,
+        71,
+        69
+      ]
+    ],
+    "arrow": [
+      6,
+      [
+        166,
+        94,
+        19,
+        20
+      ]
+    ],
+    "technology": [
+      7,
+      [
+        217,
+        67,
+        171,
+        56
+      ]
+    ],
+    "planet": [
+      8,
+      [
+        242,
+        78,
+        50,
+        34
+      ]
+    ],
+    "technology_active": [
+      9,
+      [
+        217,
+        67,
+        171,
+        56
+      ]
+    ],
+    "planet_active": [
+      10,
+      [
+        242,
+        78,
+        50,
+        34
+      ]
+    ]
+  },
+  "reference": "docs/references/bottom_dock_20261016",
+  "rollback_scene": "scenes/ui/legacy/bottom_dock_20261016.tscn"
+}

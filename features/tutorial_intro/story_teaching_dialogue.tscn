@@ -1,0 +1,25 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/mascot_dialogue.tscn" id="dialogue"]
+
+[node name="TeachingDialogue" instance=ExtResource("dialogue")]
+autoplay = false
+ignore_time_scale = true
+
+[node name="SpeechBubble" parent="."]
+offset_left = -550.0
+offset_top = -485.0
+offset_right = -46.0
+offset_bottom = -185.0
+
+[node name="Text" parent="SpeechBubble"]
+offset_left = 85.0
+offset_top = 80.0
+offset_right = 405.0
+offset_bottom = 222.0
+theme_override_font_sizes/normal_font_size = 24
+theme_override_constants/line_separation = 5
+
+[node name="MascotPresenter" parent="."]
+display_heights = PackedFloat32Array(220, 192, 103)
+edge_margin = Vector2(28, 28)

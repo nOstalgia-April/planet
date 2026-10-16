@@ -1,20 +1,28 @@
-[gd_scene load_steps=34 format=3]
+[gd_scene load_steps=41 format=3]
 
 [ext_resource type="Script" path="res://scripts/vacuum_skin.gd" id="r001"]
 
-[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/001.png" id="r002"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/gray/001.png" id="r002"]
 
-[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/002.png" id="r003"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/gray/002.png" id="r003"]
 
-[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/003.png" id="r004"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/gray/003.png" id="r004"]
 
-[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/004.png" id="r005"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/gray/004.png" id="r005"]
 
-[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/005.png" id="r006"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/gray/005.png" id="r006"]
 
-[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/006.png" id="r007"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/gray/006.png" id="r007"]
 
-[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/007.png" id="r008"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/gray/007.png" id="r008"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/001.png" id="teal1"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/002.png" id="teal2"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/003.png" id="teal3"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/004.png" id="teal4"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/005.png" id="teal5"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/006.png" id="teal6"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/007.png" id="teal7"]
 
 [ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/pink/001.png" id="pink1"]
 [ext_resource type="Texture2D" path="res://assets/场景动画/吸尘器/pink/002.png" id="pink2"]
@@ -70,6 +78,7 @@ clip = &"工作"
 frames_per_second = 7.0
 frame_count = 7
 default_frames = Array[Texture2D]([ExtResource("r002"), ExtResource("r003"), ExtResource("r004"), ExtResource("r005"), ExtResource("r006"), ExtResource("r007"), ExtResource("r008")])
+teal_frames = Array[Texture2D]([ExtResource("teal1"), ExtResource("teal2"), ExtResource("teal3"), ExtResource("teal4"), ExtResource("teal5"), ExtResource("teal6"), ExtResource("teal7")])
 pink_frames = Array[Texture2D]([ExtResource("pink1"), ExtResource("pink2"), ExtResource("pink3"), ExtResource("pink4"), ExtResource("pink5"), ExtResource("pink6"), ExtResource("pink7")])
 blue_frames = Array[Texture2D]([ExtResource("blue1"), ExtResource("blue2"), ExtResource("blue3"), ExtResource("blue4"), ExtResource("blue5"), ExtResource("blue6"), ExtResource("blue7")])
 rainbow_frames = Array[Texture2D]([ExtResource("rainbow1"), ExtResource("rainbow2"), ExtResource("rainbow3"), ExtResource("rainbow4"), ExtResource("rainbow5"), ExtResource("rainbow6"), ExtResource("rainbow7")])

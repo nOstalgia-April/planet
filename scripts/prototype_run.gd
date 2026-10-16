@@ -574,6 +574,14 @@ func get_nest_spawn_interval(nest_id: int) -> float:
 	)
 
 
+func schedule_next_spawn(nest_id: int, delay_seconds: float) -> void:
+	var nest: NestState = get_nest(nest_id)
+	assert(nest != null, "Scheduling a spawn requires an existing nest.")
+	assert(delay_seconds >= 0.0, "A spawn delay cannot be negative.")
+	# Only the next burst moves; later bursts retain the normal sampled cooldowns.
+	nest.spawn_clock = get_nest_spawn_interval(nest_id) - delay_seconds
+
+
 func get_pipe_radius() -> float:
 	return settings.pipe_radius
 

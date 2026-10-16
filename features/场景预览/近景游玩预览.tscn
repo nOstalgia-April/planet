@@ -87,12 +87,13 @@ bright_background = NodePath("../美术背景/地壳裁剪/画布/亮色背景")
 core = NodePath("../World/PlanetSurface/星球画面/星球核心")
 terrain = NodePath("../World/HorizonTerrain")
 
-[node name="PopulationPalette" parent="." node_paths=PackedStringArray("run", "background_sprites", "core_sprite", "planet_art", "technology_background", "button_brushes", "ecology_backdrop", "bottom_dock", "game_menu") instance=ExtResource("palette")]
+[node name="PopulationPalette" parent="." node_paths=PackedStringArray("run", "background_sprites", "core_sprite", "planet_art", "technology_background", "technology_page", "button_brushes", "ecology_backdrop", "bottom_dock", "game_menu") instance=ExtResource("palette")]
 run = NodePath("../Run")
 background_sprites = [NodePath("../美术背景/地壳裁剪/画布/近景背景/颜色/贴图"), NodePath("../美术背景/地壳裁剪/画布/全景背景/贴图")]
 core_sprite = NodePath("../World/PlanetSurface/星球画面/星球核心/画面")
 planet_art = NodePath("../World/PlanetSurface/星球画面")
 technology_background = NodePath("../HUD/Interface/Technology/Background")
+technology_page = NodePath("../HUD/Interface/Technology")
 button_brushes = [NodePath("../HUD/Interface/GameMenu/Toolbar/Pause/Brush"), NodePath("../HUD/Interface/GameMenu/Toolbar/Music/Brush"), NodePath("../HUD/Interface/GameMenu/Toolbar/Settings/Brush"), NodePath("../HUD/Interface/Technology/Margin/Content/Header/Close/Brush"), NodePath("../HUD/Interface/GameMenu/Modal/Center/Panel/Content/Header/CloseSettings/Brush")]
 ecology_backdrop = NodePath("../OverviewEcology/Backdrop/Color")
 

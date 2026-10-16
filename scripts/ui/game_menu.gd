@@ -104,6 +104,7 @@ func _refresh_preferences() -> void:
 		and (GamePreferences.music_volume > 0.0 or GamePreferences.effects_volume > 0.0)
 	)
 	_music.glyph = MUSIC_ON if audio_audible else MUSIC_OFF
+	_music.highlighted = not audio_audible
 	_music.tooltip_text = "关闭声音" if audio_audible else "开启声音"
 	_music.queue_redraw()
 	_music_slider.set_value_no_signal(GamePreferences.music_volume * 100.0)

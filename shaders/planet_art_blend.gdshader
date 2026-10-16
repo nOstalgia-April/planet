@@ -24,6 +24,7 @@ uniform sampler2D restored_texture : source_color, filter_linear, repeat_disable
 uniform vec3 land_progress = vec3(0.0);
 uniform vec2 reveal_screen_y = vec2(0.0, 1.0);
 uniform float restored_mix = 0.0;
+uniform bool original_restored_core = false;
 varying vec4 tint;
 
 vec4 clip_layer(vec4 sampled, vec2 uv) {
@@ -39,6 +40,7 @@ vec4 over(vec4 base, vec4 layer, float amount) {
 }
 
 vec3 restored_core_color(vec3 source, vec2 uv) {
+	if (original_restored_core) { return source; }
 	// Only the blue-black interior of the restored drawing belongs to the core.
 	// Its gray chains and the colored crust retain their original ink.
 	vec2 point = (uv * vec2(1920.0, 1080.0) - vec2(950.0, 535.0)) / 242.0;

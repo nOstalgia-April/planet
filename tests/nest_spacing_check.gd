@@ -25,7 +25,7 @@ func _run_checks() -> void:
 			await process_frame
 		_check(
 			is_equal_approx(demo._nest_site_distance, 150.0),
-			"Growth, income and spawn frames reserve the 325-unit footprint including drill art at 40% scale plus 20 units."
+			"The 105% drill nest reserves its 341.25-unit footprint at 40% scale plus 13.5 units."
 		)
 		_check(
 			demo._nest_site_angles.size() == 10,
@@ -35,7 +35,7 @@ func _run_checks() -> void:
 			demo.restart_run()
 			demo._site_random.seed = 5300 + seed_index
 			for attempt: int in range(16):
-				var species: NestState.Species = (attempt % 2) as NestState.Species
+				var species: NestState.Species = (attempt % 3) as NestState.Species
 				demo.run._pending_nest_species = species
 				demo._on_nest_spawn_requested(species)
 			_check(demo.run.nests.size() == 10, "Random placement fills each available site once.")

@@ -17,6 +17,11 @@ extends Resource
 )
 
 
+# Preserve each UI state's contrast while following the current blended palette.
+static func ui_color(source: Color, light: Color) -> Color:
+	return Color.from_hsv(light.h, source.s, source.v, source.a)
+
+
 func colors_for(species: int) -> PackedColorArray:
 	match species:
 		NestState.Species.MUCUS:

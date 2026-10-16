@@ -88,6 +88,7 @@ func seek_seconds(seconds: float) -> void:
 			Vector4(region.position.x, region.position.y, region.size.x, region.size.y)
 		)
 		current_frame = frame
+		_shape_material.set_shader_parameter("motion_seconds", float(frame) / frames_per_second)
 	if not Engine.is_editor_hint():
 		_request_page(_wanted_page)
 		_request_page(_next_page)

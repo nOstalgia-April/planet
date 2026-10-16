@@ -114,11 +114,13 @@ func _check_sequence_and_triggers() -> void:
 	_check(not _game._view.is_dragging(), "Input cannot interrupt discovery.")
 	var start_rotation: float = _game._world.rotation
 	var start_color: float = discovery.bubble.density
-	_step(0.625)
+	_step(0.825)
 	_check(is_equal_approx(Engine.time_scale, 0.18), "Anticipation slows the world to 18 percent.")
 	_check(discovery.bubble.density != start_color, "The species bubble flashes its background.")
-	_step(0.35)
-	_check(discovery.phase == Discovery.Phase.ANTICIPATE, "The warning lasts a full real second.")
+	_step(1.15)
+	_check(
+		discovery.phase == Discovery.Phase.ANTICIPATE, "The warning lasts a full two real seconds."
+	)
 	_check(
 		is_equal_approx(start_rotation, _game._world.rotation), "Camera holds during anticipation."
 	)
@@ -135,6 +137,24 @@ func _check_sequence_and_triggers() -> void:
 	var anchor: Vector2 = _game._world.get_global_transform_with_canvas() * discovery._position
 	_check(
 		discovery.bubble.anchor.distance_to(anchor) < 0.1, "Landed bubble points at the real site."
+	)
+	_until(Discovery.Phase.HOLD)
+	_check(not _game._view.is_transitioning(), "The bubble hold starts after the camera stops.")
+	_check(
+		is_equal_approx(_game._view.presentation_magnification, discovery.closeup_magnification),
+		"The bubble hold starts after the closeup."
+	)
+	var hold_transform: Transform2D = _game._world.transform
+	_step(0.975)
+	_check(discovery.phase == Discovery.Phase.HOLD, "The bubble holds for a full real second.")
+	_check(
+		discovery.bubble.visible and is_equal_approx(discovery.bubble.modulate.a, 1.0),
+		"The bubble remains fully visible throughout the hold."
+	)
+	_check(_game.run.nests.size() == 2, "The site remains empty until the bubble hold finishes.")
+	_check(
+		_game._world.transform.is_equal_approx(hold_transform),
+		"The camera stays still throughout the bubble hold."
 	)
 	_until(Discovery.Phase.RISE)
 	var nest: NestState = _game.run.nests.back()
@@ -203,7 +223,9 @@ func _check_pause_and_accent() -> void:
 		palette._colors[0].is_equal_approx(palette.settings.pink[0]),
 		"Population regains the palette."
 	)
-	for target: Discovery.Phase in [Discovery.Phase.ANTICIPATE, Discovery.Phase.RISE]:
+	for target: Discovery.Phase in [
+		Discovery.Phase.ANTICIPATE, Discovery.Phase.HOLD, Discovery.Phase.RISE
+	]:
 		_game.restart_run()
 		_request(NestState.Species.MUCUS)
 		_until(target)
@@ -273,6 +295,7 @@ func _check_cancellation() -> void:
 		Discovery.Phase.TURN,
 		Discovery.Phase.LAND,
 		Discovery.Phase.ZOOM,
+		Discovery.Phase.HOLD,
 		Discovery.Phase.RISE,
 		Discovery.Phase.RECOVER
 	]:
@@ -332,6 +355,9 @@ func _capture_sequence() -> void:
 			await _save("%d_%d_2_turn" % [dimensions.x, species])
 			_until(Discovery.Phase.LAND)
 			await _save("%d_%d_3_landed" % [dimensions.x, species])
+			_until(Discovery.Phase.HOLD)
+			_step(0.8)
+			await _save("%d_%d_3b_camera_stopped_hold" % [dimensions.x, species])
 			_until(Discovery.Phase.RISE)
 			_step(0.18)
 			await _save("%d_%d_4_rise_start" % [dimensions.x, species])

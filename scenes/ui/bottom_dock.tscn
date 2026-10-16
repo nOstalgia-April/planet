@@ -1,7 +1,7 @@
 [gd_scene load_steps=20 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/ui/dock_cooldown.tscn" id="cooldown"]
-[ext_resource type="PackedScene" path="res://scenes/ui/dock_shortcut.tscn" id="shortcut"]
+[ext_resource type="PackedScene" path="res://scenes/ui/dock_shortcut_right.tscn" id="shortcut"]
 
 [ext_resource type="Texture2D" path="res://assets/ui/candy_coin.png" id="coin"]
 [ext_resource type="Material" path="res://resources/candy_grain_outline.tres" id="coin_outline"]
@@ -89,9 +89,9 @@ stretch_mode = 5
 
 [node name="Detail" type="Label" parent="Pipe/Button"]
 layout_mode = 0
-offset_left = 87.0
+offset_left = 78.0
 offset_top = 28.0
-offset_right = 171.0
+offset_right = 145.0
 offset_bottom = 48.0
 mouse_filter = 2
 theme_override_colors/font_color = Color(1,1,1,1)
@@ -100,9 +100,9 @@ theme_override_font_sizes/font_size = 13
 [node name="Status" type="Label" parent="Pipe/Button"]
 visible = false
 layout_mode = 0
-offset_left = 87.0
+offset_left = 78.0
 offset_top = 40.0
-offset_right = 171.0
+offset_right = 145.0
 offset_bottom = 58.0
 mouse_filter = 2
 theme_override_font_sizes/font_size = 12
@@ -221,9 +221,9 @@ stretch_mode = 5
 
 [node name="Detail" type="Label" parent="Net/Button"]
 layout_mode = 0
-offset_left = 87.0
+offset_left = 78.0
 offset_top = 28.0
-offset_right = 171.0
+offset_right = 145.0
 offset_bottom = 48.0
 mouse_filter = 2
 theme_override_colors/font_color = Color(1,1,1,1)
@@ -232,9 +232,9 @@ theme_override_font_sizes/font_size = 13
 [node name="Status" type="Label" parent="Net/Button"]
 visible = false
 layout_mode = 0
-offset_left = 87.0
+offset_left = 78.0
 offset_top = 40.0
-offset_right = 171.0
+offset_right = 145.0
 offset_bottom = 58.0
 mouse_filter = 2
 theme_override_font_sizes/font_size = 12

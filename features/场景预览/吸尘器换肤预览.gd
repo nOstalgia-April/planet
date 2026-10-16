@@ -4,4 +4,9 @@ const VacuumSkin = preload("res://scripts/vacuum_skin.gd")
 
 
 func _select_skin(skin: int) -> void:
-	(view as VacuumSkin).request_skin(skin as VacuumSkin.SkinKind)
+	var art: VacuumSkin = view as VacuumSkin
+	if skin == VacuumSkin.SkinKind.DEFAULT:
+		art.reset_skin()
+		return
+	art.notify_capture()
+	art.request_skin(skin as VacuumSkin.SkinKind)

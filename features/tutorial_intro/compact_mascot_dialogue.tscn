@@ -1,0 +1,49 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/mascot_dialogue.tscn" id="dialogue"]
+
+[node name="CompactMascotDialogue" instance=ExtResource("dialogue")]
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_right = 1280.0
+offset_bottom = 800.0
+grow_horizontal = 1
+grow_vertical = 1
+autoplay = false
+
+[node name="SpeechBubble" parent="."]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+anchor_bottom = 0.0
+offset_left = -310.0
+offset_top = 60.0
+offset_right = 190.0
+offset_bottom = 260.0
+grow_horizontal = 2
+grow_vertical = 1
+
+[node name="Text" parent="SpeechBubble"]
+offset_left = 80.0
+offset_top = 65.0
+offset_right = 430.0
+offset_bottom = 145.0
+theme_override_font_sizes/normal_font_size = 25
+theme_override_constants/line_separation = 4
+
+[node name="MascotPresenter" parent="."]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+anchor_bottom = 0.0
+offset_left = 310.0
+offset_top = 260.0
+offset_right = 310.0
+offset_bottom = 260.0
+grow_horizontal = 2
+grow_vertical = 1
+display_heights = PackedFloat32Array(132, 132, 132)
+edge_margin = Vector2(0, 0)

@@ -27,9 +27,11 @@ func _run() -> void:
 		await _seek(core, frame)
 	core.seek_seconds(-1.0)
 	assert(core.current_frame == 0)
+	_check_motion_clock(core)
 	await _seek(core, 3599)
 	core.seek_seconds(180.0)
 	assert(core.current_frame == 3599, "The music, not the image clock, owns loop restart.")
+	_check_motion_clock(core)
 	core.queue_free()
 	await get_tree().process_frame
 	var game: Game = GameScene.instantiate() as Game
@@ -54,14 +56,24 @@ func _run() -> void:
 	var held_frame: int = live_core.current_frame
 	await get_tree().create_timer(0.15).timeout
 	assert(live_core.current_frame == held_frame, "Paused music freezes the effect.")
+	_check_motion_clock(live_core)
 	get_tree().paused = true
 	music.set_paused(false)
-	await get_tree().create_timer(0.25, true).timeout
+	await get_tree().create_timer(0.08, true).timeout
+	FmodServer.update()
+	var paused_position: float = GameAudio.get_music_position_seconds("event:/Mx/Mx_GamePlay")
+	await _wait_music_frame(live_core, int(floor(paused_position * live_core.frames_per_second)))
+	var tree_held_frame: int = live_core.current_frame
+	await get_tree().create_timer(0.15, true).timeout
 	assert(
-		live_core.current_frame > held_frame,
-		"Tree pause must not detach a still-playing BGM clock."
+		live_core.current_frame == tree_held_frame,
+		"Tree pause freezes the master bus and the music-driven effect."
 	)
+	_check_motion_clock(live_core)
 	get_tree().paused = false
+	await get_tree().create_timer(0.25).timeout
+	assert(live_core.current_frame > tree_held_frame, "Resuming the tree resumes the BGM clock.")
+	_check_motion_clock(live_core)
 	music.set_paused(true)
 	# Let the real FMOD loop cross its end, rather than simulating only a seek.
 	music.set_timeline_position(97200)
@@ -82,7 +94,7 @@ func _run() -> void:
 	GameAudio.play_music("event:/Mx/Mx_MainMenu")
 	assert(GameAudio.get_music_position_seconds("event:/Mx/Mx_GamePlay") == -1.0)
 	print(
-		"PASS: all 46 pages, bounded cache, frame boundaries, final hold, backward/loop seek, FMOD pause and scene exit."
+		"PASS: all 46 pages, bounded cache, frame boundaries, final hold, backward/loop seek, FMOD pause, displayed-frame brush clock and scene exit."
 	)
 	get_tree().quit()
 
@@ -106,6 +118,7 @@ func _seek(core: Core, frame: int) -> void:
 		)
 	)
 	assert(core.sprite.position == -core.clip.pivot)
+	_check_motion_clock(core)
 
 
 func _wait_music_frame(core: Core, frame: int) -> void:
@@ -113,6 +126,20 @@ func _wait_music_frame(core: Core, frame: int) -> void:
 	while core.current_frame != frame:
 		assert(Time.get_ticks_msec() - start < 5000, "Music-driven atlas streaming timed out.")
 		await get_tree().process_frame
+	_check_motion_clock(core)
+
+
+func _check_motion_clock(core: Core) -> void:
+	var material: ShaderMaterial = core.sprite.material as ShaderMaterial
+	var motion_seconds: float = material.get_shader_parameter("motion_seconds")
+	var expected: float = float(core.current_frame) / core.frames_per_second
+	assert(
+		is_equal_approx(motion_seconds, expected),
+		(
+			"Brush time must follow displayed frame: frame=%d expected=%.6f actual=%.6f"
+			% [core.current_frame, expected, motion_seconds]
+		)
+	)
 
 
 func _capture_game(game: Game, core: Core) -> void:

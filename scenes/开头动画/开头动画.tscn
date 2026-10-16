@@ -1,7 +1,6 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scenes/开头动画/开头动画.gd" id="intro_script"]
-[ext_resource type="PackedScene" path="res://scenes/主菜单/主菜单.tscn" id="main_menu"]
 [ext_resource type="Animation" path="res://scenes/开头动画/开头动画.tres" id="intro_animation"]
 [ext_resource type="Texture2D" path="res://assets/场景动画/开头动画/p1/001.png" id="first_frame"]
 
@@ -18,7 +17,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("intro_script")
-main_menu = ExtResource("main_menu")
 animation_player = NodePath("AnimationPlayer")
 
 [node name="黑底" type="ColorRect" parent="."]

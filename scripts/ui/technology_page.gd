@@ -3,6 +3,8 @@ extends Control
 signal close_requested
 signal technology_upgrade_requested(id: String)
 
+const PaletteSettings = preload("res://scripts/population_palette_settings.gd")
+const PALETTE_ART: Shader = preload("res://shaders/population_art.gdshader")
 const NodeScene: PackedScene = preload("res://scenes/ui/technology_node.tscn")
 const NodeScript = preload("res://scripts/ui/technology_node.gd")
 const GraphScript = preload("res://scripts/ui/technology_graph.gd")
@@ -37,6 +39,9 @@ const COLORS: Array[Color] = [
 	Color("b39ada")
 ]
 
+var _palette: PackedColorArray = PaletteSettings.new().pink
+var _node_art: ShaderMaterial
+
 var selected_key: String = "base_value"
 var _run: PrototypeRun
 var _nodes: Dictionary[String, NodeScript] = {}
@@ -58,10 +63,39 @@ var _opening_cue_pending: bool = true
 
 
 func _ready() -> void:
+	_node_art = ShaderMaterial.new()
+	_node_art.shader = PALETTE_ART
+	_detail.material = _node_art
+	set_palette(_palette)
 	%Close.pressed.connect(func() -> void: close_requested.emit())
 	_canvas.resized.connect(_fit_graph)
 	_fit_graph.call_deferred()
 	visibility_changed.connect(_on_visibility_changed)
+
+
+func set_palette(colors: PackedColorArray) -> void:
+	_palette = colors
+	_node_art.set_shader_parameter("population_palette_enabled", true)
+	var parameters: PackedStringArray = [
+		"palette_dark", "palette_mid", "palette_ink", "palette_bright", "palette_light"
+	]
+	for index: int in range(parameters.size()):
+		_node_art.set_shader_parameter(parameters[index], colors[index])
+	for node: NodeScript in _nodes.values():
+		node.set_accent(colors[4], _node_art)
+	graph.line_color = PaletteSettings.ui_color(Color("f0a0c5"), colors[4])
+	graph.queue_redraw()
+	for label: Label in [_wallet, _detail_title, _detail_effect, %RequirementHeading]:
+		label.add_theme_color_override("font_color", colors[4].lerp(Color.WHITE, 0.65))
+	for label: Label in [_detail_level, _detail_note, %NextGoalNote]:
+		label.add_theme_color_override("font_color", colors[4].darkened(0.18))
+	%NextGoal.add_theme_color_override("font_color", colors[4])
+	_detail_gain.add_theme_color_override("default_color", colors[4].lerp(Color.WHITE, 0.65))
+	for label: Label in _requirements.get_children():
+		label.add_theme_color_override("font_color", colors[4].darkened(0.12))
+	if _nodes.has(selected_key):
+		_detail_icon.ink = _nodes[selected_key].glyph.ink
+		_detail_icon.queue_redraw()
 
 
 func _on_visibility_changed() -> void:
@@ -126,6 +160,7 @@ func _build_graph() -> void:
 		node.name = id
 		graph.add_child(node)
 		node.configure(id, TITLES[index], SYMBOLS[index], COLORS[index])
+		node.set_accent(_palette[4], _node_art)
 		node.position = _node_position(id) - NodeScript.ICON_CENTER
 		node.pressed.connect(_activate_node.bind(id))
 		node.mouse_entered.connect(_show_details.bind(id))
@@ -274,7 +309,7 @@ func _refresh_details() -> void:
 			label.text += " · %d级（满级）" % (required_level + 1)
 		label.add_theme_font_size_override("font_size", 14)
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		label.add_theme_color_override("font_color", Color("d5b7c9"))
+		label.add_theme_color_override("font_color", _palette[4].darkened(0.12))
 		_requirements.add_child(label)
 	_place_details.call_deferred()
 

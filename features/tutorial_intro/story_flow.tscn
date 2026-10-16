@@ -1,0 +1,46 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://features/tutorial_intro/story_flow.gd" id="flow"]
+[ext_resource type="PackedScene" path="res://scenes/ui/mascot_dialogue.tscn" id="narrative"]
+[ext_resource type="PackedScene" path="res://features/tutorial_intro/story_teaching_dialogue.tscn" id="teaching"]
+[ext_resource type="PackedScene" path="res://features/tutorial_intro/story_color_dialogue.tscn" id="color"]
+
+[node name="StoryFlow" type="Node"]
+script = ExtResource("flow")
+opening_lines = PackedStringArray("你是来清理星球的？太好了！我刚数完这一窝，那边又冒出来三窝！", "我们飞船坏了，才在这里落脚。这里的糖太好吃，大家一不留神就……住满了。", "帮我收拢一下小家伙，再整理整理巢穴吧。动作轻点啊，收进去的可得一个都不能少。")
+cultivation_lines = PackedStringArray("现在可以培育巢穴了！选个巢穴，给它升升级，就能容纳更多小家伙。", "不过先说好，叫出来多少，你可得接住多少。")
+automation_lines = PackedStringArray("完全治理研究好了？还得把巢穴升到最后一级，才算真正改造完。", "改造后就不再往外冒小家伙了，还能自己产糖。这样我总算不用挨个喊回来了！", "那就把所有巢穴都自动化吧！外面乱跑的这些，也记得收齐啊。")
+first_color_lines = PackedStringArray("等一下——我的斗篷呢？！我明明一直维持着伪装的！", "怎么这颗星球一恢复颜色，我就连伪装都撑不住了？！")
+second_color_lines = PackedStringArray("又来了……颜色回到地上，我的力气就少一点。原来你治理的，还有我们啊。", "先别得意！还剩最后一种颜色呢。我倒要看看，你能把这里恢复成什么样。")
+third_color_lines = PackedStringArray("……原来这颗星球，本来这么漂亮。", "好吧，是我弄错了。只顾着喂饱大家，都没看见我们把这里弄成了什么样。", "你做得对。剩下那些巢穴……也拜托你了。")
+rescue_lines = PackedStringArray("都收齐了？让我数数……嗯，一个都没少。辛苦你了，清扫员。", "救援船会带我们去合适的地方，收起来的小家伙也都能一起走？……那我就放心了。", "原来飞船遇难，可以申请救援啊。好吧，下次先求救，不乱吃，也不随便挖窝了。", "那个……救援船上管饭吧？这次我们会按数量领的！")
+
+[node name="StoryLayer" type="CanvasLayer" parent="."]
+layer = 30
+
+[node name="Narrative" parent="StoryLayer" instance=ExtResource("narrative")]
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+grow_horizontal = 1
+grow_vertical = 1
+autoplay = false
+ignore_time_scale = true
+
+[node name="Text" parent="StoryLayer/Narrative/SpeechBubble"]
+theme_override_font_sizes/normal_font_size = 28
+theme_override_constants/line_separation = 6
+
+[node name="Teaching" parent="StoryLayer" instance=ExtResource("teaching")]
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+grow_horizontal = 1
+grow_vertical = 1
+
+[node name="ColorDialogue" parent="StoryLayer" instance=ExtResource("color")]
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+grow_horizontal = 1
+grow_vertical = 1

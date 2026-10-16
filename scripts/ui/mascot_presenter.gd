@@ -6,6 +6,7 @@ signal entrance_finished
 @export var resting_bounds: Array[Rect2] = []
 @export var display_heights: PackedFloat32Array = PackedFloat32Array([340.0, 280.0, 150.0])
 @export var edge_margin: Vector2 = Vector2(48.0, 42.0)
+@export var ignore_time_scale: bool = false
 @export_range(0.1, 2.0, 0.05) var fallback_slide_seconds: float = 0.75
 
 var selected_form: int = 0
@@ -29,6 +30,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if paused:
 		return
+	if ignore_time_scale:
+		delta /= Engine.time_scale
 	var was_entering: bool = elapsed < entrance_duration()
 	seek(elapsed + delta * playback_speed)
 	if was_entering and elapsed >= entrance_duration() and not _entrance_finished_emitted:

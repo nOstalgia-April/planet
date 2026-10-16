@@ -29,6 +29,7 @@ func _run_checks() -> void:
 	demo.run.settings.spawn_interval_jitter = 0.0
 	await _check_pipe_transport(demo)
 	await _check_skin_states(demo)
+	await _check_idle_fade(demo)
 	for child: Node in demo.get_node("Audio").get_children():
 		if child is AudioStreamPlayer:
 			child.stop()
@@ -37,7 +38,7 @@ func _run_checks() -> void:
 	await get_tree().process_frame
 	if _failures == 0:
 		print(
-			"PASS: empty tube, cancelled intake, confirmed single capture, continuous transport, queued capture, target loss, tool switch, focus, restart, species skin, combo priority, expiry and queued bottom-up transitions."
+			"PASS: capture transport, species and combo skins, gray default, five-second inactivity hold, smooth fade, same-species refresh and restart."
 		)
 	get_tree().quit(0 if _failures == 0 else 1)
 
@@ -162,7 +163,7 @@ func _save(demo: DemoScript, label: String) -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	await RenderingServer.frame_post_draw
-	var folder: String = "res://artifacts/vacuum_skin_20261013"
+	var folder: String = "res://artifacts/vacuum_skin_20261016"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder))
 	_check(
 		root.get_texture().get_image().save_png(folder.path_join(label + ".png")) == OK,
@@ -254,6 +255,68 @@ func _check_skin_states(demo: DemoScript) -> void:
 			and art.transition == VacuumSkin.Transition.STABLE
 		),
 		"Restart clears current skin and pending transitions."
+	)
+	art.set_process(true)
+
+
+func _check_idle_fade(demo: DemoScript) -> void:
+	demo.restart_run()
+	var art: VacuumSkin = demo._pipe._art
+	art.set_process(false)
+	_check(
+		art.default_frames[0].resource_path.ends_with("gray/001.png"),
+		"The default idle tool uses the supplied gray animation."
+	)
+	var actor: PrototypeSlime = _prepare_one(demo)
+	demo._drive_tool(demo.run.get_pipe_capture_seconds(), actor.get_capture_point(), false)
+	art._process(art.transition_seconds)
+	_check(art._received_capture, "A confirmed collection starts the color hold.")
+	art._process(art.color_hold_seconds - art.transition_seconds - 0.01)
+	_check(is_zero_approx(art._gray_mix), "Color is held for the entire first five seconds.")
+
+	actor = _prepare_one(demo)
+	demo._drive_tool(0.01, actor.get_capture_point(), false)
+	art.request_skin(VacuumSkin.SkinKind.RAINBOW)
+	art._process(0.01 + art.gray_fade_seconds * 0.5)
+	_check(
+		is_equal_approx(art._gray_mix, 0.5),
+		"An unfinished intake and combo skin request do not refresh the hold."
+	)
+	await _save(demo, "idle_fade_half")
+	art._process(art.gray_fade_seconds * 0.5)
+	_check(is_equal_approx(art._gray_mix, 1.0), "Two seconds of fading reaches the gray artwork.")
+	art.seek_frame(3)
+	_check(
+		art._material.get_shader_parameter("gray_frame") == art.default_frames[3],
+		"The gray overlay follows the transport animation frame."
+	)
+	await _save(demo, "idle_gray")
+
+	# Return to pink before collecting the next pink actor to exercise same-color refresh.
+	art.request_skin(VacuumSkin.SkinKind.PINK)
+	art._process(art.transition_seconds)
+	demo._drive_tool(demo.run.get_pipe_capture_seconds(), actor.get_capture_point(), false)
+	_check(is_zero_approx(art._seconds_since_capture), "A same-species collection resets the hold.")
+	_check(is_equal_approx(art._gray_mix, 1.0), "A fresh capture does not abruptly snap the color.")
+	art._process(art.transition_seconds * 0.5)
+	_check(is_equal_approx(art._gray_mix, 0.5), "Color returns smoothly after a fresh capture.")
+	art._process(art.transition_seconds * 0.5)
+	_check(is_zero_approx(art._gray_mix), "The renewed color fully returns.")
+	art._process(art.color_hold_seconds - art.transition_seconds + art.gray_fade_seconds * 0.5)
+	_check(is_equal_approx(art._gray_mix, 0.5), "A new five-second hold precedes the next fade.")
+	actor = _prepare_one(demo)
+	demo._drive_tool(demo.run.get_pipe_capture_seconds(), actor.get_capture_point(), false)
+	_check(
+		is_equal_approx(art._gray_mix, 0.5), "A capture during fading preserves the visible color."
+	)
+	art._process(art.transition_seconds * 0.25)
+	_check(
+		is_equal_approx(art._gray_mix, 0.25), "An interrupted fade reverses smoothly toward color."
+	)
+	demo.restart_run()
+	_check(
+		art.current_skin == VacuumSkin.SkinKind.DEFAULT and not art._received_capture,
+		"Restart restores gray and clears the inactivity timer."
 	)
 	art.set_process(true)
 

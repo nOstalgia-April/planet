@@ -10,12 +10,14 @@ const SharedCache = preload("res://scripts/art_resource_cache.gd")
 @export_range(4.0, 100.0, 0.1) var texture_length: float = 32.0
 @export_range(1.0, 4.0, 0.1) var spread_multiplier: float = 2.7
 @export_range(0.1, 4.0, 0.1) var spread_seconds: float = 1.2
-# Continuous middle of the artist's separate ground layer (original pixels).
-const SOURCE_LEFT: int = 80
-const SOURCE_RIGHT: int = 398
-const SOURCE_CENTER_Y: float = 167.5
-const SOURCE_HALF_HEIGHT: float = 23.5
+# Sample the continuous middle of each source, keeping its irregular painted edges.
+@export var source_region: Rect2i = Rect2i(80, 144, 319, 48)
+@export var source_white_background: bool = false
+@export var tail_texture: Texture2D
+@export var tail_source_region: Rect2i
+@export_range(1.0, 20.0, 0.1) var tail_length: float = 12.0
 var _source_edges: PackedVector2Array = PackedVector2Array()
+var _tail_edges: PackedVector2Array = PackedVector2Array()
 @export var edge_color: Color = Color("344991")
 @export var body_color: Color = Color("92b3ef")
 @export var highlight_color: Color = Color("e6f1ff")
@@ -52,19 +54,16 @@ var _render_detail: bool = true
 
 
 func _ready() -> void:
-	var cache: Dictionary = SharedCache.get_cache(&"planet_mucus_edges")
-	_source_edges = cache.get(&"edges", PackedVector2Array())
-	if _source_edges.is_empty() and _edge.texture != null:
-		var source: Image = _edge.texture.get_image()
-		for x: int in range(SOURCE_LEFT, SOURCE_RIGHT + 1):
-			var top: int = 191
-			var bottom: int = 144
-			for y: int in range(144, 192):
-				if source.get_pixel(x, y).a >= 0.18:
-					top = mini(top, y)
-					bottom = maxi(bottom, y)
-			_source_edges.append(Vector2(top + 0.5, bottom + 0.5))
-		cache[&"edges"] = _source_edges
+	if _edge.texture != null:
+		_source_edges = _read_source_edges(_edge.texture, source_region, source_white_background)
+	if tail_texture != null:
+		_tail_edges = _read_source_edges(tail_texture, tail_source_region, false)
+		_edge.set_instance_shader_parameter(
+			"body_region", _normalized_region(source_region, _edge.texture)
+		)
+		_edge.set_instance_shader_parameter(
+			"tail_region", _normalized_region(tail_source_region, tail_texture)
+		)
 	# The ribbons already have soft vertex opacity; per-triangle antialiasing adds
 	# overlapping feather geometry along every internal strip edge.
 	_edge.antialiased = false
@@ -77,11 +76,48 @@ func _ready() -> void:
 		position = get_viewport_rect().size * 0.5
 		scale = Vector2.ONE * 5.0
 	_clock = 2.0
-	for index: int in range(25):
-		var progress: float = float(index) / 24.0
+	for index: int in range(97):
+		var progress: float = float(index) / 96.0
 		_ground_points.append(Vector2(lerpf(-36.0, 36.0, progress), sin(progress * TAU) * 8.0))
 		_sample_times.append(progress * 2.0)
 	_build_ribbon()
+
+
+func _read_source_edges(
+	texture: Texture2D, region: Rect2i, white_background: bool
+) -> PackedVector2Array:
+	var cache: Dictionary = SharedCache.get_cache(&"planet_mucus_edges")
+	var source_key: String = "%s:%s:%s" % [texture.resource_path, region, white_background]
+	var edges: PackedVector2Array = cache.get(source_key, PackedVector2Array())
+	if edges.is_empty():
+		var source: Image = texture.get_image()
+		for x: int in range(region.position.x, region.end.x):
+			var top: int = region.end.y - 1
+			var bottom: int = region.position.y
+			for y: int in range(region.position.y, region.end.y):
+				var pixel: Color = source.get_pixel(x, y)
+				var opacity: float = pixel.a
+				if white_background:
+					opacity *= smoothstep(0.025, 0.10, pixel.b - pixel.r)
+				if opacity >= 0.18:
+					top = mini(top, y)
+					bottom = maxi(bottom, y)
+			if top > bottom:
+				top = region.position.y + region.size.y / 2
+				bottom = top
+			edges.append(Vector2(top + 0.5, bottom + 0.5))
+		cache[source_key] = edges
+	return edges
+
+
+func _normalized_region(region: Rect2i, texture: Texture2D) -> Vector4:
+	var size: Vector2 = texture.get_size()
+	return Vector4(
+		(region.position.x + 0.5) / size.x,
+		(region.position.y + 0.5) / size.y,
+		(region.size.x - 1.0) / size.x,
+		(region.size.y - 1.0) / size.y
+	)
 
 
 func configure(
@@ -266,16 +302,25 @@ func _point_for_anchor(anchor: Vector2) -> Vector2:
 func _trim_length() -> void:
 	var length: float = 0.0
 	for index: int in range(_ground_points.size() - 1, 0, -1):
-		length += _ground_points[index].distance_to(_ground_points[index - 1])
+		var segment: float = _ground_points[index].distance_to(_ground_points[index - 1])
+		length += segment
 		if length > maximum_length:
-			for old_index: int in range(index):
+			# Keep an interpolated boundary, so the tail moves continuously between samples.
+			var cut: float = (length - maximum_length) / segment
+			var boundary: Vector2 = _ground_points[index - 1].lerp(_ground_points[index], cut)
+			var boundary_time: float = lerpf(_sample_times[index - 1], _sample_times[index], cut)
+			for old_index: int in range(index - 1):
 				_distance_offset += _ground_points[old_index].distance_to(
 					_ground_points[old_index + 1]
 				)
-			for _old: int in range(index):
+			_distance_offset += _ground_points[index - 1].distance_to(boundary)
+			for _old: int in range(index - 1):
 				anchors.remove_at(0)
 				_sample_times.remove_at(0)
 				_ground_points.remove_at(0)
+			anchors[0] = _anchor_for_point(boundary)
+			_ground_points[0] = _point_for_anchor(anchors[0])
+			_sample_times[0] = boundary_time
 			return
 
 
@@ -305,10 +350,14 @@ func _build_ribbon() -> void:
 		var fade: float = smoothstep(0.0, 1.5, lifetime - age)
 		var spread: float = lerpf(1.0, spread_multiplier, smoothstep(0.0, spread_seconds, age))
 		var taper: float = lerpf(0.18, 1.0, smoothstep(0.0, half_width * 1.6, length))
+		if tail_texture != null:
+			taper = 1.0
 		var painted_distance: float = length + _distance_offset
 		var painted_edge: float = (
 			1.0 + sin(painted_distance * 0.36) * 0.18 + sin(painted_distance * 0.79) * 0.09
 		)
+		if tail_texture != null:
+			painted_edge = lerpf(1.0, painted_edge, smoothstep(0.0, tail_length, length))
 		normals.append(Vector2(-tangent.y, tangent.x))
 		widths.append(half_width * spread * taper * painted_edge * sqrt(fade))
 		ages.append(fade)
@@ -342,6 +391,8 @@ func _write_strip(
 	var colors: PackedColorArray = PackedColorArray()
 	colors.resize(vertices.size())
 	var uvs: PackedVector2Array = PackedVector2Array()
+	var contact_vertices: PackedVector2Array = PackedVector2Array()
+	contact_vertices.resize(vertices.size())
 	if polygon.texture != null:
 		uvs.resize(vertices.size())
 	var triangles: Array[PackedInt32Array] = []
@@ -356,24 +407,60 @@ func _write_strip(
 		elif polygon == _highlight:
 			color.a *= smoothstep(-0.3, 0.7, sin(distances[index] * 0.19)) * 0.85
 		for side_index: int in range(2):
+			var vertex_color: Color = color
 			var side: float = left if side_index == 0 else right
 			var source_uv: Vector2 = Vector2.ZERO
 			if polygon.texture != null:
 				var along: float = 1.0 - absf(1.0 - fposmod(distances[index] / texture_length, 2.0))
-				var source_x: float = lerpf(float(SOURCE_LEFT), float(SOURCE_RIGHT), along)
+				var source_x: float = lerpf(
+					float(source_region.position.x), float(source_region.end.x - 1), along
+				)
 				var column: int = clampi(
-					roundi(source_x) - SOURCE_LEFT, 0, _source_edges.size() - 1
+					roundi(source_x) - source_region.position.x, 0, _source_edges.size() - 1
 				)
 				var source_y: float = _source_edges[column][side_index]
 				source_uv = Vector2(source_x + 0.5, source_y)
-				side = (source_y - SOURCE_CENTER_Y) / SOURCE_HALF_HEIGHT
+				var source_half_height: float = float(source_region.size.y - 1) * 0.5
+				var source_center_y: float = float(source_region.position.y) + source_half_height
+				side = (source_y - source_center_y) / source_half_height
+				if tail_texture != null:
+					var tail_progress: float = clampf(
+						(distances[index] - distances[0]) / tail_length, 0.0, 1.0
+					)
+					var blend: float = smoothstep(0.55, 1.0, tail_progress)
+					var tail_x: float = (
+						tail_source_region.position.x
+						+ tail_progress * float(tail_source_region.size.x - 1) * 0.5
+					)
+					var tail_column: int = clampi(
+						roundi(tail_x) - tail_source_region.position.x, 0, _tail_edges.size() - 1
+					)
+					var tail_y: float = _tail_edges[tail_column][side_index]
+					var tail_half_height: float = float(tail_source_region.size.y - 1) * 0.5
+					var tail_side: float = (
+						(tail_y - tail_source_region.position.y - tail_half_height)
+						/ tail_half_height
+					)
+					side = lerpf(tail_side, side, blend)
+					vertex_color.a *= smoothstep(0.0, 0.08, tail_progress)
+					source_uv = Vector2(
+						(distances[index] - distances[0]) * polygon.texture.get_width(),
+						side_index * polygon.texture.get_height()
+					)
 				side += sin(distances[index] * 0.27) * 0.16
 			var vertex_index: int = index * 2 + side_index
 			var point: Vector2 = _ground_points[index] + normals[index] * widths[index] * side
+			contact_vertices[vertex_index] = point if _preview else _clip_to_ground(point)
+			if tail_texture != null:
+				# Render the complete alpha silhouette; contact uses the sampled painted edges.
+				var full_side: float = (
+					(-1.0 if side_index == 0 else 1.0) + sin(distances[index] * 0.27) * 0.16
+				)
+				point = _ground_points[index] + normals[index] * widths[index] * full_side
 			if vertex_index >= previous_size or sources[vertex_index] != point:
 				sources[vertex_index] = point
 				vertices[vertex_index] = point if _preview else _clip_to_ground(point)
-			colors[vertex_index] = color
+			colors[vertex_index] = vertex_color
 			if polygon.texture != null:
 				uvs[vertex_index] = source_uv
 		if index == 0:
@@ -381,12 +468,17 @@ func _write_strip(
 		var start: int = (index - 1) * 2
 		for triangle_index: int in range(start, start + 2):
 			var indices: PackedInt32Array = _triangle_indices[triangle_index]
-			var a: Vector2 = vertices[indices[0]]
-			var b: Vector2 = vertices[indices[1]]
-			var c: Vector2 = vertices[indices[2]]
+			var a: Vector2 = contact_vertices[indices[0]]
+			var b: Vector2 = contact_vertices[indices[1]]
+			var c: Vector2 = contact_vertices[indices[2]]
 			if absf((b - a).cross(c - a)) > 0.0001:
 				triangles.append(indices)
 	if _render_detail:
+		if tail_texture != null:
+			polygon.set_instance_shader_parameter("path_offset", _distance_offset)
+			polygon.set_instance_shader_parameter(
+				"sample_lengths", Vector2(texture_length, tail_length)
+			)
 		polygon.visible = not triangles.is_empty()
 		polygon.polygon = vertices
 		polygon.vertex_colors = colors
@@ -396,12 +488,12 @@ func _write_strip(
 	_strip_sources[layer] = sources
 	_strip_vertices[layer] = vertices
 	if polygon == _edge and not vertices.is_empty():
-		_hit_vertices = vertices
+		_hit_vertices = contact_vertices
 		_hit_colors = colors
 		_hit_triangles = triangles
 		_cache_hit_geometry()
-		_hit_bounds = Rect2(vertices[0], Vector2.ZERO)
-		for vertex: Vector2 in vertices:
+		_hit_bounds = Rect2(contact_vertices[0], Vector2.ZERO)
+		for vertex: Vector2 in contact_vertices:
 			_hit_bounds = _hit_bounds.expand(vertex)
 		_hit_bounds = _hit_bounds.grow(0.01)
 
