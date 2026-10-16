@@ -201,7 +201,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if not key_event.pressed or key_event.echo or key_event.keycode != KEY_ESCAPE:
 		return
 	if _completion.is_visible_in_tree():
-		_completion.finish_credits()
+		_completion.skip_credits()
 	elif game_menu.is_open():
 		game_menu.handle_escape()
 	elif is_technology_open() or _nest_card.is_visible_in_tree():

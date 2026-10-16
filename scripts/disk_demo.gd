@@ -163,8 +163,6 @@ func _ready() -> void:
 	_layout.view_switch_requested.connect(_toggle_view_shortcut)
 	_view.view_changed.connect(_sync_view_presentation)
 	_view.projection_changed.connect(_sync_view_projection)
-	_completion.replay_requested.connect(restart_run)
-	_completion.close_requested.connect(_close_victory)
 	_completion.menu_requested.connect(_layout.game_menu.menu_requested.emit)
 	_overview.configure(_planet, _world)
 	RenderingServer.set_default_clear_color(Color("e9e8df"))

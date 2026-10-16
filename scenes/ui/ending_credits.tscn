@@ -1,40 +1,12 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/ending_credits.gd" id="script"]
 [ext_resource type="FontFile" path="res://fonts/NotoSansSC-Regular.otf" id="font"]
-[ext_resource type="SpriteFrames" path="res://resources/mascot/cloak.tres" id="mascot"]
+[ext_resource type="Texture2D" path="res://assets/ui/ending/alien_and_planet.png" id="ending_art"]
 
-[sub_resource type="StyleBoxFlat" id="button_normal"]
-content_margin_left = 24.0
-content_margin_top = 12.0
-content_margin_right = 24.0
-content_margin_bottom = 12.0
-bg_color = Color(0.09, 0.16, 0.23, 0.65)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.82, 0.92, 0.96, 0.55)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_left = 12
-corner_radius_bottom_right = 12
-
-[sub_resource type="StyleBoxFlat" id="button_hover"]
-content_margin_left = 24.0
-content_margin_top = 12.0
-content_margin_right = 24.0
-content_margin_bottom = 12.0
-bg_color = Color(0.13, 0.25, 0.32, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.9, 0.98, 1, 0.95)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_left = 12
-corner_radius_bottom_right = 12
+[sub_resource type="AtlasTexture" id="ending_art_region"]
+atlas = ExtResource("ending_art")
+region = Rect2(1062, 183, 738, 795)
 
 [sub_resource type="StyleBoxFlat" id="button_focus"]
 draw_center = false
@@ -71,9 +43,9 @@ Button/colors/font_focus_color = Color(1, 1, 1, 1)
 Button/colors/font_outline_color = Color(0.07, 0.13, 0.2, 0.9)
 Button/constants/outline_size = 2
 Button/font_sizes/font_size = 22
-Button/styles/normal = SubResource("button_normal")
-Button/styles/hover = SubResource("button_hover")
-Button/styles/pressed = SubResource("button_hover")
+Button/styles/normal = SubResource("skip_normal")
+Button/styles/hover = SubResource("skip_normal")
+Button/styles/pressed = SubResource("skip_normal")
 Button/styles/focus = SubResource("button_focus")
 
 [node name="EndingCredits" type="Control"]
@@ -180,58 +152,14 @@ mouse_filter = 2
 text = "所有参与本次星际清扫任务的伙伴"
 horizontal_alignment = 1
 
-[node name="MascotHolder" type="Control" parent="Roll/Thanks"]
-custom_minimum_size = Vector2(0, 156)
+[node name="EndingArt" type="TextureRect" parent="Roll/Thanks"]
+custom_minimum_size = Vector2(145, 156)
 layout_mode = 2
+size_flags_horizontal = 4
 mouse_filter = 2
-
-[node name="Center" type="Control" parent="Roll/Thanks/MascotHolder"]
-layout_mode = 1
-anchor_left = 0.5
-anchor_right = 0.5
-offset_top = 4.0
-offset_bottom = 4.0
-mouse_filter = 2
-
-[node name="Sprite" type="AnimatedSprite2D" parent="Roll/Thanks/MascotHolder/Center"]
-position = Vector2(-103.62769, -13.341289)
-scale = Vector2(0.31026253, 0.31026253)
-sprite_frames = ExtResource("mascot")
-animation = &"idle"
-centered = false
-
-[node name="Actions" type="HBoxContainer" parent="."]
-visible = false
-layout_mode = 1
-anchors_preset = 12
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -300.0
-offset_top = -112.0
-offset_right = 300.0
-offset_bottom = -56.0
-grow_horizontal = 2
-grow_vertical = 0
-mouse_filter = 2
-theme_override_constants/separation = 20
-alignment = 1
-
-[node name="Replay" type="Button" parent="Actions"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "再玩一次"
-
-[node name="Close" type="Button" parent="Actions"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "看看星球"
-
-[node name="Menu" type="Button" parent="Actions"]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "返回主菜单"
+texture = SubResource("ending_art_region")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="Skip" type="Button" parent="."]
 visible = false
