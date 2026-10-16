@@ -261,7 +261,27 @@ func _check_candy_bursts(audio: Node) -> void:
 	await get_tree().create_timer(1.5).timeout
 	_check(audio._scheduled_candy.is_empty(), "Queued candy sounds finish playing.")
 	audio.candy_from_net(500, 1)
-	_check(audio._scheduled_candy.is_empty(), "One monster plays one candy sound, however rich.")
+	_check(
+		(
+			audio._scheduled_candy.size() == 1
+			and is_equal_approx(
+				float(audio._scheduled_candy[0]["time"]) - audio._clock,
+				audio.candy_after_net_seconds
+			)
+		),
+		"One netted monster plays one candy sound, after Net_Capture."
+	)
+	while not audio._scheduled_candy.is_empty():
+		await get_tree().process_frame
+	GameAudio.play(audio.CANDY_EVENT, {}, 0.5)
+	var scaled: Array = GameAudio._scaled_effects.back()
+	GameAudio._apply_effects_volume()
+	_check(
+		is_equal_approx(
+			(scaled[0] as FmodEvent).get_volume(), GameAudio._effects_gain(scaled[2]) * 0.5
+		),
+		"The periodic volume refresh keeps a quieter candy voice quieter."
+	)
 	audio.monster_sucked(0.0, 600, 40)
 	var queued: Array[Dictionary] = audio._scheduled_candy.duplicate()
 	_check(

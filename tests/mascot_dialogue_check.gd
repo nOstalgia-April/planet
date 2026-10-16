@@ -18,6 +18,8 @@ var _started_texts: PackedStringArray = PackedStringArray()
 var _finished_indices: PackedInt32Array = PackedInt32Array()
 var _completion_count: int = 0
 var _entrance_count: int = 0
+var _voice_starts: int = 0
+var _voice_stops: int = 0
 
 
 func _ready() -> void:
@@ -59,6 +61,7 @@ func _run() -> void:
 		await _check_restart_and_stop()
 		await _check_mouse_input()
 		await _check_line_started_advance()
+		await _check_clause_voice()
 	_dialogue.stop()
 	fixture.queue_free()
 	_dialogue = null
@@ -345,6 +348,46 @@ func _check_line_started_advance() -> void:
 	if _dialogue.line_started.is_connected(_advance_started_line):
 		_dialogue.line_started.disconnect(_advance_started_line)
 	_dialogue.stop()
+
+
+func _check_clause_voice() -> void:
+	_dialogue.voice_started.connect(_on_voice_started)
+	_dialogue.voice_stopped.connect(_on_voice_stopped)
+	var speed: float = _dialogue.characters_per_second
+	_dialogue.characters_per_second = 40.0
+	_dialogue.play(PackedStringArray(EXPECTED_LINES))
+	_voice_starts = 0
+	_voice_stops = 0
+	var deadline: int = Time.get_ticks_msec() + 8000
+	while _dialogue.phase != Dialogue.Phase.HOLDING and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	# 喂 / 小心脚下 / 你差点……小家伙: dashes and the final mark close each clause.
+	_check(
+		_voice_starts == 3 and _voice_stops == 3,
+		(
+			"Each punctuation-separated clause starts and stops the voice once, got %d/%d."
+			% [_voice_starts, _voice_stops]
+		)
+	)
+	_dialogue.advance()
+	while _voice_starts == 3 and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	_check(_voice_starts == 4 and _voice_stops == 3, "The next line opens a new clause.")
+	_dialogue.advance()
+	_check(_voice_stops == 4, "Skipping a typing line stops its clause voice.")
+	_dialogue.stop()
+	_check(_voice_starts == _voice_stops, "Stopping leaves no clause voice running.")
+	_dialogue.characters_per_second = speed
+	_dialogue.voice_started.disconnect(_on_voice_started)
+	_dialogue.voice_stopped.disconnect(_on_voice_stopped)
+
+
+func _on_voice_started(_index: int) -> void:
+	_voice_starts += 1
+
+
+func _on_voice_stopped() -> void:
+	_voice_stops += 1
 
 
 func _advance_started_line(_index: int, _text: String) -> void:

@@ -3,9 +3,15 @@ extends Control
 signal line_started(index: int, text: String)
 signal line_finished(index: int)
 signal dialogue_finished
+# A spoken clause runs from its first sounding character to the next punctuation.
+signal voice_started(index: int)
+signal voice_stopped
 
 const Presenter = preload("res://scripts/ui/mascot_presenter.gd")
 const GlyphPop = preload("res://scripts/ui/dialogue_glyph_pop.gd")
+
+const PAUSE_PUNCTUATION: String = "，。！？；：、…—"
+const SILENT_CHARACTERS: String = PAUSE_PUNCTUATION + "“”‘’「」『』（）《》～ \n"
 
 enum Phase { HIDDEN, ENTERING, OPENING, TYPING, HOLDING, FINISHED, IDLE }
 
@@ -26,6 +32,7 @@ var _next_character_at: float = 0.0
 var _glyph_pop: GlyphPop = GlyphPop.new()
 var _playback_version: int = 0
 var _dialogue_click_pressed: bool = false
+var _voicing: bool = false
 
 @onready var presenter: Presenter = $MascotPresenter
 @onready var bubble: Control = $SpeechBubble
@@ -88,6 +95,7 @@ func play(dialogue_lines: PackedStringArray, replay_entrance: bool = true) -> vo
 	assert(not dialogue_lines.is_empty(), "A dialogue needs at least one line.")
 	var keep_presenter: bool = not replay_entrance and visible
 	_playback_version += 1
+	_set_voicing(false)
 	lines = dialogue_lines.duplicate()
 	line_index = -1
 	_phase_elapsed = 0.0
@@ -125,6 +133,7 @@ func advance() -> void:
 
 func stop() -> void:
 	_playback_version += 1
+	_set_voicing(false)
 	phase = Phase.HIDDEN
 	presenter.set_speaking(false)
 	presenter.paused = true
@@ -134,6 +143,7 @@ func stop() -> void:
 
 func dismiss_bubble() -> void:
 	_playback_version += 1
+	_set_voicing(false)
 	phase = Phase.IDLE
 	_phase_elapsed = 0.0
 	presenter.set_speaking(false)
@@ -185,8 +195,9 @@ func _reveal_characters() -> void:
 		_glyph_pop.revealed_at.append(_next_character_at)
 		text_label.visible_characters += 1
 		_next_character_at += 1.0 / characters_per_second
-		if line[index] in "，。！？；：、…—":
+		if line[index] in PAUSE_PUNCTUATION:
 			_next_character_at += punctuation_pause
+		_set_voicing(not (line[index] in SILENT_CHARACTERS))
 	if text_label.visible_characters == line.length():
 		_finish_line()
 
@@ -195,6 +206,17 @@ func _finish_line() -> void:
 	if phase != Phase.TYPING:
 		return
 	presenter.set_speaking(false)
+	_set_voicing(false)
 	phase = Phase.HOLDING
 	_phase_elapsed = 0.0
 	line_finished.emit(line_index)
+
+
+func _set_voicing(voicing: bool) -> void:
+	if voicing == _voicing:
+		return
+	_voicing = voicing
+	if voicing:
+		voice_started.emit(line_index)
+	else:
+		voice_stopped.emit()

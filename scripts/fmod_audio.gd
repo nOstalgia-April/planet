@@ -80,6 +80,9 @@ var _pending_music: FmodEvent
 var _pending_music_path: String = ""
 # Previous tracks still fading out: FmodEvent -> current volume.
 var _fading_out: Dictionary = {}
+# One-shots played below the effects volume, as [FmodEvent, scale, near view]
+# entries, so the periodic volume refresh keeps their scale.
+var _scaled_effects: Array[Array] = []
 
 
 func _ready() -> void:
@@ -129,6 +132,7 @@ func _exit_tree() -> void:
 			instance.stop(FmodServer.FMOD_STUDIO_STOP_IMMEDIATE)
 			instance.release()
 	_fading_out.clear()
+	_scaled_effects.clear()
 	_effect_descriptions.clear()
 	_effect_is_near_view.clear()
 	_effect_is_ui.clear()
@@ -212,6 +216,8 @@ func play(event_path: String, parameters: Dictionary = {}, volume_scale: float =
 	instance.set_volume(_effects_gain(_is_near_view(event_path)) * volume_scale)
 	instance.start()
 	instance.release()
+	if volume_scale < 1.0:
+		_scaled_effects.append([instance, volume_scale, _is_near_view(event_path)])
 
 
 # Called every frame by the game scene with the camera's near/overview blend
@@ -513,6 +519,19 @@ func _apply_effects_volume() -> void:
 			# Native playback may outlive its Godot wrapper or end during enumeration.
 			if instance != null and instance.is_valid():
 				instance.set_volume(gain)
+	# Volume changes apply together at the next FMOD update, so the scaled
+	# value below wins without an audible jump.
+	for index: int in range(_scaled_effects.size() - 1, -1, -1):
+		var entry: Array = _scaled_effects[index]
+		var instance: FmodEvent = entry[0]
+		if (
+			instance == null
+			or not instance.is_valid()
+			or instance.get_playback_state() == FmodServer.FMOD_STUDIO_PLAYBACK_STOPPED
+		):
+			_scaled_effects.remove_at(index)
+		else:
+			instance.set_volume(_effects_gain(entry[2]) * float(entry[1]))
 
 
 func _effects_gain(near_view: bool) -> float:
