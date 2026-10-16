@@ -69,9 +69,11 @@ const CANDY_VALUE_PARAMETER: String = "Candy_Value"
 # candy_min_gap_seconds, each voice candy_volume_decay quieter than the last.
 # candy_max_voices caps the voices waiting at once across all payouts.
 @export_range(1, 64, 1) var candy_max_voices: int = 12
-# After SuckUp_Pop, the pipe's candy run starts this much later; net payouts
-# have no pop and start right away.
+# After SuckUp_Pop, the pipe's candy run starts this much later.
 @export_range(0.0, 1.0, 0.01) var candy_after_pop_seconds: float = 0.15
+# Net payouts start after Net_Capture's hit (peak ~0.11 s, silent by ~0.22 s),
+# so the candy run does not bury it.
+@export_range(0.0, 1.0, 0.01) var candy_after_net_seconds: float = 0.2
 @export_range(0.02, 1.0, 0.01) var candy_first_gap_seconds: float = 0.15
 @export_range(0.5, 1.0, 0.01) var candy_gap_decay: float = 0.85
 @export_range(0.02, 0.5, 0.01) var candy_min_gap_seconds: float = 0.05
@@ -225,7 +227,7 @@ func combo_broken() -> void:
 # A net catch paid out candy. The net never builds a combo.
 func candy_from_net(candy: int, monsters: int) -> void:
 	if _ready_to_play:
-		_queue_candy(monsters, candy, 0.0)
+		_queue_candy(monsters, candy, 0.0, candy_after_net_seconds)
 
 
 func _queue_candy(monsters: int, candy: int, combo: float, delay: float = 0.0) -> void:

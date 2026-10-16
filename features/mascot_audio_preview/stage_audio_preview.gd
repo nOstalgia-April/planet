@@ -71,9 +71,10 @@ func return_to_menu() -> void:
 	get_tree().change_scene_to_file.call_deferred("res://scenes/主菜单/主菜单.tscn")
 
 
+# Each clause between punctuation plays the talk sound once from its start.
 func bind_dialogue_audio(speaker: Dialogue) -> void:
-	speaker.line_started.connect(_on_line_started)
-	speaker.line_finished.connect(_on_line_finished)
+	speaker.voice_started.connect(_on_voice_started)
+	speaker.voice_stopped.connect(stop_dialogue_audio)
 
 
 func stop_dialogue_audio() -> void:
@@ -82,14 +83,10 @@ func stop_dialogue_audio() -> void:
 		_dialogue_audio = null
 
 
-func _on_line_started(_index: int, _text: String) -> void:
+func _on_voice_started(_index: int) -> void:
 	stop_dialogue_audio()
 	if _talk_audio_ready:
 		_dialogue_audio = GameAudio.start_loop(talk_event_path)
-
-
-func _on_line_finished(_index: int) -> void:
-	stop_dialogue_audio()
 
 
 func _exit_tree() -> void:
