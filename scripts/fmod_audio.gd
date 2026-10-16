@@ -76,6 +76,10 @@ var _music_volume: float = 0.0
 var _transition: FmodEvent
 var _transition_elapsed: float = 0.0
 var _transition_length: float = 0.0
+# Seconds before the transition's end at which held music starts.
+var _transition_lead: float = 0.0
+# False for a sound adopted with hold_music_for, which its caller already released.
+var _transition_owned: bool = false
 var _pending_music: FmodEvent
 var _pending_music_path: String = ""
 # Previous tracks still fading out: FmodEvent -> current volume.
@@ -318,11 +322,34 @@ func play_transition(event_path: String, next_music_path: String = "") -> void:
 		return
 	_transition.set_volume(_effects_gain(false))
 	_transition.start()
+	_transition_owned = true
 	_transition_elapsed = 0.0
 	_transition_length = FmodServer.get_event(event_path).get_length() / 1000.0
+	_transition_lead = transition_music_lead_seconds
 	if not next_music_path.is_empty():
 		_prepare_pending_music(next_music_path)
 	FmodServer.update()
+
+
+# Treats a sound already playing (an instance of event_path) as a transition:
+# music requested from now on waits until it is lead_seconds from its end.
+func hold_music_for(instance: FmodEvent, event_path: String, lead_seconds: float) -> void:
+	event_path = resolve_event_path(event_path)
+	if instance == null or not instance.is_valid() or not has_events([event_path]):
+		return
+	_discard_pending_music()
+	_end_transition()
+	_transition = instance
+	_transition_owned = false
+	_transition_elapsed = 0.0
+	_transition_length = FmodServer.get_event(event_path).get_length() / 1000.0
+	_transition_lead = lead_seconds
+
+
+# True until the current transition sound reaches the point where the next
+# music would start (see transition_music_lead_seconds).
+func is_transition_playing() -> bool:
+	return _transition != null
 
 
 ## Returns -1 when this track is unavailable. FMOD owns looping, pausing and seeking.
@@ -380,7 +407,7 @@ func _is_transition_ending() -> bool:
 		_transition_length > 0.0
 		and (
 			_transition.get_timeline_position() / 1000.0
-			>= _transition_length - transition_music_lead_seconds
+			>= _transition_length - _transition_lead
 		)
 	)
 
@@ -424,7 +451,7 @@ func _discard_pending_music() -> void:
 
 
 func _end_transition() -> void:
-	if _transition != null and _transition.is_valid():
+	if _transition_owned and _transition != null and _transition.is_valid():
 		_transition.release()
 	_transition = null
 

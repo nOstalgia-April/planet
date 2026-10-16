@@ -6,6 +6,7 @@
 
 [node name="PhaseTwoAudioPreview" type="Node"]
 script = ExtResource("script")
+talk_event_path = "event:/Gibberish/Gibberish_Stage2"
 
 [node name="Game" parent="." instance=ExtResource("game")]
 
