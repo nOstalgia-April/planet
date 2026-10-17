@@ -1,13 +1,58 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/mission_notice.gd" id="script"]
 [ext_resource type="FontFile" path="res://fonts/NotoSansSC-Regular.otf" id="font"]
+[ext_resource type="Script" path="res://scripts/ui/menu_icon_button.gd" id="button"]
+[ext_resource type="PackedScene" path="res://scenes/ui/menu_brush.tscn" id="brush"]
+[ext_resource type="Texture2D" path="res://assets/ui/mission_note/close.png" id="close"]
+[ext_resource type="Shader" path="res://shaders/mission_note.gdshader" id="paper_shader"]
+[ext_resource type="Shader" path="res://shaders/monochrome_ink.gdshader" id="ink_shader"]
+[ext_resource type="Texture2D" path="res://assets/ui/mission_note/001.png" id="f1"]
+[ext_resource type="Texture2D" path="res://assets/ui/mission_note/002.png" id="f2"]
+[ext_resource type="Texture2D" path="res://assets/ui/mission_note/003.png" id="f3"]
+[ext_resource type="Texture2D" path="res://assets/ui/mission_note/004.png" id="f4"]
+[ext_resource type="Texture2D" path="res://assets/ui/mission_note/005.png" id="f5"]
+[ext_resource type="Texture2D" path="res://assets/ui/mission_note/006.png" id="f6"]
+[ext_resource type="Texture2D" path="res://assets/ui/mission_note/007.png" id="f7"]
+[ext_resource type="Texture2D" path="res://assets/ui/mission_note/008.png" id="f8"]
+[ext_resource type="Texture2D" path="res://assets/ui/mission_note/009.png" id="f9"]
+[ext_resource type="Texture2D" path="res://assets/ui/mission_note/010.png" id="f10"]
+[ext_resource type="Texture2D" path="res://assets/ui/mission_note/011.png" id="f11"]
+[ext_resource type="Texture2D" path="res://assets/ui/mission_note/012.png" id="f12"]
+[ext_resource type="Texture2D" path="res://assets/ui/mission_note/013.png" id="f13"]
 
-[sub_resource type="Theme" id="theme"]
-default_font = ExtResource("font")
-default_font_size = 24
-Label/colors/font_color = Color(1, 1, 1, 1)
-Label/constants/line_spacing = 10
+[sub_resource type="AtlasTexture" id="close_icon"]
+atlas = ExtResource("close")
+region = Rect2(31, 80, 50, 49)
+
+[sub_resource type="ShaderMaterial" id="paper"]
+resource_local_to_scene = true
+shader = ExtResource("paper_shader")
+
+[sub_resource type="ShaderMaterial" id="black_ink"]
+shader = ExtResource("ink_shader")
+shader_parameter/ink = Color(0, 0, 0, 1)
+
+[sub_resource type="ShaderMaterial" id="white_ink"]
+shader = ExtResource("ink_shader")
+shader_parameter/ink = Color(1, 1, 1, 1)
+
+[sub_resource type="Animation" id="unroll"]
+resource_name = "unroll"
+length = 0.65
+step = 0.05
+tracks/0/type = "value"
+tracks/0/path = NodePath("Page/Paper:texture")
+tracks/0/interp = 0
+tracks/0/keys = {
+"times": PackedFloat32Array(0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+"update": 1,
+"values": [ExtResource("f1"), ExtResource("f2"), ExtResource("f3"), ExtResource("f4"), ExtResource("f5"), ExtResource("f6"), ExtResource("f7"), ExtResource("f8"), ExtResource("f9"), ExtResource("f10"), ExtResource("f11"), ExtResource("f12"), ExtResource("f13")]
+}
+
+[sub_resource type="AnimationLibrary" id="library"]
+_data = { &"unroll": SubResource("unroll") }
 
 [node name="MissionNotice" type="Control"]
 visible = false
@@ -17,43 +62,49 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme = SubResource("theme")
 script = ExtResource("script")
 
-[node name="Black" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-color = Color(0, 0, 0, 1)
-
-[node name="Page" type="VBoxContainer" parent="."]
+[node name="Page" type="Control" parent="."]
 layout_mode = 0
-offset_right = 1000.0
+offset_right = 640.0
+offset_bottom = 560.0
 mouse_filter = 2
-theme_override_constants/separation = 32
 
-[node name="First" type="VBoxContainer" parent="Page"]
-layout_mode = 2
+[node name="Paper" type="Sprite2D" parent="Page"]
+material = SubResource("paper")
+position = Vector2(-680, -160)
+texture = ExtResource("f1")
+centered = false
+
+[node name="Text" type="RichTextLabel" parent="Page"]
+layout_mode = 0
+offset_left = 80.0
+offset_top = 80.0
+offset_right = 552.0
+offset_bottom = 485.0
 mouse_filter = 2
-theme_override_constants/separation = 28
-
-[node name="Heading" type="Label" parent="Page/First"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 32
+theme_override_fonts/normal_font = ExtResource("font")
+theme_override_font_sizes/normal_font_size = 20
+theme_override_constants/line_separation = -2
+scroll_active = false
 horizontal_alignment = 1
+visible_characters_behavior = 1
 
-[node name="Body" type="Label" parent="Page/First"]
-layout_mode = 2
-autowrap_mode = 3
+[node name="Close" type="Button" parent="Page"]
+visible = false
+layout_mode = 0
+offset_left = 512.0
+offset_top = 18.0
+offset_right = 582.0
+offset_bottom = 86.0
+mouse_default_cursor_shape = 2
+material = SubResource("white_ink")
+script = ExtResource("button")
+glyph = SubResource("close_icon")
+glyph_size = 40.0
 
-[node name="Second" type="Label" parent="Page"]
-layout_mode = 2
-autowrap_mode = 3
+[node name="Brush" parent="Page/Close" instance=ExtResource("brush")]
+material = SubResource("black_ink")
 
-[node name="Third" type="Label" parent="Page"]
-layout_mode = 2
-autowrap_mode = 3
+[node name="Unroll" type="AnimationPlayer" parent="."]
+libraries = { &"": SubResource("library") }

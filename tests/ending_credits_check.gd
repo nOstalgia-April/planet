@@ -16,6 +16,7 @@ var _credits: Credits
 var _failures: Array[String] = []
 var _finished: int = 0
 var _menu_requests: int = 0
+var _captured_core: bool = false
 
 
 func _ready() -> void:
@@ -24,6 +25,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	DirAccess.make_dir_recursive_absolute("res://artifacts/mission_note_20261017")
 	get_window().mode = Window.MODE_WINDOWED
 	await _open_preview()
 	_check_content()
@@ -34,13 +36,19 @@ func _run() -> void:
 	await _open_preview()
 	var requests_before: int = _menu_requests
 	await _click(_credits.get_node("Skip") as Button)
-	_check(_menu_requests == requests_before, "Skip waits for the unskippable receipt.")
+	_check(
+		_menu_requests == requests_before + 1,
+		"Skip returns to the menu without repeating the receipt."
+	)
 	_check(_finished == 1, "Skipping does not report a natural completion.")
 	await _check_main_menu()
 	await _open_preview()
 	requests_before = _menu_requests
 	await _key(KEY_ESCAPE)
-	_check(_menu_requests == requests_before, "Esc waits for the unskippable receipt.")
+	_check(
+		_menu_requests == requests_before + 1,
+		"Esc returns to the menu without repeating the receipt."
+	)
 	_check(_finished == 1, "Esc does not report a natural completion.")
 	await _check_main_menu()
 	for failure: String in _failures:
@@ -68,8 +76,26 @@ func _open_preview() -> void:
 
 
 func _wait_for_credits() -> void:
-	var deadline: int = Time.get_ticks_msec() + 12000
+	var deadline: int = Time.get_ticks_msec() + 20000
 	while not _credits.playing and Time.get_ticks_msec() < deadline:
+		if _game.story.receipt.playing:
+			_check(
+				_game._restoration.core.is_visible_in_tree(),
+				"The white core remains visible behind the note."
+			)
+			_check(not _game._restoration.core.is_processing(), "The note holds the core still.")
+			if "--capture" in OS.get_cmdline_user_args() and not _captured_core:
+				_captured_core = true
+				_game.story.receipt.hide()
+				await RenderingServer.frame_post_draw
+				get_viewport().get_texture().get_image().save_png(
+					"res://artifacts/mission_note_20261017/static_white_core.png"
+				)
+				_game.story.receipt.show()
+			_game.story.receipt.reveal_all()
+			_game.story.receipt.close()
+		elif _game.story.phase == _game.StoryFlow.Phase.TALKING:
+			_game.story.active_dialogue.advance()
 		await get_tree().process_frame
 	_check(_game.run.is_complete, "The preview completes the real three-color objective.")
 	_check(_credits.playing, "The existing victory sequence opens the credits.")
@@ -173,19 +199,19 @@ func _check_natural_finish() -> void:
 	_check(_menu_requests == 0, "Credits wait for the last pixel of the drawing to scroll out.")
 	_check(art.get_global_rect().end.y > 0.0, "The drawing is still visible before completion.")
 	_credits._process(2.0)
-	_check(_finished == 1 and _menu_requests == 0, "Natural completion opens the receipt first.")
+	_check(_finished == 1 and _menu_requests == 1, "Natural completion returns to the menu.")
 	_check(
 		art.get_global_rect().end.y < 0.0, "The drawing fully exits before returning to the menu."
 	)
 	_credits.play()
 	_credits.finish_credits()
 	_credits.skip_credits()
-	_check(_menu_requests == 0 and _finished == 1, "Repeated actions cannot bypass the receipt.")
+	_check(
+		_menu_requests == 1 and _finished == 1, "Repeated actions cannot request another return."
+	)
 
 
 func _check_main_menu() -> void:
-	_check(_credits._receipt.playing, "The mission receipt plays before returning to the menu.")
-	_credits._receipt._sequence.custom_step(30.0)
 	await _settle()
 	_check(not get_tree().paused, "Returning to the main menu clears pause.")
 	var current: Node = get_tree().current_scene

@@ -126,6 +126,21 @@ func _check_entrance() -> void:
 	_check(_game._nest_prompts.size() >= 2, "visible nests show independent prompts together")
 	var button: Button = _game._nest_prompts[1]
 	var price: Label = button.get_node("Price") as Label
+	_check(not button.visible, "entering the screen starts a hidden wait")
+	_game._update_nest_prompts(0.6)
+	_check(not button.visible, "less than one second cannot show the prompt")
+	_game._world.rotation += PI
+	_game._update_nest_prompts(1.0)
+	_check(not button.visible, "leaving the screen cancels pending entrance")
+	_game._world.rotation -= PI
+	_game._update_nest_prompts(0.6)
+	_check(not button.visible, "reentry does not reuse the cancelled wait")
+	_game._suspend_nest_prompts()
+	_game._update_nest_prompts(0.99)
+	_game._refresh_hud()
+	_check(not button.visible, "suspension resets the wait and HUD refresh cannot bypass it")
+	_game._update_nest_prompts(0.02)
+	_check(button.visible, "one uninterrupted second starts the entrance")
 	_check(not price.visible, "entrance begins with icon only")
 	var start: Vector2 = button.position
 	await get_tree().create_timer(0.6).timeout
@@ -160,6 +175,8 @@ func _check_entrance() -> void:
 	_check(not button.visible, "offscreen nest hides its prompt")
 	_game._world.rotation -= PI
 	_game._update_nest_prompts()
+	_check(not button.visible, "reentering nest waits before playing entrance again")
+	_game._update_nest_prompts(1.0)
 	_check(button.visible and not price.visible, "reentering nest plays entrance again")
 	await get_tree().create_timer(0.6).timeout
 	if "--capture-entrance" in OS.get_cmdline_user_args():
@@ -181,11 +198,80 @@ func _check_entrance() -> void:
 	_game.run.finish_nest_discovery(new_id)
 	_game._update_nest_prompts()
 	_check(_game._nest_prompts.has(new_id), "newly discovered onscreen nest gets a prompt")
+	_check(not _game._nest_prompts[new_id].visible, "new discovery also waits one second")
+	_game._update_nest_prompts(1.0)
+	_check(_game._nest_prompts[new_id].visible, "new discovery appears after its wait")
+	await _check_prompt_timeout(button)
 	_game.run.get_nest(new_id).level = 2
 	_game._update_nest_prompts()
 	_check(not _game._nest_prompts[new_id].visible, "research-locked final upgrade hides prompt")
 	_game.restart_run()
 	_check(_game._nest_prompts.is_empty(), "restart clears old prompts")
+
+
+func _check_prompt_timeout(button: Button) -> void:
+	button.set_process(false)
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = Vector2(10.0, 150.0)
+	get_viewport().push_input(motion, true)
+	button.begin_entrance()
+	button._process(3.99)
+	_check(button.visible and not button.prompt_expired, "prompt stays for four idle seconds")
+	button._process(0.02)
+	_check(
+		button.prompt_expired and button.visible, "idle prompt starts lowering after four seconds"
+	)
+	button._process(0.5)
+	_check(not button.visible, "lowering ends with hidden prompt")
+	_game._update_nest_prompts()
+	_game._refresh_hud()
+	_check(not button.visible, "per-frame and currency refresh cannot reopen expired prompts")
+	_game._world.rotation += PI
+	_game._update_nest_prompts()
+	_game._world.rotation -= PI
+	_game._update_nest_prompts()
+	_check(not button.visible, "expired prompt still waits on screen reentry")
+	_game._update_nest_prompts(1.0)
+	_check(button.visible and not button.prompt_expired, "screen reentry resets idle timeout")
+	button._finish_entrance()
+	motion.position = button.get_global_transform_with_canvas() * (button.size * 0.5)
+	get_viewport().push_input(motion, true)
+	await get_tree().process_frame
+	button._advance_prompt(5.0, motion.position)
+	button._process(0.5)
+	_check(button.visible and not button.prompt_expired, "hover preserves the prompt")
+	var price_material: ShaderMaterial = button.get_node("Price").material as ShaderMaterial
+	_check(
+		float(price_material.get_shader_parameter("hover_amount")) > 0.9,
+		"affordable hover enables price color"
+	)
+	_game.run.candy = 0
+	_game._refresh_hud()
+	button._process(0.1)
+	_check(
+		is_zero_approx(float(price_material.get_shader_parameter("hover_amount"))),
+		"unaffordable hover clears price color"
+	)
+	_game.run.candy = 100000
+	_game._refresh_hud()
+	motion.position = Vector2(10.0, 150.0)
+	get_viewport().push_input(motion, true)
+	button._process(0.1)
+	_check(
+		is_zero_approx(float(price_material.get_shader_parameter("hover_amount"))),
+		"leaving hover clears price color immediately"
+	)
+	button.set_hold_progress(0.5)
+	button._process(5.0)
+	_check(button.visible and not button.prompt_expired, "active hold prevents timeout")
+	button.set_hold_progress(-1.0)
+	button._process(4.0)
+	button._process(0.5)
+	_check(not button.visible, "idle countdown resumes after interaction")
+	button.set_hold_progress(0.0)
+	_check(button.visible and not button.prompt_expired, "hold can reopen an expired prompt")
+	button.set_hold_progress(-1.0)
+	button.set_process(true)
 
 
 func _capture_entrance(label: String) -> void:

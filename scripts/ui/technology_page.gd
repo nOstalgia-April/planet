@@ -56,13 +56,22 @@ var _opening_cue_pending: bool = true
 @onready var _detail_title: Label = %DetailTitle
 @onready var _detail_level: Label = %DetailLevel
 @onready var _detail_gain: RichTextLabel = %DetailGain
-@onready var _detail_effect: Label = %DetailEffect
+@onready var _detail_effect: RichTextLabel = %DetailEffect
 @onready var _detail_note: Label = %DetailNote
 @onready var _requirements: VBoxContainer = %Requirements
 @onready var _detail: PanelContainer = $Margin/Content/Body/Detail
 
 
 func _ready() -> void:
+	# The supplied Chinese face has no usable underline metrics.
+	var bold: FontVariation = (
+		_detail_effect.get_theme_font("bold_font").duplicate() as FontVariation
+	)
+	var bold_face: FontFile = bold.base_font.duplicate() as FontFile
+	bold_face.set_cache_underline_position(0, 16, 2.0)
+	bold_face.set_cache_underline_thickness(0, 16, 1.0)
+	bold.base_font = bold_face
+	_detail_effect.add_theme_font_override("bold_font", bold)
 	_node_art = ShaderMaterial.new()
 	_node_art.shader = PALETTE_ART
 	_detail.material = _node_art
@@ -85,12 +94,13 @@ func set_palette(colors: PackedColorArray) -> void:
 		node.set_accent(colors[4], _node_art)
 	graph.line_color = PaletteSettings.ui_color(Color("f0a0c5"), colors[4])
 	graph.queue_redraw()
-	for label: Label in [_wallet, _detail_title, _detail_effect, %RequirementHeading]:
+	for label: Label in [_wallet, _detail_title, %RequirementHeading]:
 		label.add_theme_color_override("font_color", colors[4].lerp(Color.WHITE, 0.65))
 	for label: Label in [_detail_level, _detail_note, %NextGoalNote]:
 		label.add_theme_color_override("font_color", colors[4].darkened(0.18))
 	%NextGoal.add_theme_color_override("font_color", colors[4])
 	_detail_gain.add_theme_color_override("default_color", colors[4].lerp(Color.WHITE, 0.65))
+	_detail_effect.add_theme_color_override("default_color", colors[4].lerp(Color.WHITE, 0.65))
 	for label: Label in _requirements.get_children():
 		label.add_theme_color_override("font_color", colors[4].darkened(0.12))
 	if _nodes.has(selected_key):
@@ -132,6 +142,16 @@ func has_available_technology() -> bool:
 		if node.state == NodeScript.State.AVAILABLE:
 			return true
 	return false
+
+
+func is_technology_available(id: String) -> bool:
+	return _nodes.has(id) and _nodes[id].state == NodeScript.State.AVAILABLE
+
+
+func focus_available_goal() -> void:
+	if is_visible_in_tree() and is_technology_available("automation"):
+		_nodes["automation"].grab_focus()
+		_show_details("automation")
 
 
 func select_node(id: String) -> void:
@@ -273,6 +293,8 @@ func _refresh_details() -> void:
 		_detail_level.text = "Lv.%d/%d · MAX" % [_current_level(id), _max_level(id)]
 	_detail_level.visible = not _detail_icon.locked
 	_detail_effect.text = _run.get_technology_description(id)
+	if id == "automation":
+		_detail_effect.text = _detail_effect.text.replace("最终帮助星球自愈！", "[b][u]最终帮助星球自愈！[/u][/b]")
 	_detail_effect.visible = not _detail_effect.text.is_empty()
 	var gain: String = _run.get_technology_gain(id)
 	_detail_gain.text = "[font_size=18]%s[/font_size]" % gain
@@ -370,6 +392,16 @@ func _place_details() -> void:
 	_detail.size = Vector2(248.0, 0.0)
 	var body: Control = _detail.get_parent() as Control
 	var inverse: Transform2D = body.get_global_transform_with_canvas().affine_inverse()
+	var node: NodeScript = _nodes[selected_key]
+	if node.has_focus() and not node.is_hovered():
+		var node_rect: Rect2 = inverse * node.get_global_rect()
+		var beside: Vector2 = Vector2(node_rect.end.x + 24.0, node_rect.position.y)
+		if beside.x + _detail.size.x > body.size.x - 12.0:
+			beside.x = node_rect.position.x - _detail.size.x - 24.0
+		_detail.position = beside.clamp(
+			Vector2(12.0, 12.0), body.size - _detail.size - Vector2(12.0, 12.0)
+		)
+		return
 	var pointer: Vector2 = inverse * _detail_pointer
 	var node_center: Vector2 = inverse * _nodes[selected_key].get_global_rect().get_center()
 	var offset: Vector2 = Vector2(24.0, 24.0)

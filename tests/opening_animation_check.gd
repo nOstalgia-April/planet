@@ -1,5 +1,6 @@
 extends Node
 
+const Store = preload("res://scripts/game_save.gd")
 const Intro = preload("res://scenes/开头动画/开头动画.gd")
 const Menu = preload("res://scenes/主菜单/主菜单.gd")
 const Audio = preload("res://scripts/fmod_audio.gd")
@@ -20,6 +21,8 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	DirAccess.make_dir_recursive_absolute("res://artifacts/mission_note_20261017")
+	Store.save_path = "res://artifacts/mission_note_20261017/opening.save"
 	assert(ProjectSettings.get_setting("application/run/main_scene") == MENU_PATH)
 	assert(_tree.change_scene_to_file(MENU_PATH) == OK)
 	await _tree.scene_changed
@@ -44,26 +47,22 @@ func _run() -> void:
 	assert(audio._music_path.is_empty(), "进入片头后菜单音乐应淡出。")
 	if "--natural" in OS.get_cmdline_user_args():
 		var started_at: int = Time.get_ticks_msec()
-		var notice_seconds: float = (
-			intro._briefing.transition_seconds * 2.0
-			+ intro._briefing.reveal_seconds * 3.0
-			+ intro._briefing.section_hold_seconds * 2.0
-			+ intro._briefing.final_hold_seconds
-		)
-		while not intro._briefing.playing:
-			await _tree.process_frame
-		_assert_briefing_music(audio)
-		while audio.is_transition_playing():
-			await _tree.process_frame
-		assert(
-			audio._music_path == "event:/Mx/Mx_GamePlay" and _tree.current_scene == intro,
-			"片头音效淡出后、委托书期间游戏音乐开始。"
-		)
+
 		await _tree.scene_changed
 		assert(_tree.current_scene.scene_file_path == Menu.DEFAULT_START_SCENE)
 		var duration: float = float(Time.get_ticks_msec() - started_at) / 1000.0
-		await _check_opening_zoom(_tree.current_scene.get_node("StoryFlow") as StoryFlow)
-		assert(absf(duration - clip.length - notice_seconds) < 1.5, "开头动画和委托书均按实际时长播放。")
+		var story: StoryFlow = _tree.current_scene.get_node("StoryFlow") as StoryFlow
+		_assert_gameplay_music(audio)
+		while audio.is_transition_playing():
+			await _tree.process_frame
+		assert(
+			audio._music_path == "event:/Mx/Mx_GamePlay" and story.briefing.playing,
+			"片头音效淡出后、字条期间游戏音乐开始。"
+		)
+		# The music becomes audible here, under the briefing's far view.
+		_assert_briefing_music(audio)
+		assert(absf(duration - clip.length) < 1.5, "片头按实际时长播放并交接游戏内字条。")
+		await _check_opening_zoom(story)
 		print(
 			(
 				"PASS: menu Start played the opening and entered gameplay after %.2f seconds."
@@ -97,10 +96,18 @@ func _run() -> void:
 	assert(_tree.current_scene == intro, "最后一帧播放结束前必须留在开头动画。")
 	assert(picture.texture.resource_path.ends_with("p7/009.png"))
 	player.advance(0.02)
-	assert(intro._briefing.playing, "开头动画结束后先显示不可跳过的委托书。")
-	_assert_briefing_music(audio)
+
 	await _tree.scene_changed
 	assert(_tree.current_scene.scene_file_path == Menu.DEFAULT_START_SCENE, "片头播放结束必须自动进入正式游戏。")
+	assert(_tree.current_scene.get_node("StoryFlow").briefing.playing, "正式星球上显示字条。")
+	# The camera settles into the far view behind the briefing.
+	var view: Node = _tree.current_scene._view
+	for _frame: int in range(240):
+		if not view.is_transitioning():
+			break
+		await _tree.process_frame
+	await _tree.process_frame
+	_assert_briefing_music(audio)
 	assert(_tree.current_scene.has_node("StoryFlow"), "正式游戏挂载七段看板娘剧情。")
 	assert(not _tree.current_scene.has_node("PreviewNavigation"), "正式游戏不能带入预览快捷跳段。")
 	assert(not _tree.paused and is_equal_approx(Engine.time_scale, 1.0))
@@ -121,12 +128,12 @@ func _run() -> void:
 	_tree.quit()
 
 
-# The briefing requests gameplay music in its far-view mix.
+# The in-game briefing requests gameplay music in its far-view mix.
 func _assert_briefing_music(audio: Audio) -> void:
 	_assert_gameplay_music(audio)
 	assert(
 		is_equal_approx(FmodServer.get_global_parameter_by_name("IsDistantView"), 1.0),
-		"委托书出现时游戏音乐以远景混音（IsDistantView = 1）开始。"
+		"字条出现时游戏音乐以远景混音（IsDistantView = 1）开始。"
 	)
 
 
@@ -135,6 +142,8 @@ func _assert_briefing_music(audio: Audio) -> void:
 func _check_opening_zoom(story: StoryFlow) -> void:
 	var distant: Callable = func() -> float:
 		return FmodServer.get_global_parameter_by_name("IsDistantView")
+	while story.phase == StoryFlow.Phase.NOTE:
+		await _tree.process_frame
 	assert(story.phase == StoryFlow.Phase.OVERVIEW and is_equal_approx(distant.call(), 1.0))
 	var zoom_in: FmodEventDescription = FmodServer.get_event("event:/UI/ZoomIn")
 	var zooms: int = zoom_in.get_instance_count()

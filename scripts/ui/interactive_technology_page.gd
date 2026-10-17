@@ -77,6 +77,14 @@ func set_zoom(value: float) -> void:
 	_fit_graph()
 
 
+func focus_available_goal() -> void:
+	if not is_visible_in_tree() or not is_technology_available("automation"):
+		return
+	set_zoom(1.0)
+	set_view_center(_nodes["automation"].position + NodeScript.ICON_CENTER)
+	super.focus_available_goal()
+
+
 func reset_layout() -> void:
 	_cancel_pointer()
 	set_view_center(INITIAL_VIEW_CENTER)

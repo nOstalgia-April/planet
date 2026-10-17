@@ -1,14 +1,10 @@
 extends Control
 
 const MainMenu = preload("res://scenes/主菜单/主菜单.gd")
-const Notice = preload("res://scripts/ui/mission_notice.gd")
 const OPENING_SOUND: String = "event:/Mx/OpeningAnimation"
-const GAMEPLAY_MUSIC: String = "event:/Mx/Mx_GamePlay"
-# The game opens on the far view, so its music starts in the far-view mix.
-const DISTANT_VIEW_PARAMETER: String = "IsDistantView"
 # FMOD needs ~0.2 s to start a sound; never hold the first frame longer than this.
 const SOUND_START_TIMEOUT: float = 0.5
-# Keep the opening sound's fade protected if the notice timing is shortened.
+# Keep the opening sound's fade protected during the handoff to the live planet.
 const MUSIC_AFTER_SOUND_LEAD: float = 2.5
 # Loading the frames can stall the game for half a second while the sound keeps
 # playing; beyond this drift the animation jumps to the sound's position.
@@ -25,10 +21,8 @@ var _waiting_for_sound: float = 0.0
 var _sound_offset: float = -1.0
 var _preparing_game: bool = false
 var _prepared_scene: PackedScene
-var _briefing_finished: bool = false
+var _animation_finished: bool = false
 var _entering_game: bool = false
-
-@onready var _briefing: Notice = $MissionBriefing
 
 
 func _ready() -> void:
@@ -37,7 +31,6 @@ func _ready() -> void:
 	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 	GameAudio.stop_music()
 	animation_player.animation_finished.connect(_on_animation_finished)
-	_briefing.finished.connect(_on_briefing_finished)
 	animation_player.play(&"开头")
 	animation_player.advance(0.0)
 	# Hold the first frame until the sound is actually playing, so they stay in sync.
@@ -109,28 +102,21 @@ func _poll_game() -> void:
 func _on_animation_finished(animation_name: StringName) -> void:
 	if animation_name != &"开头":
 		return
-	_briefing.play()
-	# Gameplay music starts with the briefing, still after the opening sound
-	# has faded (MUSIC_AFTER_SOUND_LEAD before its end).
-	GameAudio.hold_music_for(_sound, OPENING_SOUND, MUSIC_AFTER_SOUND_LEAD)
-	GameAudio.set_music_parameter(GAMEPLAY_MUSIC, DISTANT_VIEW_PARAMETER, 1.0)
-	GameAudio.play_music(GAMEPLAY_MUSIC)
-
-
-func _on_briefing_finished() -> void:
-	_briefing_finished = true
+	_animation_finished = true
 	_try_enter_game()
 
 
 func _try_enter_game() -> void:
-	if not _briefing_finished or _prepared_scene == null or _entering_game:
+	if not _animation_finished or _prepared_scene == null or _entering_game:
 		return
 	_entering_game = true
 	_enter_game.call_deferred()
 
 
-# The start sound played on the menu's click and the music with the briefing.
+# The start sound already played on the menu's click. Gameplay requests its
+# music on entry beneath the briefing; any remaining opening tail finishes first.
 func _enter_game() -> void:
+	GameAudio.hold_music_for(_sound, OPENING_SOUND, MUSIC_AFTER_SOUND_LEAD)
 	var result: Error = get_tree().change_scene_to_packed(_prepared_scene)
 	if result != OK:
 		_loading_failed()

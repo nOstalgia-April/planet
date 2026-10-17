@@ -47,7 +47,7 @@ var pipe_upgrade_costs: PackedInt32Array = PackedInt32Array([10, 20, 50, 300, 80
 @export var net_size_multipliers: PackedFloat32Array = PackedFloat32Array([1.0, 1.25, 1.5, 1.75])
 @export_range(0.1, 60.0, 0.1) var net_cooldown_seconds: float = 6.0
 @export_group("Research")
-@export var governance_upgrade_costs: PackedInt32Array = PackedInt32Array([50, 4500])
+@export var governance_upgrade_costs: PackedInt32Array = PackedInt32Array([50, 3000])
 @export var combo_upgrade_costs: PackedInt32Array = PackedInt32Array([20, 150, 800, 1800])
 @export var combo_reward_percentages: PackedInt32Array = PackedInt32Array([25, 50, 75, 100])
 @export var combo_stage_targets: PackedInt32Array = PackedInt32Array([3, 5, 7, 10])

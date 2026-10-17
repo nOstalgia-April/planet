@@ -22,7 +22,7 @@ const VictoryMeteors = preload("res://scripts/victory_meteor_presentation.gd")
 func _ready() -> void:
 	_restoration.palette_changed.connect(_on_palette_changed)
 	_victory.started.connect(_on_restoration_started)
-	_victory.finished.connect(_on_victory_finished)
+	_victory.playback_started.connect(_on_victory_playback_started)
 	super._ready()
 	_completion.visibility_changed.connect(_sync_ending_art)
 	flower_appeared.connect(_restoration.reveal_flower)
@@ -120,9 +120,17 @@ func _show_completion() -> void:
 	_victory.play()
 
 
-func _on_victory_finished() -> void:
+func _on_victory_playback_started() -> void:
 	_restoration.core.modulate.a = 0.0
 	super._show_completion()
+
+
+func set_opening_note_backdrop(enabled: bool) -> void:
+	_near_background.get_node("星星").visible = not enabled
+	_overview_background.get_node("星星").visible = not enabled
+	_restoration.core.visible = not enabled
+	_layout.game_menu.visible = not enabled
+	_layout.get_node("Economy").visible = not enabled
 
 
 func _sync_ending_art() -> void:

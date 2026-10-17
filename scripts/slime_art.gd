@@ -14,6 +14,8 @@ var _texture_bounds: Dictionary[Texture2D, Rect2] = SharedCache.texture_bounds(
 
 var _active: ItemArt
 var _sprite: Sprite2D
+var _simulation_speed: float = 1.0
+var _clip_speed: float = 1.0
 
 
 func _ready() -> void:
@@ -32,21 +34,27 @@ func configure_species(species: int, valuable: bool = false) -> void:
 		_active = mucus if species == 1 else pink
 	_sprite = _active.get_node("画面/贴图") as Sprite2D
 	_active.show()
-	_active.animation_player.speed_scale = 1.0
+	_clip_speed = 1.0
+	_active.animation_player.speed_scale = _simulation_speed
 	_active.play_clip(&"待机")
 
 
 func play_launch(seconds: float) -> void:
 	if _active == pink or _active == valuable_pink:
-		_active.animation_player.speed_scale = (
-			_active.animation_player.get_animation(&"跳跃").length / seconds
-		)
+		_clip_speed = (_active.animation_player.get_animation(&"跳跃").length / seconds)
+		_active.animation_player.speed_scale = _clip_speed * _simulation_speed
 		_active.play_clip(&"跳跃")
 
 
 func restore_idle() -> void:
-	_active.animation_player.speed_scale = 1.0
+	_clip_speed = 1.0
+	_active.animation_player.speed_scale = _simulation_speed
 	_active.play_clip(&"待机")
+
+
+func set_simulation_speed(value: float) -> void:
+	_simulation_speed = value
+	_active.animation_player.speed_scale = _clip_speed * value
 
 
 func set_suction(active: bool) -> void:

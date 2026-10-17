@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://scenes/主菜单/主菜单.gd" id="r001"]
 
@@ -14,6 +14,8 @@
 
 [ext_resource type="Texture2D" path="res://assets/场景动画/主菜单/ProjectVacuumer.png" id="title"]
 [ext_resource type="Texture2D" path="res://assets/场景动画/主菜单/制作信息底板.png" id="credits"]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/credits_contact.tscn" id="contact"]
 
 [sub_resource type="AtlasTexture" id="credits_crop"]
 atlas = ExtResource("credits")
@@ -208,14 +210,30 @@ theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
 text = "游戏策划"
 mouse_filter = 2
 
-[node name="名单0姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+[node name="名单0姓名" type="HBoxContainer" parent="画布/制作信息弹窗/底板"]
 offset_left = 316.0
 offset_top = 406.0
 offset_right = 598.0
 offset_bottom = 448.0
+theme_override_constants/separation = 4
+mouse_filter = 2
+
+[node name="Contact0" parent="画布/制作信息弹窗/底板/名单0姓名" instance=ExtResource("contact")]
+layout_mode = 2
+text = "常常"
+email = "625204207@qq.com"
+
+[node name="Separator" type="Label" parent="画布/制作信息弹窗/底板/名单0姓名"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 27
+text = "、"
+mouse_filter = 2
+
+[node name="Name1" type="Label" parent="画布/制作信息弹窗/底板/名单0姓名"]
+layout_mode = 2
 theme_override_font_sizes/font_size = 27
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-text = "常常、小墨"
+text = "小墨"
 mouse_filter = 2
 
 [node name="名单1职责" type="Label" parent="画布/制作信息弹窗/底板"]
@@ -228,11 +246,16 @@ theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
 text = "视觉美术"
 mouse_filter = 2
 
-[node name="名单1姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+[node name="名单1姓名" type="HBoxContainer" parent="画布/制作信息弹窗/底板"]
 offset_left = 316.0
 offset_top = 460.0
 offset_right = 598.0
 offset_bottom = 502.0
+theme_override_constants/separation = 4
+mouse_filter = 2
+
+[node name="Name0" type="Label" parent="画布/制作信息弹窗/底板/名单1姓名"]
+layout_mode = 2
 theme_override_font_sizes/font_size = 27
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 text = "aji、精盐"
@@ -248,15 +271,18 @@ theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
 text = "角色设计"
 mouse_filter = 2
 
-[node name="名单2姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+[node name="名单2姓名" type="HBoxContainer" parent="画布/制作信息弹窗/底板"]
 offset_left = 316.0
 offset_top = 514.0
 offset_right = 598.0
 offset_bottom = 556.0
-theme_override_font_sizes/font_size = 27
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-text = "精盐"
+theme_override_constants/separation = 4
 mouse_filter = 2
+
+[node name="Contact0" parent="画布/制作信息弹窗/底板/名单2姓名" instance=ExtResource("contact")]
+layout_mode = 2
+text = "精盐"
+email = "2912985180@qq.com"
 
 [node name="名单3职责" type="Label" parent="画布/制作信息弹窗/底板"]
 offset_left = 68.0
@@ -288,14 +314,30 @@ theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
 text = "动画制作"
 mouse_filter = 2
 
-[node name="名单4姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+[node name="名单4姓名" type="HBoxContainer" parent="画布/制作信息弹窗/底板"]
 offset_left = 316.0
 offset_top = 622.0
 offset_right = 598.0
 offset_bottom = 664.0
+theme_override_constants/separation = 4
+mouse_filter = 2
+
+[node name="Contact0" parent="画布/制作信息弹窗/底板/名单4姓名" instance=ExtResource("contact")]
+layout_mode = 2
+text = "aji"
+email = "2968665322@qq.com"
+
+[node name="Separator" type="Label" parent="画布/制作信息弹窗/底板/名单4姓名"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 27
+text = "、"
+mouse_filter = 2
+
+[node name="Name1" type="Label" parent="画布/制作信息弹窗/底板/名单4姓名"]
+layout_mode = 2
 theme_override_font_sizes/font_size = 27
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-text = "aji、精盐"
+text = "精盐"
 mouse_filter = 2
 
 [node name="名单5职责" type="Label" parent="画布/制作信息弹窗/底板"]
@@ -328,15 +370,18 @@ theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
 text = "声音设计/作曲"
 mouse_filter = 2
 
-[node name="名单6姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+[node name="名单6姓名" type="HBoxContainer" parent="画布/制作信息弹窗/底板"]
 offset_left = 926.0
 offset_top = 460.0
 offset_right = 1208.0
 offset_bottom = 502.0
-theme_override_font_sizes/font_size = 27
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-text = "fred"
+theme_override_constants/separation = 4
 mouse_filter = 2
+
+[node name="Contact0" parent="画布/制作信息弹窗/底板/名单6姓名" instance=ExtResource("contact")]
+layout_mode = 2
+text = "fred"
+email = "fredfy3886@gmail.com"
 
 [node name="名单7职责" type="Label" parent="画布/制作信息弹窗/底板"]
 offset_left = 678.0
@@ -368,15 +413,18 @@ theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
 text = "文案"
 mouse_filter = 2
 
-[node name="名单8姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+[node name="名单8姓名" type="HBoxContainer" parent="画布/制作信息弹窗/底板"]
 offset_left = 926.0
 offset_top = 568.0
 offset_right = 1208.0
 offset_bottom = 610.0
-theme_override_font_sizes/font_size = 27
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-text = "小墨"
+theme_override_constants/separation = 4
 mouse_filter = 2
+
+[node name="Contact0" parent="画布/制作信息弹窗/底板/名单8姓名" instance=ExtResource("contact")]
+layout_mode = 2
+text = "小墨"
+email = "murphylyr@gmail.com"
 
 [node name="致谢" type="Label" parent="画布/制作信息弹窗/底板"]
 offset_left = 68.0

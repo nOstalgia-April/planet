@@ -5,6 +5,9 @@ signal arrived
 @export_range(0.1, 1.0, 0.05) var burst_seconds: float = 0.35
 @export_range(0.2, 2.0, 0.05) var return_seconds: float = 0.7
 @export_range(20.0, 160.0, 1.0) var scatter_radius: float = 85.0
+@export_range(0.3, 2.0, 0.05) var amount_duration: float = 0.85
+@export var amount_offset: Vector2 = Vector2(58.0, -16.0)
+@export_range(10.0, 100.0, 1.0) var amount_rise: float = 40.0
 
 var _origin: Vector2
 var _destination: Vector2
@@ -12,6 +15,8 @@ var _offsets: PackedVector2Array = PackedVector2Array()
 var _elapsed: float = 0.0
 var _playing: bool = false
 var _preview: bool = false
+
+@onready var _amount: Label = $Amount
 
 
 func _ready() -> void:
@@ -33,6 +38,46 @@ func play(origin: Vector2, destination: Vector2, amount: int, base_value: int) -
 		_offsets.append(
 			Vector2.from_angle(angle) * randf_range(scatter_radius * 0.35, scatter_radius)
 		)
+	_play_amount(amount)
+
+
+func _play_amount(amount: int) -> void:
+	_amount.text = "+%d" % amount
+	_amount.reset_size()
+	_amount.pivot_offset = _amount.size * 0.5
+	_amount.scale = Vector2.ONE * 0.6
+	_amount.modulate.a = 1.0
+	var screen_origin: Vector2 = get_global_transform_with_canvas() * _origin
+	var half_size: Vector2 = _amount.size * 0.7
+	var viewport_size: Vector2 = get_viewport_rect().size
+	var side_distance: float = amount_offset.x + half_size.x
+	var center: Vector2 = screen_origin + Vector2(side_distance, amount_offset.y)
+	if center.x + half_size.x > viewport_size.x - 12.0:
+		center.x = screen_origin.x - side_distance
+	center = center.clamp(
+		half_size + Vector2(12.0, amount_rise + 12.0),
+		viewport_size - half_size - Vector2.ONE * 12.0
+	)
+	_amount.position = (
+		get_global_transform_with_canvas().affine_inverse() * center - _amount.pivot_offset
+	)
+	var float_tween: Tween = create_tween().set_parallel(true)
+	float_tween.tween_property(
+		_amount, "position:y", _amount.position.y - amount_rise, amount_duration
+	)
+	float_tween.tween_property(_amount, "modulate:a", 0.0, amount_duration * 0.5).set_delay(
+		amount_duration * 0.5
+	)
+	var pop: Tween = create_tween()
+	(
+		pop
+		. tween_property(_amount, "scale", Vector2.ONE * 1.18, 0.14)
+		. set_trans(Tween.TRANS_BACK)
+		. set_ease(Tween.EASE_OUT)
+	)
+	pop.tween_property(_amount, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(
+		Tween.EASE_OUT
+	)
 
 
 func _process(delta: float) -> void:
@@ -40,7 +85,7 @@ func _process(delta: float) -> void:
 		return
 	_elapsed += delta
 	queue_redraw()
-	if _elapsed >= burst_seconds + return_seconds + 0.22:
+	if _elapsed >= maxf(burst_seconds + return_seconds + 0.22, amount_duration):
 		_playing = false
 		arrived.emit()
 		if _preview:

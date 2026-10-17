@@ -1,4 +1,4 @@
-extends "res://features/场景预览/游玩预览.gd"
+extends "res://features/tutorial_intro/story_game.gd"
 
 
 func _ready() -> void:
@@ -6,16 +6,10 @@ func _ready() -> void:
 	_replay_ending.call_deferred()
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
-		_replay_ending()
-		get_viewport().set_input_as_handled()
-		return
-	super._unhandled_key_input(event)
-
-
 func _replay_ending() -> void:
 	restart_run()
+	story.cancel()
+	story.seen.assign(range(StoryFlow.Kind.OPENING, StoryFlow.Kind.RESCUE))
 	run._add_nest(NestState.Species.MUCUS, _planet.get_nest_position(0.0))
 	run._add_nest(NestState.Species.DRILL, _planet.get_nest_position(PI))
 	run.candy = 100000
@@ -28,10 +22,8 @@ func _replay_ending() -> void:
 		_nest_views[nest.nest_id - 1]._art.set_stage(nest.level, false)
 	if _completion_tween != null:
 		_completion_tween.kill()
-	# Apply the actual restoration presentation before its normal victory sequence.
-	for _step: int in range(80):
-		_view._process(1.0)
-		_restoration._process(1.0)
-		if _restoration.phase == PlanetRestoration.Phase.IDLE:
-			break
+	# F6 starts with the earned colors already restored, then uses the formal ending.
+	_restoration.restore_save({"completed": [0, 1, 2], "background": true})
+	story.cancel()
+	_view.zoom_steps(1.0, false)
 	_show_completion()

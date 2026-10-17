@@ -6,6 +6,7 @@ signal upgrade_revealed(tool: int)
 
 const Selection = preload("res://scripts/ui/dock_selection.gd")
 const Cooldown = preload("res://scripts/ui/dock_cooldown.gd")
+const TECHNOLOGY_NOTICE: Shader = preload("res://shaders/technology_notice.gdshader")
 
 enum ToolState { HIDDEN, LOCKED_READY, LOCKED_SHORT, READY, SHORT, MAXED }
 
@@ -46,6 +47,10 @@ var _view_fade: Tween
 
 
 func _ready() -> void:
+	var notice_material: ShaderMaterial = ShaderMaterial.new()
+	notice_material.shader = TECHNOLOGY_NOTICE
+	badge.material = notice_material
+	badge.pivot_offset = badge.size * 0.5
 	_pointer_position = get_viewport().get_mouse_position()
 	for button: Button in surfaces:
 		for style: String in ["normal", "hover", "pressed", "disabled", "focus"]:
@@ -86,6 +91,12 @@ func refresh(run: PrototypeRun) -> void:
 		_refresh_tool(index)
 	refresh_timers(run)
 	_refresh_visibility()
+
+
+func set_technology_notification(available: bool, final_goal_available: bool) -> void:
+	badge.visible = available
+	badge.scale = Vector2.ONE * (1.65 if final_goal_available else 1.0)
+	(badge.material as ShaderMaterial).set_shader_parameter("emphasized", final_goal_available)
 
 
 func _refresh_tool(index: int) -> void:

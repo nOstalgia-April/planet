@@ -2,14 +2,17 @@ extends Node
 
 signal started
 signal finished
+signal overview_reached
+signal playback_started
 
 const PlanetView = preload("res://scripts/planet_view_controller.gd")
 const FrameAnimation = preload("res://scripts/场景动画/帧动画.gd")
 
-enum Phase { IDLE, CAMERA, PLAYING, COMPLETE }
+enum Phase { IDLE, CAMERA, PLAYING, COMPLETE, WAITING }
 
 @export var view: PlanetView
 @export var meteors: FrameAnimation
+@export var wait_for_story: bool = false
 
 var phase: Phase = Phase.IDLE
 
@@ -33,7 +36,7 @@ func play() -> void:
 
 
 func reset() -> void:
-	if phase in [Phase.CAMERA, Phase.PLAYING]:
+	if phase in [Phase.CAMERA, Phase.PLAYING, Phase.WAITING]:
 		view.presentation_locked = false
 	phase = Phase.IDLE
 	meteors.animation_player.stop()
@@ -44,10 +47,21 @@ func reset() -> void:
 func _process(_delta: float) -> void:
 	if phase != Phase.CAMERA or view.is_transitioning():
 		return
+	phase = Phase.WAITING
+	overview_reached.emit()
+	if not wait_for_story:
+		play_meteors()
+
+
+func play_meteors() -> void:
+	if phase not in [Phase.IDLE, Phase.WAITING]:
+		return
+	view.presentation_locked = true
 	phase = Phase.PLAYING
 	_sync_opacity()
 	meteors.show()
 	meteors.play()
+	playback_started.emit()
 
 
 func _on_meteors_finished() -> void:

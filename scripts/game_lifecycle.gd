@@ -1,6 +1,7 @@
 extends Node
 
 var quitting: bool = false
+var save_before_quit: Callable
 
 
 func _ready() -> void:
@@ -11,6 +12,8 @@ func _ready() -> void:
 
 func request_quit() -> void:
 	if quitting:
+		return
+	if save_before_quit.is_valid() and not save_before_quit.call():
 		return
 	quitting = true
 	var tree: SceneTree = get_tree()

@@ -12,68 +12,86 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	DirAccess.make_dir_recursive_absolute("res://artifacts/mission_note_20261017")
+	get_tree().create_timer(30.0).timeout.connect(func() -> void: get_tree().quit(1))
 	for scene: PackedScene in [BRIEFING, RECEIPT]:
 		var notice: Notice = scene.instantiate() as Notice
 		add_child(notice)
 		notice.finished.connect(func() -> void: _completed += 1)
 		notice.play()
-		notice._sequence.pause()
-		await get_tree().process_frame
-		assert(notice._sections.size() == 3)
-		assert(notice._black.color == Color.BLACK)
-		assert(is_equal_approx(notice.final_hold_seconds, 3.0))
-		notice._sequence.custom_step(notice.transition_seconds + notice.reveal_seconds)
-		assert(is_equal_approx(notice._sections[0].modulate.a, 1.0))
-		assert(is_zero_approx(notice._sections[1].modulate.a))
-		for code: Key in [KEY_ESCAPE, KEY_SPACE, KEY_ENTER]:
-			var event: InputEventKey = InputEventKey.new()
-			event.keycode = code
-			event.pressed = true
-			get_viewport().push_input(event)
-			assert(get_viewport().is_input_handled(), "Notice consumes keyboard input.")
-		var click: InputEventMouseButton = InputEventMouseButton.new()
-		click.button_index = MOUSE_BUTTON_LEFT
-		click.pressed = true
-		get_viewport().push_input(click)
-		assert(get_viewport().is_input_handled(), "Notice consumes mouse input.")
-		assert(is_zero_approx(notice._sections[1].modulate.a))
-		assert(_completed == 0)
-		notice._sequence.custom_step(notice.section_hold_seconds + notice.reveal_seconds)
-		assert(is_equal_approx(notice._sections[1].modulate.a, 1.0))
-		assert(is_zero_approx(notice._sections[2].modulate.a))
-		notice._sequence.custom_step(notice.section_hold_seconds + notice.reveal_seconds)
-		assert(is_equal_approx(notice._sections[2].modulate.a, 1.0))
+		notice._animation.pause()
+		assert(not notice._close.visible and notice._text.visible_characters == 0)
+		notice.close()
+		assert(notice.playing and _completed == 0, "Cannot dismiss unread text.")
+		notice._animation.seek(0.65, true)
+		notice._on_unrolled(&"unroll")
+		notice.set_process(false)
+		notice._process(0.1)
+		assert(notice._text.visible_characters == 4, "45 characters per second.")
+		assert(not notice._close.visible)
+		await _click(Vector2(20, 20))
+		assert(notice.phase == Notice.Phase.READING and notice._close.visible)
+		assert(_completed == 0, "A reveal click must not also dismiss.")
+		await _click(Vector2(20, 20))
+		assert(_completed == 0 and notice.playing, "Only the close action dismisses a read note.")
 		for dimensions: Vector2i in [Vector2i(1920, 1080), Vector2i(1280, 800)]:
 			get_window().size = dimensions
 			await get_tree().process_frame
 			await get_tree().process_frame
-			var page_rect: Rect2 = notice._page.get_global_rect()
+			assert(notice.get_global_rect().encloses(notice._page.get_global_rect()))
 			assert(
-				notice.get_global_rect().encloses(page_rect),
-				"%s / %s" % [notice.get_global_rect(), page_rect]
+				notice._text.get_content_height() <= notice._text.size.y, "All text fits on paper."
 			)
-			for section: Control in notice._sections:
-				assert(page_rect.encloses(section.get_global_rect()))
 			if "--capture" in OS.get_cmdline_user_args():
 				await RenderingServer.frame_post_draw
-				var path: String = (
-					"res://artifacts/mission_notice_task/%s_%d.png" % [notice.name, dimensions.x]
+				assert(
+					(
+						get_viewport().get_texture().get_image().save_png(
+							(
+								"res://artifacts/mission_note_20261017/%s_%d.png"
+								% [notice.name, dimensions.x]
+							)
+						)
+						== OK
+					)
 				)
-				assert(get_viewport().get_texture().get_image().save_png(path) == OK)
-		notice._sequence.custom_step(2.99)
-		assert(_completed == 0 and is_equal_approx(notice._page.modulate.a, 1.0))
-		notice._sequence.custom_step(0.02)
-		assert(_completed == 0)
-		notice._sequence.custom_step(notice.transition_seconds)
-		assert(_completed == 1)
-		notice.reset()
-		assert(not notice.visible and not notice.playing)
-		notice.play()
-		notice.reset()
+		var hover: InputEventMouseMotion = InputEventMouseMotion.new()
+		hover.position = notice._close.get_global_rect().get_center()
+		get_tree().root.push_input(hover, true)
 		await get_tree().process_frame
-		assert(_completed == 1)
+		await get_tree().process_frame
+		if "--capture" in OS.get_cmdline_user_args():
+			await RenderingServer.frame_post_draw
+			assert((notice._close.get_node("Brush") as TextureRect).visible)
+			get_viewport().get_texture().get_image().save_png(
+				"res://artifacts/mission_note_20261017/%s_hover.png" % notice.name
+			)
+		await _click(notice._close.get_global_rect().get_center())
+		await get_tree().create_timer(0.25).timeout
+		assert(_completed == 1 and not notice.playing and not notice.visible)
+		notice.play()
+		notice.reveal_all()
+		notice.close()
+		notice.reset()
+		await get_tree().create_timer(0.25).timeout
+		assert(_completed == 1, "Reset cancels pending close callbacks.")
+		notice.play()
+		await get_tree().create_timer(notice.unroll_seconds + 0.1).timeout
+		assert(notice.phase == Notice.Phase.TYPING)
+		notice._process(20.0)
+		assert(notice.phase == Notice.Phase.READING and notice._close.visible)
 		notice.queue_free()
 		await get_tree().process_frame
 		_completed = 0
-	print("PASS: both notices, three reveals, blocked input, full 3-second hold, layout and reset.")
+	print("PASS: both notes, typewriter, one-click reveal, gated close, layout and reset.")
 	get_tree().quit()
+
+
+func _click(point: Vector2) -> void:
+	for pressed: bool in [true, false]:
+		var event: InputEventMouseButton = InputEventMouseButton.new()
+		event.position = point
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = pressed
+		get_tree().root.push_input(event, true)
+		await get_tree().process_frame

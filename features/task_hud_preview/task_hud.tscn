@@ -92,7 +92,7 @@ offset_bottom = 122.0
 mouse_filter = 2
 theme_override_styles/background = SubResource("track")
 theme_override_styles/fill = SubResource("fill")
-max_value = 4500.0
+max_value = 3000.0
 value = 2850.0
 show_percentage = false
 

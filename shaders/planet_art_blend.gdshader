@@ -48,8 +48,8 @@ vec3 restored_core_color(vec3 source, vec2 uv) {
 	float blue_ink = 1.0 - smoothstep(0.10, 0.22, source.g);
 	blue_ink *= 1.0 - smoothstep(0.06, 0.16, source.r - source.b);
 	vec3 colored = population_color(source);
-	vec3 paper = core_paper_color(point) * (0.95 + 0.05 * clamp(source.b * 3.0, 0.0, 1.0));
-	return mix(source, mix(colored, paper, core_white_mix), interior * blue_ink);
+	// The white background reveals the original blue underlay behind the animated core.
+	return mix(source, mix(colored, source, core_white_mix), interior * blue_ink);
 }
 
 float revealed(float progress, float screen_y) {

@@ -11,6 +11,8 @@ const RESUME: Texture2D = preload("res://assets/ui/game_menu/resume.tres")
 const MUSIC_ON: Texture2D = preload("res://assets/ui/game_menu/music_on.tres")
 const MUSIC_OFF: Texture2D = preload("res://assets/ui/game_menu/music_off.tres")
 
+var progress_is_saved: bool = false
+
 var _pending_action: StringName = &""
 
 @onready var toolbar: HBoxContainer = $Toolbar
@@ -34,9 +36,13 @@ func _ready() -> void:
 	%ResumeGame.pressed.connect(set_open.bind(false))
 	_music_slider.value_changed.connect(_set_music)
 	_effects_slider.value_changed.connect(_set_effects)
-	%Fullscreen.toggled.connect(GamePreferences.set_fullscreen)
-	%Defaults.pressed.connect(GamePreferences.reset_defaults)
-	%Controls.pressed.connect(_toggle_controls)
+	%DisplayPrevious.pressed.connect(_cycle_display)
+	%DisplayNext.pressed.connect(_cycle_display)
+	%Controls.mouse_entered.connect(_show_controls.bind(true))
+	%Controls.mouse_exited.connect(_leave_controls)
+	%Controls.focus_entered.connect(_show_controls.bind(true))
+	%Controls.focus_exited.connect(_show_controls.bind(false))
+	%Controls.pressed.connect(_show_controls.bind(true))
 	%Restart.pressed.connect(_confirm.bind(&"restart"))
 	%MainMenu.pressed.connect(_confirm.bind(&"menu"))
 	%CancelAction.pressed.connect(cancel_confirmation)
@@ -62,7 +68,6 @@ func set_open(open: bool) -> void:
 	_settings.highlighted = open
 	_settings.queue_redraw()
 	cancel_confirmation()
-	%ControlsText.hide()
 	settings_changed.emit()
 	if open:
 		%CloseSettings.grab_focus()
@@ -86,7 +91,8 @@ func handle_escape() -> void:
 	if not _pending_action.is_empty():
 		cancel_confirmation()
 	elif %ControlsText.visible:
-		%ControlsText.hide()
+		%Controls.release_focus()
+		_show_controls(false)
 	else:
 		set_open(false)
 
@@ -116,24 +122,42 @@ func _refresh_preferences() -> void:
 	%EffectsValue.text = (
 		"%d%%" % roundi(_effects_slider.value) if GamePreferences.audio_enabled else "已关闭"
 	)
-	%Fullscreen.set_pressed_no_signal(GamePreferences.fullscreen)
+	%DisplayMode.text = "全屏" if GamePreferences.fullscreen else "窗口"
 
 
-func _toggle_controls() -> void:
-	%ControlsText.visible = not %ControlsText.visible
+func _cycle_display() -> void:
+	GamePreferences.set_fullscreen(not GamePreferences.fullscreen)
+
+
+func _show_controls(show_controls: bool) -> void:
+	if not _pending_action.is_empty():
+		return
+	%ControlsText.visible = show_controls
+	%SettingsBody.visible = not show_controls
+
+
+func _leave_controls() -> void:
+	%Controls.release_focus()
+	_show_controls(false)
 
 
 func _confirm(action: StringName) -> void:
 	_pending_action = action
 	%SettingsBody.hide()
+	%ControlsText.hide()
+	%Controls.disabled = true
 	%Confirmation.show()
-	%ConfirmText.text = ("重新开始？\n本局进度将被清空。" if action == &"restart" else "返回主菜单？\n本局进度不会保留。")
+	%ConfirmText.text = "重新开始？\n本局进度将被清空。"
+	if action != &"restart":
+		%ConfirmText.text = "返回主菜单？\n进度将自动保存。" if progress_is_saved else "返回主菜单？\n本局进度不会保留。"
 	%CancelAction.grab_focus()
 
 
 func cancel_confirmation() -> void:
 	_pending_action = &""
+	%Controls.disabled = false
 	%Confirmation.hide()
+	%ControlsText.hide()
 	%SettingsBody.show()
 
 

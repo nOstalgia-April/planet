@@ -1,9 +1,11 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://features/tutorial_intro/story_flow.gd" id="flow"]
 [ext_resource type="PackedScene" path="res://scenes/ui/mascot_dialogue.tscn" id="narrative"]
 [ext_resource type="PackedScene" path="res://features/tutorial_intro/story_teaching_dialogue.tscn" id="teaching"]
 [ext_resource type="PackedScene" path="res://features/tutorial_intro/story_color_dialogue.tscn" id="color"]
+[ext_resource type="PackedScene" path="res://scenes/ui/mission_briefing.tscn" id="briefing"]
+[ext_resource type="PackedScene" path="res://scenes/ui/mission_receipt.tscn" id="receipt"]
 
 [node name="StoryFlow" type="Node"]
 script = ExtResource("flow")
@@ -17,6 +19,10 @@ rescue_lines = PackedStringArray("都收齐了？让我数数……嗯，一个�
 
 [node name="StoryLayer" type="CanvasLayer" parent="."]
 layer = 30
+
+[node name="MissionBriefing" parent="StoryLayer" instance=ExtResource("briefing")]
+
+[node name="MissionReceipt" parent="StoryLayer" instance=ExtResource("receipt")]
 
 [node name="Narrative" parent="StoryLayer" instance=ExtResource("narrative")]
 anchors_preset = 0

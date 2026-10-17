@@ -17,6 +17,8 @@ const NestUpgradeButton = preload("res://scripts/ui/nest_upgrade_button.gd")
 const VIEW_ZOOM_OUT: Texture2D = preload("res://assets/ui/game_menu/view_switch.tres")
 const VIEW_ZOOM_IN: Texture2D = preload("res://assets/ui/game_menu/zoom_in.tres")
 
+var save_before_menu: Callable
+
 var dock_intro_progress: float = 1.0:
 	set(value):
 		dock_intro_progress = clampf(value, 0.0, 1.2)
@@ -108,6 +110,12 @@ func apply_layout(viewport_size: Vector2) -> Rect2:
 	size = viewport_size / interface_scale
 	_place($Economy, Rect2(28.0, 24.0, 210.0, 34.0))
 	_place(_view_shortcut, Rect2(24.0, size.y * 0.5 - 44.0, 64.0, 88.0))
+	_place(
+		$ViewShortcut/RotateHint,
+		Rect2(
+			Vector2(size.x - 104.0, size.y - 142.0) - _view_shortcut.position, Vector2(80.0, 118.0)
+		)
+	)
 	_place($StatusLabel, Rect2(270.0, size.y - 160.0, size.x - 540.0, 30.0))
 	_place_tool_dock()
 	_place_shops()
@@ -129,7 +137,9 @@ func _place_tool_dock() -> void:
 func refresh_progression(run: PrototypeRun) -> void:
 	_run = run
 	_technology.refresh(run)
-	_technology_badge.visible = _technology.has_available_technology()
+	_tool_dock.set_technology_notification(
+		_technology.has_available_technology(), _technology.is_technology_available("automation")
+	)
 	_tool_dock.refresh(run)
 	refresh_timers(run)
 	_queue_shop_layout()
@@ -197,6 +207,7 @@ func _show_technology() -> void:
 	_technology.show()
 	_place_shops()
 	_sync_pause()
+	_technology.focus_available_goal.call_deferred()
 
 
 func _input(event: InputEvent) -> void:
@@ -269,6 +280,8 @@ func _sync_pause() -> void:
 
 
 func _return_to_menu() -> void:
+	if save_before_menu.is_valid() and not save_before_menu.call():
+		return
 	get_tree().paused = false
 	get_tree().change_scene_to_file.call_deferred("res://scenes/主菜单/主菜单.tscn")
 

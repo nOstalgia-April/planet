@@ -551,3 +551,29 @@ func _cache_hit_geometry() -> void:
 
 func _clip_to_ground(point: Vector2) -> Vector2:
 	return surface.project_to_surface(point)
+
+
+const SAVE_FIELDS: PackedStringArray = [
+	"source_nest_id",
+	"remaining",
+	"anchors",
+	"_sample_times",
+	"_clock",
+	"_distance_offset",
+	"half_width",
+	"lifetime",
+	"maximum_length",
+	"sample_spacing",
+]
+const SaveFields = preload("res://scripts/save_fields.gd")
+
+
+func capture_save() -> Dictionary:
+	return SaveFields.capture(self, SAVE_FIELDS)
+
+
+func restore_save(data: Dictionary, planet_surface: PlanetSurface) -> void:
+	surface = planet_surface
+	_preview = false
+	SaveFields.restore(self, data, SAVE_FIELDS)
+	refresh_surface()

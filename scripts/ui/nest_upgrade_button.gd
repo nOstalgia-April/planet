@@ -1,5 +1,7 @@
 extends Button
 
+const AUTOMATION_ICON: Texture2D = preload("res://assets/ui/nest_upgrade/automation_icon.png")
+
 @export var species_colors: PackedColorArray = PackedColorArray(
 	[Color("e00064"), Color("586bdf"), Color("e7a322")]
 )
@@ -10,6 +12,10 @@ extends Button
 @export_range(0.0, 100.0, 1.0) var entrance_distance: float = 52.0
 @export_range(0.05, 1.0, 0.05) var hold_start_scale: float = 0.25
 @export_range(0.1, 1.0, 0.05) var hold_opacity: float = 0.45
+@export_range(0.1, 10.0, 0.1) var prompt_idle_seconds: float = 4.0
+@export_range(0.0, 3.0, 0.1) var prompt_delay_seconds: float = 1.0
+
+var prompt_expired: bool = false
 
 var _flow_time: float = 0.0
 var _hover_amount: float = 0.0
@@ -18,9 +24,14 @@ var _entrance_offset: float = 0.0
 var _entering: bool = false
 var _anchor: PackedVector2Array = PackedVector2Array()
 var _holding: bool = false
+var _prompt_active: bool = false
+var _idle_elapsed: float = 0.0
+var _exit_elapsed: float = 0.0
+var _prompt_wait_elapsed: float = 0.0
 
 @onready var _backing: TextureRect = $Backing
 @onready var _icon: TextureRect = $Icon
+@onready var _standard_icon: Texture2D = _icon.texture
 @onready var _price: Label = $Price
 @onready var _action: Label = $Action
 @onready var _material: ShaderMaterial = _backing.material as ShaderMaterial
@@ -35,6 +46,9 @@ func set_hold_progress(progress: float) -> void:
 	_holding = progress >= 0.0
 	pivot_offset = size * 0.5
 	if _holding:
+		if not visible or prompt_expired:
+			show()
+			begin_entrance()
 		_finish_entrance()
 		_set_details_visible(true)
 		scale = Vector2.ONE * lerpf(hold_start_scale, 1.0, clampf(progress, 0.0, 1.0))
@@ -57,11 +71,54 @@ func _finish_entrance() -> void:
 
 
 func begin_entrance() -> void:
+	prompt_expired = false
+	_prompt_active = true
+	_idle_elapsed = 0.0
+	_exit_elapsed = 0.0
+	modulate.a = 1.0
 	_entrance_elapsed = 0.0
 	_entrance_offset = entrance_distance if entrance_seconds > 0.0 else 0.0
 	_entering = entrance_seconds > 0.0
 	_set_details_visible(not _entering)
 	_place_at_anchor()
+
+
+func reset_prompt() -> void:
+	prompt_expired = false
+	_prompt_wait_elapsed = 0.0
+	_prompt_active = false
+	_entering = false
+	modulate.a = 1.0
+	hide()
+
+
+func advance_prompt_wait(delta: float) -> bool:
+	_prompt_wait_elapsed = minf(_prompt_wait_elapsed + delta, prompt_delay_seconds)
+	return _prompt_wait_elapsed >= prompt_delay_seconds
+
+
+func _advance_prompt(delta: float, pointer: Vector2) -> void:
+	if not _prompt_active:
+		return
+	if _holding or contains_hover_path(pointer):
+		_idle_elapsed = 0.0
+		if prompt_expired:
+			begin_entrance()
+			_finish_entrance()
+		return
+	_idle_elapsed += delta
+	if _idle_elapsed < prompt_idle_seconds:
+		return
+	prompt_expired = true
+	_entering = false
+	_exit_elapsed += delta
+	var progress: float = minf(_exit_elapsed / maxf(entrance_seconds, 0.001), 1.0)
+	_entrance_offset = entrance_distance * progress * progress
+	modulate.a = 1.0 - progress
+	_set_details_visible(false)
+	_place_at_anchor()
+	if progress >= 1.0:
+		hide()
 
 
 func set_nest_anchor(anchor: PackedVector2Array) -> void:
@@ -118,13 +175,16 @@ func _set_details_visible(value: bool) -> void:
 	_action.visible = value
 
 
-func refresh(nest: NestState, cost: int, requirement: String, candy: int) -> void:
+func refresh(
+	nest: NestState, cost: int, requirement: String, candy: int, upgrade_count: int = 3
+) -> void:
 	tooltip_text = ""
 	visible = nest != null and cost >= 0 and requirement.is_empty()
 	if not visible:
 		disabled = true
 		return
 	disabled = candy < cost
+	_icon.texture = AUTOMATION_ICON if nest.level == upgrade_count - 1 else _standard_icon
 	_material.set_shader_parameter("tint", species_colors[nest.species])
 	_price_material.set_shader_parameter("tint", species_colors[nest.species])
 	_price_material.set_shader_parameter("availability", 0.0 if disabled else 1.0)
@@ -138,6 +198,9 @@ func _process(delta: float) -> void:
 		_hover_amount = 0.0
 		return
 	if get_tree().paused:
+		return
+	_advance_prompt(delta, get_viewport().get_mouse_position())
+	if prompt_expired:
 		return
 	if _entering:
 		if contains_pointer(get_viewport().get_mouse_position()):
@@ -161,6 +224,6 @@ func _process(delta: float) -> void:
 	_material.set_shader_parameter("flow_time", _flow_time)
 	_material.set_shader_parameter("hover_amount", _hover_amount)
 	_price_material.set_shader_parameter("flow_time", _flow_time)
-	_price_material.set_shader_parameter("hover_amount", _hover_amount)
+	_price_material.set_shader_parameter("hover_amount", _hover_amount if highlighted else 0.0)
 	var text_color: Color = Color.WHITE.lerp(Color("fff0a8"), _hover_amount)
 	_action.modulate = Color("d9bec9") if disabled else text_color
