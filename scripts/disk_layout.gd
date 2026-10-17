@@ -20,6 +20,8 @@ const VIEW_ZOOM_IN: Texture2D = preload("res://assets/ui/game_menu/zoom_in.tres"
 var save_before_menu: Callable
 
 @export var rotation_hint: Control
+@export_range(1.0, 30.0, 0.5) var tool_upgrade_guide_seconds: float = 8.0
+@export_range(1.0, 30.0, 0.5) var nest_upgrade_guide_seconds: float = 8.0
 
 var dock_intro_progress: float = 1.0:
 	set(value):
@@ -30,6 +32,11 @@ var dock_intro_progress: float = 1.0:
 var _manual_pause: bool = false
 var _presentation_paused: bool = false
 var _rotation_hint_hovered: bool = false
+var _rotation_guide_visible: bool = false
+var _tool_upgrade_guide_shown: bool = false
+var _tool_upgrade_guide_remaining: float = 0.0
+var _nest_upgrade_guide_remaining: float = 0.0
+var _nest_guide_text: String = ""
 
 var _shop_layout_queued: bool = false
 var _nest_anchor: PackedVector2Array = PackedVector2Array()
@@ -46,6 +53,8 @@ var nest_prompts: Array[NestUpgradeButton] = []
 @onready var _completion: EndingCredits = %Completion
 @onready var _view_shortcut: Control = $ViewShortcut
 @onready var _view_switch: TextureButton = $ViewShortcut/Button
+@onready var _center_guide: RichTextLabel = $ViewShortcut/RotationGuide
+@onready var _rotation_guide_text: String = _center_guide.text
 
 
 func _ready() -> void:
@@ -78,8 +87,20 @@ func _sync_completion_presentation() -> void:
 		_view_shortcut.hide()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_view_shortcut.visible = not is_view_switch_blocked()
+	if (
+		(_tool_upgrade_guide_remaining > 0.0 or _nest_upgrade_guide_remaining > 0.0)
+		and _view_shortcut.is_visible_in_tree()
+		and not _view_switch.disabled
+		and not _rotation_guide_visible
+	):
+		var real_delta: float = delta / maxf(Engine.time_scale, 0.001)
+		if _nest_upgrade_guide_remaining > 0.0:
+			_nest_upgrade_guide_remaining = maxf(0.0, _nest_upgrade_guide_remaining - real_delta)
+		else:
+			_tool_upgrade_guide_remaining = maxf(0.0, _tool_upgrade_guide_remaining - real_delta)
+		_refresh_center_guide()
 	rotation_hint.visible = _view_shortcut.is_visible_in_tree()
 	rotation_hint.modulate = _view_shortcut.modulate
 	if _rotation_hint_hovered:
@@ -109,7 +130,45 @@ func set_view_switch_enabled(value: bool) -> void:
 
 
 func set_rotation_guide_visible(value: bool) -> void:
-	$ViewShortcut/RotationGuide.visible = value
+	_rotation_guide_visible = value
+	_refresh_center_guide()
+
+
+func show_nest_upgrade_guide() -> void:
+	_nest_guide_text = "[center]升级所有巢穴，帮助星球自愈[/center]"
+	_nest_upgrade_guide_remaining = nest_upgrade_guide_seconds
+	_refresh_center_guide()
+
+
+func show_final_cleanup_guide() -> void:
+	_nest_guide_text = "[center]协助星球清扫最后的怪物，\n完成自愈[/center]"
+	_nest_upgrade_guide_remaining = nest_upgrade_guide_seconds
+	_tool_upgrade_guide_remaining = 0.0
+	_refresh_center_guide()
+
+
+func _refresh_center_guide() -> void:
+	_center_guide.visible = (
+		_rotation_guide_visible
+		or _tool_upgrade_guide_remaining > 0.0
+		or _nest_upgrade_guide_remaining > 0.0
+	)
+	if _rotation_guide_visible:
+		_center_guide.text = _rotation_guide_text
+	elif _nest_upgrade_guide_remaining > 0.0:
+		_center_guide.text = _nest_guide_text
+	else:
+		_center_guide.text = "[center]使用糖果升级清洁工具[/center]"
+
+
+func _refresh_tool_upgrade_guide(run: PrototypeRun) -> void:
+	if run.pipe_level > 0:
+		_tool_upgrade_guide_shown = true
+		_tool_upgrade_guide_remaining = 0.0
+	elif not _tool_upgrade_guide_shown and run.candy >= run.get_pipe_upgrade_cost():
+		_tool_upgrade_guide_shown = true
+		_tool_upgrade_guide_remaining = tool_upgrade_guide_seconds
+	_refresh_center_guide()
 
 
 func update_rotation_hint_hover(pointer: Vector2, vacuum_visible: bool) -> void:
@@ -163,6 +222,7 @@ func refresh_progression(run: PrototypeRun) -> void:
 		_technology.has_available_technology(), _technology.is_technology_available("automation")
 	)
 	_tool_dock.refresh(run)
+	_refresh_tool_upgrade_guide(run)
 	refresh_timers(run)
 	_queue_shop_layout()
 
@@ -259,7 +319,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if not key_event.pressed or key_event.echo or key_event.keycode != KEY_ESCAPE:
 		return
 	if _completion.is_visible_in_tree():
-		_completion.skip_credits()
+		get_viewport().set_input_as_handled()
+		return
 	elif game_menu.is_open():
 		game_menu.handle_escape()
 	elif is_technology_open() or _nest_card.is_visible_in_tree():
@@ -276,6 +337,11 @@ func _toggle_pause() -> void:
 
 func reset_pause() -> void:
 	_tool_dock.reset_notifications()
+	_rotation_guide_visible = false
+	_tool_upgrade_guide_shown = false
+	_tool_upgrade_guide_remaining = 0.0
+	_nest_upgrade_guide_remaining = 0.0
+	_refresh_center_guide()
 	_manual_pause = false
 	game_menu.set_open(false)
 	_sync_pause()

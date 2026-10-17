@@ -23,6 +23,12 @@ func _run() -> void:
 	get_tree().root.add_child(_game)
 	get_tree().current_scene = _game
 	_flow = _game.story
+	if "--dialogue-layout-only" in OS.get_cmdline_user_args():
+		await _check_dialogue_layout()
+		return
+	if "--color-exit-only" in OS.get_cmdline_user_args():
+		await _check_color_exit()
+		return
 	_check(not _game.has_node("PreviewNavigation"), "formal gameplay has no preview shortcuts")
 	_check(
 		GameAudio.has_events(_flow.talk_events), "all three mascot voice events exist in the Bank"
@@ -176,8 +182,7 @@ func _run() -> void:
 		if stage == 0:
 			await _check_first_color_entrance()
 		elif stage == 2:
-			await _check_passive_third_color()
-			continue
+			await _check_third_color_entrance()
 		await _wait_talk((Flow.Kind.COLOR_ONE + stage) as Flow.Kind)
 		if stage == 1 and "--queued-third" in OS.get_cmdline_user_args():
 			_advance_game_progress()
@@ -186,12 +191,27 @@ func _run() -> void:
 			_flow.current_form == (2 if stage == 2 else 1),
 			"visible transformation matches restoration stage"
 		)
-		if stage == 1 and "--early-confirm" in OS.get_cmdline_user_args():
+		if stage == 2 and "--reload-third" in OS.get_cmdline_user_args():
+			var restoration_save: Dictionary = _game._restoration.capture_save()
+			var story_save: Dictionary = _flow.capture_save()
+			_flow.cancel()
+			_game._restoration.restore_save(restoration_save)
+			_flow.restore_save(story_save)
+			_started.pop_back()
+			await _wait_talk(Flow.Kind.COLOR_THREE)
+			_check(
+				_game._view.is_overview() and _flow.active_dialogue == _flow.color_dialogue,
+				"loaded third dialogue resumes in overview with the color presenter"
+			)
+		if stage >= 1 and "--early-confirm" in OS.get_cmdline_user_args():
 			await _finish_dialogue()
 			_check(_flow.phase == Flow.Phase.WAIT_COLOR, "early confirmation waits for restoration")
 			await _wait_idle()
 			_check(
-				_game._restoration.completed_species.size() == 2 and not _game._view.is_overview(),
+				(
+					_game._restoration.completed_species.size() == stage + 1
+					and not _game._view.is_overview()
+				),
 				"early confirmation still completes color and returns near"
 			)
 			continue
@@ -267,10 +287,7 @@ func _run() -> void:
 	await _finish_dialogue()
 	await _wait_idle()
 	_check(_game._completion.visible, "credits begin after rescue is confirmed")
-	_check(
-		_started == [1, 2, 3, 4, 5, 7],
-		"third color skips dialogue; other story beats stay in order"
-	)
+	_check(_started == [1, 2, 3, 4, 5, 6, 7], "all seven story beats play in order")
 	_game._layout.restart_requested.emit()
 	await _close_note(_flow.briefing)
 	await _wait_talk(Flow.Kind.OPENING)
@@ -298,10 +315,86 @@ func _run() -> void:
 	)
 	if _failures.is_empty():
 		print(
-			"PASS: story flow, first color completion and entrance delay, passive third color, purchases/flowers/victory, pause, restart and cleanup."
+			"PASS: story flow, first color completion and entrance delay, third color overview and dialogue, purchases/flowers/victory, pause, restart and cleanup."
 		)
 	else:
 		print("FAIL: ", _failures)
+	get_tree().quit(0 if _failures.is_empty() else 1)
+
+
+func _check_dialogue_layout() -> void:
+	_flow.cancel()
+	for dimensions: Vector2i in [Vector2i(1920, 1080), Vector2i(1280, 800)]:
+		get_window().size = dimensions
+		await get_tree().process_frame
+		for value: int in range(Flow.Kind.OPENING, Flow.Kind.RESCUE + 1):
+			_flow.kind = value as Flow.Kind
+			_flow.active_dialogue = _flow.narrative
+			if value in [Flow.Kind.CULTIVATION, Flow.Kind.AUTOMATION]:
+				_flow.active_dialogue = _flow.teaching
+			elif value in [Flow.Kind.COLOR_ONE, Flow.Kind.COLOR_TWO, Flow.Kind.COLOR_THREE]:
+				_flow.active_dialogue = _flow.color_dialogue
+			_flow._play_lines()
+			for index: int in _flow.active_dialogue.lines.size():
+				_flow.active_dialogue._start_line(index)
+				_flow.active_dialogue.advance()
+				await get_tree().process_frame
+				var label: RichTextLabel = _flow.active_dialogue.text_label
+				_check(
+					label.get_content_height() <= label.size.y,
+					(
+						"story %d line %d at %s: text height %d / available %.0f"
+						% [value, index + 1, dimensions, label.get_content_height(), label.size.y]
+					)
+				)
+			_flow.active_dialogue.stop()
+	_flow.cancel()
+	_game.queue_free()
+	await get_tree().process_frame
+	print(
+		(
+			"PASS: all dialogue lines fit both viewport sizes."
+			if _failures.is_empty()
+			else "FAIL: %s" % [_failures]
+		)
+	)
+	get_tree().quit(0 if _failures.is_empty() else 1)
+
+
+func _check_color_exit() -> void:
+	_flow.cancel()
+	_flow.seen.assign([Flow.Kind.OPENING, Flow.Kind.CULTIVATION, Flow.Kind.AUTOMATION])
+	for stage: int in range(2):
+		# First color finishes before confirmation; second is confirmed during fill.
+		_game._restoration.fill_seconds = 2.4 if stage == 0 else 6.0
+		_game._restoration.reveal_flower(stage, stage)
+		await _wait_talk((Flow.Kind.COLOR_ONE + stage) as Flow.Kind)
+		await _finish_dialogue()
+		_check(_flow.phase == Flow.Phase.WAIT_COLOR, "color confirmation keeps the story locked")
+		_check(
+			_game._restoration.completed_species.size() == 1,
+			"covers confirmation both after fill and before the second fill completes"
+		)
+		await _wait_idle()
+		_check(
+			(
+				not _game._view.is_overview()
+				and not _game._view.is_transitioning()
+				and not _game._view.presentation_locked
+				and _game.is_processing_input()
+			),
+			"controls return only after the mascot exits and the near camera settles"
+		)
+	_game.queue_free()
+	get_tree().current_scene = null
+	await get_tree().process_frame
+	print(
+		(
+			"PASS: color exit ordering and input lock, late and early confirmation."
+			if _failures.is_empty()
+			else "FAIL: %s" % [_failures]
+		)
+	)
 	get_tree().quit(0 if _failures.is_empty() else 1)
 
 
@@ -390,53 +483,25 @@ func _check_first_color_entrance() -> void:
 	_check(_flow._form_tween == null, "first color does not schedule a mid-dialogue disguise swap")
 
 
-func _check_passive_third_color() -> void:
+func _check_third_color_entrance() -> void:
 	var deadline: int = Time.get_ticks_msec() + 20000
-	var starting_zoom: float = _game._view.target_zoom
-	var starting_candy: int = _game.run.candy
-	while Time.get_ticks_msec() < deadline:
+	while _flow.phase != Flow.Phase.COLOR_CAMERA and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	_check(_flow.phase == Flow.Phase.COLOR_CAMERA, "third color enters the forced overview")
+	while _flow.phase == Flow.Phase.COLOR_CAMERA and Time.get_ticks_msec() < deadline:
+		_check(not _flow.color_dialogue.visible, "third mascot waits for camera and color fill")
 		_check(
-			(
-				not _game._view.presentation_locked
-				and _game.is_processing()
-				and _game.is_processing_input()
-				and is_equal_approx(Engine.time_scale, 1.0)
-			),
-			"third color leaves gameplay and inputs running at normal speed"
+			_game._view.presentation_locked and not _game.is_processing(),
+			"third color locks gameplay and camera"
 		)
-		_check(
-			(
-				is_equal_approx(_game._view.target_zoom, starting_zoom)
-				and not _game._view.is_transitioning()
-			),
-			"third color does not force a camera transition"
-		)
-		_check(
-			_flow.phase == Flow.Phase.IDLE and not _flow.color_dialogue.visible,
-			"third color does not interrupt play with a dialogue"
-		)
-		if (
-			_game._restoration.completed_species.size() == 3
-			and _game._restoration.phase == Flow.Restoration.Phase.IDLE
-		):
-			break
 		await get_tree().process_frame
 	_check(
-		_game._restoration.completed_species.size() == 3,
-		"third color completes without confirmation"
+		_game._view.is_overview() and not _game._view.is_transitioning(),
+		"third mascot enters only after the camera reaches overview"
 	)
-	_check(_flow.current_form == 2, "later story uses the small form after the third color")
-	_check(
-		_game.run.candy > starting_candy, "automated nests keep producing throughout third color"
-	)
-	# Real keyboard input still controls the camera after the passive restoration.
+	_check(_game._restoration.completed_species.size() == 3, "third color finishes before speech")
 	await _key(KEY_TAB)
-	_check(_game._view.is_overview(), "player can still switch views")
-	while _game._view.is_transitioning():
-		await get_tree().process_frame
-	await _key(KEY_TAB)
-	while _game._view.is_transitioning():
-		await get_tree().process_frame
+	_check(_game._view.is_overview(), "third color prevents player camera switching")
 
 
 func _wait_talk(expected: Flow.Kind, timeout_ms: int = 20000) -> void:
@@ -463,6 +528,33 @@ func _wait_talk(expected: Flow.Kind, timeout_ms: int = 20000) -> void:
 func _wait_idle() -> void:
 	var deadline: int = Time.get_ticks_msec() + 20000
 	while _flow.phase != Flow.Phase.IDLE and Time.get_ticks_msec() < deadline:
+		if _flow.kind in [Flow.Kind.COLOR_ONE, Flow.Kind.COLOR_TWO, Flow.Kind.COLOR_THREE]:
+			_check(
+				not _flow.color_dialogue.visible,
+				"mascot exits before the camera returns near, including early confirmation"
+			)
+			_check(
+				(
+					_game._view.presentation_locked
+					and not _game.is_processing_input()
+					and not _game.is_processing()
+				),
+				"color exit, camera return and resume keep gameplay and input locked"
+			)
+			# Repeated real input must not reverse the automatic camera return.
+			var zoom_before: float = _game._view.target_zoom
+			var event: InputEventKey = InputEventKey.new()
+			event.keycode = KEY_TAB
+			event.pressed = true
+			Input.parse_input_event(event)
+			event = event.duplicate() as InputEventKey
+			event.pressed = false
+			Input.parse_input_event(event)
+			Input.flush_buffered_events()
+			_check(
+				is_equal_approx(_game._view.target_zoom, zoom_before),
+				"switch-view input cannot change the camera during color exit or return"
+			)
 		await get_tree().process_frame
 	_check(_flow.phase == Flow.Phase.IDLE, "story releases its controls")
 	for slime: PrototypeSlime in _game._slimes:
@@ -470,7 +562,7 @@ func _wait_idle() -> void:
 
 
 func _finish_dialogue() -> void:
-	var deadline: int = Time.get_ticks_msec() + 10000
+	var deadline: int = Time.get_ticks_msec() + 10000 + _flow.active_dialogue.lines.size() * 2000
 	while _flow.phase == Flow.Phase.TALKING and Time.get_ticks_msec() < deadline:
 		_check(
 			(
@@ -510,6 +602,8 @@ func _key(code: Key) -> void:
 
 func _capture(label: String) -> void:
 	if "--capture" not in OS.get_cmdline_user_args():
+		return
+	if "--third-only" in OS.get_cmdline_user_args() and label != "color_3":
 		return
 	if (
 		"--note-capture" in OS.get_cmdline_user_args()

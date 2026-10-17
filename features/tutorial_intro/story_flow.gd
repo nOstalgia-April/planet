@@ -73,6 +73,8 @@ var _monster_speed: float = 1.0
 var _voice: FmodEvent
 var _voice_requested: bool = false
 var _voice_remaining: float = 0.0
+var _core_waiting_for_overview: bool = false
+var _core_reached_near: bool = false
 
 @onready var narrative: Dialogue = $StoryLayer/Narrative
 @onready var teaching: Dialogue = $StoryLayer/Teaching
@@ -92,6 +94,7 @@ func _ready() -> void:
 		panel.voice_started.connect(_on_voice_started)
 		panel.voice_stopped.connect(_on_voice_stopped)
 	get_viewport().size_changed.connect(_layout_dialogues)
+	restoration.view.view_changed.connect(_on_core_view_changed)
 	_layout_dialogues()
 
 
@@ -105,6 +108,9 @@ func begin() -> void:
 		restoration.presentation_finished.connect(_on_color_finished)
 	_acquire_controls()
 	game._view.show_restoration_overview()
+	_core_waiting_for_overview = true
+	_core_reached_near = false
+	game._restoration.core.set_static(true)
 	kind = Kind.OPENING
 	active_dialogue = narrative
 	game._layout.dock_intro_progress = 0.0
@@ -113,6 +119,16 @@ func begin() -> void:
 	game.set_opening_note_backdrop(true)
 	_set_phase(Phase.NOTE)
 	briefing.play()
+
+
+func _on_core_view_changed() -> void:
+	if not _core_waiting_for_overview or game._view.is_transitioning():
+		return
+	if is_equal_approx(game._view.zoom_amount, 1.0):
+		_core_reached_near = true
+	elif game._view.is_overview() and _core_reached_near:
+		_core_waiting_for_overview = false
+		game._restoration.core.set_static(false)
 
 
 func _on_briefing_finished() -> void:
@@ -177,8 +193,16 @@ func _process(delta: float) -> void:
 			if progress >= 1.0:
 				_play_lines()
 		Phase.COLOR_CAMERA:
-			if not game._view.is_transitioning() and not restoration.completed_species.is_empty():
+			var color_stage: int = int(kind) - int(Kind.COLOR_ONE) + 1
+			if (
+				not game._view.is_transitioning()
+				and restoration.completed_species.size() >= color_stage
+			):
 				_set_phase(Phase.COLOR_DELAY)
+		Phase.WAIT_COLOR:
+			if _resumed_color_only and not game._view.is_transitioning():
+				_resumed_color_only = false
+				_begin_resuming()
 		Phase.COLOR_DELAY:
 			if _elapsed >= first_color_entrance_delay:
 				_play_lines()
@@ -294,11 +318,6 @@ func _try_teaching() -> void:
 
 func _on_color_started(stage: int) -> void:
 	assert(stage >= 1 and stage <= 3)
-	if stage == 3:
-		# The final color restores during free play; the rescue uses this form later.
-		current_form = 2
-		seen.append(Kind.COLOR_THREE)
-		return
 	var next_kind: Kind = (Kind.COLOR_ONE + stage - 1) as Kind
 	if next_kind in seen:
 		restoration.confirm_dialogue()
@@ -310,6 +329,7 @@ func _on_color_started(stage: int) -> void:
 	_set_monster_speed(monster_speed)
 	if kind == Kind.COLOR_ONE:
 		current_form = 1
+	if kind in [Kind.COLOR_ONE, Kind.COLOR_THREE]:
 		_set_phase(Phase.COLOR_CAMERA)
 		return
 	_play_lines()
@@ -409,12 +429,16 @@ func _stop_voice() -> void:
 func _on_dialogue_finished() -> void:
 	active_dialogue.dismiss_bubble()
 	if _resumed_color_only:
-		_resumed_color_only = false
-		_begin_resuming()
+		active_dialogue.stop()
+		game._view.zoom_discovery(1.0, restoration.return_seconds)
+		_set_phase(Phase.WAIT_COLOR)
 		return
 	if kind in [Kind.COLOR_ONE, Kind.COLOR_TWO, Kind.COLOR_THREE]:
-		restoration.confirm_dialogue()
+		# Retire the whole presenter before allowing the camera to return near.
+		# WAIT_COLOR keeps gameplay and view input locked until the return completes.
+		active_dialogue.stop()
 		_set_phase(Phase.WAIT_COLOR)
+		restoration.confirm_dialogue()
 	else:
 		_begin_resuming()
 
@@ -433,6 +457,8 @@ func _begin_resuming() -> void:
 func _finish_story() -> void:
 	var finished_kind: Kind = kind
 	_release_controls()
+	if finished_kind == Kind.AUTOMATION:
+		game._layout.show_nest_upgrade_guide()
 	kind = Kind.NONE
 	_set_phase(Phase.IDLE)
 	story_finished.emit(finished_kind)
@@ -502,11 +528,16 @@ func capture_save() -> Dictionary:
 		"form": current_form,
 		"resume": int(resume_kind),
 		"note_pending": phase == Phase.NOTE,
+		"core_waiting_for_overview": _core_waiting_for_overview,
+		"core_reached_near": _core_reached_near,
 	}
 
 
 func restore_save(data: Dictionary) -> void:
 	cancel()
+	_core_waiting_for_overview = data.get("core_waiting_for_overview", false)
+	_core_reached_near = data.get("core_reached_near", false)
+	game._restoration.core.set_static(_core_waiting_for_overview)
 	seen.assign(data.seen)
 	current_form = data.form
 	if not game.run.economy_changed.is_connected(_on_economy_changed):
@@ -529,7 +560,7 @@ func restore_save(data: Dictionary) -> void:
 			game._view.zoom_steps(-1.0, false)
 			play_receipt()
 			return
-	if resume_kind in [Kind.COLOR_ONE, Kind.COLOR_TWO]:
+	if resume_kind in [Kind.COLOR_ONE, Kind.COLOR_TWO, Kind.COLOR_THREE]:
 		var color_index: int = int(resume_kind) - int(Kind.COLOR_ONE)
 		# Unfinished color fills restart their own presentation and dialogue together.
 		if restoration.completed_species.size() <= color_index:
@@ -544,8 +575,12 @@ func restore_save(data: Dictionary) -> void:
 		active_dialogue = narrative
 		if kind in [Kind.CULTIVATION, Kind.AUTOMATION]:
 			active_dialogue = teaching
-		elif kind in [Kind.COLOR_ONE, Kind.COLOR_TWO]:
+		elif kind in [Kind.COLOR_ONE, Kind.COLOR_TWO, Kind.COLOR_THREE]:
 			active_dialogue = color_dialogue
+			game._view.show_restoration_overview()
 		_acquire_controls()
-		_play_lines()
+		if _resumed_color_only:
+			_set_phase(Phase.COLOR_CAMERA)
+		else:
+			_play_lines()
 	_on_economy_changed()

@@ -38,6 +38,7 @@ func _run_checks() -> void:
 	_check_population_settlement()
 	await _check_live_fusion()
 	await _check_all_nests()
+	await _check_valuable_giants()
 	await _check_demo_balance()
 	await _check_visibility_and_tools()
 	await _check_live_settlement()
@@ -328,6 +329,82 @@ func _check_all_nests() -> void:
 	get_tree().current_scene = null
 	demo.queue_free()
 	await get_tree().process_frame
+
+
+func _check_valuable_giants() -> void:
+	for species: NestState.Species in [NestState.Species.SLIME, NestState.Species.MUCUS]:
+		for variant: int in range(3):
+			var demo: DemoScript = _make_demo()
+			_offscreen_pair(demo, species)
+			_enable_fusion(demo)
+			# Include one valuable source to check that its value survives either result.
+			demo._slimes[0].configure_species(PrototypeSlime.Species.SLIME, true, 3)
+			if variant > 0:
+				demo.run.purchase_technology("valuable")
+			var hit: bool = variant != 1
+			var probe: RandomNumberGenerator = RandomNumberGenerator.new()
+			var roll_seed: int = 0
+			while true:
+				probe.seed = roll_seed
+				if (probe.randi_range(1, demo.run.settings.valuable_spawn_every) == 1) == hit:
+					break
+				roll_seed += 1
+			demo._site_random.seed = roll_seed
+			demo._advance_giant_fusion(1.0)
+			var giants: Array[PrototypeSlime] = _giants(demo)
+			_check(giants.size() == 1, "Each valuable-roll case creates one giant.")
+			if giants.is_empty():
+				get_tree().current_scene = null
+				demo.queue_free()
+				await get_tree().process_frame
+				continue
+			var giant: PrototypeSlime = giants[0]
+			var valuable: bool = variant == 2
+			var expected_units: int = 22 if species == NestState.Species.MUCUS else 14
+			if valuable:
+				expected_units *= demo.run.settings.valuable_reward_multiplier
+			_check(
+				giant.high_value == valuable,
+				"Giant quality requires research and a successful roll."
+			)
+			_check(
+				giant.fused_value_units == expected_units and giant.reward == expected_units,
+				"Giant quality multiplies the complete mixed-source value exactly once."
+			)
+			_check(
+				giant.get_source_texture().resource_path.contains("高价值怪物") == valuable,
+				"Both giant species select the matching quality artwork."
+			)
+			var restored: PrototypeSlime = demo.giant_slime_scene.instantiate() as PrototypeSlime
+			demo._slime_root.add_child(restored)
+			restored.setup(giant.nest_id, giant.position, demo._planet)
+			restored.restore_save(giant.capture_save())
+			_check(
+				restored.high_value == valuable and restored.fused_value_units == expected_units,
+				"Saving and restoring preserves giant quality and multiplied value."
+			)
+			restored.queue_free()
+			demo.run.purchase_technology("base_value")
+			_check(
+				giant.reward == expected_units * 2,
+				"Base-value research preserves the quality multiplier."
+			)
+			demo.run.combo_level = 1
+			var before: int = demo.run.candy
+			demo._capture_at(
+				demo._capture_seconds_for(giant) + 0.01, giant.get_capture_point(), true
+			)
+			_check(
+				(
+					demo.run.candy == before + expected_units * 2
+					and demo.run.get_nest(4).alive_slimes == 0
+					and demo.run.combo_count == 1
+				),
+				"A valuable giant pays once, releases its population and counts as one capture."
+			)
+			get_tree().current_scene = null
+			demo.queue_free()
+			await get_tree().process_frame
 
 
 func _check_demo_balance() -> void:

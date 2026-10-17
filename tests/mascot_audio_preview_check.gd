@@ -91,8 +91,10 @@ func _check_preview(index: int) -> void:
 	await _check_layout(preview.dialogue, "%d_full_line" % index)
 	var advance_button: Control = preview.get_node("UI/Toolbar/Advance") as Control
 	_click(advance_button.get_global_transform_with_canvas() * (advance_button.size * 0.5))
-	_check(preview.dialogue.line_index == 1, "The menu Advance button advances exactly once.")
-	_check(preview.dialogue.phase == Dialogue.Phase.TYPING, "The next line is not also completed.")
+	_check(preview.dialogue.line_index == 0, "The completion button cannot advance a full line.")
+	_check(preview.dialogue.phase == Dialogue.Phase.HOLDING, "The reading pause remains active.")
+	_key(KEY_ENTER)
+	_check(preview.dialogue.line_index == 0, "Enter cannot bypass the reading pause either.")
 	var replay_button: Control = preview.get_node("UI/Toolbar/Replay") as Control
 	_click(replay_button.get_global_transform_with_canvas() * (replay_button.size * 0.5))
 	_check(preview.dialogue.phase == Dialogue.Phase.ENTERING, "The menu Replay button still works.")
@@ -100,9 +102,12 @@ func _check_preview(index: int) -> void:
 	preview.replay()
 	_check(preview.dialogue.phase == Dialogue.Phase.ENTERING, "Replay restarts the entrance.")
 	for speaker: Dialogue in speakers:
+		_check(is_equal_approx(speaker.continue_delay_seconds, 2.0), "Preview uses the full delay.")
 		speaker.characters_per_second = 200.0
 		speaker.punctuation_pause = 0.0
-	var deadline: int = Time.get_ticks_msec() + 22000
+		# Timing boundaries are covered by mascot_dialogue_check; speed up full-script coverage.
+		speaker.continue_delay_seconds = 0.1
+	var deadline: int = Time.get_ticks_msec() + 55000
 	while Time.get_ticks_msec() < deadline:
 		if index == 0:
 			if (preview as Opening).segment == Opening.Segment.DONE:

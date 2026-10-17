@@ -19,7 +19,7 @@ func _run_checks() -> void:
 	await _check_live()
 	if _failures.is_empty():
 		print(
-			"PASS: drill discovery, population, travel, basic suction, leave, input gates, treasure, art and restart"
+			"PASS: drill discovery, population, travel, suction, nets, input gates, treasure, art and restart"
 		)
 	else:
 		for failure: String in _failures:
@@ -120,6 +120,29 @@ func _check_economy() -> void:
 				not run.collect_slime(3, -1, 1, true) and run.candy == before,
 				"Valuable treasure cannot settle twice."
 			)
+			run.net_unlocked = true
+			for valuable: bool in [false, true]:
+				run._random.seed = seed_value
+				nest.alive_slimes = 1
+				before = run.candy
+				var combo_before: int = run.combo_count
+				var expected: int = (
+					ordinary_reward * (SETTINGS.valuable_reward_multiplier if valuable else 1)
+				)
+				_check(
+					(
+						run.collect_net_batch([3], [0], [1], [valuable]) == expected
+						and run.candy - before == expected
+						and nest.alive_slimes == 0
+					),
+					"Nets pay the same ordinary/valuable treasure roll as suction."
+				)
+				_check(run.combo_count == combo_before, "Net treasure does not build a combo.")
+				before = run.candy
+				_check(
+					run.collect_net_batch([3], [0], [1], [valuable]) == 0 and run.candy == before,
+					"Net treasure cannot settle twice."
+				)
 	nest.is_tamed = true
 	run._advance_nest_population(nest, 100.0)
 	_check(nest.alive_slimes == 0, "Automation stops new drill spawns.")
@@ -164,9 +187,10 @@ func _check_live() -> void:
 	actor.set_process(false)
 	actor._rng.seed = 28139
 	_check(
-		not actor.can_capture() and not actor.can_net_capture() and not actor.can_fuse(),
-		"Launch is protected from suction, nets and fusion."
+		actor.can_capture() and actor.can_net_capture() and not actor.can_fuse(),
+		"Launch allows suction and nets, but not fusion."
 	)
+	_check_launch_feedback(actor)
 	var states: Dictionary = {}
 	var farthest: float = 0.0
 	var within_range: bool = true
@@ -178,9 +202,9 @@ func _check_live() -> void:
 		farthest = maxf(farthest, offset)
 		within_range = within_range and offset <= PI * actor.range_fraction + 0.001
 		on_surface = on_surface and demo._planet.contains_surface_point(actor.position)
-		if actor.phase != Drill.Phase.EXPOSED:
+		if actor.phase not in [Drill.Phase.LAUNCH, Drill.Phase.EXPOSED]:
 			_check(
-				not actor.apply_capture(10.0, 0.1, actor.position),
+				not actor.apply_capture(10.0, 0.1, actor.position) and not actor.can_net_capture(),
 				"Underground and transition phases reject capture directly."
 			)
 	_check(states.size() == 6, "The live actor visits every phase of its repeating cycle.")
@@ -205,13 +229,7 @@ func _check_live() -> void:
 	actor.position = demo._planet.project_to_surface(nest.position * 0.9)
 	actor._update_surface_rotation()
 	actor._sync_art()
-	demo.run.net_unlocked = true
-	demo._net_anchor = actor.get_capture_point()
-	demo._resolve_net()
-	_check(
-		demo._slimes.has(actor) and nest.alive_slimes == 1,
-		"The real net path leaves the drill untouched."
-	)
+	_check(actor.can_net_capture(), "Exposed drill monsters are eligible for nets.")
 	_check_input_gates(demo, actor)
 	_check_escape(demo, actor)
 	if "--capture" in OS.get_cmdline_user_args():
@@ -223,6 +241,8 @@ func _check_live() -> void:
 			demo._apply_layout()
 			await _capture("caught", size)
 	await _check_valuable_live(demo, nest)
+	_check_net_capture(demo, nest)
+	_check_launch_capture(demo, nest)
 	demo.restart_run()
 	_check(
 		demo._slimes.is_empty() and demo._effects.get_child_count() == 0,
@@ -230,6 +250,143 @@ func _check_live() -> void:
 	)
 	demo.queue_free()
 	await get_tree().process_frame
+
+
+func _check_net_capture(demo: DemoScript, nest: NestState) -> void:
+	demo.run.net_unlocked = true
+	for valuable: bool in [false, true]:
+		if valuable:
+			demo.run._advance_nest_population(nest, demo.run.get_nest_spawn_interval(nest.nest_id))
+		var actor: Drill = demo._slimes[-1] as Drill
+		actor.set_process(false)
+		actor.configure_species(PrototypeSlime.Species.DRILL, valuable, 0)
+		actor._enter_phase(Drill.Phase.DIVE, 0.875, &"钻地")
+		var before: int = demo.run.candy
+		demo._net_anchor = actor.get_capture_point()
+		demo._resolve_net()
+		_check(
+			demo._slimes.has(actor) and nest.alive_slimes == 1 and demo.run.candy == before,
+			"The real net path leaves protected drills untouched."
+		)
+		actor._enter_phase(Drill.Phase.EXPOSED, actor.exposed_seconds, &"夹夹")
+		demo._net_anchor = (
+			actor.get_capture_point() + Vector2.RIGHT * (demo.run.get_net_radius() + 1.0)
+		)
+		demo._resolve_net()
+		_check(demo._slimes.has(actor) and demo.run.candy == before, "Nets respect drill range.")
+		demo._net_anchor = actor.get_capture_point()
+		demo.run._random.seed = 723
+		var expected: int = demo.run.get_base_value() * demo.run.roll_drill_treasure()
+		if valuable:
+			expected *= demo.run.settings.valuable_reward_multiplier
+		demo.run._random.seed = 723
+		demo._resolve_net()
+		_check(
+			(
+				not demo._slimes.has(actor)
+				and actor.consumed
+				and nest.alive_slimes == 0
+				and demo._net_caught_count == 1
+				and demo.run.candy - before == expected
+			),
+			"The real net path removes ordinary/valuable drills and pays their treasure."
+		)
+		before = demo.run.candy
+		demo._resolve_net()
+		_check(demo.run.candy == before, "Repeated resolution cannot pay net treasure twice.")
+
+
+func _check_launch_feedback(actor: Drill) -> void:
+	actor._process(0.35)
+	actor.art.animation_player.seek(0.35, true)
+	var original_position: Vector2 = actor.position
+	var original_transform: Transform2D = actor.art.transform
+	var original_texture: Texture2D = actor.get_source_texture()
+	actor.apply_capture(0.1, 0.5, actor.get_capture_point() + Vector2(8.0, -8.0))
+	_check(
+		(
+			actor._capture_active
+			and is_equal_approx(actor.capture_progress, 0.2)
+			and not actor.art._suction
+			and actor.art.animation_player.assigned_animation == &"跳出"
+			and actor.art.animation_player.is_playing()
+			and is_equal_approx(actor.art.animation_player.current_animation_position, 0.35)
+			and actor.get_source_texture() == original_texture
+			and actor.position.is_equal_approx(original_position)
+			and actor.art.transform.is_equal_approx(original_transform)
+		),
+		"Launch suction shows progress without changing the pose, animation or position."
+	)
+	actor.art.animation_player.advance(0.1)
+	actor._process(0.1)
+	_check(
+		(
+			is_equal_approx(actor._launch_progress, 0.45)
+			and is_equal_approx(actor.phase_remaining, 0.55)
+			and is_equal_approx(actor.art.animation_player.current_animation_position, 0.45)
+			and actor.get_capture_hit_rect().is_equal_approx(actor.get_visual_rect())
+		),
+		"Flight, animation and capture bounds keep advancing while suction is active."
+	)
+	actor.release_capture(0.0)
+	_check(
+		(
+			actor.capture_progress == 0.0
+			and not actor._capture_active
+			and is_equal_approx(actor.art.animation_player.current_animation_position, 0.45)
+		),
+		"Leaving clears launch feedback without rewinding its animation."
+	)
+	actor.apply_capture(0.1, 0.5, actor.get_capture_point())
+	actor._process(0.6)
+	_check(
+		(
+			actor.phase == Drill.Phase.DIVE
+			and actor.capture_progress == 0.0
+			and not actor._capture_active
+			and not actor.can_capture()
+			and not actor.can_net_capture()
+		),
+		"An unfinished launch capture expires when the original flight enters its dive."
+	)
+	actor.launch(Vector2.RIGHT)
+
+
+func _check_launch_capture(demo: DemoScript, nest: NestState) -> void:
+	for valuable: bool in [false, true]:
+		for use_net: bool in [false, true]:
+			demo.run._advance_nest_population(nest, demo.run.get_nest_spawn_interval(nest.nest_id))
+			var actor: Drill = demo._slimes[-1] as Drill
+			actor.set_process(false)
+			actor.configure_species(PrototypeSlime.Species.DRILL, valuable, 0)
+			actor._process(0.35)
+			actor.art.animation_player.seek(0.35, true)
+			var before: int = demo.run.candy
+			demo.run._random.seed = 723
+			var expected: int = demo.run.get_base_value() * demo.run.roll_drill_treasure()
+			if valuable:
+				expected *= demo.run.settings.valuable_reward_multiplier
+			demo.run._random.seed = 723
+			if use_net:
+				demo._net_anchor = actor.get_capture_point()
+				demo._resolve_net()
+			else:
+				demo._capture_at(
+					demo.run.get_pipe_capture_seconds(), actor.get_capture_point(), true
+				)
+			_check(
+				(
+					actor.phase == Drill.Phase.LAUNCH
+					and actor.consumed
+					and not demo._slimes.has(actor)
+					and nest.alive_slimes == 0
+					and demo.run.candy - before == expected
+				),
+				"Both tools capture ordinary/valuable moles in flight and settle the correct treasure."
+			)
+			demo._capture_at(1.0, actor.get_capture_point(), true)
+			demo._resolve_net()
+			_check(demo.run.candy == before + expected, "Launch catches cannot pay twice.")
 
 
 func _check_travel_cycles(actor: Drill) -> void:

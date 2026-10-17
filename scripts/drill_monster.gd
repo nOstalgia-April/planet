@@ -105,11 +105,11 @@ func launch(direction: Vector2) -> void:
 
 
 func can_capture() -> bool:
-	return not consumed and phase == Phase.EXPOSED
+	return not consumed and phase in [Phase.LAUNCH, Phase.EXPOSED]
 
 
 func can_net_capture() -> bool:
-	return false
+	return can_capture()
 
 
 func can_fuse() -> bool:
@@ -127,6 +127,9 @@ func apply_attraction(_delta: float, _target: Vector2, _strength: float) -> void
 func apply_capture(delta: float, capture_seconds: float, target: Vector2) -> bool:
 	if not can_capture():
 		return false
+	# During launch only the progress ring changes; keep the original flight path.
+	if phase == Phase.LAUNCH:
+		target = get_capture_point()
 	return super.apply_capture(delta, capture_seconds, target)
 
 
@@ -136,6 +139,8 @@ func release_capture(delta: float) -> void:
 
 
 func get_capture_hit_rect() -> Rect2:
+	if phase == Phase.LAUNCH:
+		return get_visual_rect()
 	# Keep bounds independent of changing facial frames.
 	return get_global_transform_with_canvas() * _get_base_art_transform() * _exposed_art_rect
 
@@ -164,6 +169,8 @@ func _process(delta: float) -> void:
 	if phase_remaining <= 0.0:
 		_advance_phase()
 	_sync_art()
+	if _capture_active:
+		queue_redraw()
 
 
 func _advance_phase() -> void:
@@ -247,6 +254,8 @@ func _set_suction_expression(active: bool) -> void:
 	if active == _capture_active:
 		return
 	_capture_active = active
+	if phase == Phase.LAUNCH:
+		return
 	art.set_suction(active)
 	if active:
 		art.show_frame(&"吸入", 0)
@@ -298,11 +307,12 @@ func _draw() -> void:
 	if not _capture_active or consumed or capture_progress <= 0.02:
 		return
 	# The mole keeps its full-size art during suction, so its ring must not shrink.
-	# Use the stable exposed bounds to keep it outside both facial animations.
-	var ring_radius: float = _exposed_art_rect.size.length() * 0.5 + 4.0
-	draw_set_transform_matrix(_get_base_art_transform())
+	# Follow the flying art; exposed bounds stay stable across facial animations.
+	var ring_rect: Rect2 = _get_art_rect() if phase == Phase.LAUNCH else _exposed_art_rect
+	var ring_radius: float = ring_rect.size.length() * 0.5 + 4.0
+	draw_set_transform_matrix(art.transform if phase == Phase.LAUNCH else _get_base_art_transform())
 	draw_arc(
-		_exposed_art_rect.get_center(),
+		ring_rect.get_center(),
 		ring_radius,
 		-PI / 2.0,
 		-PI / 2.0 + TAU * capture_progress,

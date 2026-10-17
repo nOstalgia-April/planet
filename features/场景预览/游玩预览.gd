@@ -28,6 +28,7 @@ func _ready() -> void:
 	flower_appeared.connect(_restoration.reveal_flower)
 	_restoration.color_fill_started.connect(_planet_audio.color_recovered)
 	_restoration.background_restore_started.connect(_planet_audio.planet_turned_white)
+	_restoration.background_restore_finished.connect(_layout.show_final_cleanup_guide)
 	_population_palette.display_species_changed.connect(_planet_audio.palette_changed_to)
 	_restoration.presentation_started.connect(_on_restoration_started)
 	_nest_discovery.presentation_started.connect(_on_restoration_started)

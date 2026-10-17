@@ -29,6 +29,10 @@ extends Resource
 @export_range(0.01, 1.0, 0.01) var spawn_burst_ratio_max: float = 0.3
 @export_range(0.0, 100.0, 0.1) var passive_income_per_second: float = 1.5
 @export_range(0.1, 60.0, 0.1) var automatic_income_interval: float = 3.0
+@export_group("Flower cleanup")
+@export_range(0.1, 10.0, 0.1) var flower_cleanup_interval: float = 1.2
+@export_range(1.0, 480.0, 1.0) var flower_cleanup_radius: float = 150.0
+@export_group("Rewards")
 @export_range(1, 100, 1) var slime_reward: int = 1
 @export var base_value_multipliers: PackedInt32Array = PackedInt32Array([1, 2, 5, 10])
 @export var base_value_upgrade_costs: PackedInt32Array = PackedInt32Array([40, 180, 900])

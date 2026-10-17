@@ -22,6 +22,7 @@ const PlanetAudio = preload("res://scripts/planet_audio.gd")
 const MonsterDepth = preload("res://scripts/monster_depth.gd")
 const ViewGestureFilter = preload("res://scripts/view_gesture_filter.gd")
 const EndingCredits = preload("res://scripts/ui/ending_credits.gd")
+const FlowerCleanupEffect = preload("res://scripts/flower_cleanup_effect.gd")
 
 # Music stages drive the global FMOD parameter GameStage (0 / 1 / 2); its Seek
 # modulator in FMOD turns each step into a crossfade between the music layers.
@@ -42,6 +43,7 @@ enum NetPhase { IDLE, CASTING, CLOSING, RESULT }
 @export var giant_slime_scene: PackedScene
 @export var nest_scene: PackedScene
 @export var collection_scene: PackedScene
+@export var flower_cleanup_scene: PackedScene
 @export var flower_income_colors: PackedColorArray = PackedColorArray(
 	[Color("e00064"), Color("586bdf"), Color("e7a322")]
 )
@@ -81,6 +83,7 @@ var _status_tween: Tween
 var _hud_refresh_queued: bool = false
 var _overview_sample_elapsed: float = 0.0
 var _giant_check_elapsed: float = 0.0
+var _flower_cleanup_elapsed: float = 0.0
 var _giant_harvest: GiantHarvestEffect
 var _site_random: RandomNumberGenerator = RandomNumberGenerator.new()
 var _nest_site_angles: PackedFloat32Array = PackedFloat32Array()
@@ -199,6 +202,7 @@ func _process(delta: float) -> void:
 	_advance_nest_hold(delta, pointer)
 	_update_overview_hover(pointer)
 	run.advance(delta)
+	_advance_flower_cleanup(delta)
 	_advance_giant_fusion(delta)
 	if _view.is_overview():
 		_overview_sample_elapsed += delta
@@ -348,6 +352,7 @@ func _resolve_net() -> void:
 	var source_ids: Array[int] = []
 	var rewards: Array[int] = []
 	var populations: Array[int] = []
+	var valuables: Array[bool] = []
 	var caught_monsters: int = 0
 	var caught_golden: bool = false
 	for index: int in range(caught_count):
@@ -355,6 +360,7 @@ func _resolve_net() -> void:
 		source_ids.append(slime.nest_id)
 		rewards.append(slime.reward)
 		populations.append(slime.population_units)
+		valuables.append(slime.high_value)
 		caught_monsters += slime.population_units
 		caught_golden = caught_golden or slime.high_value
 		_slimes.erase(slime)
@@ -363,7 +369,7 @@ func _resolve_net() -> void:
 		slime.hide()
 		slime.set_process(false)
 		slime.queue_free()
-	var reward: int = run.collect_net_batch(source_ids, rewards, populations)
+	var reward: int = run.collect_net_batch(source_ids, rewards, populations, valuables)
 	_net_caught_count = caught_count
 	if caught_count > 0:
 		_monster_audio.net_captured()
@@ -690,6 +696,7 @@ func _clear_run_world() -> void:
 	_slimes.clear()
 	_giant_check_elapsed = 0.0
 	_capture_targets.clear()
+	_flower_cleanup_elapsed = 0.0
 	_vacuum_audio.stop_now()
 	_pipe.reset_transport()
 	_pipe.reset_skin()
@@ -1257,6 +1264,76 @@ func _on_slime_requested(nest_id: int) -> void:
 	_slimes.append(slime)
 
 
+func _advance_flower_cleanup(delta: float) -> void:
+	if run.is_complete or not run.are_all_nests_automated():
+		_flower_cleanup_elapsed = 0.0
+		return
+	for view: NestView in _nest_views:
+		if not view.is_flower_ready():
+			_flower_cleanup_elapsed = 0.0
+			return
+	_flower_cleanup_elapsed += delta
+	if _flower_cleanup_elapsed < run.settings.flower_cleanup_interval:
+		return
+	_flower_cleanup_elapsed = 0.0
+	for view: NestView in _nest_views:
+		var target: PrototypeSlime = _find_flower_target(view.position)
+		if target != null:
+			_collect_flower_target(view, target)
+
+
+func _find_flower_target(origin: Vector2) -> PrototypeSlime:
+	var nearest: PrototypeSlime = null
+	var nearest_distance: float = run.settings.flower_cleanup_radius ** 2
+	for actor: PrototypeSlime in _slimes:
+		# Let the player's current capture finish; underground drills wait until exposed.
+		if not actor.can_capture() or _capture_targets.has(actor):
+			continue
+		if (
+			_net_phase in [NetPhase.CASTING, NetPhase.CLOSING]
+			and actor.get_capture_point().distance_to(_net_anchor) <= run.get_net_radius()
+		):
+			continue
+		var distance: float = origin.distance_squared_to(actor.position)
+		if distance <= nearest_distance:
+			nearest = actor
+			nearest_distance = distance
+	return nearest
+
+
+func _collect_flower_target(view: NestView, target: PrototypeSlime) -> void:
+	var before: int = run.candy
+	if not run.collect_flower_target(
+		target.nest_id, target.reward, target.population_units, target.high_value
+	):
+		return
+	var hit_point: Vector2 = target.get_capture_point()
+	# Settlement is immediate and independent of the optional visual scene.
+	_slimes.erase(target)
+	target.consumed = true
+	target.hide()
+	target.set_process(false)
+	target.queue_free()
+	if not _view.is_overview():
+		var viewport: Rect2 = get_viewport_rect()
+		if (
+			viewport.intersects(view.get_hover_rect())
+			or viewport.intersects(target.get_visual_rect())
+		):
+			if flower_cleanup_scene != null:
+				var effect: FlowerCleanupEffect = (
+					flower_cleanup_scene.instantiate() as FlowerCleanupEffect
+				)
+				_effects.add_child(effect)
+				effect.play(
+					view.get_production_point(), hit_point, flower_income_colors[view.species]
+				)
+			_play_collection_reward(
+				run.candy - before, hit_point, flower_income_colors[view.species]
+			)
+	_refresh_overview()
+
+
 func _advance_giant_fusion(delta: float) -> void:
 	if (
 		not run.giant_unlocked
@@ -1301,10 +1378,15 @@ func _apply_giant_fusion(plan: GiantFusion.Plan, viewport: Rect2) -> void:
 	_slime_root.add_child(giant)
 	giant.setup(owner_nest.nest_id, owner_nest.position, _planet, _get_roaming_screen_half_angle())
 	giant.presentation_scale = _view.near_slime_scale
-	giant.configure_species(owner_nest.species as PrototypeSlime.Species, false, 0)
-	giant.configure_fusion(
-		plan.actors.size(), plan.value_units, run.get_base_value() * plan.value_units
+	var valuable: bool = (
+		run.valuable_level > 0
+		and _site_random.randi_range(1, run.settings.valuable_spawn_every) == 1
 	)
+	var value_units: int = plan.value_units
+	if valuable:
+		value_units *= run.settings.valuable_reward_multiplier
+	giant.configure_species(owner_nest.species as PrototypeSlime.Species, valuable, 0)
+	giant.configure_fusion(plan.actors.size(), value_units, run.get_base_value() * value_units)
 	var inward: Vector2 = -owner_nest.position.normalized()
 	var tangent: Vector2 = inward.orthogonal()
 	giant.restore_to_surface(
