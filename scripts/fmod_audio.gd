@@ -32,8 +32,6 @@ const NEAR_VIEW_PREFIXES: PackedStringArray = [
 	"event:/Nest/Mucus_NestAppear",
 	"event:/Nest/Drill_NestAppear",
 	"event:/Net/",
-	"event:/Drill_Crawl",
-	"event:/Drill_OutofDirt",
 ]
 
 @export_range(0.0, 10.0, 0.05) var music_fade_in_seconds: float = 0.3

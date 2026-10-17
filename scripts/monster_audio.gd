@@ -40,7 +40,7 @@ const DrillMonster = preload("res://scripts/drill_monster.gd")
 # Loops while a drill monster crawls underground (not while it pauses).
 const DRILL_CRAWL_EVENT: String = "event:/Monsters/Drill_Crawl"
 # Once as a drill monster jumps out of the dirt.
-const DRILL_OUT_EVENT: String = "event:/Drill_OutofDirt"
+const DRILL_OUT_EVENT: String = "event:/Monsters/Drill_OutofDirt"
 # Indexed by the nest's new level - 1; the last one is the upgrade that tames it.
 # Plays while a nest upgrade is held (0.8 s, nest_hold_seconds): fades out
 # through FMOD if let go, plays out into Nest_Lvlup_StageXX when it completes.
