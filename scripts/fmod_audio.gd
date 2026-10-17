@@ -59,8 +59,8 @@ var _effect_is_near_view: Array[bool] = []
 var _near_view_gain: float = 1.0
 var _master_bus: FmodBus
 var _editor_muted: bool = false
-# A paused game (settings, technology page) freezes gameplay sounds in place
-# along with music, while UI sounds keep playing.
+# A paused game (settings, technology page, pause button) freezes gameplay
+# sounds in place; music keeps playing under Music_Menu, and UI sounds too.
 var _game_paused: bool = false
 # Parallel to _effect_descriptions: UI sounds keep playing while gameplay freezes.
 var _effect_is_ui: Array[bool] = []
@@ -287,7 +287,6 @@ func play_music(event_path: String) -> void:
 	if _music == null:
 		return
 	_music.set_volume(0.0)
-	_music.set_paused(get_tree().paused)
 	_music.start()
 	_music_path = event_path
 	_music_volume = 0.0
@@ -366,7 +365,9 @@ func _process(delta: float) -> void:
 		_game_paused = paused
 		_set_gameplay_frozen(paused)
 	_advance_music_menu(delta)
-	# Freeze transitions and fades along with the gameplay timelines.
+	# Music keeps playing through a pause, so its fades do too.
+	_advance_music_fades(delta)
+	# Transitions are gameplay sounds: they hold with the pause.
 	if paused:
 		return
 	_advance_music_duck(delta)
@@ -379,6 +380,9 @@ func _process(delta: float) -> void:
 	if _effects_elapsed >= 0.1:
 		_effects_elapsed = 0.0
 		_apply_effects_volume()
+
+
+func _advance_music_fades(delta: float) -> void:
 	# A blocking scene load arrives as one huge delta; cap it so fades stay audible.
 	var step: float = minf(delta, MAX_FADE_STEP)
 	if _music != null and _music_volume < 1.0:
@@ -500,14 +504,9 @@ func _capture_editor_message(message: String, data: Array) -> bool:
 	return true
 
 
-# Holds music and gameplay sounds in place, keeping UI sounds responsive.
-# Pending music stays paused until its transition ends.
+# Holds gameplay sounds in place; music (low-passed through Music_Menu) and
+# UI sounds keep playing. Pending music stays paused until its transition ends.
 func _set_gameplay_frozen(frozen: bool) -> void:
-	if _music != null and _music.is_valid():
-		_music.set_paused(frozen)
-	for instance: FmodEvent in _fading_out:
-		if instance.is_valid():
-			instance.set_paused(frozen)
 	for index: int in range(_effect_descriptions.size()):
 		var description: FmodEventDescription = _effect_descriptions[index]
 		if _effect_is_ui[index] or description.get_instance_count() == 0:

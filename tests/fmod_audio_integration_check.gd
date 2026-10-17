@@ -97,6 +97,7 @@ func _run_checks() -> void:
 	_check(is_equal_approx(GameAudio._music_volume, 1.0), "Gameplay music fades fully in.")
 	_check(GameAudio._fading_out.is_empty(), "The previous music finishes fading out.")
 	_check_loading_audio(demo._vacuum_audio)
+	await _check_tool_switch_audio(demo)
 	demo._vacuum_audio.update(0.1, true, true)
 	demo._vacuum_audio.update_loading(demo, 0.5)
 	demo.restart_run()
@@ -167,7 +168,7 @@ func _check_audio_pause() -> void:
 	var effect: FmodEvent = GameAudio.start_loop("event:/Earth_Rotate")
 	await tree.create_timer(0.4).timeout
 	# Menus (settings, technology page) pause the game: gameplay sounds hold
-	# their place along with music, while UI sounds remain available.
+	# their place, while music (under Music_Menu) and UI sounds keep playing.
 	tree.paused = true
 	await tree.process_frame
 	await tree.process_frame
@@ -180,15 +181,19 @@ func _check_audio_pause() -> void:
 		"Pausing keeps FMOD output running."
 	)
 	_check(is_equal_approx(GameAudio._music_menu, 1.0), "Pausing pushes Music_Menu to 1.")
+	_check(
+		is_equal_approx(FmodServer.get_global_parameter_by_name("Music_Menu"), 1.0),
+		"FMOD receives Music_Menu = 1 (the music's 800 Hz low-pass)."
+	)
 	var music_position: int = GameAudio._music.get_timeline_position()
 	var effect_position: int = effect.get_timeline_position()
 	await tree.create_timer(0.25, true).timeout
 	_check(
 		(
-			GameAudio._music.get_paused()
-			and GameAudio._music.get_timeline_position() == music_position
+			not GameAudio._music.get_paused()
+			and GameAudio._music.get_timeline_position() > music_position
 		),
-		"Music holds its place while paused."
+		"Music keeps playing while paused."
 	)
 	_check(
 		effect.get_timeline_position() == effect_position,
@@ -203,13 +208,17 @@ func _check_audio_pause() -> void:
 			not GameAudio._music.get_paused()
 			and GameAudio._music.get_timeline_position() > music_position
 		),
-		"Music continues from its paused position."
+		"Music is still playing after the pause."
 	)
 	_check(
 		effect.get_timeline_position() > effect_position,
 		"Gameplay sounds continue after the pause."
 	)
 	_check(is_zero_approx(GameAudio._music_menu), "Resuming releases Music_Menu.")
+	_check(
+		is_zero_approx(FmodServer.get_global_parameter_by_name("Music_Menu")),
+		"FMOD receives Music_Menu = 0 after resuming."
+	)
 	_check(GameAudio._master_bus.get_mute() == (not enabled), "Resume respects the audio switch.")
 	_check(
 		AudioServer.is_bus_mute(0) == (not enabled or is_zero_approx(effects_volume)),
@@ -354,8 +363,73 @@ func _check_loading_audio(audio: Node) -> void:
 	audio.update_peel(second, 0.5)
 	audio.stop_now()
 	_check(audio._peel == null, "Stopping the vacuum stops the peel loop.")
+	audio.update_drill_loading(first)
+	var drill_loading: FmodEvent = audio._drill_loading
+	_check(
+		drill_loading != null and drill_loading.is_valid(),
+		"Holding a drill monster starts Loading_DrillMon."
+	)
+	audio.update_drill_loading(first)
+	_check(audio._drill_loading == drill_loading, "A continued hold keeps the same sound.")
+	audio.update_drill_loading(null)
+	_check(audio._drill_loading == null, "Letting go stops Loading_DrillMon.")
+	audio.update_drill_loading(second)
+	audio.finish_drill_loading()
+	_check(audio._drill_loading == null, "A completed hold lets Loading_DrillMon play out.")
+	audio.update_drill_loading(first)
+	audio.stop_now()
+	_check(audio._drill_loading == null, "Stopping the vacuum stops Loading_DrillMon.")
 	first.free()
 	second.free()
+
+
+# Keys 1/2 and the tool dock play Switch-Vacuum / Switch-Net instead of Click;
+# a locked net opens its upgrade with an ordinary Click.
+func _check_tool_switch_audio(demo: DemoScript) -> void:
+	var vacuum: FmodEventDescription = FmodServer.get_event(UiAudio.SWITCH_VACUUM_EVENT)
+	var net: FmodEventDescription = FmodServer.get_event(UiAudio.SWITCH_NET_EVENT)
+	var click: FmodEventDescription = FmodServer.get_event(UiAudio.CLICK_EVENT)
+	_check(UiAudio._switch_ready, "Switch-Vacuum and Switch-Net are in the Bank.")
+	# Earlier clicks finishing mid-check would change the counts below.
+	var deadline: int = Time.get_ticks_msec() + 3000
+	while (
+		click.get_instance_count() + vacuum.get_instance_count() + net.get_instance_count() > 0
+		and Time.get_ticks_msec() < deadline
+	):
+		await get_tree().process_frame
+	var clicks: int = click.get_instance_count()
+	var vacuums: int = vacuum.get_instance_count()
+	demo._quick_pipe_button.button_down.emit()
+	_check(vacuum.get_instance_count() == vacuums + 1, "The vacuum button plays Switch-Vacuum.")
+	_check(click.get_instance_count() == clicks, "The vacuum button no longer plays Click.")
+	var was_unlocked: bool = demo.run.net_unlocked
+	demo.run.net_unlocked = true
+	var nets: int = net.get_instance_count()
+	demo._quick_net_button.button_down.emit()
+	_check(net.get_instance_count() == nets + 1, "The net button plays Switch-Net.")
+	_check(click.get_instance_count() == clicks, "The net button no longer plays Click.")
+	var key: InputEventKey = InputEventKey.new()
+	key.keycode = KEY_1
+	key.pressed = true
+	vacuums = vacuum.get_instance_count()
+	demo._unhandled_key_input(key)
+	_check(vacuum.get_instance_count() == vacuums + 1, "Key 1 plays Switch-Vacuum.")
+	key.keycode = KEY_2
+	nets = net.get_instance_count()
+	demo._unhandled_key_input(key)
+	_check(net.get_instance_count() == nets + 1, "Key 2 plays Switch-Net.")
+	demo.run.net_unlocked = false
+	nets = net.get_instance_count()
+	demo._quick_net_button.button_down.emit()
+	_check(
+		net.get_instance_count() == nets and click.get_instance_count() == clicks + 1,
+		"A locked net plays Click, not Switch-Net."
+	)
+	demo.run.net_unlocked = was_unlocked
+	demo._select_tool(DemoScript.ToolMode.PIPE)
+	vacuums = vacuum.get_instance_count()
+	demo._select_tool(DemoScript.ToolMode.PIPE)
+	_check(vacuum.get_instance_count() == vacuums, "A silent tool refresh plays no switch sound.")
 
 
 # Candy_Combo climbs the whole ladder a quarter per stage, counting the capture
@@ -384,10 +458,10 @@ func _check_combo_audio(demo: Node) -> void:
 	run._reset_combo()
 	run.combo_level = 0
 	var played_before: int = demo._monster_audio._combo_clear_count
-	demo._pipe.combo_burst_started.emit(2)
+	run.combo_stage_completed.emit(2, 0)
 	_check(
 		demo._monster_audio._combo_clear_count == played_before + 1,
-		"Combo_StageClear plays as the combo burst appears."
+		"Combo_StageClear plays the moment a combo stage is cleared, before the burst."
 	)
 	_check(
 		run.combo_interrupted.is_connected(demo._monster_audio.combo_broken),

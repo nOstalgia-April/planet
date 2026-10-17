@@ -141,8 +141,6 @@ func _ready() -> void:
 	run.combo_stage_completed.connect(_on_combo_stage_completed)
 	_pipe.combo_meter.configure(run)
 	run.combo_interrupted.connect(_monster_audio.combo_broken)
-	# Combo_StageClear sounds with the on-screen burst, which may queue.
-	_pipe.combo_burst_started.connect(_monster_audio.combo_stage_cleared)
 	run.economy_changed.connect(_update_music_stage)
 	run.base_value_changed.connect(_refresh_monster_rewards)
 	run.nest_added.connect(_on_nest_added)
@@ -157,6 +155,11 @@ func _ready() -> void:
 	GameCursor.register_vacuum(_pipe)
 	_quick_pipe_button.pressed.connect(_select_tool.bind(ToolMode.PIPE))
 	_quick_net_button.pressed.connect(_select_tool.bind(ToolMode.NET))
+	# The switch sound answers the press itself, as Click does on other buttons.
+	for button: BaseButton in [_quick_pipe_button, _quick_net_button]:
+		UiAudio.register_own_sound(button)
+	_quick_pipe_button.button_down.connect(_play_tool_sound.bind(ToolMode.PIPE))
+	_quick_net_button.button_down.connect(_play_tool_sound.bind(ToolMode.NET))
 	_nest_button.pressed.connect(_on_nest_upgrade)
 	_layout.interaction_panel_changed.connect(_cancel_view_drag)
 	_layout.restart_requested.connect(restart_run)
@@ -180,6 +183,7 @@ func _process(delta: float) -> void:
 	var pointer: Vector2 = get_viewport().get_mouse_position()
 	var holding: bool = update_pointer_release_state()
 	_drive_drill_capture(delta, pointer, holding)
+	_vacuum_audio.update_drill_loading(_held_drill())
 	_update_nest_hover(pointer)
 	_update_overview_hover(pointer)
 	run.advance(delta)
@@ -302,6 +306,13 @@ func _clear_drill_hover() -> void:
 	_hovered_drill = null
 
 
+# The drill monster whose hold bar is filling, if any.
+func _held_drill() -> DrillMonster:
+	if is_instance_valid(_hovered_drill) and _hovered_drill.capture_progress > 0.0:
+		return _hovered_drill
+	return null
+
+
 func _drive_drill_capture(delta: float, pointer: Vector2, holding: bool) -> bool:
 	_update_drill_hover(pointer)
 	if _hovered_drill == null:
@@ -314,6 +325,7 @@ func _drive_drill_capture(delta: float, pointer: Vector2, holding: bool) -> bool
 	_clear_nest_selection()
 	_capture_at(0.0, _tool_pointer, false)
 	if drill.apply_capture(delta, drill.capture_hold_seconds, drill.get_capture_point()):
+		_vacuum_audio.finish_drill_loading()
 		_clear_drill_hover()
 		_finish_capture(drill)
 	return true
@@ -461,11 +473,22 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		var key: InputEventKey = event as InputEventKey
 		if key.pressed and not key.echo:
 			if key.keycode == KEY_1:
+				_play_tool_sound(ToolMode.PIPE)
 				_select_tool(ToolMode.PIPE)
 				get_viewport().set_input_as_handled()
 			elif key.keycode == KEY_2:
+				_play_tool_sound(ToolMode.NET)
 				_select_tool(ToolMode.NET)
 				get_viewport().set_input_as_handled()
+
+
+# Player requests only (keys 1/2, the tool dock); _select_tool also refreshes
+# the tool silently. A locked net opens its upgrade, so it gets a plain Click.
+func _play_tool_sound(tool: ToolMode) -> void:
+	if tool == ToolMode.NET and not run.net_unlocked:
+		UiAudio.click()
+	else:
+		UiAudio.tool_switched(tool == ToolMode.NET)
 
 
 func _input(event: InputEvent) -> void:
@@ -1009,6 +1032,9 @@ func _refresh_overview() -> void:
 
 func _on_combo_stage_completed(stage: int, bonus: int) -> void:
 	_capture_combo_bonus += bonus
+	# The sound marks the stage clear itself; the burst waits for the rainbow
+	# skin (about 0.45 s) and may queue behind an earlier one.
+	_monster_audio.combo_stage_cleared(stage)
 	_pipe.play_combo_burst(stage, bonus)
 
 

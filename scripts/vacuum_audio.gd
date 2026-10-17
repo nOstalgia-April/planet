@@ -20,6 +20,9 @@ const BIG_SLIME_EVENT: String = "event:/Vacuum/BigSilmeSuck"
 const PEEL_EVENT: String = "event:/Vacuum/Mucus_Peel"
 const PEEL_PARAMETER: String = "MucusPeel_Progress"
 const PEEL_SNAP_EVENT: String = "event:/Vacuum/Mucus_PeelSnap"
+# One-shot (~0.6 s) for the drill monster's 0.5 s press-and-hold: starts with
+# the hold, fades out through FMOD if the hold is let go, plays out on capture.
+const DRILL_LOADING_EVENT: String = "event:/Vacuum/Loading_DrillMon"
 
 # Chained captures re-acquire the next target within a frame or two; keeping the
 # vacuum running through that gap avoids an Off/On pair per collected monster.
@@ -37,6 +40,9 @@ var _big_slime: FmodEvent
 var _peel_ready: bool = false
 var _peel: FmodEvent
 var _peel_target_id: int = 0
+var _drill_loading_ready: bool = false
+var _drill_loading: FmodEvent
+var _drill_loading_target_id: int = 0
 
 
 func _ready() -> void:
@@ -46,6 +52,7 @@ func _ready() -> void:
 	_loading_ready = GameAudio.has_events([LOADING_EVENT])
 	_big_slime_ready = GameAudio.has_events([BIG_SLIME_EVENT])
 	_peel_ready = GameAudio.has_events([PEEL_EVENT, PEEL_SNAP_EVENT])
+	_drill_loading_ready = GameAudio.has_events([DRILL_LOADING_EVENT])
 
 
 # Called every tool tick. engaged: the pipe currently holds a target.
@@ -142,10 +149,40 @@ func stop_peel() -> void:
 	_peel_target_id = 0
 
 
+# target: the drill monster being held, or null when no hold is filling.
+func update_drill_loading(target: Object) -> void:
+	if not _drill_loading_ready:
+		return
+	if target == null:
+		stop_drill_loading()
+		return
+	if _drill_loading != null and target.get_instance_id() != _drill_loading_target_id:
+		stop_drill_loading()
+	if _drill_loading == null:
+		_drill_loading = GameAudio.start_loop(DRILL_LOADING_EVENT)
+		_drill_loading_target_id = target.get_instance_id()
+
+
+# The hold completed: let the sound play out instead of fading it.
+func finish_drill_loading() -> void:
+	if _drill_loading != null and _drill_loading.is_valid():
+		_drill_loading.release()
+	_drill_loading = null
+	_drill_loading_target_id = 0
+
+
+func stop_drill_loading() -> void:
+	if _drill_loading != null:
+		GameAudio.stop_loop(_drill_loading)
+	_drill_loading = null
+	_drill_loading_target_id = 0
+
+
 # Immediate shutdown for interruptions such as restart.
 func stop_now() -> void:
 	stop_loading()
 	stop_peel()
+	stop_drill_loading()
 	clear_slime()
 	_release_elapsed = 0.0
 	if _vacuum_on:
