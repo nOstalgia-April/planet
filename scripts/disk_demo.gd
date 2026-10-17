@@ -1265,7 +1265,12 @@ func _on_slime_requested(nest_id: int) -> void:
 
 
 func _advance_flower_cleanup(delta: float) -> void:
-	if run.is_complete or not run.are_all_nests_automated():
+	if (
+		run.is_complete
+		or not run.are_all_nests_automated()
+		or _view.is_overview()
+		or _view.is_transitioning()
+	):
 		_flower_cleanup_elapsed = 0.0
 		return
 	for view: NestView in _nest_views:
@@ -1276,7 +1281,10 @@ func _advance_flower_cleanup(delta: float) -> void:
 	if _flower_cleanup_elapsed < run.settings.flower_cleanup_interval:
 		return
 	_flower_cleanup_elapsed = 0.0
+	var viewport: Rect2 = get_viewport_rect()
 	for view: NestView in _nest_views:
+		if not view.is_visible_in_tree() or not viewport.intersects(view.get_hover_rect()):
+			continue
 		var target: PrototypeSlime = _find_flower_target(view.position)
 		if target != null:
 			_collect_flower_target(view, target)
@@ -1285,9 +1293,12 @@ func _advance_flower_cleanup(delta: float) -> void:
 func _find_flower_target(origin: Vector2) -> PrototypeSlime:
 	var nearest: PrototypeSlime = null
 	var nearest_distance: float = run.settings.flower_cleanup_radius ** 2
+	var viewport: Rect2 = get_viewport_rect()
 	for actor: PrototypeSlime in _slimes:
 		# Let the player's current capture finish; underground drills wait until exposed.
-		if not actor.can_capture() or _capture_targets.has(actor):
+		if actor.population_units > 1 or not actor.can_capture() or _capture_targets.has(actor):
+			continue
+		if not actor.is_visible_in_tree() or not viewport.intersects(actor.get_visual_rect()):
 			continue
 		if (
 			_net_phase in [NetPhase.CASTING, NetPhase.CLOSING]

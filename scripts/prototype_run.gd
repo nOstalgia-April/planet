@@ -247,7 +247,7 @@ func are_all_nests_automated() -> bool:
 
 
 func collect_flower_target(nest_id: int, reward: int, population: int, valuable: bool) -> bool:
-	if is_complete or not are_all_nests_automated():
+	if population != 1 or is_complete or not are_all_nests_automated():
 		return false
 	return _collect_slime(nest_id, reward, population, valuable, Color.WHITE, false)
 

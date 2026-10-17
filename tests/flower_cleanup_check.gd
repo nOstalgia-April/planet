@@ -55,10 +55,11 @@ func _check_rules() -> void:
 		not run.collect_flower_target(1, 3, 1, true), "Cannot pay for the same population twice."
 	)
 	run.nests[1].alive_slimes = 8
+	_check(not run.collect_flower_target(2, 24, 8, true), "Flowers cannot collect giants.")
 	_check(
-		run.collect_flower_target(2, 24, 8, true), "Giant population and reward settle together."
+		run.nests[1].alive_slimes == 8 and run.candy == before + 3,
+		"Giant population and rewards stay untouched."
 	)
-	_check(run.nests[1].alive_slimes == 0 and run.candy == before + 27, "No giant units remain.")
 	_check(run.collect_flower_target(3, 2, 1, false), "Mucus monsters can be cleaned.")
 	run.settings.drill_reward_weights = PackedInt32Array([1, 0, 0])
 	before = run.candy
@@ -70,7 +71,9 @@ func _check_rules() -> void:
 	_check(not run.is_complete, "Completion still waits for all flower colors.")
 	for nest: NestState in run.nests:
 		run.record_flower(nest.nest_id)
-	_check(run.is_complete, "Last monster and all flowers finish the run.")
+	_check(not run.is_complete, "Remaining giant still blocks completion.")
+	_check(run.collect_slime(2, 24, 8, true), "The player can still collect the giant.")
+	_check(run.is_complete, "Manual giant capture finishes the run.")
 	run.free()
 
 
@@ -112,8 +115,61 @@ func _check_live() -> void:
 	demo._advance_flower_cleanup(10.0)
 	_check(demo._slimes.size() == 2, "Partial automation does not remove actors.")
 	_automate(demo, 1)
+	var near_rotation: float = demo._world.rotation
+	demo._view.restore_save(near_rotation + PI, 1.0)
+	for view: NestView in demo._nest_views:
+		_check(
+			not demo.get_viewport_rect().intersects(view.get_hover_rect()),
+			"Rotated flowers are outside the screen."
+		)
+	demo._advance_flower_cleanup(10.0)
+	_check(demo._slimes.size() == 2, "Offscreen flowers do not clean nearby monsters.")
+	demo._view.restore_save(near_rotation, 1.0)
+	_check(
+		demo.get_viewport_rect().intersects(demo._nest_views[0].get_hover_rect()),
+		"Rotating back makes the flower visible."
+	)
+	for view: NestView in demo._nest_views:
+		view.hide()
+	demo._advance_flower_cleanup(10.0)
+	_check(demo._slimes.size() == 2, "Hidden flowers cannot clean monsters.")
+	for view: NestView in demo._nest_views:
+		view.show()
+	var giant: PrototypeSlime = demo.giant_slime_scene.instantiate() as PrototypeSlime
+	demo._slime_root.add_child(giant)
+	giant.setup(1, home, demo._planet, demo._get_roaming_screen_half_angle())
+	giant.configure_species(PrototypeSlime.Species.SLIME, true, 24)
+	giant.configure_fusion(8, 24, 24)
+	giant.restore_to_surface(home)
+	giant.set_process(false)
+	demo.run.nests[0].alive_slimes += 8
+	demo._slimes.append(giant)
+	_check(
+		demo._find_flower_target(home) == near, "A nearer giant is skipped for an ordinary monster."
+	)
+	var before_giant: int = demo.run.candy
+	demo._collect_flower_target(demo._nest_views[0], giant)
+	_check(
+		not giant.consumed and demo.run.candy == before_giant,
+		"Settlement also rejects a giant without rewards."
+	)
+	demo._finish_capture(giant)
+	_check(not demo._slimes.has(giant), "Manual giant collection still works.")
 	demo._capture_targets.append(near)
 	_check(demo._find_flower_target(home) == null, "Active suction target is protected.")
+	var cleanup_radius: float = demo.run.settings.flower_cleanup_radius
+	demo.run.settings.flower_cleanup_radius = 1000.0
+	_check(
+		not demo.get_viewport_rect().intersects(far.get_visual_rect()),
+		"The far monster is offscreen."
+	)
+	_check(
+		demo._find_flower_target(home) == null,
+		"Offscreen monsters are excluded even within cleanup range."
+	)
+	demo._advance_flower_cleanup(demo.run.settings.flower_cleanup_interval)
+	_check(demo._slimes.size() == 2, "Visible flowers leave offscreen monsters untouched.")
+	demo.run.settings.flower_cleanup_radius = cleanup_radius
 	demo._capture_targets.clear()
 	demo._net_phase = Demo.NetPhase.CLOSING
 	demo._net_anchor = near.get_capture_point()
@@ -148,7 +204,7 @@ func _check_live() -> void:
 	_check(demo._find_flower_target(home) == drill, "Surfaced drill becomes eligible.")
 	demo._advance_flower_cleanup(demo.run.settings.flower_cleanup_interval)
 	_check(demo._slimes.is_empty(), "Surfaced drill is settled.")
-	# Overview and pause use the same gameplay loop, without depending on visible effects.
+	# The distant overview hides the flowers and must not clean the whole planet.
 	var overview_actor: PrototypeSlime = _spawn(demo, 0, home)
 	demo._view.restore_save(demo._world.rotation, 0.0)
 	_check(demo._view.is_overview(), "Overview setup reaches the distant view.")
@@ -163,7 +219,15 @@ func _check_live() -> void:
 	get_tree().paused = false
 	await get_tree().create_timer(demo.run.settings.flower_cleanup_interval + 0.15).timeout
 	demo.set_process(false)
-	_check(demo._slimes.is_empty(), "The live gameplay loop also clears monsters in overview.")
+	_check(
+		demo._slimes.has(overview_actor),
+		"The live gameplay loop leaves monsters alone in overview."
+	)
+	demo._view.restore_save(near_rotation, 1.0)
+	demo._advance_flower_cleanup(demo.run.settings.flower_cleanup_interval)
+	_check(
+		demo._slimes.is_empty(), "Visible flowers resume cleaning after returning to the near view."
+	)
 	demo.restart_run()
 	demo.set_process(false)
 	_check(demo._flower_cleanup_elapsed == 0.0, "Restart resets cleanup timing.")
