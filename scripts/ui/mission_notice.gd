@@ -2,6 +2,8 @@ extends Control
 
 signal finished
 
+const Dialogue = preload("res://scripts/ui/mascot_dialogue.gd")
+
 enum Phase { CLOSED, UNROLLING, TYPING, READING, CLOSING }
 
 @export var heading: String
@@ -14,11 +16,23 @@ enum Phase { CLOSED, UNROLLING, TYPING, READING, CLOSING }
 @export_range(10.0, 90.0, 1.0) var characters_per_second: float = 45.0
 @export_range(0.1, 2.0, 0.05) var unroll_seconds: float = 0.65
 @export_range(0.0, 0.5, 0.01) var close_seconds: float = 0.18
+@export_group("Typing sound")
+# Like the mascot's voice: starts as each clause's first character appears and
+# stops at its punctuation, spaces or line breaks, sounding at least
+# min_typing_seconds; a clause starting within that time continues the sound.
+@export var typing_event: String = "event:/UI/Text_Typing"
+@export_range(0.0, 1.0, 0.05) var min_typing_seconds: float = 0.3
 
 var playing: bool = false
 var phase: Phase = Phase.CLOSED
 var _characters: float = 0.0
 var _sequence: Tween
+var _typing_sound: FmodEvent
+var _typing_started_msec: int = 0
+var _typing_voiced: bool = false
+# Bumped by every start or stop, so a postponed stop that is no longer
+# current does nothing.
+var _typing_version: int = 0
 
 @onready var _page: Control = $Page
 @onready var _paper: Sprite2D = $Page/Paper
@@ -70,7 +84,11 @@ func _process(delta: float) -> void:
 	if phase != Phase.TYPING:
 		return
 	_characters += delta / Engine.time_scale * characters_per_second
+	var shown: int = _text.visible_characters
 	_text.visible_characters = mini(int(_characters), _text.get_total_character_count())
+	var parsed: String = _text.get_parsed_text()
+	for index: int in range(shown, mini(_text.visible_characters, parsed.length())):
+		_set_typing_voiced(not (parsed[index] in Dialogue.SILENT_CHARACTERS))
 	if _text.visible_characters >= _text.get_total_character_count():
 		reveal_all()
 
@@ -85,6 +103,7 @@ func reveal_all() -> void:
 		return
 	_animation.seek(0.65, true)
 	_animation.pause()
+	_stop_typing_sound()
 	_text.visible_characters = -1
 	phase = Phase.READING
 	_close.disabled = false
@@ -105,6 +124,7 @@ func close() -> void:
 func reset() -> void:
 	if _sequence != null:
 		_sequence.kill()
+	_stop_typing_sound()
 	_animation.stop()
 	playing = false
 	phase = Phase.CLOSED
@@ -140,6 +160,50 @@ func _input(event: InputEvent) -> void:
 func _finish() -> void:
 	reset()
 	finished.emit()
+
+
+func _set_typing_voiced(voiced: bool) -> void:
+	if voiced == _typing_voiced:
+		return
+	_typing_voiced = voiced
+	_typing_version += 1
+	if voiced:
+		# Text_Typing is a one-shot; a long run may have outlasted it.
+		if (
+			_typing_sound != null
+			and _typing_sound.get_playback_state() == FmodServer.FMOD_STUDIO_PLAYBACK_STOPPED
+		):
+			_stop_typing_sound()
+			_typing_voiced = true
+		if _typing_sound == null and not typing_event.is_empty():
+			_typing_sound = GameAudio.start_loop(typing_event)
+			_typing_started_msec = Time.get_ticks_msec()
+		return
+	var remaining: float = (
+		min_typing_seconds - float(Time.get_ticks_msec() - _typing_started_msec) / 1000.0
+	)
+	if remaining <= 0.0:
+		_stop_typing_sound()
+	else:
+		get_tree().create_timer(remaining, true, false, true).timeout.connect(
+			_finish_typing_sound.bind(_typing_version)
+		)
+
+
+func _finish_typing_sound(version: int) -> void:
+	if version == _typing_version:
+		_stop_typing_sound()
+
+
+func _stop_typing_sound() -> void:
+	_typing_voiced = false
+	_typing_version += 1
+	GameAudio.stop_loop(_typing_sound)
+	_typing_sound = null
+
+
+func _exit_tree() -> void:
+	_stop_typing_sound()
 
 
 func _fit_page() -> void:

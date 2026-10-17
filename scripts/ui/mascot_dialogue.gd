@@ -6,6 +6,11 @@ signal dialogue_finished
 # A spoken clause runs from its first sounding character to the next punctuation.
 signal voice_started(index: int)
 signal voice_stopped
+# The mascot starts its entrance / leaves the screen.
+signal entered
+signal exited
+# A left click on the dialogue, as it confirms or advances a line.
+signal clicked
 
 const Presenter = preload("res://scripts/ui/mascot_presenter.gd")
 const GlyphPop = preload("res://scripts/ui/dialogue_glyph_pop.gd")
@@ -93,6 +98,7 @@ func _input(event: InputEvent) -> void:
 	_dialogue_click_pressed = true
 	# Consume before emitting signals: the last line can resume gameplay immediately.
 	get_viewport().set_input_as_handled()
+	clicked.emit()
 	advance()
 
 
@@ -120,6 +126,7 @@ func play(dialogue_lines: PackedStringArray, replay_entrance: bool = true) -> vo
 			_open_bubble()
 	else:
 		presenter.select_form(form_index)
+		entered.emit()
 
 
 func advance() -> void:
@@ -139,6 +146,7 @@ func advance() -> void:
 
 
 func stop() -> void:
+	var was_shown: bool = visible
 	_playback_version += 1
 	_set_voicing(false)
 	phase = Phase.HIDDEN
@@ -147,6 +155,8 @@ func stop() -> void:
 	presenter.paused = true
 	bubble.hide()
 	hide()
+	if was_shown:
+		exited.emit()
 
 
 func dismiss_bubble() -> void:

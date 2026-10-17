@@ -12,10 +12,10 @@ const INSUFFICIENT_EVENT: String = "event:/UI/Button_InsufPoint"
 const LEVEL_UP_EVENT: String = "event:/UI/Button_Levelup"
 const SWITCH_VACUUM_EVENT: String = "event:/UI/Switch-Vacuum"
 const SWITCH_NET_EVENT: String = "event:/UI/Switch-Net"
-# The tool dock's quick-upgrade tab sliding up, indexed by tool (vacuum, net).
+# A tool's upgrade first offered in the dock, indexed by tool (vacuum, net).
 const UPGRADE_HINT_EVENTS: PackedStringArray = [
-	"event:/Hint_VaccumButton",
-	"event:/Hint_NetButton",
+	"event:/UI/Hint_VaccumButton",
+	"event:/UI/Hint_NetButton",
 ]
 const HOOKED_META: StringName = &"ui_audio_hooked"
 const PURCHASE_META: StringName = &"ui_audio_purchase"

@@ -11,7 +11,7 @@ const BANK_NAMES: PackedStringArray = ["Master.strings.bank", "Master.bank", "Pr
 const MAX_FADE_STEP: float = 1.0 / 30.0
 const MUSIC_DUCK_PARAMETER: String = "Music_Duck"
 # Global 0-1, held at 1 while a menu pauses the game (settings, technology
-# page); FMOD maps it to a low-pass on the music.
+# page) or the mascot is on screen; FMOD maps it to a low-pass on the music.
 const MUSIC_MENU_PARAMETER: String = "Music_Menu"
 # Safety net: music held back by a transition starts anyway after this long.
 const TRANSITION_TIMEOUT_SECONDS: float = 15.0
@@ -60,6 +60,7 @@ var _effects_elapsed: float = 0.0
 var _music_ducked: bool = false
 var _music_duck: float = 0.0
 var _music_menu: float = 0.0
+var _music_menu_held: bool = false
 var _effect_descriptions: Array[FmodEventDescription] = []
 # Parallel to _effect_descriptions: whether each one is a near-view sound.
 var _effect_is_near_view: Array[bool] = []
@@ -479,11 +480,21 @@ func set_music_ducked(ducked: bool) -> void:
 	_music_ducked = ducked
 
 
+# Holds Music_Menu at 1 outside a pause too (the mascot talking); a pause still
+# pushes it to 1 on its own.
+func hold_music_menu(held: bool) -> void:
+	_music_menu_held = held
+
+
 func _advance_music_menu(delta: float) -> void:
-	var target: float = 1.0 if _game_paused else 0.0
+	var target: float = 1.0 if _game_paused or _music_menu_held else 0.0
 	if is_equal_approx(_music_menu, target):
 		return
-	var step: float = 1.0 if music_menu_fade_seconds <= 0.0 else delta / music_menu_fade_seconds
+	# Real seconds: stories slow the game while the mascot talks.
+	var real_delta: float = delta / maxf(Engine.time_scale, 0.001)
+	var step: float = (
+		1.0 if music_menu_fade_seconds <= 0.0 else real_delta / music_menu_fade_seconds
+	)
 	_music_menu = move_toward(_music_menu, target, step)
 	if _global_parameters.has(MUSIC_MENU_PARAMETER):
 		set_global(MUSIC_MENU_PARAMETER, _music_menu)
