@@ -8,7 +8,9 @@ windows.debug.x86_64 = "res://addons/fmod/libs/windows/libGodotFmod.windows.temp
 windows.release.x86_64 = "res://addons/fmod/libs/windows/libGodotFmod.windows.template_release.x86_64.dll"
 macos.editor = "res://addons/fmod/libs/macos/libGodotFmod.macos.editor.framework"
 macos.debug  = "res://addons/fmod/libs/macos/libGodotFmod.macos.template_debug.framework"
-macos.release  = "res://addons/fmod/libs/macos/libGodotFmod.macos.template_release.framework"
+; The release dylib is the framework's identical universal binary, allowing Windows-host ZIP export.
+; Refresh it from the release framework whenever the FMOD native plugin is updated.
+macos.release  = "res://addons/fmod/libs/macos/libGodotFmod.macos.template_release.dylib"
 linux.editor.x86_64 = "res://addons/fmod/libs/linux/libGodotFmod.linux.editor.x86_64.so"
 linux.debug.x86_64 = "res://addons/fmod/libs/linux/libGodotFmod.linux.template_debug.x86_64.so"
 linux.release.x86_64 = "res://addons/fmod/libs/linux/libGodotFmod.linux.template_release.x86_64.so"

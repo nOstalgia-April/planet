@@ -40,8 +40,6 @@ func replay() -> void:
 func advance() -> void:
 	if segment == Segment.VACUUM:
 		compact_dialogue.advance()
-	elif segment == Segment.REWARD_WAIT:
-		_wait_elapsed = reward_pause_seconds
 	else:
 		dialogue.advance()
 

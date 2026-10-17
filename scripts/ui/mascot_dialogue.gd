@@ -73,7 +73,7 @@ func _process(delta: float) -> void:
 			_reveal_characters()
 		Phase.HOLDING:
 			if _phase_elapsed >= continue_delay_seconds:
-				advance()
+				_continue_line()
 
 
 func _input(event: InputEvent) -> void:
@@ -96,7 +96,7 @@ func _input(event: InputEvent) -> void:
 			return
 		hovered = hovered.get_parent_control()
 	_dialogue_click_pressed = true
-	# Consume before emitting signals: the last line can resume gameplay immediately.
+	# Consume the click even during the reading pause; it must not reach gameplay.
 	get_viewport().set_input_as_handled()
 	clicked.emit()
 	advance()
@@ -131,12 +131,15 @@ func play(dialogue_lines: PackedStringArray, replay_entrance: bool = true) -> vo
 
 func advance() -> void:
 	if phase == Phase.TYPING:
-		# A single advance reveals this line; the next click confirms it.
+		# Input only completes text. The full reading delay still follows.
 		while _glyph_pop.revealed_at.size() < lines[line_index].length():
 			_glyph_pop.revealed_at.append(_glyph_pop.clock - _glyph_pop.pop_seconds)
 		text_label.visible_characters = lines[line_index].length()
 		_finish_line()
-	elif phase == Phase.HOLDING:
+
+
+func _continue_line() -> void:
+	if phase == Phase.HOLDING:
 		if line_index + 1 < lines.size():
 			_start_line(line_index + 1)
 		else:

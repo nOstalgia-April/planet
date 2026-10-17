@@ -1,0 +1,102 @@
+[gd_resource type="Resource" load_steps=48 format=3]
+
+[ext_resource type="Script" path="res://scripts/effects/jewelry_shine_frames.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/吸入/001.png" id="s0"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/吸入/001.png" id="m0"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/夹夹/001.png" id="s1"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/夹夹/001.png" id="m1"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/夹夹/002.png" id="s2"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/夹夹/002.png" id="m2"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/夹夹/003.png" id="s3"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/夹夹/003.png" id="m3"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/夹夹/004.png" id="s4"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/夹夹/004.png" id="m4"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/夹夹/005.png" id="s5"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/夹夹/005.png" id="m5"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/夹夹/006.png" id="s6"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/夹夹/006.png" id="m6"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/夹夹/007.png" id="s7"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/夹夹/007.png" id="m7"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/待机/001.png" id="s8"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/待机/001.png" id="m8"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/待机/002.png" id="s9"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/待机/002.png" id="m9"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/待机/003.png" id="s10"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/待机/003.png" id="m10"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/待机/004.png" id="s11"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/待机/004.png" id="m11"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/待机/005.png" id="s12"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/待机/005.png" id="m12"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/待机/006.png" id="s13"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/待机/006.png" id="m13"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/跳出/005.png" id="s14"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/跳出/005.png" id="m14"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/跳出/006.png" id="s15"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/跳出/006.png" id="m15"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/跳出/007.png" id="s16"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/跳出/007.png" id="m16"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/跳出/008.png" id="s17"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/跳出/008.png" id="m17"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/跳出/009.png" id="s18"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/跳出/009.png" id="m18"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/钻地/001.png" id="s19"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/钻地/001.png" id="m19"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/钻地/002.png" id="s20"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/钻地/002.png" id="m20"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/钻地/003.png" id="s21"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/钻地/003.png" id="m21"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/地鼠/钻地/004.png" id="s22"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mole/钻地/004.png" id="m22"]
+
+[resource]
+script = ExtResource("1")
+masks = Dictionary[Texture2D, Texture2D]({
+ExtResource("s0"): ExtResource("m0"),
+ExtResource("s1"): ExtResource("m1"),
+ExtResource("s2"): ExtResource("m2"),
+ExtResource("s3"): ExtResource("m3"),
+ExtResource("s4"): ExtResource("m4"),
+ExtResource("s5"): ExtResource("m5"),
+ExtResource("s6"): ExtResource("m6"),
+ExtResource("s7"): ExtResource("m7"),
+ExtResource("s8"): ExtResource("m8"),
+ExtResource("s9"): ExtResource("m9"),
+ExtResource("s10"): ExtResource("m10"),
+ExtResource("s11"): ExtResource("m11"),
+ExtResource("s12"): ExtResource("m12"),
+ExtResource("s13"): ExtResource("m13"),
+ExtResource("s14"): ExtResource("m14"),
+ExtResource("s15"): ExtResource("m15"),
+ExtResource("s16"): ExtResource("m16"),
+ExtResource("s17"): ExtResource("m17"),
+ExtResource("s18"): ExtResource("m18"),
+ExtResource("s19"): ExtResource("m19"),
+ExtResource("s20"): ExtResource("m20"),
+ExtResource("s21"): ExtResource("m21"),
+ExtResource("s22"): ExtResource("m22")
+})
+regions = Dictionary[Texture2D, Rect2]({
+ExtResource("s0"): Rect2(1687, 1183, 423, 230),
+ExtResource("s1"): Rect2(349, 495, 414, 218),
+ExtResource("s2"): Rect2(349, 511, 559, 218),
+ExtResource("s3"): Rect2(343, 489, 550, 218),
+ExtResource("s4"): Rect2(343, 511, 539, 218),
+ExtResource("s5"): Rect2(343, 497, 536, 218),
+ExtResource("s6"): Rect2(343, 512, 545, 218),
+ExtResource("s7"): Rect2(334, 497, 429, 218),
+ExtResource("s8"): Rect2(334, 497, 429, 218),
+ExtResource("s9"): Rect2(352, 512, 426, 218),
+ExtResource("s10"): Rect2(352, 515, 436, 218),
+ExtResource("s11"): Rect2(352, 488, 415, 218),
+ExtResource("s12"): Rect2(333, 484, 416, 218),
+ExtResource("s13"): Rect2(353, 494, 409, 218),
+ExtResource("s14"): Rect2(349, 430, 561, 218),
+ExtResource("s15"): Rect2(338, 466, 509, 218),
+ExtResource("s16"): Rect2(332, 487, 433, 218),
+ExtResource("s17"): Rect2(349, 495, 417, 218),
+ExtResource("s18"): Rect2(349, 495, 414, 218),
+ExtResource("s19"): Rect2(1687, 1183, 424, 230),
+ExtResource("s20"): Rect2(1339, 281, 479, 441),
+ExtResource("s21"): Rect2(1303, 87, 381, 599),
+ExtResource("s22"): Rect2(618, 253, 527, 457)
+})

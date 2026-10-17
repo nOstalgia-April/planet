@@ -56,7 +56,7 @@ func _run() -> void:
 	_check(_dialogue.text_label.visible_characters == 0, "Entrance contains no dialogue text.")
 	if _capture_enabled:
 		await _check_background_input(fixture)
-	await _check_manual_sequence()
+	await _check_timed_sequence()
 	if _dialogue.phase == Dialogue.Phase.FINISHED:
 		await _check_restart_and_stop()
 		await _check_mouse_input()
@@ -126,7 +126,7 @@ func _check_background_input(preview: Node) -> void:
 	get_tree().paused = false
 
 
-func _check_manual_sequence() -> void:
+func _check_timed_sequence() -> void:
 	var entrance_captured: bool = false
 	var opening_seen: bool = false
 	var partial_seen: Array[bool] = [false, false]
@@ -189,11 +189,17 @@ func _check_manual_sequence() -> void:
 					await get_tree().create_timer(0.35).timeout
 					_check(
 						_dialogue.phase == Dialogue.Phase.HOLDING and _dialogue.line_index == index,
-						"A complete line allows confirmation before the automatic delay."
+						"A complete line remains visible before the automatic delay."
 					)
-					_check(_dialogue.continue_hint.visible, "Completed text shows the click hint.")
+					_check(
+						_dialogue.continue_hint.visible,
+						"Completed text shows the automatic continuation hint."
+					)
 					_click(Vector2(80.0, 180.0))
-	_check(_dialogue.phase == Dialogue.Phase.FINISHED, "The click-confirmed sequence completes.")
+	_check(
+		_dialogue.phase == Dialogue.Phase.FINISHED,
+		"The timed sequence completes despite repeated clicks."
+	)
 	_check(
 		_started_indices == PackedInt32Array([0, 1]), "Lines start once in their original order."
 	)
@@ -224,23 +230,36 @@ func _check_auto_continue() -> void:
 	if not await _wait_for_first_line():
 		return
 	_dialogue.set_process(false)
+	_check(is_equal_approx(_dialogue.continue_delay_seconds, 2.0), "Reading delay is 2 seconds.")
 	_dialogue.advance()
 	_dialogue._process(1.99)
-	_check(_dialogue.line_index == 0, "Auto continue waits the full two seconds.")
+	_dialogue.advance()
+	_check(_dialogue.line_index == 0, "Repeated completion requests cannot bypass the full delay.")
 	_dialogue._process(0.02)
-	_check(_dialogue.line_index == 1, "Two seconds automatically starts the next line.")
-	_check(not _dialogue.continue_hint.visible, "Typing hides the click hint.")
+	_check(_dialogue.line_index == 1, "The next line starts automatically after 2 seconds.")
+	_check(not _dialogue.continue_hint.visible, "Typing hides the continuation hint.")
 	_dialogue.advance()
 	_dialogue._process(1.0)
 	_dialogue.advance()
-	_dialogue._process(2.0)
-	_check(_completion_count == 1, "Clicking before expiry cannot double-complete dialogue.")
+	_dialogue._process(0.99)
+	_check(_completion_count == 0, "The final line also waits the full delay.")
+	_dialogue._process(0.02)
+	_dialogue._process(3.0)
+	_check(_completion_count == 1, "Repeated input neither resets the timer nor double-completes.")
+	_check(not _dialogue.continue_hint.visible, "Completed dialogue clears its hint.")
+	# Story panels use real seconds even while the world runs at half speed.
 	_dialogue.play(PackedStringArray(["结束"]))
 	_dialogue._start_line(0)
 	_dialogue.advance()
-	_dialogue._process(2.0)
-	_check(_dialogue.phase == Dialogue.Phase.FINISHED, "The final line also auto completes.")
-	_check(not _dialogue.continue_hint.visible, "Completed dialogue clears its hint.")
+	var previous_scale: float = Engine.time_scale
+	_dialogue.ignore_time_scale = true
+	Engine.time_scale = 0.5
+	_dialogue._process(0.995)
+	_check(_dialogue.phase == Dialogue.Phase.HOLDING, "Half-speed worlds retain the reading pause.")
+	_dialogue._process(0.01)
+	_check(_dialogue.phase == Dialogue.Phase.FINISHED, "Story dialogue waits 2 real seconds.")
+	Engine.time_scale = previous_scale
+	_dialogue.ignore_time_scale = false
 	_dialogue.stop()
 	_dialogue._process(3.0)
 	_check(_dialogue.phase == Dialogue.Phase.HIDDEN, "Stopped dialogue cannot auto restart.")
@@ -280,10 +299,17 @@ func _check_mouse_input() -> void:
 	_click(Vector2(60.0, 40.0))
 	_check(_dialogue.line_index == 0, "Menu clicks cannot confirm a completed line.")
 	_click(Vector2(700.0, 400.0))
-	_check(_dialogue.line_index == 1, "A second screen click starts the next line.")
+	_check(_dialogue.line_index == 0, "A second blank-area click cannot start the next line.")
+	_dialogue._process(1.99)
+	_click(Vector2(80.0, 180.0))
+	_check(_dialogue.line_index == 0, "Clicks cannot shorten the reading pause.")
+	_dialogue._process(0.02)
+	_check(_dialogue.line_index == 1, "Clicks do not reset the automatic timer.")
 	_click(Vector2(80.0, 180.0))
 	_click(Vector2(80.0, 180.0))
-	_check(_dialogue.phase == Dialogue.Phase.FINISHED, "The final line also needs confirmation.")
+	_check(_dialogue.phase == Dialogue.Phase.HOLDING, "Clicks cannot dismiss the final line.")
+	_dialogue._process(2.0)
+	_check(_dialogue.phase == Dialogue.Phase.FINISHED, "The final line completes automatically.")
 	_dialogue.stop()
 	_click(Vector2(80.0, 180.0))
 	_check(_dialogue.phase == Dialogue.Phase.HIDDEN, "Hidden dialogue ignores screen clicks.")
@@ -341,9 +367,11 @@ func _check_restart_and_stop() -> void:
 	_dialogue.advance()
 	_check(_dialogue.phase == Dialogue.Phase.HOLDING, "Advance completes only the current line.")
 	_dialogue.advance()
-	_check(_dialogue.line_index == 1, "The next advance starts the second line.")
+	_check(_dialogue.line_index == 0, "Another completion request keeps the current line.")
+	_dialogue._process(2.0)
+	_check(_dialogue.line_index == 1, "The timer starts the second line.")
 	_dialogue.advance()
-	_dialogue.advance()
+	_dialogue._process(2.0)
 	await get_tree().create_timer(0.3).timeout
 	_check(_started_indices == PackedInt32Array([0, 1]), "Play after stop has a fresh line order.")
 	_check(
@@ -529,7 +557,7 @@ func _finish() -> void:
 		print("CAPTURES: ", _output_directory)
 	if _failures.is_empty():
 		print(
-			"PASS: mascot entrance, typing/talk/idle, click completion and confirmation, menu exclusion, replay and stop/play."
+			"PASS: mascot entrance, typing/talk/idle, click completion and timed continuation, menu exclusion, replay and stop/play."
 		)
 	else:
 		print("FAIL: mascot dialogue checks: ", _failures)

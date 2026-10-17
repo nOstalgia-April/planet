@@ -95,8 +95,17 @@ func _story_finished(_kind: Story.Kind) -> void:
 
 
 func _new_run() -> void:
-	save_now(true)
-	_timer.start()
+	if not save_now(true):
+		return
+	# Re-enter through the movie after replacing both the old slot and its backup.
+	# The next gameplay scene must start fresh and enable autosave again.
+	Store.session_requested = true
+	Store.pending_snapshot = {}
+	var error: Error = get_tree().change_scene_to_file("res://scenes/开头动画/开头动画.tscn")
+	if error != OK:
+		Store.session_requested = false
+		game._show_status("无法播放开头动画，请重新开始后重试。")
+		push_error("Could not restart opening: %s" % error_string(error))
 
 
 func save_now(new_run: bool = false) -> bool:

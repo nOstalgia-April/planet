@@ -4,6 +4,7 @@ const PREVIEW: PackedScene = preload("res://features/ending_preview/ending_previ
 const Preview = preload("res://features/ending_preview/ending_preview.gd")
 const Credits = preload("res://scripts/ui/ending_credits.gd")
 const MainMenu = preload("res://scenes/主菜单/主菜单.gd")
+const CAPTURE_DIR: String = "res://artifacts/credits_drag_20261018"
 const EXPECTED_CAST: String = "史莱姆：小粉\n粘液怪：小蓝\n钻头怪：小黄"
 const EXPECTED_PROJECT: String = "委托项目：星际家政 · 紧急清扫委托\n任务地点：M星\n委托单位：星际督查局\n执行小队：星际家政0101小组"
 const EXPECTED_TEAM: String = (
@@ -25,37 +26,33 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	DirAccess.make_dir_recursive_absolute("res://artifacts/mission_note_20261017")
+	if "--capture" in OS.get_cmdline_user_args():
+		DirAccess.make_dir_recursive_absolute(CAPTURE_DIR)
 	get_window().mode = Window.MODE_WINDOWED
 	await _open_preview()
 	_check_content()
 	await _check_sizes()
 	await _check_restart_and_replay()
+	await _check_drag_and_no_skip()
 	_check_natural_finish()
+	await _capture("finished")
+	await _click(_credits._return_button)
+	_check(_menu_requests == 1, "The return button opens the menu after completion.")
 	await _check_main_menu()
 	await _open_preview()
-	var requests_before: int = _menu_requests
-	await _click(_credits.get_node("Skip") as Button)
-	_check(
-		_menu_requests == requests_before + 1,
-		"Skip returns to the menu without repeating the receipt."
-	)
-	_check(_finished == 1, "Skipping does not report a natural completion.")
-	await _check_main_menu()
-	await _open_preview()
-	requests_before = _menu_requests
-	await _key(KEY_ESCAPE)
-	_check(
-		_menu_requests == requests_before + 1,
-		"Esc returns to the menu without repeating the receipt."
-	)
-	_check(_finished == 1, "Esc does not report a natural completion.")
+	for _drag: int in range(20):
+		if not _credits.playing:
+			break
+		await _drag(Vector2(0.0, -300.0))
+	_check(_finished == 2 and _menu_requests == 1, "Dragging to the end waits for a return click.")
+	await _click(_credits._return_button)
+	_check(_menu_requests == 2, "Dragged completion also returns through the button.")
 	await _check_main_menu()
 	for failure: String in _failures:
 		push_error(failure)
 	print(
 		(
-			"PASS: ending artwork, layouts, full scroll, natural menu return, Skip, Esc and restart."
+			"PASS: ending artwork, layouts, drag, blocked skip/Esc, finish button and restart."
 			if _failures.is_empty()
 			else "FAIL: ending credits"
 		)
@@ -89,7 +86,7 @@ func _wait_for_credits() -> void:
 				_game.story.receipt.hide()
 				await RenderingServer.frame_post_draw
 				get_viewport().get_texture().get_image().save_png(
-					"res://artifacts/mission_note_20261017/static_white_core.png"
+					CAPTURE_DIR.path_join("static_white_core.png")
 				)
 				_game.story.receipt.show()
 			_game.story.receipt.reveal_all()
@@ -126,7 +123,8 @@ func _check_content() -> void:
 		)
 		_check(atlas.region == Rect2(1062, 183, 738, 795), "Transparent margins are excluded.")
 	_check(not _credits.has_node("Actions"), "The three end-card buttons are removed.")
-	_check(_credits._skip.is_visible_in_tree(), "Skip is the only persistent credits action.")
+	_check(not _credits._return_button.visible, "No return button appears during playback.")
+	_check(_credits._return_button.text == "返回主菜单", "The final action says return to main menu.")
 	_check(not _game._layout.game_menu.visible, "Credits hide the gameplay menu.")
 	_check(not _game._layout.get_node("Economy").visible, "Credits hide the gameplay economy.")
 	_check(not _game._layout._tool_dock.is_visible_in_tree(), "Credits hide the bottom dock.")
@@ -164,14 +162,15 @@ func _check_sizes() -> void:
 			get_viewport().get_visible_rect().encloses(art_rect),
 			"The supplied drawing fits the viewport."
 		)
-		var skip_rect: Rect2 = _credits._skip.get_global_rect()
+		var return_rect: Rect2 = _credits._return_button.get_global_rect()
 		_check(
 			(
-				skip_rect.get_center().x > viewport_size.x * 0.8
-				and skip_rect.get_center().y > viewport_size.y * 0.8
+				return_rect.get_center().x > viewport_size.x * 0.8
+				and return_rect.get_center().y > viewport_size.y * 0.8
 			),
-			"Skip remains in the bottom right."
+			"Return remains in the bottom right."
 		)
+		await _capture("rolling_%d" % dimensions.x)
 
 
 func _check_restart_and_replay() -> void:
@@ -199,16 +198,66 @@ func _check_natural_finish() -> void:
 	_check(_menu_requests == 0, "Credits wait for the last pixel of the drawing to scroll out.")
 	_check(art.get_global_rect().end.y > 0.0, "The drawing is still visible before completion.")
 	_credits._process(2.0)
-	_check(_finished == 1 and _menu_requests == 1, "Natural completion returns to the menu.")
+	_check(_finished == 1 and _menu_requests == 0, "Natural completion waits for the player.")
+	_check(_credits._return_button.is_visible_in_tree(), "Completion reveals the return button.")
 	_check(
 		art.get_global_rect().end.y < 0.0, "The drawing fully exits before returning to the menu."
 	)
 	_credits.play()
 	_credits.finish_credits()
-	_credits.skip_credits()
 	_check(
-		_menu_requests == 1 and _finished == 1, "Repeated actions cannot request another return."
+		_menu_requests == 0 and _finished == 1, "Repeated completion cannot return automatically."
 	)
+
+
+func _check_drag_and_no_skip() -> void:
+	await _key(KEY_ESCAPE)
+	await _key(KEY_ENTER)
+	await _key(KEY_SPACE)
+	_credits.return_to_menu()
+	await _click(_credits._return_button)
+	_check(_menu_requests == 0 and _credits.playing, "Keys and hidden return cannot skip credits.")
+	_check(not get_tree().paused, "Escape does not pause credits.")
+	var before: float = _credits._scrolled
+	await _drag(Vector2(0.0, -200.0))
+	_check(_credits._scrolled > before + 100.0, "An upward drag advances the rolling credits.")
+	before = _credits._scrolled
+	await _drag(Vector2(0.0, 100.0))
+	_check(is_equal_approx(before, _credits._scrolled), "Downward dragging does not rewind.")
+	_credits._process(1.0)
+	_check(
+		is_equal_approx(_credits._scrolled - before, _credits.scroll_speed),
+		"Releasing the drag restores normal scroll speed."
+	)
+
+
+func _drag(displacement: Vector2) -> void:
+	var point: Vector2 = get_viewport().get_visible_rect().size * 0.5
+	var press: InputEventMouseButton = InputEventMouseButton.new()
+	press.position = point
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.button_mask = MOUSE_BUTTON_MASK_LEFT
+	press.pressed = true
+	get_tree().root.push_input(press, true)
+	await get_tree().process_frame
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = point + displacement
+	motion.relative = displacement
+	motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+	get_tree().root.push_input(motion, true)
+	await get_tree().process_frame
+	var release: InputEventMouseButton = InputEventMouseButton.new()
+	release.position = motion.position
+	release.button_index = MOUSE_BUTTON_LEFT
+	get_tree().root.push_input(release, true)
+	await _settle()
+
+
+func _capture(label: String) -> void:
+	if "--capture" not in OS.get_cmdline_user_args():
+		return
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(CAPTURE_DIR.path_join(label + ".png"))
 
 
 func _check_main_menu() -> void:

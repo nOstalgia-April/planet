@@ -234,6 +234,32 @@ func collect_slime(
 	valuable: bool = false,
 	capture_color: Color = Color("ffa6c6")
 ) -> bool:
+	return _collect_slime(nest_id, reward, population, valuable, capture_color, true)
+
+
+func are_all_nests_automated() -> bool:
+	if nests.is_empty():
+		return false
+	for nest: NestState in nests:
+		if not nest.is_tamed or nest.is_discovering:
+			return false
+	return true
+
+
+func collect_flower_target(nest_id: int, reward: int, population: int, valuable: bool) -> bool:
+	if population != 1 or is_complete or not are_all_nests_automated():
+		return false
+	return _collect_slime(nest_id, reward, population, valuable, Color.WHITE, false)
+
+
+func _collect_slime(
+	nest_id: int,
+	reward: int,
+	population: int,
+	valuable: bool,
+	capture_color: Color,
+	manual_capture: bool
+) -> bool:
 	var nest: NestState = get_nest(nest_id)
 	if nest == null or population <= 0 or nest.alive_slimes < population:
 		return false
@@ -249,7 +275,8 @@ func collect_slime(
 		get_capture_reward(nest.species) * population if reward < 0 else reward
 	)
 	candy += capture_reward
-	_register_manual_capture(capture_reward, capture_color)
+	if manual_capture:
+		_register_manual_capture(capture_reward, capture_color)
 	nest_changed.emit(nest)
 	economy_changed.emit()
 	_check_completion()
@@ -257,7 +284,10 @@ func collect_slime(
 
 
 func collect_net_batch(
-	nest_ids: Array[int], rewards: Array[int] = [], populations: Array[int] = []
+	nest_ids: Array[int],
+	rewards: Array[int] = [],
+	populations: Array[int] = [],
+	valuables: Array[bool] = []
 ) -> int:
 	var collected_count: int = 0
 	var reward: int = 0
@@ -269,15 +299,18 @@ func collect_net_batch(
 		var population: int = populations[index] if index < populations.size() else 1
 		if nest == null or population != 1 or nest.alive_slimes < population:
 			continue
-		if nest.species == NestState.Species.DRILL:
-			continue
 		nest.alive_slimes -= population
 		collected_count += 1
-		reward += (
-			maxi(0, rewards[index])
-			if index < rewards.size()
-			else get_capture_reward(nest.species) * population
-		)
+		if nest.species == NestState.Species.DRILL:
+			var valuable: bool = index < valuables.size() and valuables[index]
+			var multiplier: int = settings.valuable_reward_multiplier if valuable else 1
+			reward += get_base_value() * roll_drill_treasure() * multiplier
+		else:
+			reward += (
+				maxi(0, rewards[index])
+				if index < rewards.size()
+				else get_capture_reward(nest.species) * population
+			)
 		if not changed_nests.has(nest):
 			changed_nests.append(nest)
 	if collected_count == 0:
@@ -494,7 +527,7 @@ func get_technology_description(id: String) -> String:
 		"automation":
 			return "恢复巢穴为小花，自动产糖，最终帮助星球自愈！"
 		"combo_unlock":
-			return "每完成一段连击要求，就结算一次额外糖果！"
+			return "每成功连续吸取史莱姆，就结算一次额外糖果！"
 		"valuable":
 			return "怪物中会出现高价值个体，有机会赚取多倍糖果。"
 		"giant":

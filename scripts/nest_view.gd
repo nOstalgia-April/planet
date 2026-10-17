@@ -88,6 +88,10 @@ func pulse_automatic(amount: int = 0) -> void:
 	_art.play_production(amount)
 
 
+func is_flower_ready() -> bool:
+	return _tamed and not _art.uses_ground_bend()
+
+
 func _on_production_released(amount: int) -> void:
 	production_released.emit(nest_id, amount)
 

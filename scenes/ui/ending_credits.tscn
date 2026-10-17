@@ -161,7 +161,13 @@ texture = SubResource("ending_art_region")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Skip" type="Button" parent="."]
+[node name="QQGroup" type="Label" parent="Roll/Thanks"]
+layout_mode = 2
+mouse_filter = 2
+text = "游戏 QQ 群：101094454"
+horizontal_alignment = 1
+
+[node name="ReturnToMenu" type="Button" parent="."]
 visible = false
 layout_mode = 1
 anchors_preset = 3
@@ -169,7 +175,7 @@ anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -160.0
+offset_left = -208.0
 offset_top = -104.0
 offset_right = -40.0
 offset_bottom = -52.0
@@ -178,4 +184,4 @@ grow_vertical = 0
 theme_override_styles/normal = SubResource("skip_normal")
 theme_override_styles/hover = SubResource("skip_normal")
 theme_override_styles/pressed = SubResource("skip_normal")
-text = "跳过"
+text = "返回主菜单"

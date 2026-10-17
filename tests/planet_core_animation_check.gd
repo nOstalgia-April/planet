@@ -7,6 +7,8 @@ const GameScene: PackedScene = preload("res://features/场景预览/近景游玩
 const TutorialGame = preload("res://features/tutorial_intro/tutorial_game.gd")
 const Tutorial = preload("res://features/tutorial_intro/tutorial_intro.gd")
 const TutorialScene: PackedScene = preload("res://features/tutorial_intro/tutorial_game.tscn")
+const StoryGame = preload("res://features/tutorial_intro/story_game.gd")
+const StoryScene: PackedScene = preload("res://scenes/game.tscn")
 
 
 func _ready() -> void:
@@ -14,6 +16,14 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	get_tree().create_timer(120.0, true, false, true).timeout.connect(
+		func() -> void: get_tree().quit(1)
+	)
+	if "--opening-only" in OS.get_cmdline_user_args():
+		await _check_opening_core()
+		await _check_story_opening_core()
+		get_tree().quit()
+		return
 	var static_core: Core = CoreScene.instantiate() as Core
 	static_core.autoplay = false
 	add_child(static_core)
@@ -105,6 +115,7 @@ func _run() -> void:
 	game.queue_free()
 	await get_tree().process_frame
 	await _check_opening_core()
+	await _check_story_opening_core()
 	GameAudio.play_music("event:/Mx/Mx_MainMenu")
 	assert(GameAudio.get_music_position_seconds("event:/Mx/Mx_GamePlay") == -1.0)
 	print(
@@ -131,8 +142,8 @@ func _check_opening_core() -> void:
 		assert(not core.is_processing() and core.current_frame == 0)
 		assert(Time.get_ticks_msec() < deadline, "Opening camera must finish.")
 		await get_tree().process_frame
-	assert(core.is_processing())
-	assert(is_equal_approx(material.get_shader_parameter("outer_deformation"), 0.5))
+	assert(not core.is_processing(), "Reaching near view must not start the core.")
+	assert(is_zero_approx(material.get_shader_parameter("outer_deformation")))
 	game.tutorial.cancel()
 	for zoom: float in [-1.0, 1.0, -1.0]:
 		game._view.zoom_steps(zoom, false)
@@ -149,15 +160,94 @@ func _check_opening_core() -> void:
 	assert(not core.is_processing() and core.current_frame == 0)
 	assert(is_zero_approx(material.get_shader_parameter("outer_deformation")))
 	game.tutorial.cancel()
-	assert(core.is_processing(), "Cancelling the opening releases the static hold.")
+	assert(not core.is_processing(), "Cancelling alone must not release the static hold.")
+	game._view.zoom_steps(1.0, false)
+	assert(not core.is_processing())
+	game._view.zoom_steps(-1.0, false)
+	assert(core.is_processing())
 	deadline = Time.get_ticks_msec() + 5000
 	while core.current_frame == 0:
-		assert(Time.get_ticks_msec() < deadline, "Cancelling the opening must resume animation.")
+		assert(Time.get_ticks_msec() < deadline, "Returning to overview must resume animation.")
 		await get_tree().process_frame
 	get_tree().current_scene = null
 	game.queue_free()
 	await get_tree().process_frame
 	print("PASS: static opening camera, animated later views, restart and cancellation.")
+
+
+func _check_story_opening_core() -> void:
+	GameAudio.stop_music()
+	var game: StoryGame = StoryScene.instantiate() as StoryGame
+	get_tree().root.add_child(game)
+	get_tree().current_scene = game
+	game._window_has_focus = true
+	var core: Core = game._restoration.core
+	_assert_static(core)
+	game.story.briefing.reveal_all()
+	game.story.briefing.close()
+	await game.story.briefing.finished
+	await _capture_opening("opening_overview")
+	var deadline: int = Time.get_ticks_msec() + 10000
+	while not game.story._core_reached_near:
+		_assert_static(core)
+		assert(Time.get_ticks_msec() < deadline, "Formal opening must reach near view.")
+		await get_tree().process_frame
+	await get_tree().create_timer(0.2).timeout
+	_assert_static(core)
+	game.story.cancel()
+	var saved: Dictionary = game.story.capture_save()
+	game.story.restore_save(saved)
+	_assert_static(core)
+	game._view.zoom_steps(-1.0)
+	while game._view.is_transitioning():
+		_assert_static(core)
+		await get_tree().process_frame
+	assert(core.is_processing(), "First completed near-to-far switch starts the core.")
+	await get_tree().create_timer(0.25).timeout
+	var frame: int = core.current_frame
+	await _capture_opening("first_return_a")
+	await get_tree().create_timer(0.35).timeout
+	assert(core.current_frame > frame, "The music-driven core advances after the first return.")
+	await _capture_opening("first_return_b")
+	game.story.restore_save(game.story.capture_save())
+	assert(core.is_processing(), "Loading an unlocked run keeps animation enabled.")
+	for zoom: float in [1.0, -1.0]:
+		game._view.zoom_steps(zoom, false)
+		assert(core.is_processing(), "Later view changes must not reset the unlock.")
+	game.restart_run()
+	_assert_static(core)
+	assert(not game.story._core_reached_near)
+	game.story.cancel()
+	game._view.configure(game._view._play_rect, game._view._planet_radius)
+	_assert_static(core)
+	game._view.zoom_steps(1.0, false)
+	_assert_static(core)
+	game._view.zoom_steps(-1.0, false)
+	assert(core.is_processing(), "Restart requires a new near-to-far switch.")
+	get_tree().current_scene = null
+	game.queue_free()
+	await get_tree().process_frame
+	print(
+		"PASS: formal opening, first near-to-far completion, later switches, save/load and restart."
+	)
+
+
+func _assert_static(core: Core) -> void:
+	assert(not core.is_processing() and core.current_frame == 0)
+	var material: ShaderMaterial = core.sprite.material as ShaderMaterial
+	assert(is_zero_approx(material.get_shader_parameter("outer_deformation")))
+	assert(is_zero_approx(material.get_shader_parameter("motion_seconds")))
+
+
+func _capture_opening(label: String) -> void:
+	var args: PackedStringArray = OS.get_cmdline_user_args()
+	var index: int = args.find("--opening-capture")
+	if index < 0:
+		return
+	await RenderingServer.frame_post_draw
+	var path: String = args[index + 1].path_join(label + ".png")
+	assert(get_viewport().get_texture().get_image().save_png(path) == OK)
+	print("CAPTURE ", Time.get_datetime_string_from_system(), " ", path)
 
 
 func _seek(core: Core, frame: int) -> void:

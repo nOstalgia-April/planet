@@ -30,6 +30,8 @@ func _run() -> void:
 	)
 	var white_starts: Array[int] = [0]
 	_game._restoration.background_restore_started.connect(func() -> void: white_starts[0] += 1)
+	var white_finishes: Array[int] = [0]
+	_game._restoration.background_restore_finished.connect(func() -> void: white_finishes[0] += 1)
 	_game.run.candy = 100000
 	_game.run.purchase_technology("cultivation")
 	_game.run.purchase_technology("automation")
@@ -163,8 +165,15 @@ func _run() -> void:
 		"background fades to white after full automation"
 	)
 	_check_core_white(0.5, "Three-color white transition midpoint")
+	_check(white_finishes[0] == 0, "cleanup guide waits until the background is fully white")
 	_game._restoration._process(0.5)
 	_game._restoration._process(1.2)
+	_check(white_finishes[0] == 1, "white completion announces cleanup exactly once")
+	var guide: RichTextLabel = _game.get_node("HUD/Interface/ViewShortcut/RotationGuide")
+	_check(
+		guide.visible and guide.get_parsed_text().replace("\n", "") == "协助星球清扫最后的怪物，完成自愈",
+		"white completion shows the final cleanup instruction"
+	)
 	_check(
 		_game._restoration.bright_background.modulate.a == 1.0,
 		"all current nests automated enables white even with monsters remaining"
@@ -184,6 +193,7 @@ func _run() -> void:
 	_game._view.zoom_steps(1.0, false)
 	await _capture("complete_near")
 	_game.restart_run()
+	_check(not guide.visible, "restart clears the final cleanup guide")
 	_check(_game._planet_art.color_progress == Vector3.ZERO, "restart removes every color")
 	_check(_game._planet_art.restored_mix == 0.0, "restart restores original globe")
 	_check(

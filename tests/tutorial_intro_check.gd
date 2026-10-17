@@ -56,7 +56,7 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	if _tutorial == null or _capturing_layout:
 		return
-	# Act as the player; completed lines must never advance themselves in production.
+	# Repeated clicks during the reading pause must not bypass automatic continuation.
 	for speaker: Dialogue in [_dialogue, _compact_dialogue]:
 		if speaker.phase == Dialogue.Phase.HOLDING and speaker._phase_elapsed >= 0.45:
 			_click(Vector2(80.0, 180.0))

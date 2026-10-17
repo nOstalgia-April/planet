@@ -30,6 +30,7 @@ func _run() -> void:
 	await _check_pause_and_accent()
 	_check_serial_presentations()
 	_check_cancellation()
+	await _check_rotation_guide()
 	if "--capture" in OS.get_cmdline_user_args():
 		_capture_directory = (
 			"res://artifacts/nest_emergence_%d" % int(Time.get_unix_time_from_system())
@@ -44,7 +45,7 @@ func _run() -> void:
 	_check(is_equal_approx(Engine.time_scale, 1.0), "Scene exit restores the global time scale.")
 	if _failures.is_empty():
 		print(
-			"PASS: phased discovery, emergence, delayed production, triggers, pause and cancellation"
+			"PASS: phased discovery, emergence, production, cancellation and first-discovery rotation guide"
 		)
 	else:
 		for failure: String in _failures:
@@ -55,6 +56,124 @@ func _run() -> void:
 func _request(species: NestState.Species) -> void:
 	_game.run._pending_nest_species = species
 	_game._on_nest_spawn_requested(species)
+
+
+func _check_rotation_guide() -> void:
+	_game.restart_run()
+	var guide: RichTextLabel = _game.get_node("HUD/Interface/ViewShortcut/RotationGuide")
+	_check(not guide.visible, "Opening nests do not display the rotation guide.")
+	_request(NestState.Species.SLIME)
+	_until(Discovery.Phase.RISE)
+	_check(not guide.visible, "Guide waits until camera control is restored.")
+	_until(Discovery.Phase.IDLE)
+	_check(guide.visible, "First new nest shows the guide after recovery.")
+	_check("[b]右键[/b]" in guide.text, "Right mouse button has explicit bold emphasis.")
+	get_tree().paused = true
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check(not guide.is_visible_in_tree(), "Pause hides the guide with the other view hints.")
+	get_tree().paused = false
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check(guide.is_visible_in_tree(), "Resume restores the pending guide.")
+	_game._layout._show_technology()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check(not guide.is_visible_in_tree(), "Technology screen hides the guide.")
+	_game._layout.close_panels()
+	for dimensions: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
+		get_window().size = dimensions
+		_game._apply_layout()
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var bounds: Rect2 = guide.get_global_rect()
+		_check(
+			bounds.position.y > 0.0 and bounds.end.x < _game.get_viewport_rect().size.x,
+			"Guide stays inside the viewport."
+		)
+		_check(guide.get_content_height() <= guide.size.y, "Both guide lines fit without clipping.")
+	if "--capture-rotation-guide" in OS.get_cmdline_user_args():
+		_game.set_process(true)
+		await get_tree().create_timer(1.2).timeout
+		_game.set_process(false)
+		await RenderingServer.frame_post_draw
+		_check(
+			(
+				get_viewport().get_texture().get_image().save_png(
+					"res://artifacts/rotation_guide_preview.png"
+				)
+				== OK
+			),
+			"Requested preview saved."
+		)
+	await _check_rotation_hint_hover()
+	_game._view.begin_drag(Vector2(960, 760))
+	_step(0.05)
+	_check(not guide.visible, "Beginning a valid planet drag dismisses the guide.")
+	_game._view.end_drag()
+	_request(NestState.Species.MUCUS)
+	_until(Discovery.Phase.IDLE)
+	_check(not guide.visible, "Later new species do not repeat the guide.")
+	var saved: Dictionary = _game._nest_discovery.capture_save()
+	_game._nest_discovery.restore_save(saved)
+	_request(NestState.Species.DRILL)
+	_until(Discovery.Phase.IDLE)
+	_check(not guide.visible, "Restoring a discovered save does not repeat the guide.")
+	_game.restart_run()
+	_request(NestState.Species.SLIME)
+	_until(Discovery.Phase.IDLE)
+	_check(guide.visible, "A fresh run rearms the first-discovery guide.")
+	_step(_game._nest_discovery.rotation_guide_seconds + 0.1)
+	_check(not guide.visible, "Guide expires after its configured duration.")
+	_game.restart_run()
+
+
+func _check_rotation_hint_hover() -> void:
+	var hint: Control = _game._layout.rotation_hint
+	var icon: Control = hint.get_node("Icon")
+	var mouse: Control = hint.get_node("MouseRight")
+	_check(
+		(
+			is_equal_approx(mouse.get_rect().get_center().x, icon.get_rect().get_center().x)
+			and mouse.position.y >= icon.get_rect().end.y
+		),
+		"Mouse button hint is centered beneath the rotation icon."
+	)
+	_check(
+		hint.get_canvas() == _game._pipe.get_canvas() and hint.z_index < _game._pipe.z_index,
+		"Hint shares the world canvas and draws behind the vacuum."
+	)
+	var pointer: Vector2 = hint.get_global_rect().get_center()
+	var world_pointer: Vector2 = (
+		_game._world.get_global_transform_with_canvas().affine_inverse() * pointer
+	)
+	_game._drive_tool(0.0, world_pointer, false)
+	_game._layout._process(0.0)
+	_check(_game._pipe.visible, "Vacuum remains usable over the passive hint.")
+	_check(is_equal_approx(hint.modulate.a, 0.4), "Hover makes the whole hint 40 percent opaque.")
+	if "--capture-rotation-guide" in OS.get_cmdline_user_args():
+		await RenderingServer.frame_post_draw
+		_check(
+			(
+				get_viewport().get_texture().get_image().save_png(
+					"res://artifacts/rotation_hint_hover_preview.png"
+				)
+				== OK
+			),
+			"Hover preview saved."
+		)
+	_game._layout.update_rotation_hint_hover(Vector2.ZERO, true)
+	_game._layout._process(0.0)
+	_check(is_equal_approx(hint.modulate.a, 1.0), "Moving away restores full opacity.")
+	_game._layout.update_rotation_hint_hover(pointer, false)
+	_game._layout._process(0.0)
+	_check(is_equal_approx(hint.modulate.a, 1.0), "Hidden vacuum does not fade the hint.")
+	get_tree().paused = true
+	_game._layout._process(0.0)
+	_check(not hint.visible, "Pause also hides the hint in the world canvas.")
+	get_tree().paused = false
+	_game._layout._process(0.0)
+	_check(hint.visible, "Resume restores the world hint.")
 
 
 func _step(seconds: float) -> void:

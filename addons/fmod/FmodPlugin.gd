@@ -9,7 +9,9 @@ var fmod_bank_explorer_window: PackedScene = load("res://addons/fmod/tool/ui/Fmo
 var bank_explorer: FmodBankExplorer
 var _banks: Array[FmodBank] = []
 var fmod_button: Button
-var export_plugin: FmodEditorExportPlugin = FmodEditorExportPlugin.new()
+var export_plugin: EditorExportPlugin = (
+	preload("res://addons/fmod/ProjectBankExportPlugin.gd").new()
+)
 var android_export_plugin: FmodAndroidExportPlugin = FmodAndroidExportPlugin.new()
 var emitter_inspector_plugin: FmodEmitterPropertyInspectorPlugin = (
 	FmodEmitterPropertyInspectorPlugin.new(self)

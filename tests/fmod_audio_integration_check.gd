@@ -184,7 +184,10 @@ func _check_audio_pause() -> void:
 	_check(gameplay_bus.get_mute(), "Pausing mutes the gameplay bus, Vacuum_Loop included.")
 	var vacuum_off: Array = FmodServer.get_event("event:/Vacuum/Vacuum_Off").get_instance_list()
 	_check(
-		vacuum_off.size() > 0 and vacuum_off.all(func(e: FmodEvent) -> bool: return not e.get_paused()),
+		(
+			vacuum_off.size() > 0
+			and vacuum_off.all(func(e: FmodEvent) -> bool: return not e.get_paused())
+		),
 		"Vacuum_Off keeps running through the pause to stop Vacuum_Loop."
 	)
 	_check(

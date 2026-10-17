@@ -5,6 +5,7 @@ const Game = preload("res://features/tutorial_intro/story_game.gd")
 const Flow = preload("res://features/tutorial_intro/story_flow.gd")
 const Session = preload("res://scripts/save_session.gd")
 const Menu = preload("res://scenes/主菜单/主菜单.gd")
+const Intro = preload("res://scenes/开头动画/开头动画.gd")
 const GAME: PackedScene = preload("res://scenes/game.tscn")
 const MENU: PackedScene = preload("res://scenes/主菜单/主菜单.tscn")
 
@@ -30,6 +31,9 @@ func _run() -> void:
 	Store.save_path = "res://artifacts/autosave_check/slot.save"
 	if "--notes" in OS.get_cmdline_user_args():
 		Store.save_path = "res://artifacts/mission_note_20261017/slot.save"
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--save-dir="):
+			Store.save_path = argument.trim_prefix("--save-dir=").path_join("slot.save")
 	_captures = "--capture" in OS.get_cmdline_user_args()
 	DirAccess.make_dir_recursive_absolute(Store.save_path.get_base_dir())
 	for suffix: String in ["", ".bak", ".tmp"]:
@@ -49,7 +53,7 @@ func _run() -> void:
 	if _captures:
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(
-			"res://artifacts/autosave_check/new_menu.png"
+			Store.save_path.get_base_dir().path_join("new_menu.png")
 		)
 	menu.queue_free()
 	await get_tree().process_frame
@@ -165,7 +169,7 @@ func _run() -> void:
 	if _captures:
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(
-			"res://artifacts/autosave_check/continue_menu.png"
+			Store.save_path.get_base_dir().path_join("continue_menu.png")
 		)
 	# Exercise the real continue button and asynchronous loading path.
 	menu._start()
@@ -177,13 +181,42 @@ func _run() -> void:
 	await get_tree().process_frame
 	_session = _game.get_node("SaveSession") as Session
 	_check(_game.run.candy >= 54321 and _session.active, "continue button restores saved session")
-	_game.restart_run()
-	await get_tree().process_frame
+	# Use the settings confirmation path, including a paused game.
+	_game._layout.game_menu.set_open(true)
+	_game._layout.game_menu.get_node("%Restart").pressed.emit()
+	_game._layout.game_menu.get_node("%ConfirmAction").pressed.emit()
+	await get_tree().scene_changed
+	var intro: Intro = get_tree().current_scene as Intro
+	_check(intro != null, "restart enters opening movie")
+	if intro == null:
+		get_tree().quit(1)
+		return
+	_check(intro.animation_player.is_playing(), "restarted movie is playing")
+	_check(
+		not get_tree().paused and is_equal_approx(Engine.time_scale, 1.0), "restart unpauses movie"
+	)
+	_check(
+		Store.session_requested and Store.pending_snapshot.is_empty(),
+		"restart requests fresh session"
+	)
 	_check(Store.load_latest().world.run.candy == 0, "restart replaces old progress")
 	_check(
 		Store._read(Store.save_path + ".bak").world.run.candy == 0,
 		"restart also replaces old backup"
 	)
+	if _captures:
+		await get_tree().create_timer(2.0).timeout
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(
+			Store.save_path.get_base_dir().path_join("restart_opening.png")
+		)
+	await get_tree().scene_changed
+	_game = get_tree().current_scene as Game
+	await get_tree().process_frame
+	_session = _game.get_node("SaveSession") as Session
+	_check(_game.run.candy == 0 and _game.run.pipe_level == 0, "movie enters a fresh game")
+	_check(_game.story.briefing.playing, "restarted movie leads into the briefing")
+	_check(_session.active and not Store.session_requested, "restarted game resumes autosave")
 	_game.run.candy = 9876
 	GameLifecycle.save_before_quit = func() -> bool:
 		var success: bool = _session.save_now()

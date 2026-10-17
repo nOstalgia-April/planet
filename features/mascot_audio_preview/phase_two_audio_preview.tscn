@@ -73,5 +73,5 @@ offset_right = 282.0
 offset_bottom = 42.0
 focus_mode = 0
 theme_override_font_sizes/font_size = 20
-text = "下一句"
-tooltip_text = "显示全句 / 下一句 · Space / Enter"
+text = "补全当前句"
+tooltip_text = "补全当前句 · Space / Enter"

@@ -21,8 +21,8 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	DirAccess.make_dir_recursive_absolute("res://artifacts/mission_note_20261017")
-	Store.save_path = "res://artifacts/mission_note_20261017/opening.save"
+	DirAccess.make_dir_recursive_absolute("res://artifacts/opening_audio_check")
+	Store.save_path = "res://artifacts/opening_audio_check/opening.save"
 	assert(ProjectSettings.get_setting("application/run/main_scene") == MENU_PATH)
 	assert(_tree.change_scene_to_file(MENU_PATH) == OK)
 	await _tree.scene_changed
@@ -112,7 +112,7 @@ func _run() -> void:
 	assert(not _tree.current_scene.has_node("PreviewNavigation"), "正式游戏不能带入预览快捷跳段。")
 	assert(not _tree.paused and is_equal_approx(Engine.time_scale, 1.0))
 	assert(not _tree.current_scene.is_processing(), "开场演出期间暂停玩法推进。")
-	_assert_gameplay_music(audio)
+	_assert_briefing_music(audio)
 	if "--capture" in OS.get_cmdline_user_args():
 		await _capture("gameplay")
 	var game_menu: Control = _tree.current_scene.get_node("HUD/Interface/GameMenu")
@@ -140,6 +140,11 @@ func _assert_briefing_music(audio: Audio) -> void:
 # The game opens on the far view, then zooms in with ZoomIn while the music
 # follows to its near-view mix.
 func _check_opening_zoom(story: StoryFlow) -> void:
+	assert(story.briefing.playing, "游戏内字条保持新版点击关闭流程。")
+	story.briefing.reveal_all()
+	story.briefing.close()
+	while story.briefing.playing:
+		await _tree.process_frame
 	var distant: Callable = func() -> float:
 		return FmodServer.get_global_parameter_by_name("IsDistantView")
 	while story.phase == StoryFlow.Phase.NOTE:

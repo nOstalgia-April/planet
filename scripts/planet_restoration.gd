@@ -9,6 +9,7 @@ signal palette_changed(progress: float)
 signal color_fill_started(stage: int)
 # The whole scene brightens to white once every nest is automated.
 signal background_restore_started
+signal background_restore_finished
 
 const PlanetView = preload("res://scripts/planet_view_controller.gd")
 const PlanetArt = preload("res://scripts/场景动画/双视角星球.gd")
@@ -158,6 +159,7 @@ func _process(delta: float) -> void:
 				_background_complete = true
 				progress_committed.emit()
 				_set_phase(Phase.HOLD)
+				background_restore_finished.emit()
 		Phase.HOLD:
 			if _elapsed < hold_seconds:
 				return

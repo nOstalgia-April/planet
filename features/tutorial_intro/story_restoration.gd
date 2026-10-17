@@ -21,13 +21,7 @@ func confirm_dialogue() -> void:
 
 
 func _try_start() -> void:
-	if (
-		phase == Phase.IDLE
-		and (
-			(completed_species.size() == 2 and not _queue.is_empty())
-			or (completed_species.size() == 3 and _can_restore_background())
-		)
-	):
+	if phase == Phase.IDLE and completed_species.size() == 3 and _can_restore_background():
 		if view.presentation_locked:
 			return
 		_passive_restoration = true
@@ -43,8 +37,6 @@ func _try_start() -> void:
 func _start_overview() -> void:
 	if _passive_restoration:
 		_set_phase(Phase.FILL if _species >= 0 else Phase.BACKGROUND)
-		if _species >= 0:
-			story_started.emit(3)
 		return
 	super._start_overview()
 	if _species >= 0:
@@ -72,7 +64,7 @@ func _process(delta: float) -> void:
 			return
 		returning_to_near = false
 		if completed_species.size() == 2 and not _queue.is_empty():
-			# Finish the second dialogue before a queued third color starts in free play.
+			# Release the second story before a queued third color acquires its controls.
 			_set_phase(Phase.IDLE)
 			view.presentation_locked = false
 			presentation_finished.emit()
