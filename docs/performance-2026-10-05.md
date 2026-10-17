@@ -195,9 +195,52 @@ P2切回P1时明确以切换瞬间的实际画面为准：将星球屏幕正上�
 完整绘制复现（不可使用 `--headless`）：
 
 ```powershell
-& 'C:\Program Files (x86)\Steam\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe' --path . --script res://tests/rendered_performance_benchmark.gd --fixed-fps 60 -- --large --capture --label=recheck
+& 'C:\Program Files (x86)\Steam\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe' --path . res://tests/rendered_performance_benchmark.tscn --fixed-fps 60 -- --large --capture --label=recheck
 ```
 
-可加 `--phase=near_capture` 单测吸取。预算和隐藏行为检查使用 `--headless --script res://tests/mucus_capacity_check.gd`、`res://tests/mucus_visibility_check.gd`。
+可加 `--phase=near_capture` 单测吸取。预算和隐藏行为检查使用 `--headless --path . res://tests/mucus_capacity_check.tscn`、`res://tests/mucus_visibility_check.tscn`。
 
 本机证据位于被忽略的 `artifacts/`：`perf_oct06_before.log`、`perf_oct06_fixed_final.log`、`perf_oct06_demo_before.log`、`perf_oct06_demo_after2.log`、`perf_oct06_profile_near_idle.log`。当时的近远景旧截图已于 2026-10-11 清理。诊断入口 `perf_oct06_profile_harness.gd` 仅用于定位，正式复测使用 `tests/` 中的持久入口。
+
+
+## 13. 2026-10-17：黏液接触查询与轨迹复用
+
+本轮针对密集生物场景重新定位瓶颈。先前压力测试仍加载基础 `disk_demo.tscn`，缺少现行游戏的背景、星球、核心和山丘树木；因此本节只引用修正入口后的完整场景结果，不把基础层的帧时间当作正式游戏表现。测试现在继承当前近景游玩场景，并通过 `.tscn` 启动，确保音频等 Autoload 已注册再编译脚本。
+
+### 实现
+
+- 接触查询每帧根据轨迹当前碰撞包围盒建立 32 世界单位网格，每个生物只测试所在格里的候选轨迹，再使用原来的三角形和透明度规则精确判定。屏幕外和淡出的轨迹仍参与查询；即时捕获查询继续使用原入口，避免读到过期索引。
+- 同一轨迹截面的纹理列、尾端混合、淡出和摆动只计算一次；屏幕外保留接触几何，省去渲染顶点投影和 UV 写入，重新入镜立即补齐。
+- 地壳内部的安全圆环直接返回原点，边缘仍走完整投影计算。没有改变活动范围。
+- 游戏场景管理黏液轨迹对象池，默认最多保留 32 个闲置实例，`mucus_pool_capacity = 0` 可关闭。退役时清除来源、接触、寿命和绘制数据，隐藏并禁用处理；重新启用时配置新来源。超额释放，重开清空，离开场景随父节点释放。活跃来源数量不受闲置池容量限制。
+
+### 完整场景实测
+
+Godot 4.7.2、Forward+ / Vulkan、RTX 4060 Laptop、1920×1080，关闭垂直同步；未切换项目渲染后端。21 巢、210 生物（70 黏液怪）、70 条轨迹，每阶段重新设种群，预热 60 帧、采样 180 帧，模拟步长固定为 1/60 秒。对照在同一完整场景中恢复本轮修改前的网格、全量接触遍历与地表投影函数，避免回退其他正在进行的改动。
+
+| 场景 | 实际帧中位 ms，前 → 后 | 实际帧 P95 ms，前 → 后 | 黏液 CPU 平均 ms，前 → 后 |
+| --- | ---: | ---: | ---: |
+| 近景静止 | 31.301 → 26.842 | 39.273 → 41.006 | 17.534 → 11.117 |
+| 近景旋转 | 52.115 → 34.223 | 70.831 → 48.240 | 25.353 → 11.387 |
+| 总览 | 28.555 → 20.440 | 54.685 → 31.599 | 18.555 → 9.549 |
+| 连续吸取 | 35.023 → 28.507 | 66.396 → 71.322 | 17.803 → 10.315 |
+
+前三阶段种群始终为 210。吸取采样对照为 206→196，优化后为 206→195，不能当作恒定种群。墙钟绘制时间用于表中帧数据；周期刷新的 `Performance.TIME_PROCESS` 不用于推导精确 CPU 时间。音乐时钟与核心贴图流式加载仍按实时运行，用户编辑器及其他游戏进程保持运行，因此不是严格隔离的硬件基准。
+
+黏液 CPU 平均耗时降低约 37%–55%，四种场景帧中位均改善。近景静止与吸取的 P95 没有改善，吸取仍出现约 71 ms 的长帧，**本轮尚未消除所有卡顿，也未达到稳定 60 FPS**；不能用对象池复用成功代替实际帧率结论。
+
+### 验证与复现
+
+- `mucus_pool_check.tscn`：90 生物的空间网格结果与全量查询一致；容量、超额释放、100 次重复复用、无旧接触/绘制数据、重开及退出通过。
+- `mucus_capacity_check.tscn`、`mucus_visibility_check.tscn`、`ground_ecology_check.tscn`：活跃来源超过历史预算、脱附和捕获、屏幕外淡出、重新入镜、地壳裁切、自动化、寿命与重开通过。容量压力固定生成巢穴，避免依赖当前美术可容纳的巢穴数量。
+- 与原算法对照 54,000 个接触采样，结果一致；90,000 个地表投影点在 0.0001 世界单位误差内一致。三种轨迹模式的最大顶点差异约 0.00003146 世界单位，淡出颜色一致。
+- 查看本次完整游戏场景的近景截图，背景、地表、生物和黏液均正常显示。Godot 实际运行及修改脚本的 `gdformat --check` 通过；无头模式仍报告修改前已存在的 shader compiler custom_samplers 诊断，不能描述为全工程零错误。
+- 已尝试 `tools/check_editor_startup.ps1`，因用户的项目编辑器正在运行而被脚本保护阻止；未关闭用户编辑器，真实编辑器重启/文档缓存重建检查未完成。
+
+当前复现入口：
+
+```powershell
+& 'C:\Program Files (x86)\Steam\steamapps\common\Godot Engine\godot.windows.opt.tools.64.exe' --path . res://tests/rendered_performance_benchmark.tscn --fixed-fps 60 -- --label=recheck
+```
+
+可加 `--phase=near_capture` 单测吸取。上述四个正确性场景可用 `--headless --path . res://tests/<名称>.tscn` 执行。本次测试进程均已退出，但删除命令被执行工具策略拦截（`blocked by policy`，具体规则未知），清理未完成：`artifacts/perf_pool_oct17/` 内 36 个文件共 139,552 字节，以及 `artifacts/rendered_pool_oct17_final_1920x1080_*.png`、`artifacts/rendered_pool_oct17_formal_1920x1080_*.png` 共 8 张截图、11,122,841 字节，总计约 10.74 MiB。未生成工程副本；这些是待清理的本任务临时产物，不是获准长期保留的交付物。

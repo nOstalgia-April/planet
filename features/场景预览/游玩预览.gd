@@ -119,6 +119,7 @@ func _show_completion() -> void:
 
 
 func _on_victory_finished() -> void:
+	_restoration.core.modulate.a = 0.0
 	super._show_completion()
 
 

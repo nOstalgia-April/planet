@@ -114,11 +114,15 @@ func _refresh_tool(index: int) -> void:
 	icon.modulate = Color("8b8b8b") if locked else Color.WHITE
 	(button.get_node("Selected") as Selection).set_selected(button.button_pressed and not locked)
 	var status: Label = button.get_node("Status") as Label
+	var show_net_size: bool = index == 1 and _run.net_unlocked and _run.net_size_level > 0
 	status.add_theme_color_override("font_color", Color.WHITE)
 	status.modulate = Color("ffbb79") if locked and affordable else Color("d8d8d8")
-	status.text = "可解锁" if locked else "可升级"
-	status.visible = affordable
-	_set_text_layout(index, affordable)
+	if show_net_size:
+		status.text = "大小 %d 级" % (_run.net_size_level + 1)
+	else:
+		status.text = "可解锁" if locked else "可升级"
+	status.visible = affordable or show_net_size
+	_set_text_layout(index, status.visible)
 	button.tooltip_text = ""
 	var purchase: Button = upgrades[index]
 	purchase.disabled = not affordable
@@ -155,8 +159,6 @@ func refresh_timers(run: PrototypeRun) -> void:
 	var detail: Label = net_button.get_node("Detail") as Label
 	if not run.net_unlocked:
 		detail.text = "未解锁"
-	elif run.get_net_quick_upgrade_id() == "net_size":
-		detail.text = "大小 %d 级" % (run.net_size_level + 1)
 	else:
 		detail.text = "%d 级" % (run.net_level + 1)
 

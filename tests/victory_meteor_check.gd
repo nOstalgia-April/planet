@@ -115,6 +115,7 @@ func _check_real_victory_and_waiting() -> void:
 
 
 func _check_camera_and_playback() -> void:
+	_check(_game._restoration.core.modulate.a == 1.0, "Core survives all color restoration.")
 	_game._view.zoom_steps(1.0, false)
 	_game._show_completion()
 	_check(_game._victory.phase == Victory.Phase.CAMERA, "Near victory starts with camera travel.")
@@ -145,6 +146,10 @@ func _check_camera_and_playback() -> void:
 	_check(_game._victory.phase == Victory.Phase.PLAYING, "Camera arrival starts the meteors.")
 	_check(_game._victory.meteors.visible, "Meteor artwork appears at camera arrival.")
 	_check(not _game._completion.visible, "The panel does not cover the meteor animation.")
+	_check(
+		_game._restoration.core.modulate.a == 1.0,
+		"Core stays visible through the ending animation."
+	)
 	_player().advance(0.375)
 	var position: float = _player().current_animation_position
 	_game._victory.play()
@@ -165,6 +170,7 @@ func _check_camera_and_playback() -> void:
 		"The one-second meteor clip finishes once."
 	)
 	_check(_game._completion.visible, "The existing victory panel opens after the meteor clip.")
+	_check(_game._restoration.core.modulate.a == 0.0, "Core disappears only at the final ending.")
 	_check(not _game._view.presentation_locked, "Finished meteors release the camera lock.")
 	_check(_game._victory.meteors.visible, "The final meteor frame remains on the victory sky.")
 	_game._victory.play()
@@ -216,6 +222,7 @@ func _check_paused_animation() -> void:
 
 func _check_restart_and_overview() -> void:
 	_game.restart_run()
+	_check(_game._restoration.core.modulate.a == 1.0, "Restart restores the animated core.")
 	_check_reset("completed presentation")
 	_game._victory.play()
 	_game._view._process(0.2)

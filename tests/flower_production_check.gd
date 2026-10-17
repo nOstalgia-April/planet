@@ -59,8 +59,8 @@ func _run() -> void:
 					* view._production.sweep_fraction
 				)
 			)
-			_check(earned > 0 and view._production._active, "Paid production starts the sweep.")
-			_check(_released == release_count, "Candy waits for the upward sweep.")
+			_check(earned > 0 and view._production._active, "Paid production starts the expansion.")
+			_check(_released == release_count, "Candy waits for the outward expansion.")
 			await get_tree().create_timer(sweep_seconds * 0.45).timeout
 			await _save("%d_%d_sweep" % [dimensions.x, species])
 			await get_tree().create_timer(sweep_seconds * 0.55 + 0.09).timeout
@@ -74,6 +74,13 @@ func _run() -> void:
 					reward = effect
 			_check(reward != null, "The flower launches the shared collection feedback.")
 			if reward != null:
+				_check(
+					(
+						reward._amount_label.label_settings.font_color
+						== demo.flower_income_colors[species]
+					),
+					"Automatic income uses the flower species color."
+				)
 				var target: Vector2 = (
 					demo._candy_label.get_global_transform_with_canvas()
 					* (demo._candy_label.size * 0.5)
@@ -93,7 +100,7 @@ func _run() -> void:
 			)
 			_check(
 				not view._production._active and not view._production._sparks.emitting,
-				"The sweep and particle emitter finish."
+				"The expansion and particle emitter finish."
 			)
 			_check(demo._effects.get_child_count() == 0, "Flying candy cleans itself up.")
 		# Batched income keeps the total while an existing gesture finishes.

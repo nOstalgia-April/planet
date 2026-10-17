@@ -20,6 +20,16 @@ func _run() -> void:
 	add_child(_game)
 	_game.set_process(false)
 	_game._view.set_process(false)
+	await _check_hold_upgrade()
+	if "--hold-only" in OS.get_cmdline_user_args():
+		print("Nest hold upgrade: %d failures" % _failures)
+		get_tree().quit(0 if _failures == 0 else 1)
+		return
+	await _check_entrance()
+	if "--entrance-only" in OS.get_cmdline_user_args():
+		print("Nest upgrade entrance: %d failures" % _failures)
+		get_tree().quit(0 if _failures == 0 else 1)
+		return
 	for resolution: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
 		get_tree().root.size = resolution
 		_game.restart_run()
@@ -97,6 +107,92 @@ func _run() -> void:
 	_game.queue_free()
 	await get_tree().process_frame
 	get_tree().quit(0 if _failures == 0 else 1)
+
+
+func _check_entrance() -> void:
+	_game._update_nest_prompts()
+	_check(_game._nest_prompts.is_empty(), "locked research has no entry prompts")
+	_game.run.candy = 100000
+	_game.run.upgrade_pipe()
+	_game.run.purchase_technology("net")
+	_game.run.purchase_technology("governance")
+	_game._view.zoom_steps(-1.0, false)
+	_game._update_nest_prompts()
+	_check(_game._nest_prompts.is_empty(), "research in overview waits for near view")
+	_game._view.zoom_steps(1.0, false)
+	await _settle()
+	_game._update_nest_prompts()
+	_check(not _game._nest_prompts.is_empty(), "returning near reveals visible nests")
+	_check(_game._nest_prompts.size() >= 2, "visible nests show independent prompts together")
+	var button: Button = _game._nest_prompts[1]
+	var price: Label = button.get_node("Price") as Label
+	_check(not price.visible, "entrance begins with icon only")
+	var start: Vector2 = button.position
+	await get_tree().create_timer(0.6).timeout
+	_check(price.visible, "settled prompt shows price")
+	_check(button.position.distance_to(start) > 40.0, "icon rises from nest head")
+	var final_position: Vector2 = button.position
+	button.begin_entrance()
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = button.get_global_transform_with_canvas() * (button.size * 0.5)
+	get_tree().root.push_input(motion, true)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check(button.position.is_equal_approx(final_position), "early hover snaps to final position")
+	_check(price.visible, "early hover reveals price immediately")
+	_check(
+		_game._layout.is_over_ui(button.get_global_transform_with_canvas() * (button.size * 0.5)),
+		"entry prompt blocks collection"
+	)
+	_game.run.candy = 0
+	_game._refresh_hud()
+	_check(button.disabled and price.text == "50", "unaffordable prompt retains actual price")
+	_game.run.candy = 100000
+	_game._refresh_hud()
+	await _click(button.get_global_transform_with_canvas() * (button.size * 0.5))
+	_check(_game.run.get_nest(1).level == 1, "entry button upgrades its own nest")
+	_check(price.text == "600", "entry price updates after purchase")
+	_game._layout._toggle_pause()
+	_check(not button.visible, "pause hides entry prompts")
+	_game._layout._toggle_pause()
+	_game._world.rotation += PI
+	_game._update_nest_prompts()
+	_check(not button.visible, "offscreen nest hides its prompt")
+	_game._world.rotation -= PI
+	_game._update_nest_prompts()
+	_check(button.visible and not price.visible, "reentering nest plays entrance again")
+	await get_tree().create_timer(0.6).timeout
+	if "--capture-entrance" in OS.get_cmdline_user_args():
+		for resolution: Vector2i in [Vector2i(1920, 1080), Vector2i(1280, 800)]:
+			get_tree().root.size = resolution
+			await _settle()
+			_game._update_nest_prompts()
+			for prompt: Button in _game._nest_prompts.values():
+				prompt.begin_entrance()
+			await _capture_entrance("start_%d" % resolution.x)
+			await get_tree().create_timer(0.6).timeout
+			_game._update_nest_prompts()
+			await _capture_entrance("settled_%d" % resolution.x)
+	var new_position: Vector2 = _game.run.get_nest(1).position
+	_game.run._add_nest(NestState.Species.MUCUS, new_position, true)
+	var new_id: int = _game.run.nests.back().nest_id
+	_game._update_nest_prompts()
+	_check(not _game._nest_prompts.has(new_id), "emerging nest waits until discovery finishes")
+	_game.run.finish_nest_discovery(new_id)
+	_game._update_nest_prompts()
+	_check(_game._nest_prompts.has(new_id), "newly discovered onscreen nest gets a prompt")
+	_game.run.get_nest(new_id).level = 2
+	_game._update_nest_prompts()
+	_check(not _game._nest_prompts[new_id].visible, "research-locked final upgrade hides prompt")
+	_game.restart_run()
+	_check(_game._nest_prompts.is_empty(), "restart clears old prompts")
+
+
+func _capture_entrance(label: String) -> void:
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(
+		"res://artifacts/nest_entrance_20261017/%s.png" % label
+	)
 
 
 func _check_hover_path(view: NestView, angle: float) -> void:
@@ -202,6 +298,115 @@ func _emit_motion_image(button: Button, label: String) -> void:
 	var region: Rect2i = Rect2i(bounds.position * ratio, bounds.size * ratio)
 	var crop: Image = screenshot.get_region(region)
 	print("MOTION_IMAGE|%s|%s" % [label, Marshalls.raw_to_base64(crop.save_png_to_buffer())])
+
+
+func _check_hold_upgrade() -> void:
+	get_tree().root.size = Vector2i(1920, 1080)
+	_game.restart_run()
+	_game.run.candy = 100000
+	_game.run.upgrade_pipe()
+	_game.run.purchase_technology("net")
+	_game.run.purchase_technology("governance")
+	_game._view.zoom_steps(1.0, false)
+	await _settle()
+	_game._update_nest_prompts()
+	await get_tree().create_timer(0.6).timeout
+	var nest: NestState = _game.run.get_nest(1)
+	var point: Vector2 = _game._nest_views[0].get_hover_rect().get_center()
+	var button: Button = _game._nest_prompts[1]
+	var candy: int = _game.run.candy
+	await _hold_input(point, true)
+	_check(_game._held_nest_id == 1, "press on nest starts hold")
+	_check(button.scale.x < 0.5 and button.modulate.a < 0.6, "hold starts small and translucent")
+	await _capture_hold("start")
+	_game._advance_nest_hold(_game.nest_hold_seconds * 0.5, point)
+	_check(nest.level == 0 and _game.run.candy == candy, "partial hold spends nothing")
+	_check(button.scale.x > 0.5 and button.scale.x < 1.0, "hold grows toward original size")
+	await _capture_hold("half")
+	await _hold_input(point, false)
+	_check(_game._held_nest_id == -1, "release cancels immediately")
+	_check(button.scale == Vector2.ONE and button.modulate.a == 1.0, "cancel restores button")
+	await _hold_input(point, true)
+	_game._advance_nest_hold(_game.nest_hold_seconds, point)
+	_check(nest.level == 1 and _game.run.candy == candy - 50, "full hold purchases once")
+	_check(button.scale == Vector2.ONE and button.modulate.a == 1.0, "success restores full size")
+	await _capture_hold("success")
+	_game._advance_nest_hold(_game.nest_hold_seconds * 2.0, point)
+	_check(nest.level == 1, "continued hold never purchases another level")
+	await _hold_input(point, false)
+	await _hold_input(point, true)
+	_check(_game._held_nest_id == 1, "a new press can start the next upgrade")
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = Vector2(10.0, 150.0)
+	get_tree().root.push_input(motion, true)
+	await get_tree().process_frame
+	_check(_game._held_nest_id == -1, "leaving nest cancels immediately")
+	await _hold_input(point, false)
+	await _hold_input(point, true)
+	_check(_game._held_nest_id == 1, "hold is active before pausing")
+	_game._layout._toggle_pause()
+	_check(_game._held_nest_id == -1, "pause cancels hold")
+	_game._layout._toggle_pause()
+	await _hold_input(point, false)
+	_game._update_nest_prompts()
+	await get_tree().create_timer(0.6).timeout
+	await _hold_input(point, true)
+	_check(_game._held_nest_id == 1, "hold is active before affordability changes")
+	_game.run.candy = 0
+	_game._advance_nest_hold(_game.nest_hold_seconds, point)
+	_check(_game._held_nest_id == -1 and nest.level == 1, "lost affordability cancels purchase")
+	await _hold_input(point, false)
+	await _hold_input(point, true)
+	_check(_game._held_nest_id == -1, "unaffordable nest cannot begin hold")
+	await _hold_input(point, false)
+	_game.run.candy = candy
+	await _hold_input(point, true)
+	_check(_game._held_nest_id == 1, "hold is active before focus loss")
+	_game._on_window_focus_exited()
+	_check(_game._held_nest_id == -1, "focus loss cancels hold")
+	_game._on_window_focus_entered()
+	await _hold_input(point, false)
+	await _hold_input(point, true)
+	_game._request_view_steps(-1.0)
+	_check(_game._held_nest_id == -1, "view change cancels hold")
+	await _hold_input(point, false)
+	_game._view.zoom_steps(1.0, false)
+	_game._update_nest_prompts()
+	await get_tree().create_timer(0.6).timeout
+	await _hold_input(point, true)
+	_check(_game._held_nest_id == 1, "hold is active before restart")
+	_game.restart_run()
+	_check(_game._held_nest_id == -1, "restart clears pending purchase")
+	await _hold_input(point, false)
+	await _hold_input(point, true)
+	_check(_game._held_nest_id == -1, "research locked nest cannot begin hold")
+	await _hold_input(point, false)
+
+
+func _hold_input(point: Vector2, pressed: bool) -> void:
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = point
+	get_tree().root.push_input(motion, true)
+	await get_tree().process_frame
+	_game.update_pointer_release_state()
+	var event: InputEventMouseButton = InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.position = point
+	event.pressed = pressed
+	Input.parse_input_event(event)
+	if DisplayServer.get_name() == "headless":
+		get_tree().root.push_input(event, true)
+	await get_tree().process_frame
+	_game.update_pointer_release_state()
+
+
+func _capture_hold(label: String) -> void:
+	if "--capture-hold" not in OS.get_cmdline_user_args():
+		return
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(
+		"res://artifacts/nest_hold_20261017_task/%s.png" % label
+	)
 
 
 func _settle() -> void:

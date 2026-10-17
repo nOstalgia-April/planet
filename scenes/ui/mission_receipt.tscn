@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/mission_notice.tscn" id="notice"]
+
+[node name="MissionReceipt" instance=ExtResource("notice")]
+heading = "【星际督查局 · 任务处理回执】"
+first_section = "M星异常“涌现”已得到控制，地表色彩恢复，收容生物已清点。"
+second_section = "经调查，该族群因飞船故障迫降，过量取用当地能源并扩张巢穴，造成星球生态失衡。\n\n现对族群负责人给予口头警告，并开展星际救援申请及生态保护教育。后续救援与安置由督查局接手。"
+third_section = "清扫委托已完成。\n\n附注：遇难请呼叫救援。发现一颗有糖的星球，不代表可以直接入住。"

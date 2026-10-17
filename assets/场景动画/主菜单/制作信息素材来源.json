@@ -1,0 +1,9 @@
+{
+  "ProjectVacuumer.png": "用户本轮提供的 p2 原图，保留透明通道，未重绘。",
+  "制作信息底板.png": "用户本轮提供的 p1 原图；场景使用 AtlasTexture 裁去透明边距，并以 NinePatchRect 横向延展。",
+  "封面无字.png": {
+    "source": "res://assets/场景动画/主菜单/封面.png",
+    "tool": "内置 image_gen",
+    "prompt": "Edit this existing game main-menu background. Remove ONLY the large white English words 'Project Vacuum', their brown glowing outlines, and the tiny pink smiling mascot between the two words. Reconstruct the gray faceted planet and magenta lighting underneath these letters. Preserve the original composition precisely: same planet silhouette, position, scale, pink beam, tiny upper-right pink ringed planet, dark burgundy circular brush halo, black outer background, all hand-painted texture. No new text, no logo, no additional decorations. Full canvas 1920x1080 landscape. The output will serve as a title-free background behind a separate exact artist-supplied logo."
+  }
+}

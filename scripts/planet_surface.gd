@@ -74,8 +74,16 @@ func contains_surface_point(point: Vector2, inset: float = 0.0) -> bool:
 
 func project_to_surface(point: Vector2, inset: float = -1.0) -> Vector2:
 	var margin: float = activity_edge_inset if inset < 0.0 else inset
+	# All edge relief terms fit inside [-1, 1]. Points in this conservative
+	# annulus already lie on soil, so avoid trigonometry for ribbon vertices.
+	var inner: float = get_inner_radius(0.0) + margin
+	var safe_outer: float = maxf(
+		0.0, radius * (SURFACE_RADIUS_RATIO - absf(edge_relief_ratio)) - margin
+	)
+	var distance_squared: float = point.length_squared()
+	if distance_squared >= inner * inner and distance_squared <= safe_outer * safe_outer:
+		return point
 	var limit: float = maxf(0.0, get_outer_radius(point.angle()) - margin)
-	var inner: float = get_inner_radius(point.angle()) + margin
 	var distance: float = point.length()
 	if distance >= inner and distance <= limit:
 		return point

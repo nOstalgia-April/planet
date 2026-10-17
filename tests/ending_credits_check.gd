@@ -34,13 +34,13 @@ func _run() -> void:
 	await _open_preview()
 	var requests_before: int = _menu_requests
 	await _click(_credits.get_node("Skip") as Button)
-	_check(_menu_requests == requests_before + 1, "Skip requests the main menu directly.")
+	_check(_menu_requests == requests_before, "Skip waits for the unskippable receipt.")
 	_check(_finished == 1, "Skipping does not report a natural completion.")
 	await _check_main_menu()
 	await _open_preview()
 	requests_before = _menu_requests
 	await _key(KEY_ESCAPE)
-	_check(_menu_requests == requests_before + 1, "Esc requests the main menu directly.")
+	_check(_menu_requests == requests_before, "Esc waits for the unskippable receipt.")
 	_check(_finished == 1, "Esc does not report a natural completion.")
 	await _check_main_menu()
 	for failure: String in _failures:
@@ -173,19 +173,19 @@ func _check_natural_finish() -> void:
 	_check(_menu_requests == 0, "Credits wait for the last pixel of the drawing to scroll out.")
 	_check(art.get_global_rect().end.y > 0.0, "The drawing is still visible before completion.")
 	_credits._process(2.0)
-	_check(_finished == 1 and _menu_requests == 1, "Natural completion returns to the menu once.")
+	_check(_finished == 1 and _menu_requests == 0, "Natural completion opens the receipt first.")
 	_check(
 		art.get_global_rect().end.y < 0.0, "The drawing fully exits before returning to the menu."
 	)
 	_credits.play()
 	_credits.finish_credits()
 	_credits.skip_credits()
-	_check(
-		_menu_requests == 1 and _finished == 1, "Repeated actions cannot queue duplicate returns."
-	)
+	_check(_menu_requests == 0 and _finished == 1, "Repeated actions cannot bypass the receipt.")
 
 
 func _check_main_menu() -> void:
+	_check(_credits._receipt.playing, "The mission receipt plays before returning to the menu.")
+	_credits._receipt._sequence.custom_step(30.0)
 	await _settle()
 	_check(not get_tree().paused, "Returning to the main menu clears pause.")
 	var current: Node = get_tree().current_scene

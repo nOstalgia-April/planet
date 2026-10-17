@@ -54,7 +54,7 @@ func _run_checks() -> void:
 	await get_tree().process_frame
 	if _failures.is_empty():
 		print(
-			"PASS: mole preview loads, buttons work, held left-button capture settles once, and retry preserves kind"
+			"PASS: mole preview loads, buttons work, basic suction settles once, and retry preserves kind"
 		)
 	else:
 		for failure: String in _failures:
@@ -82,81 +82,29 @@ func _check_capture(preview: Preview, high_value: bool) -> void:
 	_mouse(pointer, false)
 	_step_capture(preview, pointer, 0.1)
 	_check(actor.can_capture(), "Preview actor becomes exposed.")
-	_check(actor.capture_cue.visible, "Hover shows the capture prompt.")
-	_check_pipe_position(preview, "Preview hover")
-	await _capture(preview, "hover")
-	_check(
-		is_equal_approx(actor.capture_hold_seconds, 0.5), "Preview uses the 0.5-second hold rule."
-	)
+	_check(not actor.has_node("CaptureCue"), "Preview has no hold prompt.")
+	_check_pipe_position(preview, "Preview suction")
+	preview._capture_at(0.0, actor.get_capture_point(), false)
+	var duration: float = preview.run.get_pipe_capture_seconds()
 	var candy_before: int = preview.run.candy
 	var caught_before: int = preview._caught_count
-	_step_capture(preview, pointer, 1.0)
-	_check(
-		actor.capture_progress == 0.0 and preview.run.candy == candy_before,
-		"Hovering alone does not capture."
-	)
-	for tap: int in range(4):
-		_mouse(pointer, true)
-		_step_capture(preview, pointer, 0.06)
-		_mouse(pointer, false)
-	_check(
-		actor.capture_progress == 0.0 and not actor.consumed,
-		"Separate taps cannot accumulate capture."
-	)
+	_step_capture(preview, pointer, duration * 0.5)
+	_check(is_equal_approx(actor.capture_progress, 0.5), "Hovering alone advances suction.")
+	_check(actor.art._suction, "Suction displays the struggling expression.")
+	await _capture(preview, "suction")
 	_mouse(pointer, true)
-	_step_capture(preview, pointer, actor.capture_hold_seconds * 0.5)
-	_check(
-		is_equal_approx(actor.capture_progress, 0.5),
-		"Preview advances capture using physical button hold."
-	)
-	_check(actor.art._suction, "Holding displays the crying expression.")
-	_check_pipe_position(preview, "Preview hold")
-	await _capture(preview, "half_hold_cry")
-	var previous_pipe_point: Vector2 = preview._pipe.get_global_transform_with_canvas().origin
-	var moved_pointer: Vector2 = pointer + Vector2(actor.get_capture_hit_rect().size.x * 0.15, 0.0)
-	_step_capture(preview, moved_pointer, 0.0)
-	_check_pipe_position(preview, "Preview movement during hold")
-	_check(
-		(
-			preview._pipe.get_global_transform_with_canvas().origin.distance_to(previous_pipe_point)
-			> 5.0
-		),
-		"Moving within the exposed mole also moves the visible vacuum."
-	)
-	_check(preview.run.candy == candy_before, "Incomplete capture does not pay candy.")
 	_mouse(pointer, false)
-	_check(
-		actor.capture_progress == 0.0 and not actor.art._suction,
-		"Preview mouse-up resets immediately."
-	)
-	_mouse(pointer, true)
-	_step_capture(preview, pointer, 0.1)
+	_check(is_equal_approx(actor.capture_progress, 0.5), "Mouse release does not reset suction.")
 	_step_capture(preview, Vector2(-100, -100), 0.1)
-	_check(
-		actor.capture_progress == 0.0 and not actor.art._suction,
-		"Leaving the preview mole resets held capture."
-	)
-	_step_capture(preview, pointer, actor.capture_hold_seconds - 0.001)
-	_check(
-		not actor.consumed and preview.run.candy == candy_before,
-		"Preview respects full hold duration."
-	)
-	_step_capture(preview, pointer, 0.002)
-	_check(
-		preview._caught_count == caught_before + 1,
-		"Completed hold increments the caught count once."
-	)
-	_check(preview.run.candy > candy_before, "Completed capture pays candy.")
-	_check(preview._slimes.is_empty(), "Capture removes the actor from active monsters.")
+	_check(actor.capture_progress == 0.0 and not actor.art._suction, "Leaving resets suction.")
+	_step_capture(preview, pointer, duration + 0.001)
+	_check(preview._caught_count == caught_before + 1, "Suction increments the count once.")
+	_check(preview.run.candy > candy_before, "Capture pays treasure.")
+	_check(preview._slimes.is_empty(), "Capture removes the actor.")
 	await _capture(preview, "caught")
 	var candy_after: int = preview.run.candy
-	_step_capture(preview, pointer, 0.1)
-	_mouse(pointer, false)
-	_check(preview.run.candy == candy_after, "Extra held time cannot award the capture again.")
-	_check(
-		preview._caught_count == caught_before + 1,
-		"Extra held time cannot count the capture again."
-	)
+	_step_capture(preview, pointer, 0.0)
+	_check(preview.run.candy == candy_after, "Capture cannot pay twice.")
 	preview._process(preview.retry_seconds * 0.5)
 	preview._process(preview.retry_seconds * 0.6)
 	_check(is_instance_valid(preview._preview_actor), "Automatic retry spawns a new actor.")
@@ -171,7 +119,6 @@ func _step_capture(preview: Preview, pointer: Vector2, seconds: float) -> void:
 	if DisplayServer.get_name() == "headless":
 		# Headless has no OS pointer, but Input still tracks the injected held button.
 		var holding: bool = preview.update_pointer_release_state()
-		preview._drive_drill_capture(seconds, pointer, holding)
 		var world_pointer: Vector2 = (
 			preview._world.get_global_transform_with_canvas().affine_inverse() * pointer
 		)
@@ -199,10 +146,10 @@ func _capture(preview: Preview, label: String) -> void:
 		return
 	await get_tree().process_frame
 	await RenderingServer.frame_post_draw
-	DirAccess.make_dir_recursive_absolute("res://artifacts/mole_hold_refine_20261015")
+	DirAccess.make_dir_recursive_absolute("res://artifacts/mole_basic_suction_20261017")
 	var variant: String = "valuable" if preview._preview_valuable else "ordinary"
 	var path: String = (
-		"res://artifacts/mole_hold_refine_20261015/preview_%s_%s.png" % [variant, label]
+		"res://artifacts/mole_basic_suction_20261017/preview_%s_%s.png" % [variant, label]
 	)
 	_check(
 		get_viewport().get_texture().get_image().save_png(path) == OK,

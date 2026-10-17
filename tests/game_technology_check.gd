@@ -169,7 +169,7 @@ func _check_net_size(demo: DemoScript, page: InteractivePageScript) -> void:
 		_check(demo.run.purchase_technology("net_capacity"), "capacity upgrades precede size")
 	await _settle()
 	_check(page._nodes["net_size"].state == NodeScript.State.AVAILABLE, "max capacity opens size immediately")
-	_check(page.has_unlocked_candidate(), "new size research is discoverable")
+	_check(page.has_available_technology(), "new size research is available")
 	_check(page._nodes["net_size"].level_label.text == "Lv.1/4", "size starts at the existing radius")
 	for resolution: Vector2i in [Vector2i(1280, 800), Vector2i(1920, 1080)]:
 		root.size = resolution

@@ -135,7 +135,7 @@ func _run() -> void:
 		_game._restoration.bright_background.modulate.a == 0.0,
 		"all colors retain the colored background while an existing nest is not automated"
 	)
-	_check(_game._restoration.core.modulate.a == 0.0, "old core does not obscure restored globe")
+	_check(_game._restoration.core.modulate.a == 1.0, "all colors keep the animated core visible")
 	_check_core_white(0.0, "Three colors before full automation")
 	var rotation: float = _game._world.rotation
 	_game._view._process(1.0)
@@ -170,6 +170,10 @@ func _run() -> void:
 		"all current nests automated enables white even with monsters remaining"
 	)
 	_check_core_white(1.0, "Three-color white transition complete")
+	_check(
+		_game._restoration.core.modulate.a == 1.0,
+		"Full automation keeps the core visible while monsters remain."
+	)
 	for species: int in range(3):
 		_game._population_palette.emphasize_species(species, 10.0)
 		_game._population_palette.advance_population(Vector3.ZERO, 0.5)

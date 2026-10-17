@@ -177,7 +177,9 @@ func _check_sequence_and_triggers() -> void:
 	_check(nest.alive_slimes == 0, "Production remains blocked during camera recovery.")
 	var final_heading: float = _game._world.rotation
 	_until(Discovery.Phase.IDLE)
-	_check(not nest.is_discovering and nest.spawn_clock == 0.0, "Production starts after recovery.")
+	_check(not nest.is_discovering, "Production starts after recovery.")
+	var first_delay: float = _game.run.get_nest_spawn_interval(nest.nest_id) - nest.spawn_clock
+	_check(first_delay >= 0.0 and first_delay <= 1.0, "The first burst waits zero to one second.")
 	_check(
 		is_equal_approx(_game._view.presentation_magnification, 1.0),
 		"Recovery ends at normal distance."
@@ -187,12 +189,23 @@ func _check_sequence_and_triggers() -> void:
 		not _game._view.presentation_locked and not discovery.bubble.visible,
 		"Presentation cleans up."
 	)
-	_game.run._advance_nest_population(nest, _game.run.get_nest_spawn_interval(nest.nest_id) + 0.01)
-	_check(nest.alive_slimes > 0, "The nest produces normally after recovery.")
+	_game.run._advance_nest_population(nest, maxf(0.0, first_delay - 0.01))
+	_check(nest.alive_slimes == 0, "The first burst waits for its sampled delay.")
+	_game.run._advance_nest_population(nest, 0.02)
+	_check(nest.alive_slimes > 0, "The nest produces within one second after recovery.")
+	var first_population: int = nest.alive_slimes
+	_game.run._advance_nest_population(nest, 1.0)
+	_check(nest.alive_slimes == first_population, "Later bursts retain their normal cooldown.")
 	_check(_reveal_count == 1, "First new slime nest receives one reveal.")
 	_request(NestState.Species.SLIME)
 	_check(
 		_game.run.nests.size() == 4 and _reveal_count == 1, "Later known species appear normally."
+	)
+	var known_nest: NestState = _game.run.nests.back()
+	first_delay = (_game.run.get_nest_spawn_interval(known_nest.nest_id) - known_nest.spawn_clock)
+	_check(
+		first_delay >= 0.0 and first_delay <= 1.0,
+		"A nest without a discovery presentation also bursts within one second."
 	)
 	for species: int in [NestState.Species.MUCUS, NestState.Species.DRILL]:
 		_game._view.zoom_steps(-1.0, false)
@@ -204,6 +217,14 @@ func _check_sequence_and_triggers() -> void:
 		_until(Discovery.Phase.IDLE)
 		_check(not _game._view.is_overview(), "New species ends in near view.")
 		_check(_game._population_palette.accent_species == species, "Each species gets its accent.")
+		var species_nest: NestState = _game.run.nests.back()
+		first_delay = (
+			_game.run.get_nest_spawn_interval(species_nest.nest_id) - species_nest.spawn_clock
+		)
+		_check(
+			first_delay >= 0.0 and first_delay <= 1.0,
+			"Every discovered species receives a first burst within one second."
+		)
 	_check(_reveal_count == 3, "Each newly discovered species receives one reveal.")
 
 

@@ -30,8 +30,8 @@ extends Resource
 @export_range(0.0, 100.0, 0.1) var passive_income_per_second: float = 1.5
 @export_range(0.1, 60.0, 0.1) var automatic_income_interval: float = 3.0
 @export_range(1, 100, 1) var slime_reward: int = 1
-@export var base_value_multipliers: PackedInt32Array = PackedInt32Array([1, 2, 5, 10, 25])
-@export var base_value_upgrade_costs: PackedInt32Array = PackedInt32Array([40, 180, 900, 3600])
+@export var base_value_multipliers: PackedInt32Array = PackedInt32Array([1, 2, 5, 10])
+@export var base_value_upgrade_costs: PackedInt32Array = PackedInt32Array([40, 180, 900])
 @export var nest_population_limits: PackedInt32Array = PackedInt32Array([10, 30, 60])
 @export
 var pipe_upgrade_costs: PackedInt32Array = PackedInt32Array([10, 20, 50, 300, 800, 1600, 3000])

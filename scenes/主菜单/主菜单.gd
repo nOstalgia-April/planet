@@ -2,7 +2,7 @@ extends Control
 
 const SharedCache = preload("res://scripts/art_resource_cache.gd")
 
-const DEFAULT_START_SCENE: String = "res://features/场景预览/近景游玩预览.tscn"
+const DEFAULT_START_SCENE: String = "res://scenes/game.tscn"
 const OPENING_SCENE: String = "res://scenes/开头动画/开头动画.tscn"
 const START_TRANSITION: String = "event:/AnimationSystem/GameStart_Transition"
 const GAMEPLAY_MUSIC: String = "event:/Mx/Mx_GamePlay"
@@ -16,9 +16,10 @@ var _start_requested: bool = false
 var _prepared_scene: PackedScene
 
 @onready var _canvas: Control = $画布
-@onready var _preview_panel: Control = $画布/预览选择
+@onready var _credits_panel: Control = $画布/制作信息弹窗
 @onready var _start_button: Button = $画布/开始
-@onready var _preview_button: Button = $画布/预览
+@onready var _credits_button: Button = $画布/制作信息
+@onready var _credits_close: Button = $画布/制作信息弹窗/底板/关闭
 
 
 func _ready() -> void:
@@ -42,8 +43,8 @@ func _start() -> void:
 	_start_requested = true
 	_start_button.disabled = true
 	_start_button.text = "准备中…"
-	_preview_button.disabled = true
-	_preview_panel.hide()
+	_credits_button.disabled = true
+	_credits_panel.hide()
 	# The start sound answers the click. A direct entry skips the opening, so
 	# its music follows the transition; the opening brings its own sound.
 	GameAudio.play_transition(
@@ -149,7 +150,7 @@ func _loading_failed() -> void:
 	set_process(false)
 	_start_button.disabled = false
 	_start_button.text = "重试"
-	_preview_button.disabled = false
+	_credits_button.disabled = false
 	GameAudio.play_music("event:/Mx/Mx_MainMenu")
 	push_error("无法准备开始场景：" + _entry_scene_path())
 
@@ -160,8 +161,26 @@ func _open_scene(path: String) -> void:
 		push_error("无法打开场景：%s (%d)" % [path, result])
 
 
-func _toggle_previews() -> void:
-	_preview_panel.visible = not _preview_panel.visible
+func _open_credits() -> void:
+	_credits_panel.show()
+	_credits_close.grab_focus()
+	_start_button.focus_mode = Control.FOCUS_NONE
+	_credits_button.focus_mode = Control.FOCUS_NONE
+	$画布/退出.focus_mode = Control.FOCUS_NONE
+
+
+func _close_credits() -> void:
+	_credits_panel.hide()
+	_start_button.focus_mode = Control.FOCUS_ALL
+	_credits_button.focus_mode = Control.FOCUS_ALL
+	$画布/退出.focus_mode = Control.FOCUS_ALL
+	_credits_button.grab_focus()
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if _credits_panel.visible and event.is_action_pressed("ui_cancel"):
+		_close_credits()
+		get_viewport().set_input_as_handled()
 
 
 func _quit() -> void:

@@ -131,6 +131,7 @@ func configure(
 ) -> void:
 	assert(planet_surface != null)
 	_preview = false
+	_render_detail = true
 	surface = planet_surface
 	source_nest_id = nest_id
 	half_width = trail_half_width
@@ -146,6 +147,34 @@ func configure(
 	_sample_times.clear()
 	_clear_geometry_cache()
 	append_ground_point(at)
+
+
+func reset_for_pool() -> void:
+	hide()
+	process_mode = Node.PROCESS_MODE_DISABLED
+	surface = null
+	source_nest_id = -1
+	source_actor_id = 0
+	remaining = 0.0
+	anchors.clear()
+	_ground_points.clear()
+	_sample_times.clear()
+	_hit_bounds = Rect2()
+	_hit_vertices.clear()
+	_hit_colors.clear()
+	_hit_triangles.clear()
+	_hit_triangle_bounds.clear()
+	_clear_geometry_cache()
+	for polygon: Polygon2D in [_edge, _ground, _highlight]:
+		polygon.hide()
+		polygon.polygons = []
+		polygon.polygon = PackedVector2Array()
+		polygon.uv = PackedVector2Array()
+		polygon.vertex_colors = PackedColorArray()
+
+
+func get_contact_bounds() -> Rect2:
+	return _hit_bounds
 
 
 func append_ground_point(at: Vector2, rebuild: bool = true) -> void:
@@ -260,6 +289,8 @@ func is_detail_on_screen() -> bool:
 
 func refresh_surface(force: bool = true, render_detail: bool = true) -> void:
 	var returning_to_view: bool = render_detail and not _render_detail
+	if returning_to_view:
+		_clear_geometry_cache()
 	if not force and _mesh_elapsed < 0.05 and not returning_to_view:
 		return
 	_render_detail = render_detail
@@ -393,7 +424,13 @@ func _write_strip(
 	var uvs: PackedVector2Array = PackedVector2Array()
 	var contact_vertices: PackedVector2Array = PackedVector2Array()
 	contact_vertices.resize(vertices.size())
-	if polygon.texture != null:
+	var textured: bool = polygon.texture != null
+	var has_tail: bool = tail_texture != null
+	var texture_size: Vector2 = polygon.texture.get_size() if textured else Vector2.ZERO
+	var source_half_height: float = float(source_region.size.y - 1) * 0.5
+	var source_center_y: float = float(source_region.position.y) + source_half_height
+	var tail_half_height: float = float(tail_source_region.size.y - 1) * 0.5
+	if textured and _render_detail:
 		uvs.resize(vertices.size())
 	var triangles: Array[PackedInt32Array] = []
 	for index: int in range(_ground_points.size()):
@@ -406,63 +443,67 @@ func _write_strip(
 			color.a = ages[index] * 0.94
 		elif polygon == _highlight:
 			color.a *= smoothstep(-0.3, 0.7, sin(distances[index] * 0.19)) * 0.85
+		# Both sides use the same texture column, fade and tail blend. Compute
+		# those once per sample rather than repeating them for every vertex.
+		var source_x: float = 0.0
+		var painted_sides: Vector2 = Vector2(left, right)
+		var source_ys: Vector2 = Vector2.ZERO
+		var edge_wave: float = sin(distances[index] * 0.27) * 0.16
+		var distance_from_tail: float = distances[index] - distances[0]
+		if textured:
+			var along: float = 1.0 - absf(1.0 - fposmod(distances[index] / texture_length, 2.0))
+			source_x = lerpf(float(source_region.position.x), float(source_region.end.x - 1), along)
+			var column: int = clampi(
+				roundi(source_x) - source_region.position.x, 0, _source_edges.size() - 1
+			)
+			source_ys = _source_edges[column]
+			painted_sides = (source_ys - Vector2.ONE * source_center_y) / source_half_height
+			if has_tail:
+				var tail_progress: float = clampf(distance_from_tail / tail_length, 0.0, 1.0)
+				var blend: float = smoothstep(0.55, 1.0, tail_progress)
+				var tail_x: float = (
+					tail_source_region.position.x
+					+ tail_progress * float(tail_source_region.size.x - 1) * 0.5
+				)
+				var tail_column: int = clampi(
+					roundi(tail_x) - tail_source_region.position.x, 0, _tail_edges.size() - 1
+				)
+				var tail_sides: Vector2 = (
+					(
+						_tail_edges[tail_column]
+						- Vector2.ONE * tail_source_region.position.y
+						- Vector2.ONE * tail_half_height
+					)
+					/ tail_half_height
+				)
+				painted_sides = Vector2(
+					lerpf(tail_sides.x, painted_sides.x, blend),
+					lerpf(tail_sides.y, painted_sides.y, blend)
+				)
+				color.a *= smoothstep(0.0, 0.08, tail_progress)
+			painted_sides += Vector2.ONE * edge_wave
 		for side_index: int in range(2):
-			var vertex_color: Color = color
-			var side: float = left if side_index == 0 else right
-			var source_uv: Vector2 = Vector2.ZERO
-			if polygon.texture != null:
-				var along: float = 1.0 - absf(1.0 - fposmod(distances[index] / texture_length, 2.0))
-				var source_x: float = lerpf(
-					float(source_region.position.x), float(source_region.end.x - 1), along
-				)
-				var column: int = clampi(
-					roundi(source_x) - source_region.position.x, 0, _source_edges.size() - 1
-				)
-				var source_y: float = _source_edges[column][side_index]
-				source_uv = Vector2(source_x + 0.5, source_y)
-				var source_half_height: float = float(source_region.size.y - 1) * 0.5
-				var source_center_y: float = float(source_region.position.y) + source_half_height
-				side = (source_y - source_center_y) / source_half_height
-				if tail_texture != null:
-					var tail_progress: float = clampf(
-						(distances[index] - distances[0]) / tail_length, 0.0, 1.0
-					)
-					var blend: float = smoothstep(0.55, 1.0, tail_progress)
-					var tail_x: float = (
-						tail_source_region.position.x
-						+ tail_progress * float(tail_source_region.size.x - 1) * 0.5
-					)
-					var tail_column: int = clampi(
-						roundi(tail_x) - tail_source_region.position.x, 0, _tail_edges.size() - 1
-					)
-					var tail_y: float = _tail_edges[tail_column][side_index]
-					var tail_half_height: float = float(tail_source_region.size.y - 1) * 0.5
-					var tail_side: float = (
-						(tail_y - tail_source_region.position.y - tail_half_height)
-						/ tail_half_height
-					)
-					side = lerpf(tail_side, side, blend)
-					vertex_color.a *= smoothstep(0.0, 0.08, tail_progress)
-					source_uv = Vector2(
-						(distances[index] - distances[0]) * polygon.texture.get_width(),
-						side_index * polygon.texture.get_height()
-					)
-				side += sin(distances[index] * 0.27) * 0.16
 			var vertex_index: int = index * 2 + side_index
-			var point: Vector2 = _ground_points[index] + normals[index] * widths[index] * side
+			var point: Vector2 = (
+				_ground_points[index] + normals[index] * widths[index] * painted_sides[side_index]
+			)
 			contact_vertices[vertex_index] = point if _preview else _clip_to_ground(point)
-			if tail_texture != null:
-				# Render the complete alpha silhouette; contact uses the sampled painted edges.
-				var full_side: float = (
-					(-1.0 if side_index == 0 else 1.0) + sin(distances[index] * 0.27) * 0.16
-				)
+			colors[vertex_index] = color
+			if not _render_detail:
+				continue
+			if has_tail:
+				# Render the complete alpha silhouette; contact uses the painted edges.
+				var full_side: float = (-1.0 if side_index == 0 else 1.0) + edge_wave
 				point = _ground_points[index] + normals[index] * widths[index] * full_side
 			if vertex_index >= previous_size or sources[vertex_index] != point:
 				sources[vertex_index] = point
 				vertices[vertex_index] = point if _preview else _clip_to_ground(point)
-			colors[vertex_index] = vertex_color
-			if polygon.texture != null:
-				uvs[vertex_index] = source_uv
+			if textured:
+				uvs[vertex_index] = (
+					Vector2(distance_from_tail * texture_size.x, side_index * texture_size.y)
+					if has_tail
+					else Vector2(source_x + 0.5, source_ys[side_index])
+				)
 		if index == 0:
 			continue
 		var start: int = (index - 1) * 2

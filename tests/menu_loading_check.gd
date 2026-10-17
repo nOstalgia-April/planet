@@ -81,7 +81,7 @@ func _check_early_start() -> void:
 	menu._start()
 	_check(menu._start_requested and menu._start_button.disabled, "repeated Start stays disabled")
 	_check(
-		menu._preview_button.disabled and not menu._preview_panel.visible,
+		menu._credits_button.disabled and not menu._credits_panel.visible,
 		"preview hides while entering"
 	)
 	_check(not get_tree().root.gui_disable_input, "Start does not lock global GUI input")
@@ -104,7 +104,7 @@ func _check_retry() -> void:
 		not menu._start_button.disabled and menu._start_button.text == "重试",
 		"failure restores Retry"
 	)
-	_check(not menu._preview_button.disabled, "failure restores preview access")
+	_check(not menu._credits_button.disabled, "failure restores preview access")
 	await _expect_released(path)
 	_write_fixture(path, "ok")
 	menu._start_button.pressed.emit()

@@ -134,17 +134,6 @@ func has_available_technology() -> bool:
 	return false
 
 
-# Only first-time research needs a discovery badge; owned technologies can still upgrade.
-func has_unlocked_candidate() -> bool:
-	for id: String in TECHNOLOGIES:
-		var unowned: bool = (
-			_current_level(id) == 0 or (id == "net_size" and _run.net_size_level == 0)
-		)
-		if unowned and _state_for(id) == NodeScript.State.AVAILABLE:
-			return true
-	return false
-
-
 func select_node(id: String) -> void:
 	assert(_nodes.has(id), "Technology selection must name an existing upgrade item.")
 	if _hovered_key != id:

@@ -13,6 +13,7 @@ const PageScript = preload("res://scripts/ui/technology_page.gd")
 const DockScript = preload("res://scripts/ui/bottom_dock.gd")
 const GameMenu = preload("res://scripts/ui/game_menu.gd")
 const EndingCredits = preload("res://scripts/ui/ending_credits.gd")
+const NestUpgradeButton = preload("res://scripts/ui/nest_upgrade_button.gd")
 const VIEW_ZOOM_OUT: Texture2D = preload("res://assets/ui/game_menu/view_switch.tres")
 const VIEW_ZOOM_IN: Texture2D = preload("res://assets/ui/game_menu/zoom_in.tres")
 
@@ -29,6 +30,7 @@ var _shop_layout_queued: bool = false
 var _nest_anchor: PackedVector2Array = PackedVector2Array()
 var _nest_hover_polygon: PackedVector2Array = PackedVector2Array()
 var _run: PrototypeRun
+var nest_prompts: Array[NestUpgradeButton] = []
 
 @onready var _nest_card: Control = $NestCard
 @onready var _technology: PageScript = %Technology
@@ -127,7 +129,7 @@ func _place_tool_dock() -> void:
 func refresh_progression(run: PrototypeRun) -> void:
 	_run = run
 	_technology.refresh(run)
-	_technology_badge.visible = _technology.has_unlocked_candidate()
+	_technology_badge.visible = _technology.has_available_technology()
 	_tool_dock.refresh(run)
 	refresh_timers(run)
 	_queue_shop_layout()
@@ -138,6 +140,9 @@ func refresh_timers(run: PrototypeRun) -> void:
 
 
 func is_over_ui(viewport_position: Vector2) -> bool:
+	for prompt: NestUpgradeButton in nest_prompts:
+		if prompt.contains_pointer(viewport_position):
+			return true
 	if (
 		game_menu.contains_pointer(viewport_position)
 		or _completion.is_visible_in_tree()
@@ -192,6 +197,26 @@ func _show_technology() -> void:
 	_technology.show()
 	_place_shops()
 	_sync_pause()
+
+
+func _input(event: InputEvent) -> void:
+	# Stories and previews disable gameplay keyboard handling while owning input.
+	if not is_processing_unhandled_key_input() or not event is InputEventKey:
+		return
+	var key: InputEventKey = event as InputEventKey
+	if key.keycode != KEY_SPACE or key.get_modifiers_mask():
+		return
+	if (
+		game_menu.is_open()
+		or is_technology_open()
+		or _presentation_paused
+		or _completion.is_visible_in_tree()
+	):
+		return
+	# Consume releases and repeats too, before a focused button can activate.
+	get_viewport().set_input_as_handled()
+	if key.pressed and not key.echo:
+		_toggle_pause()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:

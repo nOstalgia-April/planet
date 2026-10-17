@@ -1,21 +1,9 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=3 format=3]
 
-[ext_resource type="PackedScene" path="res://features/场景预览/近景游玩预览.tscn" id="game"]
+[ext_resource type="PackedScene" path="res://scenes/game.tscn" id="game"]
 [ext_resource type="Script" path="res://features/tutorial_intro/preview_navigation.gd" id="navigation"]
-[ext_resource type="Script" path="res://features/tutorial_intro/story_game.gd" id="script"]
-[ext_resource type="Script" path="res://features/tutorial_intro/story_restoration.gd" id="restoration"]
-[ext_resource type="PackedScene" path="res://features/tutorial_intro/story_flow.tscn" id="story"]
 
 [node name="MascotFlowPreview" instance=ExtResource("game")]
-script = ExtResource("script")
-start_in_overview = true
-
-[node name="PlanetRestoration" parent="."]
-script = ExtResource("restoration")
-
-[node name="StoryFlow" parent="." node_paths=PackedStringArray("game", "restoration") instance=ExtResource("story")]
-game = NodePath("..")
-restoration = NodePath("../PlanetRestoration")
 
 [node name="PreviewNavigation" type="Node" parent="." node_paths=PackedStringArray("game")]
 process_mode = 3

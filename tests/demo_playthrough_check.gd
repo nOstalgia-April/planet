@@ -180,7 +180,7 @@ func _invest(demo: DemoScript) -> void:
 		demo._layout.technology_upgrade_requested.emit("governance")
 	elif first_nest.level == 1:
 		_invest_in_nest(demo, first_nest)
-	elif demo.run.base_value_level == 3 and demo.run.pipe_level >= 4:
+	elif demo.run.get_technology_cost("base_value") >= 0 and demo.run.pipe_level >= 4:
 		demo._layout.technology_upgrade_requested.emit("base_value")
 	elif demo.run.get_pipe_upgrade_cost() >= 0:
 		demo._layout.quick_upgrade_requested.emit(0)

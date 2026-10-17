@@ -60,19 +60,15 @@ func _run() -> void:
 		_check(back.modulate.r < front.modulate.r, "overlapped rear body is subdued")
 		_check(is_equal_approx(isolated.modulate.r, 1.0), "isolated body retains source color")
 		var original: Vector2 = mole.position
-		var mole_point: Vector2 = mole.get_capture_hit_rect().get_center()
-		_game._update_drill_hover(mole_point)
-		_game._drive_drill_capture(0.1, mole_point, true)
-		_game._capture_at(0.0, mole.get_capture_point(), false)
+		_game._capture_at(0.01, mole.get_capture_point(), true)
 		_game._slime_root._process(1.0)
 		_check(
-			_game._hovered_drill == mole and mole.capture_progress > 0.0,
-			"held capture route selects the exposed mole"
+			_game._capture_targets.has(mole) and mole.capture_progress > 0.0,
+			"basic suction route selects the exposed mole"
 		)
 		_check(mole.get_index() > front.get_index(), "active mole renders above crowd")
 		_check(is_equal_approx(mole.modulate.r, 1.0), "active mole retains full color")
 		await _capture("mole_capture", resolution)
-		_game._update_drill_hover(Vector2(-100, -100))
 		_game._capture_at(0.0, mole.get_capture_point(), false)
 		mole.position = original
 		mole.refresh_presentation()
@@ -125,7 +121,7 @@ func _run() -> void:
 		push_error(failure)
 	print(
 		(
-			"PASS: crowd depth, all six mole phases, hold/leave, rotation and restart at two sizes."
+			"PASS: crowd depth, all six mole phases, suction/leave, rotation and restart at two sizes."
 			if _failures.is_empty()
 			else "FAIL: monster depth"
 		)

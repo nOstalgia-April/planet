@@ -1,8 +1,8 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scenes/主菜单/主菜单.gd" id="r001"]
 
-[ext_resource type="Texture2D" path="res://assets/场景动画/主菜单/封面.png" id="r002"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/主菜单/封面无字.png" id="r002"]
 
 [ext_resource type="Theme" path="res://resources/场景预览主题.tres" id="r003"]
 
@@ -11,6 +11,13 @@
 [ext_resource type="Texture2D" path="res://assets/场景动画/主菜单/选中底板.png" id="r007"]
 
 [ext_resource type="PackedScene" path="res://scenes/effects/menu_atmosphere.tscn" id="menu_atmosphere"]
+
+[ext_resource type="Texture2D" path="res://assets/场景动画/主菜单/ProjectVacuumer.png" id="title"]
+[ext_resource type="Texture2D" path="res://assets/场景动画/主菜单/制作信息底板.png" id="credits"]
+
+[sub_resource type="AtlasTexture" id="credits_crop"]
+atlas = ExtResource("credits")
+region = Rect2(73, 68, 486, 520)
 
 [sub_resource type="AtlasTexture" id="r005"]
 atlas = ExtResource("r004")
@@ -59,11 +66,18 @@ expand_mode = 1
 
 [node name="Atmosphere" parent="画布" instance=ExtResource("menu_atmosphere")]
 
+[node name="英文名" type="TextureRect" parent="画布"]
+offset_right = 1920.0
+offset_bottom = 1080.0
+texture = ExtResource("title")
+expand_mode = 1
+mouse_filter = 2
+
 [node name="中文名" type="Label" parent="画布"]
 offset_left = 720.0
-offset_top = 616.0
+offset_top = 672.0
 offset_right = 1220.0
-offset_bottom = 674.0
+offset_bottom = 730.0
 text = "星 球 清 扫 计 划"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 28
@@ -82,12 +96,12 @@ theme_override_styles/normal = SubResource("r006")
 theme_override_styles/hover = SubResource("r009")
 theme_override_styles/pressed = SubResource("r009")
 
-[node name="预览" type="Button" parent="画布"]
+[node name="制作信息" type="Button" parent="画布"]
 offset_left = 92.0
 offset_top = 770.0
 offset_right = 402.0
 offset_bottom = 866.0
-text = "预览"
+text = "制作信息"
 theme_override_font_sizes/font_size = 32
 theme_override_styles/disabled = SubResource("r006")
 theme_override_styles/normal = SubResource("r006")
@@ -105,53 +119,276 @@ theme_override_styles/normal = SubResource("r006")
 theme_override_styles/hover = SubResource("r009")
 theme_override_styles/pressed = SubResource("r009")
 
-[node name="预览选择" type="PanelContainer" parent="画布"]
+[node name="制作信息弹窗" type="Control" parent="画布"]
 visible = false
-offset_left = 444.0
-offset_top = 608.0
-offset_right = 1196.0
-offset_bottom = 900.0
+offset_right = 1920.0
+offset_bottom = 1080.0
+mouse_filter = 0
 
-[node name="列表" type="GridContainer" parent="画布/预览选择"]
-layout_mode = 2
-theme_override_constants/h_separation = 12
-theme_override_constants/v_separation = 12
-columns = 1
+[node name="遮罩" type="ColorRect" parent="画布/制作信息弹窗"]
+offset_right = 1920.0
+offset_bottom = 1080.0
+color = Color(0, 0, 0, 0.76)
+mouse_filter = 2
 
-[node name="开头说话速通" type="Button" parent="画布/预览选择/列表"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-text = "1. 开头看板娘说话速通"
+[node name="底板" type="NinePatchRect" parent="画布/制作信息弹窗"]
+offset_left = 320.0
+offset_top = 130.0
+offset_right = 1600.0
+offset_bottom = 950.0
+texture = SubResource("credits_crop")
+patch_margin_left = 32
+patch_margin_top = 32
+patch_margin_right = 90
+patch_margin_bottom = 90
+mouse_filter = 0
 
-[node name="第二阶段说话" type="Button" parent="画布/预览选择/列表"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-text = "2. 第二阶段入场与说话"
+[node name="标题" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 68.0
+offset_top = 40.0
+offset_right = 1050.0
+offset_bottom = 100.0
+theme_override_font_sizes/font_size = 40
+text = "制作信息"
+mouse_filter = 2
 
-[node name="第三阶段说话" type="Button" parent="画布/预览选择/列表"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-text = "3. 第三阶段入场与说话"
+[node name="关闭" type="Button" parent="画布/制作信息弹窗/底板"]
+offset_left = 1100.0
+offset_top = 40.0
+offset_right = 1212.0
+offset_bottom = 100.0
+text = "关闭"
+theme_override_font_sizes/font_size = 26
 
-[node name="看板娘完整流程" type="Button" parent="画布/预览选择/列表"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-text = "4. 看板娘完整流程（Esc 返回）"
+[node name="缘起" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 68.0
+offset_top = 134.0
+offset_right = 1212.0
+offset_bottom = 178.0
+theme_override_font_sizes/font_size = 27
+text = "结合聚光灯此次的jam主题「涌现」，我们团队从反面出发"
+mouse_filter = 2
+
+[node name="想法" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 68.0
+offset_top = 194.0
+offset_right = 1212.0
+offset_bottom = 240.0
+theme_override_font_sizes/font_size = 30
+theme_override_colors/font_color = Color(1, 0.72, 0.81, 1)
+text = "“如果游戏的主要玩法不是涌现，而是抑制涌现，会不会很有意思？”"
+mouse_filter = 2
+
+[node name="介绍" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 68.0
+offset_top = 266.0
+offset_right = 1212.0
+offset_bottom = 348.0
+theme_override_font_sizes/font_size = 27
+theme_override_constants/line_spacing = 10
+text = "于是，我们做出了星球清扫计划，有着一些增量游戏的乐趣，\n更呈现了团队每个人能带给玩家的全部努力。"
+autowrap_mode = 3
+mouse_filter = 2
+
+[node name="分隔" type="ColorRect" parent="画布/制作信息弹窗/底板"]
+offset_left = 68.0
+offset_top = 374.0
+offset_right = 1212.0
+offset_bottom = 376.0
+color = Color(1, 1, 1, 0.25)
+mouse_filter = 2
+
+[node name="名单0职责" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 68.0
+offset_top = 406.0
+offset_right = 303.0
+offset_bottom = 448.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
+text = "游戏策划"
+mouse_filter = 2
+
+[node name="名单0姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 316.0
+offset_top = 406.0
+offset_right = 598.0
+offset_bottom = 448.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "常常、小墨"
+mouse_filter = 2
+
+[node name="名单1职责" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 68.0
+offset_top = 460.0
+offset_right = 303.0
+offset_bottom = 502.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
+text = "视觉美术"
+mouse_filter = 2
+
+[node name="名单1姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 316.0
+offset_top = 460.0
+offset_right = 598.0
+offset_bottom = 502.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "aji、精盐"
+mouse_filter = 2
+
+[node name="名单2职责" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 68.0
+offset_top = 514.0
+offset_right = 303.0
+offset_bottom = 556.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
+text = "角色设计"
+mouse_filter = 2
+
+[node name="名单2姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 316.0
+offset_top = 514.0
+offset_right = 598.0
+offset_bottom = 556.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "精盐"
+mouse_filter = 2
+
+[node name="名单3职责" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 68.0
+offset_top = 568.0
+offset_right = 303.0
+offset_bottom = 610.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
+text = "场景美术"
+mouse_filter = 2
+
+[node name="名单3姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 316.0
+offset_top = 568.0
+offset_right = 598.0
+offset_bottom = 610.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "aji"
+mouse_filter = 2
+
+[node name="名单4职责" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 68.0
+offset_top = 622.0
+offset_right = 303.0
+offset_bottom = 664.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
+text = "动画制作"
+mouse_filter = 2
+
+[node name="名单4姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 316.0
+offset_top = 622.0
+offset_right = 598.0
+offset_bottom = 664.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "aji、精盐"
+mouse_filter = 2
+
+[node name="名单5职责" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 678.0
+offset_top = 406.0
+offset_right = 913.0
+offset_bottom = 448.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
+text = "程序开发"
+mouse_filter = 2
+
+[node name="名单5姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 926.0
+offset_top = 406.0
+offset_right = 1208.0
+offset_bottom = 448.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "常常"
+mouse_filter = 2
+
+[node name="名单6职责" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 678.0
+offset_top = 460.0
+offset_right = 913.0
+offset_bottom = 502.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
+text = "声音设计/作曲"
+mouse_filter = 2
+
+[node name="名单6姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 926.0
+offset_top = 460.0
+offset_right = 1208.0
+offset_bottom = 502.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "fred"
+mouse_filter = 2
+
+[node name="名单7职责" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 678.0
+offset_top = 514.0
+offset_right = 913.0
+offset_bottom = 556.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
+text = "音频交互程序"
+mouse_filter = 2
+
+[node name="名单7姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 926.0
+offset_top = 514.0
+offset_right = 1208.0
+offset_bottom = 556.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "fred"
+mouse_filter = 2
+
+[node name="名单8职责" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 678.0
+offset_top = 568.0
+offset_right = 913.0
+offset_bottom = 610.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(0.72, 0.72, 0.75, 1)
+text = "文案"
+mouse_filter = 2
+
+[node name="名单8姓名" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 926.0
+offset_top = 568.0
+offset_right = 1208.0
+offset_bottom = 610.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "小墨"
+mouse_filter = 2
+
+[node name="致谢" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 68.0
+offset_top = 724.0
+offset_right = 1212.0
+offset_bottom = 770.0
+theme_override_font_sizes/font_size = 28
+text = "最后，十分感谢游玩星球清扫计划Project Vacuumer！"
+horizontal_alignment = 1
+mouse_filter = 2
 
 [connection signal="pressed" from="画布/开始" to="." method="_start"]
-
-[connection signal="pressed" from="画布/预览" to="." method="_toggle_previews"]
-
+[connection signal="pressed" from="画布/制作信息" to="." method="_open_credits"]
 [connection signal="pressed" from="画布/退出" to="." method="_quit"]
-
-[connection signal="pressed" from="画布/预览选择/列表/开头说话速通" to="." method="_open_scene" binds=["res://features/mascot_audio_preview/opening_audio_preview.tscn"]]
-
-[connection signal="pressed" from="画布/预览选择/列表/第二阶段说话" to="." method="_open_scene" binds=["res://features/mascot_audio_preview/phase_two_audio_preview.tscn"]]
-
-[connection signal="pressed" from="画布/预览选择/列表/第三阶段说话" to="." method="_open_scene" binds=["res://features/mascot_audio_preview/phase_three_audio_preview.tscn"]]
-
-[connection signal="pressed" from="画布/预览选择/列表/看板娘完整流程" to="." method="_open_scene" binds=["res://features/tutorial_intro/full_flow_preview.tscn"]]
+[connection signal="pressed" from="画布/制作信息弹窗/底板/关闭" to="." method="_close_credits"]

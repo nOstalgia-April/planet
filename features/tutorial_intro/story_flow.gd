@@ -28,6 +28,15 @@ enum Phase { IDLE, OVERVIEW, ZOOMING, EMERGING, LANDING, SLOWING, TALKING, WAIT_
 @export var second_color_lines: PackedStringArray
 @export var third_color_lines: PackedStringArray
 @export var rescue_lines: PackedStringArray
+@export_group("Voice")
+@export var talk_events: PackedStringArray = PackedStringArray(
+	[
+		"event:/Gibberish/Gibberish_Stage1",
+		"event:/Gibberish/Gibberish_Stage2",
+		"event:/Gibberish/Gibberish_Stage3"
+	]
+)
+@export_range(0.0, 1.0, 0.05) var min_voice_seconds: float = 0.3
 
 var kind: Kind = Kind.NONE
 var phase: Phase = Phase.IDLE
@@ -42,6 +51,9 @@ var _pending_teaching: Array[Kind] = []
 var _airborne: Array[PrototypeSlime] = []
 var _form_tween: Tween
 var _resume_from_speed: float = 1.0
+var _voice: FmodEvent
+var _voice_requested: bool = false
+var _voice_remaining: float = 0.0
 
 @onready var narrative: Dialogue = $StoryLayer/Narrative
 @onready var teaching: Dialogue = $StoryLayer/Teaching
@@ -50,9 +62,12 @@ var _resume_from_speed: float = 1.0
 
 func _ready() -> void:
 	assert(game != null and restoration != null)
+	assert(talk_events.size() == 3)
 	for panel: Dialogue in [narrative, teaching, color_dialogue]:
 		panel.dialogue_finished.connect(_on_dialogue_finished)
 		panel.line_started.connect(_on_line_started)
+		panel.voice_started.connect(_on_voice_started)
+		panel.voice_stopped.connect(_on_voice_stopped)
 	get_viewport().size_changed.connect(_layout_dialogues)
 	_layout_dialogues()
 
@@ -77,6 +92,9 @@ func begin() -> void:
 
 func _process(delta: float) -> void:
 	var real_delta: float = delta / Engine.time_scale
+	_voice_remaining = maxf(0.0, _voice_remaining - real_delta)
+	if not _voice_requested and _voice_remaining <= 0.0:
+		_stop_voice()
 	_elapsed += real_delta
 	if _owns_controls:
 		GameAudio.set_music_ducked(true)
@@ -151,7 +169,6 @@ func _acquire_controls() -> void:
 	game.set_process_unhandled_input(false)
 	game.set_process_unhandled_key_input(false)
 	game._layout.set_process(false)
-	game._layout.set_process_unhandled_key_input(false)
 	game._layout._tool_dock.hide()
 	game._layout._view_shortcut.hide()
 	game._view.presentation_locked = true
@@ -283,11 +300,36 @@ func _transform_to(form: int) -> void:
 
 
 func _reveal_form(form: int) -> void:
+	var was_voicing: bool = _voice_requested
+	_stop_voice()
 	current_form = form
 	active_dialogue.form_index = form
 	active_dialogue.presenter.select_form(form)
 	active_dialogue.presenter.seek(active_dialogue.presenter.entrance_duration())
 	active_dialogue.presenter.set_speaking(active_dialogue.phase == Dialogue.Phase.TYPING)
+	if was_voicing:
+		_on_voice_started(active_dialogue.line_index)
+
+
+func _on_voice_started(_index: int) -> void:
+	_voice_requested = true
+	if _voice == null:
+		_voice = GameAudio.start_loop(talk_events[current_form])
+		_voice_remaining = min_voice_seconds
+
+
+func _on_voice_stopped() -> void:
+	_voice_requested = false
+	if _voice_remaining <= 0.0:
+		_stop_voice()
+
+
+func _stop_voice() -> void:
+	_voice_requested = false
+	_voice_remaining = 0.0
+	if _voice != null:
+		GameAudio.stop_loop(_voice)
+		_voice = null
 
 
 func _on_dialogue_finished() -> void:
@@ -303,6 +345,7 @@ func _begin_resuming() -> void:
 	if _form_tween != null:
 		_form_tween.kill()
 	active_dialogue.stop()
+	_stop_voice()
 	_resume_from_speed = Engine.time_scale
 	game._view.presentation_locked = true
 	_set_phase(Phase.RESUMING)
@@ -329,12 +372,14 @@ func cancel() -> void:
 	for panel: Dialogue in [narrative, teaching, color_dialogue]:
 		panel.stop()
 		panel.presenter.modulate.a = 1.0
+	_stop_voice()
 	_release_controls()
 	kind = Kind.NONE
 	_set_phase(Phase.IDLE)
 
 
 func _exit_tree() -> void:
+	_stop_voice()
 	if _owns_controls:
 		Engine.time_scale = _saved_time_scale
 	GameAudio.set_music_ducked(false)

@@ -47,6 +47,22 @@ func _run() -> void:
 		await _settle()
 		var layout: DiskDemoLayout = _game._layout
 		var menu: Control = layout.game_menu
+		var enabled_before_space: bool = GamePreferences.audio_enabled
+		(menu.get_node("Toolbar/Music") as Button).grab_focus()
+		await _key(KEY_SPACE)
+		_check(get_tree().paused and layout._manual_pause, "space pauses gameplay")
+		_check(
+			GamePreferences.audio_enabled == enabled_before_space,
+			"space shortcut does not activate the focused music button"
+		)
+		await _key(KEY_SPACE, true)
+		_check(get_tree().paused, "holding space does not toggle pause repeatedly")
+		await _key(KEY_SPACE)
+		_check(not get_tree().paused and not layout._manual_pause, "space resumes gameplay")
+		layout.set_process_unhandled_key_input(false)
+		await _key(KEY_SPACE)
+		_check(not get_tree().paused, "space respects story and preview keyboard ownership")
+		layout.set_process_unhandled_key_input(true)
 		_check(not _game.has_node("预览导航"), "preview navigation removed")
 		_check(
 			not layout.has_node("Legacy") and not layout.has_node("Goal"), "obsolete HUD removed"
@@ -68,6 +84,12 @@ func _run() -> void:
 		await _capture("paused", resolution)
 		await _click(menu.get_node("Toolbar/Settings"))
 		_check(menu.is_open() and get_tree().paused, "settings opens while paused")
+		(menu.get_node("%MusicVolume") as HSlider).grab_focus()
+		await _key(KEY_SPACE)
+		_check(
+			menu.is_open() and get_tree().paused and layout._manual_pause,
+			"space preserves pause inside settings"
+		)
 		await _capture("settings", resolution)
 		await _click(menu.get_node("%ResumeGame"))
 		_check(get_tree().paused, "closing settings preserves manual pause")
@@ -173,6 +195,11 @@ func _run() -> void:
 			)
 			await _capture("technology_failed", resolution)
 		_check(layout.is_technology_open() and get_tree().paused, "technology still pauses")
+		await _key(KEY_SPACE)
+		_check(
+			layout.is_technology_open() and get_tree().paused and not layout._manual_pause,
+			"space does not change manual pause inside technology"
+		)
 		await _check_audio_paused(true, "technology keeps music under Music_Menu")
 		await _key(KEY_ESCAPE)
 		_check(
@@ -256,10 +283,15 @@ func _restore_preferences() -> void:
 		DirAccess.remove_absolute(GamePreferences.SAVE_PATH)
 
 
-func _key(key: Key) -> void:
+func _key(key: Key, echo: bool = false) -> void:
 	var event: InputEventKey = InputEventKey.new()
 	event.keycode = key
 	event.pressed = true
+	event.echo = echo
+	get_tree().root.push_input(event, true)
+	event = event.duplicate() as InputEventKey
+	event.pressed = false
+	event.echo = false
 	get_tree().root.push_input(event, true)
 	await _settle()
 

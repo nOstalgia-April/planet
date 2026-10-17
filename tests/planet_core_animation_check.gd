@@ -4,6 +4,9 @@ const Core = preload("res://scripts/planet_core_animation.gd")
 const Game = preload("res://features/场景预览/游玩预览.gd")
 const CoreScene: PackedScene = preload("res://scenes/场景动画/星球核心.tscn")
 const GameScene: PackedScene = preload("res://features/场景预览/近景游玩预览.tscn")
+const TutorialGame = preload("res://features/tutorial_intro/tutorial_game.gd")
+const Tutorial = preload("res://features/tutorial_intro/tutorial_intro.gd")
+const TutorialScene: PackedScene = preload("res://features/tutorial_intro/tutorial_game.tscn")
 
 
 func _ready() -> void:
@@ -11,6 +14,15 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	var static_core: Core = CoreScene.instantiate() as Core
+	static_core.autoplay = false
+	add_child(static_core)
+	await get_tree().create_timer(0.15).timeout
+	assert(not static_core.is_processing() and static_core.current_frame == 0)
+	var static_material: ShaderMaterial = static_core.sprite.material as ShaderMaterial
+	assert(is_zero_approx(static_material.get_shader_parameter("outer_deformation")))
+	static_core.queue_free()
+	await get_tree().process_frame
 	var core: Core = CoreScene.instantiate() as Core
 	core.synchronize_music = false
 	add_child(core)
@@ -36,10 +48,10 @@ func _run() -> void:
 	await get_tree().process_frame
 	var game: Game = GameScene.instantiate() as Game
 	game.start_in_overview = true
+	var live_core: Core = game.get_node("World/PlanetSurface/星球画面/星球核心") as Core
 	get_tree().root.add_child(game)
 	get_tree().current_scene = game
 	game._window_has_focus = true
-	var live_core: Core = game.get_node("World/PlanetSurface/星球画面/星球核心") as Core
 	assert(GameAudio._music_path == "event:/Mx/Mx_GamePlay")
 	assert(GameAudio.get_music_position_seconds("event:/Mx/Mx_MainMenu") == -1.0)
 	await get_tree().create_timer(0.3).timeout
@@ -92,12 +104,60 @@ func _run() -> void:
 	get_tree().current_scene = null
 	game.queue_free()
 	await get_tree().process_frame
+	await _check_opening_core()
 	GameAudio.play_music("event:/Mx/Mx_MainMenu")
 	assert(GameAudio.get_music_position_seconds("event:/Mx/Mx_GamePlay") == -1.0)
 	print(
 		"PASS: all 46 pages, bounded cache, frame boundaries, final hold, backward/loop seek, FMOD pause, displayed-frame brush clock and scene exit."
 	)
 	get_tree().quit()
+
+
+func _check_opening_core() -> void:
+	# The preceding clock checks deliberately leave their music instance paused.
+	GameAudio.stop_music()
+	var game: TutorialGame = TutorialScene.instantiate() as TutorialGame
+	get_tree().root.add_child(game)
+	get_tree().current_scene = game
+	game._window_has_focus = true
+	var core: Core = game._core
+	var material: ShaderMaterial = core.sprite.material as ShaderMaterial
+	await get_tree().create_timer(0.15).timeout
+	assert(game.tutorial.phase == Tutorial.Phase.OVERVIEW)
+	assert(not core.is_processing() and core.current_frame == 0)
+	assert(is_zero_approx(material.get_shader_parameter("outer_deformation")))
+	var deadline: int = Time.get_ticks_msec() + 5000
+	while game.tutorial.phase in [Tutorial.Phase.OVERVIEW, Tutorial.Phase.ZOOMING]:
+		assert(not core.is_processing() and core.current_frame == 0)
+		assert(Time.get_ticks_msec() < deadline, "Opening camera must finish.")
+		await get_tree().process_frame
+	assert(core.is_processing())
+	assert(is_equal_approx(material.get_shader_parameter("outer_deformation"), 0.5))
+	game.tutorial.cancel()
+	for zoom: float in [-1.0, 1.0, -1.0]:
+		game._view.zoom_steps(zoom, false)
+		var previous_frame: int = core.current_frame
+		await get_tree().create_timer(0.2).timeout
+		assert(
+			core.current_frame > previous_frame, "Later view switches must keep the core moving."
+		)
+	# Evict the first atlas to exercise the static reset after a long play session.
+	core.set_process(false)
+	await _seek(core, 2400)
+	game.restart_run()
+	assert(game.tutorial.phase == Tutorial.Phase.OVERVIEW)
+	assert(not core.is_processing() and core.current_frame == 0)
+	assert(is_zero_approx(material.get_shader_parameter("outer_deformation")))
+	game.tutorial.cancel()
+	assert(core.is_processing(), "Cancelling the opening releases the static hold.")
+	deadline = Time.get_ticks_msec() + 5000
+	while core.current_frame == 0:
+		assert(Time.get_ticks_msec() < deadline, "Cancelling the opening must resume animation.")
+		await get_tree().process_frame
+	get_tree().current_scene = null
+	game.queue_free()
+	await get_tree().process_frame
+	print("PASS: static opening camera, animated later views, restart and cancellation.")
 
 
 func _seek(core: Core, frame: int) -> void:

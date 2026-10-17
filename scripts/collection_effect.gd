@@ -73,6 +73,11 @@ func _set_flight(progress: float) -> void:
 	_trail.points = trail_points
 
 
+func set_amount_color(value: Color) -> void:
+	_amount_label.label_settings = _amount_label.label_settings.duplicate() as LabelSettings
+	_amount_label.label_settings.font_color = value
+
+
 func _flight_point(progress: float) -> Vector2:
 	return Vector2.ZERO.bezier_interpolate(_curve_control, _curve_control, _destination, progress)
 

@@ -22,6 +22,13 @@ func _check_game() -> void:
 	await _settle()
 	_game.set_process(false)
 	_dock = _game._layout._tool_dock
+	if "--badge-only" in OS.get_cmdline_user_args():
+		await _check_technology_badge()
+		_game.queue_free()
+		await get_tree().process_frame
+		print("Technology badge: %d failures" % _failures)
+		get_tree().quit(0 if _failures == 0 else 1)
+		return
 	await _hover(Vector2(5, 120))
 	_check(_dock.pipe_button.visible and _dock.technology_button.visible, "permanent entries")
 	_check(not _dock.net_button.is_visible_in_tree(), "net hidden before discovery")
@@ -50,7 +57,7 @@ func _check_game() -> void:
 		),
 		"available upgrade lifts level into a two-line layout"
 	)
-	_check(not _dock.badge.visible, "owned speed technology never triggers discovery badge")
+	_check(_dock.badge.visible, "affordable speed upgrade triggers the technology badge")
 	_game._layout._toggle_pause()
 	await _settle()
 	_check(
@@ -238,7 +245,7 @@ func _check_game() -> void:
 	for id: String in ["cultivation", "automation", "valuable", "giant", "combo_unlock"]:
 		_game.run.purchase_technology(id)
 	await _settle()
-	_check(not _dock.badge.visible, "remaining repeatable upgrades do not trigger discovery badge")
+	_check(_dock.badge.visible, "remaining affordable upgrades keep the technology badge visible")
 	await _wallet(1000000)
 	while _game.run.purchase_technology("net_capacity"):
 		pass
@@ -255,6 +262,7 @@ func _check_game() -> void:
 	await _hover(_dock.pipe_button.get_global_rect().get_center())
 	_check(not _dock._expanded[0], "maxed tool never exposes purchase")
 	await _capture("maxed")
+	await _check_technology_badge()
 	_game.restart_run()
 	await _settle()
 	_check(
@@ -273,14 +281,43 @@ func _check_game() -> void:
 	get_tree().quit(0 if _failures == 0 else 1)
 
 
+func _check_technology_badge() -> void:
+	# Leave only base value upgradeable to reproduce the missing badge.
+	await _wallet(1000000)
+	for id: String in _game._layout._technology.TECHNOLOGIES:
+		if id != "base_value":
+			while _game.run.purchase_technology(id):
+				pass
+	var cost: int = _game.run.get_technology_cost("base_value")
+	await _wallet(cost - 1)
+	_check(not _dock.badge.visible, "one candy short of the only remaining upgrade hides the badge")
+	await _wallet(cost)
+	_check(_dock.badge.visible, "exact base value upgrade price shows the badge")
+	_game._layout._show_technology()
+	_game._layout.close_panels()
+	_check(_dock.badge.visible, "viewing the tree keeps an affordable upgrade reminder")
+	_check(
+		_game.run.purchase_technology("base_value"), "purchase the affordable base value upgrade"
+	)
+	await _settle()
+	_check(not _dock.badge.visible, "spending the wallet clears the badge")
+	await _wallet(_game.run.get_technology_cost("base_value"))
+	_check(_dock.badge.visible, "an already upgraded base value can trigger the badge again")
+	await _wallet(1000000)
+	while _game.run.purchase_technology("base_value"):
+		pass
+	await _settle()
+	_check(not _dock.badge.visible, "a fully maxed tree hides the badge despite spare candy")
+
+
 func _check_size_upgrades() -> void:
 	_check(
 		_dock.states[1] == Dock.ToolState.READY and _dock._expanded[1],
 		"capacity max opens affordable size shortcut"
 	)
 	_check(
-		(_dock.net_button.get_node("Detail") as Label).text == "大小 1 级",
-		"shortcut distinguishes size from capacity"
+		(_dock.net_button.get_node("Detail") as Label).text == "4 级",
+		"shortcut preserves capacity level before the first size upgrade"
 	)
 	for index: int in range(3):
 		var cost: int = [1500, 3000, 5000][index]
@@ -330,8 +367,17 @@ func _check_size_upgrades() -> void:
 			"shortcut grows radius while preserving capacity"
 		)
 		_check(
-			(_dock.net_button.get_node("Detail") as Label).text == "大小 %d 级" % (index + 2),
-			"size shortcut shows the purchased level"
+			(_dock.net_button.get_node("Detail") as Label).text == "4 级",
+			"size upgrade preserves capacity on the first line"
+		)
+		var size_label: Label = _dock.net_button.get_node("Status") as Label
+		_check(
+			size_label.visible and size_label.text == "大小 %d 级" % (index + 2),
+			"purchased size stays visible on the second line without funds, including max level"
+		)
+		_check(
+			(_dock.net_button.get_node("Detail") as Label).position.y == 19.0,
+			"size upgrade keeps the two-line layout"
 		)
 	_check(
 		_dock.states[1] == Dock.ToolState.MAXED and not _dock._expanded[1],

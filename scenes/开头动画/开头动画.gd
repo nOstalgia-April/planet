@@ -1,12 +1,11 @@
 extends Control
 
 const MainMenu = preload("res://scenes/主菜单/主菜单.gd")
+const Notice = preload("res://scripts/ui/mission_notice.gd")
 const OPENING_SOUND: String = "event:/Mx/OpeningAnimation"
 # FMOD needs ~0.2 s to start a sound; never hold the first frame longer than this.
 const SOUND_START_TIMEOUT: float = 0.5
-# Gameplay music waits for the opening sound: its last hit lands as the
-# animation ends (~9.6 s) and the tail falls below -40 dB about 2.5 s before
-# the sound's 14.96 s end, where the music starts.
+# Keep the opening sound's fade protected if the notice timing is shortened.
 const MUSIC_AFTER_SOUND_LEAD: float = 2.5
 # Loading the frames can stall the game for half a second while the sound keeps
 # playing; beyond this drift the animation jumps to the sound's position.
@@ -14,7 +13,7 @@ const MAX_DRIFT_SECONDS: float = 0.05
 
 @export var animation_player: AnimationPlayer
 
-# The opening sound outlives this scene, so its tail carries into gameplay.
+# The opening sound's tail continues while the briefing appears.
 var _sound: FmodEvent
 var _syncing_sound: bool = false
 var _waiting_for_sound: float = 0.0
@@ -23,8 +22,10 @@ var _waiting_for_sound: float = 0.0
 var _sound_offset: float = -1.0
 var _preparing_game: bool = false
 var _prepared_scene: PackedScene
-var _animation_finished: bool = false
+var _briefing_finished: bool = false
 var _entering_game: bool = false
+
+@onready var _briefing: Notice = $MissionBriefing
 
 
 func _ready() -> void:
@@ -33,6 +34,7 @@ func _ready() -> void:
 	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
 	GameAudio.stop_music()
 	animation_player.animation_finished.connect(_on_animation_finished)
+	_briefing.finished.connect(_on_briefing_finished)
 	animation_player.play(&"开头")
 	animation_player.advance(0.0)
 	# Hold the first frame until the sound is actually playing, so they stay in sync.
@@ -104,19 +106,23 @@ func _poll_game() -> void:
 func _on_animation_finished(animation_name: StringName) -> void:
 	if animation_name != &"开头":
 		return
-	_animation_finished = true
+	_briefing.play()
+
+
+func _on_briefing_finished() -> void:
+	_briefing_finished = true
 	_try_enter_game()
 
 
 func _try_enter_game() -> void:
-	if not _animation_finished or _prepared_scene == null or _entering_game:
+	if not _briefing_finished or _prepared_scene == null or _entering_game:
 		return
 	_entering_game = true
 	_enter_game.call_deferred()
 
 
 # The start sound already played on the menu's click. Gameplay requests its
-# music on entry; it is held until the opening sound has faded.
+# music on entry after the briefing; any remaining opening tail finishes first.
 func _enter_game() -> void:
 	GameAudio.hold_music_for(_sound, OPENING_SOUND, MUSIC_AFTER_SOUND_LEAD)
 	var result: Error = get_tree().change_scene_to_packed(_prepared_scene)

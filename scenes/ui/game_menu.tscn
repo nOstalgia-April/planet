@@ -279,7 +279,7 @@ theme_override_constants/paragraph_spacing = 0
 text = "悬停吸取 · 左键投网 · 1 / 2 切换工具
 近景：右键拖星球 · 滚轮拉远
 全景：右键拖空白 · 点击气泡靠近
-悬停巢穴升级 · Esc 暂停 / 返回"
+悬停巢穴升级 · 空格 暂停 / 继续 · Esc 返回"
 
 [node name="Extras" type="HBoxContainer" parent="Modal/Center/Panel/Content/SettingsBody"]
 layout_mode = 2

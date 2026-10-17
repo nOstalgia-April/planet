@@ -143,7 +143,6 @@ func _process(delta: float) -> void:
 		Phase.FINISH:
 			var progress: float = smoothstep(0.0, 1.0, _progress(background_seconds))
 			art.set_restored_mix(progress)
-			core.modulate.a = 1.0 - progress
 			if progress >= 1.0:
 				_set_phase(Phase.HOLD)
 		Phase.BACKGROUND:

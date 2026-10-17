@@ -24,12 +24,12 @@ func _run_checks() -> void:
 		for _frame: int in range(8):
 			await process_frame
 		_check(
-			is_equal_approx(demo._nest_site_distance, 150.0),
-			"The 105% drill nest reserves its 341.25-unit footprint at 40% scale plus 13.5 units."
+			is_equal_approx(demo._nest_site_distance, 156.5),
+			"The 110% drill nest reserves its 357.5-unit footprint at 40% scale plus 13.5 units."
 		)
 		_check(
-			demo._nest_site_angles.size() == 10,
-			"The current planet fits ten sites including the expanded spawn gesture."
+			demo._nest_site_angles.size() == 9,
+			"The current planet fits nine sites including the expanded spawn gesture."
 		)
 		for seed_index: int in range(12):
 			demo.restart_run()
@@ -38,7 +38,7 @@ func _run_checks() -> void:
 				var species: NestState.Species = (attempt % 3) as NestState.Species
 				demo.run._pending_nest_species = species
 				demo._on_nest_spawn_requested(species)
-			_check(demo.run.nests.size() == 10, "Random placement fills each available site once.")
+			_check(demo.run.nests.size() == 9, "Random placement fills each available site once.")
 			for first: NestState in demo.run.nests:
 				_check(
 					(
@@ -52,7 +52,7 @@ func _run_checks() -> void:
 				for second: NestState in demo.run.nests:
 					if first.nest_id < second.nest_id:
 						_check(
-							first.position.distance_to(second.position) >= 150.0,
+							first.position.distance_to(second.position) >= 156.5,
 							"Opening and random nests reserve their full growth footprint."
 						)
 			_check_visible_bounds(demo)

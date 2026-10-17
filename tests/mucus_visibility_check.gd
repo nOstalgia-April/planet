@@ -1,4 +1,4 @@
-extends SceneTree
+extends Node
 
 const DemoScript = preload("res://scripts/disk_demo.gd")
 const MucusField = preload("res://scripts/mucus_field.gd")
@@ -9,14 +9,14 @@ var _failures: Array[String] = []
 var _surface: PlanetSurface
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	_run.call_deferred()
 
 
 func _run() -> void:
-	root.size = Vector2i(1280, 800)
+	get_tree().root.size = Vector2i(1280, 800)
 	_surface = PlanetSurface.new()
-	root.add_child(_surface)
+	get_tree().root.add_child(_surface)
 	_surface.set_near_view(true)
 	var reference: MucusField = _make_trail()
 	var hidden: MucusField = _make_trail()
@@ -33,12 +33,12 @@ func _run() -> void:
 		print(
 			"PASS: offscreen mucus keeps exact contact and fading, leaves renderer arrays unchanged, restores all layers immediately on reentry, and expires in overview."
 		)
-	quit(0 if _failures.is_empty() else 1)
+	get_tree().quit(0 if _failures.is_empty() else 1)
 
 
 func _make_trail() -> MucusField:
 	var trail: MucusField = TrailScene.instantiate() as MucusField
-	root.add_child(trail)
+	get_tree().root.add_child(trail)
 	trail.configure(_surface, _path_point(0.0), 1, 7.0, 3.0, 72.0, 2.5)
 	for sample: int in range(1, 13):
 		trail.advance(0.06, false)
@@ -80,19 +80,26 @@ func _check_hidden_updates(reference: MucusField, hidden: MucusField) -> void:
 		"the reference visibly changes along the same traveled path"
 	)
 	_check(
-		hidden.get_ground_points() == reference.get_ground_points()
-		and hidden.get_ground_points()[0] != _path_point(0.0),
+		(
+			hidden.get_ground_points() == reference.get_ground_points()
+			and hidden.get_ground_points()[0] != _path_point(0.0)
+		),
 		"offscreen movement preserves the same path sampling and old-tail trimming"
 	)
 	var probes: PackedVector2Array = _contact_probes(reference)
 	var contact_count: int = _check_contacts(reference, hidden, probes, "moving offscreen")
-	_check(contact_count > 0 and contact_count < probes.size(), "contact probes cover painted and clear ground")
+	_check(
+		contact_count > 0 and contact_count < probes.size(),
+		"contact probes cover painted and clear ground"
+	)
 	# Request re-entry during the usual 20 Hz update holdoff. The current visible
 	# reference is rebuilt at exactly the same clock and path without reprojecting.
 	for trail: MucusField in [reference, hidden]:
 		trail.advance(0.001, false)
 		trail.append_ground_point(_path_point(36.15), false)
-	_check(hidden._mesh_elapsed < 0.05, "the re-entry fixture is below the regular rebuild interval")
+	_check(
+		hidden._mesh_elapsed < 0.05, "the re-entry fixture is below the regular rebuild interval"
+	)
 	reference._rebuild_surface()
 	hidden.refresh_surface(false, true)
 	_check(
@@ -111,7 +118,9 @@ func _check_fade_and_expiry(reference: MucusField, hidden: MucusField) -> void:
 	for step: int in range(4):
 		var reference_alive: bool = reference.advance(0.6, false)
 		var hidden_alive: bool = hidden.advance(0.6, false)
-		_check(reference_alive and hidden_alive, "both stopped histories remain alive before expiry")
+		_check(
+			reference_alive and hidden_alive, "both stopped histories remain alive before expiry"
+		)
 		reference.refresh_surface(false, true)
 		hidden.refresh_surface(false, hidden.is_detail_on_screen())
 		faded_contacts = _check_contacts(reference, hidden, probes, "hidden fade stage %d" % step)
@@ -119,8 +128,14 @@ func _check_fade_and_expiry(reference: MucusField, hidden: MucusField) -> void:
 			is_equal_approx(reference.remaining, hidden.remaining),
 			"hidden histories lose lifetime at the same rate as visible histories"
 		)
-	_check(faded_contacts < fresh_contacts, "fading removes real ground contacts while the trail is hidden")
-	_check(_snapshot_meshes(hidden) == old_meshes, "hidden fading also avoids every renderer array write")
+	_check(
+		faded_contacts < fresh_contacts,
+		"fading removes real ground contacts while the trail is hidden"
+	)
+	_check(
+		_snapshot_meshes(hidden) == old_meshes,
+		"hidden fading also avoids every renderer array write"
+	)
 	hidden.show()
 	hidden.refresh_surface(false, true)
 	_check(
@@ -128,7 +143,9 @@ func _check_fade_and_expiry(reference: MucusField, hidden: MucusField) -> void:
 		"a fading history returns with exactly the visible reference's current appearance"
 	)
 	hidden.hide()
-	_check(not reference.advance(0.7, false), "the reference expires after its final sample lifetime")
+	_check(
+		not reference.advance(0.7, false), "the reference expires after its final sample lifetime"
+	)
 	_check(not hidden.advance(0.7, false), "hidden history expires at the same time")
 	_check(
 		_check_contacts(reference, hidden, probes, "expired hidden history") == 0,
@@ -138,8 +155,8 @@ func _check_fade_and_expiry(reference: MucusField, hidden: MucusField) -> void:
 
 func _check_overview_expiry() -> void:
 	var demo: DemoScript = DemoScene.instantiate() as DemoScript
-	root.add_child(demo)
-	current_scene = demo
+	get_tree().root.add_child(demo)
+	get_tree().current_scene = demo
 	demo.set_process(false)
 	demo._view.set_process(false)
 	demo._layout.set_process(false)
@@ -169,19 +186,21 @@ func _check_overview_expiry() -> void:
 	for trail: MucusField in demo._mucus_trails:
 		_check(not trail._render_detail, "the demo disables decorative updates in overview")
 	demo._advance_ground_mucus(demo.run.settings.mucus_trail_lifetime + 0.1)
-	await process_frame
+	await get_tree().process_frame
 	_check(
-		demo._mucus_trails.is_empty()
-		and demo._active_mucus_trails.is_empty()
-		and demo._mucus_root.get_child_count() == demo._nest_mucus_areas.size(),
+		(
+			demo._mucus_trails.is_empty()
+			and demo._active_mucus_trails.is_empty()
+			and demo._mucus_root.get_child_count() == demo._nest_mucus_areas.size()
+		),
 		"overview still expires stopped history and frees ribbon scenes while preserving nest pools"
 	)
 	for audio: Node in demo.get_node("Audio").get_children():
 		if audio is AudioStreamPlayer:
 			audio.stop()
-	current_scene = null
+	get_tree().current_scene = null
 	demo.queue_free()
-	await process_frame
+	await get_tree().process_frame
 
 
 func _path_point(sample: float) -> Vector2:
@@ -194,13 +213,16 @@ func _path_point(sample: float) -> Vector2:
 func _snapshot_meshes(trail: MucusField) -> Array[Dictionary]:
 	var snapshots: Array[Dictionary] = []
 	for layer: Polygon2D in [trail._edge, trail._ground, trail._highlight]:
-		snapshots.append(
-			{
-				"vertices": layer.polygon.duplicate(),
-				"colors": layer.vertex_colors.duplicate(),
-				"triangles": layer.polygons.duplicate(true),
-				"visible": layer.visible,
-			}
+		(
+			snapshots
+			. append(
+				{
+					"vertices": layer.polygon.duplicate(),
+					"colors": layer.vertex_colors.duplicate(),
+					"triangles": layer.polygons.duplicate(true),
+					"visible": layer.visible,
+				}
+			)
 		)
 	return snapshots
 
@@ -210,7 +232,9 @@ func _contact_probes(trail: MucusField) -> PackedVector2Array:
 	var probes: PackedVector2Array = PackedVector2Array()
 	for row: int in range(25):
 		for column: int in range(33):
-			probes.append(bounds.position + bounds.size * Vector2(float(column) / 32.0, float(row) / 24.0))
+			probes.append(
+				bounds.position + bounds.size * Vector2(float(column) / 32.0, float(row) / 24.0)
+			)
 	probes.append_array(trail.get_ground_points())
 	return probes
 

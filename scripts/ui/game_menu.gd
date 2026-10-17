@@ -71,6 +71,7 @@ func set_open(open: bool) -> void:
 
 
 func set_paused(paused: bool) -> void:
+	_pause.tooltip_text = "继续 · 空格" if paused else "暂停 · 空格"
 	_pause.glyph = RESUME if paused else PAUSE
 	_pause.highlighted = paused
 	_pause.queue_redraw()

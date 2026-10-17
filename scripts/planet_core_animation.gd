@@ -6,6 +6,7 @@ const CoreClip = preload("res://scripts/planet_core_clip.gd")
 ## A music-clock-driven sequence. Only the current and next atlas stay cached.
 @export var clip: CoreClip
 @export var sprite: Sprite2D
+@export var autoplay: bool = true
 @export_range(1.0, 60.0, 0.01) var frames_per_second: float = 30.0
 @export var synchronize_music: bool = true
 @export var music_event: String = "event:/Mx/Mx_GamePlay"
@@ -20,6 +21,7 @@ var _next_page: int = 0
 var _pages: Dictionary[int, Texture2D] = {}
 var _pending: Array[int] = []
 var _shape_material: ShaderMaterial
+var _outer_deformation: float = 0.0
 
 
 func _ready() -> void:
@@ -27,17 +29,29 @@ func _ready() -> void:
 	assert(not clip.page_paths.is_empty() and not clip.frame_tiles.is_empty())
 	_shape_material = sprite.material as ShaderMaterial
 	assert(_shape_material != null, "Core animation requires its radial shape material.")
+	_outer_deformation = _shape_material.get_shader_parameter("outer_deformation")
 	sprite.centered = false
 	sprite.position = -clip.pivot
 	sprite.region_enabled = true
 	sprite.region_filter_clip_enabled = true
 	_pages[0] = load(clip.page_paths[0]) as Texture2D
 	seek_seconds(0.0)
-	if Engine.is_editor_hint():
-		set_process(false)
-	elif synchronize_music:
+	if synchronize_music:
 		# Follow the music clock, including its pause and resume timing.
 		process_mode = Node.PROCESS_MODE_ALWAYS
+	set_static(not autoplay)
+
+
+## The opening camera owns this hold; ordinary zoom changes never stop playback.
+func set_static(enabled: bool) -> void:
+	_shape_material.set_shader_parameter(
+		"outer_deformation", 0.0 if enabled else _outer_deformation
+	)
+	set_process(not Engine.is_editor_hint() and autoplay and not enabled)
+	if enabled:
+		# Restart can return here after the first atlas has left the streaming cache.
+		_pages[0] = load(clip.page_paths[0]) as Texture2D
+		seek_seconds(0.0)
 
 
 func set_white_mix(value: float) -> void:
@@ -89,7 +103,7 @@ func seek_seconds(seconds: float) -> void:
 		)
 		current_frame = frame
 		_shape_material.set_shader_parameter("motion_seconds", float(frame) / frames_per_second)
-	if not Engine.is_editor_hint():
+	if not Engine.is_editor_hint() and autoplay:
 		_request_page(_wanted_page)
 		_request_page(_next_page)
 

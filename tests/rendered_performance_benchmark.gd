@@ -1,11 +1,11 @@
-extends SceneTree
+extends Node
 
-# Run without --headless. --fixed-fps 60 makes gameplay progression reproducible;
+# Run res://tests/rendered_performance_benchmark.tscn without --headless. --fixed-fps 60 makes gameplay progression reproducible;
 # reported frame times still come from wall-clock render completion timestamps.
 # User arguments: --large (2560x1600), --capture, --label=before, --phase=near_capture.
-const DemoScript = preload("res://scripts/disk_demo.gd")
+const DemoScript = preload("res://features/场景预览/游玩预览.gd")
 const BenchmarkDemoScript = preload("res://tests/rendered_benchmark_demo.gd")
-const DemoScene: PackedScene = preload("res://scenes/disk_demo.tscn")
+const DemoScene: PackedScene = preload("res://features/场景预览/近景游玩预览.tscn")
 const MucusField = preload("res://scripts/mucus_field.gd")
 const NEST_COUNT: int = 21
 const ACTORS_PER_NEST: int = 10
@@ -21,7 +21,7 @@ var _phase_filter: String = ""
 var _failed: bool = false
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	for argument: String in OS.get_cmdline_user_args():
 		if argument == "--large":
 			_resolution = Vector2i(2560, 1600)
@@ -37,38 +37,40 @@ func _initialize() -> void:
 func _run() -> void:
 	if DisplayServer.get_name() == "headless":
 		push_error("This benchmark requires rendering; omit --headless.")
-		quit(2)
+		get_tree().quit(2)
 		return
 	if not _phase_filter.is_empty() and _phase_filter not in PHASES:
 		push_error("Unknown benchmark phase: " + _phase_filter)
-		quit(2)
+		get_tree().quit(2)
 		return
-	root.mode = Window.MODE_WINDOWED
-	root.size = _resolution
-	root.title = "Planet rendered performance benchmark"
+	get_tree().root.mode = Window.MODE_WINDOWED
+	get_tree().root.size = _resolution
+	get_tree().root.title = "Planet rendered performance benchmark"
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
 	print(
-		"RENDER_BENCH_BEGIN resolution=%s warmup=%d samples=%d driver=%s"
-		% [
-			_resolution,
-			WARMUP_FRAMES,
-			SAMPLE_FRAMES,
-			RenderingServer.get_current_rendering_driver_name()
-		]
+		(
+			"RENDER_BENCH_BEGIN resolution=%s warmup=%d samples=%d driver=%s"
+			% [
+				_resolution,
+				WARMUP_FRAMES,
+				SAMPLE_FRAMES,
+				RenderingServer.get_current_rendering_driver_name()
+			]
+		)
 	)
 	for phase: String in PHASES:
 		if not _phase_filter.is_empty() and phase != _phase_filter:
 			continue
 		await _prepare_phase(phase)
 		await _measure_phase(phase)
-		current_scene = null
+		get_tree().current_scene = null
 		_demo.queue_free()
-		await process_frame
+		await get_tree().process_frame
 	print(
 		"NOTE: frame_ms measures rendered wall time; process_ms is a periodically updated engine monitor and may include earlier phases."
 	)
-	quit(1 if _failed else 0)
+	get_tree().quit(1 if _failed else 0)
 
 
 func _prepare_phase(phase: String) -> void:
@@ -98,8 +100,8 @@ func _prepare_phase(phase: String) -> void:
 	# nest, hover, capture, roaming, mucus and presentation callbacks remain active.
 	run.settings.nest_roll_interval = 1000000.0
 	run.settings.spawn_intervals = PackedFloat32Array([1000000.0, 1000000.0, 1000000.0])
-	root.add_child(_demo)
-	current_scene = _demo
+	get_tree().root.add_child(_demo)
+	get_tree().current_scene = _demo
 	run._random.seed = 601026
 	_demo._site_random.seed = 601027
 	run.net_unlocked = true
@@ -129,7 +131,7 @@ func _prepare_phase(phase: String) -> void:
 	elif phase == "near_rotating":
 		_demo._view.begin_drag(Vector2.ZERO)
 	for frame: int in range(WARMUP_FRAMES):
-		await process_frame
+		await get_tree().process_frame
 		_drive_phase(phase, frame)
 		await RenderingServer.frame_post_draw
 
@@ -158,8 +160,7 @@ func _seed_trail(actor: PrototypeSlime) -> void:
 	for sample: int in range(1, 25):
 		trail.advance(0.1, false)
 		trail.append_ground_point(
-			Vector2.from_angle(end_point.angle() - (60.0 - float(sample) * 2.5) / radius)
-			* radius,
+			Vector2.from_angle(end_point.angle() - (60.0 - float(sample) * 2.5) / radius) * radius,
 			false
 		)
 	actor.position = end_point
@@ -174,9 +175,7 @@ func _drive_phase(phase: String, frame: int) -> void:
 	elif phase == "near_capture":
 		for actor: PrototypeSlime in _demo._slimes:
 			var target: Vector2 = actor.get_capture_point()
-			var candidate: Vector2 = (
-				_demo._world.get_global_transform_with_canvas() * target
-			)
+			var candidate: Vector2 = _demo._world.get_global_transform_with_canvas() * target
 			if (
 				not actor.consumed
 				and _demo._can_collect(target, _demo.run.get_pipe_radius())
@@ -202,9 +201,11 @@ func _measure_phase(phase: String) -> void:
 	var actor_start: int = _demo._slimes.size()
 	var trail_min: int = _demo._mucus_trails.size()
 	var trail_max: int = trail_min
+	_demo.benchmark_cpu.clear()
+	_demo.benchmark_frames = 0
 	var previous: int = Time.get_ticks_usec()
 	for frame: int in range(SAMPLE_FRAMES):
-		await process_frame
+		await get_tree().process_frame
 		_drive_phase(phase, WARMUP_FRAMES + frame)
 		await RenderingServer.frame_post_draw
 		var now: int = Time.get_ticks_usec()
@@ -220,36 +221,43 @@ func _measure_phase(phase: String) -> void:
 	draw_calls.sort()
 	simulation_deltas.sort()
 	print(
-		"RENDER_BENCH_RESULT "
-		+ JSON.stringify(
-			{
-				"label": _label,
-				"phase": phase,
-				"resolution": "%dx%d" % [_resolution.x, _resolution.y],
-				"window_size": str(root.size),
-				"viewport_size": str(root.get_visible_rect().size),
-				"samples": SAMPLE_FRAMES,
-				"frame_median_ms": _percentile(frame_times, 0.5),
-				"frame_p95_ms": _percentile(frame_times, 0.95),
-				"process_median_ms": _percentile(process_times, 0.5),
-				"process_p95_ms": _percentile(process_times, 0.95),
-				"simulation_delta_min_ms": simulation_deltas[0],
-				"simulation_delta_median_ms": _percentile(simulation_deltas, 0.5),
-				"simulation_delta_max_ms": simulation_deltas[-1],
-				"fixed_step_60hz": (
-					is_equal_approx(simulation_deltas[0], 1000.0 / 60.0)
-					and is_equal_approx(simulation_deltas[-1], 1000.0 / 60.0)
-				),
-				"draw_calls_min": draw_calls[0],
-				"draw_calls_median": _percentile(draw_calls, 0.5),
-				"actors_start": actor_start,
-				"actors_end": _demo._slimes.size(),
-				"captured_during_samples": actor_start - _demo._slimes.size(),
-				"captured_total": NEST_COUNT * ACTORS_PER_NEST - _demo._slimes.size(),
-				"trails_min": trail_min,
-				"trails_max": trail_max,
-				"nests": _demo.run.nests.size(),
-			}
+		(
+			"RENDER_BENCH_RESULT "
+			+ (
+				JSON
+				. stringify(
+					{
+						"label": _label,
+						"phase": phase,
+						"resolution": "%dx%d" % [_resolution.x, _resolution.y],
+						"window_size": str(get_tree().root.size),
+						"viewport_size": str(get_tree().root.get_visible_rect().size),
+						"samples": SAMPLE_FRAMES,
+						"frame_median_ms": _percentile(frame_times, 0.5),
+						"frame_p95_ms": _percentile(frame_times, 0.95),
+						"process_median_ms": _percentile(process_times, 0.5),
+						"process_p95_ms": _percentile(process_times, 0.95),
+						"simulation_delta_min_ms": simulation_deltas[0],
+						"simulation_delta_median_ms": _percentile(simulation_deltas, 0.5),
+						"simulation_delta_max_ms": simulation_deltas[-1],
+						"fixed_step_60hz":
+						(
+							is_equal_approx(simulation_deltas[0], 1000.0 / 60.0)
+							and is_equal_approx(simulation_deltas[-1], 1000.0 / 60.0)
+						),
+						"cpu_sections_ms": _demo.benchmark_cpu_averages(),
+						"draw_calls_min": draw_calls[0],
+						"draw_calls_median": _percentile(draw_calls, 0.5),
+						"actors_start": actor_start,
+						"actors_end": _demo._slimes.size(),
+						"captured_during_samples": actor_start - _demo._slimes.size(),
+						"captured_total": NEST_COUNT * ACTORS_PER_NEST - _demo._slimes.size(),
+						"trails_min": trail_min,
+						"trails_max": trail_max,
+						"nests": _demo.run.nests.size(),
+					}
+				)
+			)
 		)
 	)
 	if phase == "near_capture" and _demo._slimes.size() >= actor_start:
@@ -257,10 +265,11 @@ func _measure_phase(phase: String) -> void:
 		_failed = true
 	if _capture:
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://artifacts"))
-		var path: String = "res://artifacts/rendered_%s_%dx%d_%s.png" % [
-			_label, _resolution.x, _resolution.y, phase
-		]
-		var result: Error = root.get_texture().get_image().save_png(path)
+		var path: String = (
+			"res://artifacts/rendered_%s_%dx%d_%s.png"
+			% [_label, _resolution.x, _resolution.y, phase]
+		)
+		var result: Error = get_tree().root.get_texture().get_image().save_png(path)
 		assert(result == OK, "Could not save benchmark screenshot: " + path)
 		print("RENDER_BENCH_CAPTURE " + ProjectSettings.globalize_path(path))
 

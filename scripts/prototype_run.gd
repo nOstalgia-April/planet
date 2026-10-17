@@ -806,6 +806,8 @@ func resolve_nest_spawn(
 	_nest_roll_clock = 0.0
 	_nest_spawn_cooldown_remaining = settings.nest_spawn_cooldown_seconds
 	_add_nest(species, position, defer_population)
+	if not defer_population:
+		schedule_next_spawn(nests.back().nest_id, _random.randf_range(0.0, 1.0))
 	return true
 
 
@@ -813,7 +815,7 @@ func finish_nest_discovery(nest_id: int) -> void:
 	var nest: NestState = get_nest(nest_id)
 	assert(nest != null)
 	nest.is_discovering = false
-	nest.spawn_clock = 0.0
+	schedule_next_spawn(nest_id, _random.randf_range(0.0, 1.0))
 
 
 func record_flower(nest_id: int) -> void:

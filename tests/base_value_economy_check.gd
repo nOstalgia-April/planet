@@ -28,7 +28,7 @@ func _check_value_purchases() -> void:
 	run.settings = SETTINGS
 	run.start_run([Vector2(-100, -200), Vector2(100, -200)])
 	var fixed_pipe_cost: int = run.get_pipe_upgrade_cost()
-	for expected: int in [2, 5, 10, 25]:
+	for expected: int in [2, 5, 10]:
 		var cost: int = run.get_technology_cost("base_value")
 		run.candy = cost - 1
 		var level: int = run.base_value_level
@@ -57,16 +57,20 @@ func _check_value_purchases() -> void:
 		not run.purchase_technology("base_value") and run.candy == 100000,
 		"Maximum value refuses further charges."
 	)
+	_check(
+		is_equal_approx(run.get_automatic_income_per_nest(), 15.0),
+		"Maximum base value produces fifteen candy per second per automated nest."
+	)
 	run._add_nest(NestState.Species.MUCUS, Vector2(300, -200))
 	run.get_nest(3).alive_slimes = 2
 	run.net_unlocked = true
 	_check(
-		run.collect_net_batch([3]) == 50,
+		run.collect_net_batch([3]) == 20,
 		"Default model net rewards include species and global value."
 	)
 	run.candy = 0
 	_check(
-		run.collect_slime(3) and run.candy == 50, "Default model pipe rewards use the same value."
+		run.collect_slime(3) and run.candy == 20, "Default model pipe rewards use the same value."
 	)
 	_check(SETTINGS.slime_reward == 1, "Research never mutates shared settings.")
 	run.start_run([Vector2(-100, -200), Vector2(100, -200)])

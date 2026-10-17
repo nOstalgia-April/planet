@@ -22,6 +22,7 @@ func _run() -> void:
 		add_child(viewport)
 		_views.append(viewport)
 		var core: Core = CoreScene.instantiate() as Core
+		core.autoplay = true
 		core.synchronize_music = false
 		viewport.add_child(core)
 		core.position = core.clip.pivot

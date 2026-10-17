@@ -202,7 +202,7 @@ func _check_technology_badge(demo: DemoScript) -> void:
 	demo.run.candy += 1
 	demo.run.economy_changed.emit()
 	await _settle()
-	_check(not badge.visible, "owned pipe upgrades do not show the discovery badge")
+	_check(badge.visible, "affordable pipe upgrades show the technology badge")
 	demo.run.candy = demo.run.get_technology_cost("cultivation")
 	demo.run.economy_changed.emit()
 	await _settle()
@@ -234,7 +234,8 @@ func _check_technology_badge(demo: DemoScript) -> void:
 		"giant",
 		"combo_unlock",
 		"net_unlock",
-		"net_capacity"
+		"net_capacity",
+		"net_size"
 	]:
 		while demo.run.purchase_technology(id):
 			pass

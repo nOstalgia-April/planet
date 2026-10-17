@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/mission_notice.tscn" id="notice"]
+
+[node name="MissionBriefing" instance=ExtResource("notice")]
+heading = "【星际家政 · 紧急清扫委托】"
+first_section = "任务地点：M星\n委托单位：星际督查局\n执行人员：星际家政0101小组"
+second_section = "监测发现，M星地表正在持续褪色，并伴有大量未知生物从地下成群“涌现”。\n\n请立即前往现场，调查异常来源，收容过量生物，并清理相关巢穴，使星球恢复原有色彩。"
+third_section = "注意：当地生物可能具备交流能力。请优先沟通，避免伤害。\n\n清扫工具已配发。祝你首次出勤顺利。"

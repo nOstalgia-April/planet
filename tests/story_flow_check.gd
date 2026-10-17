@@ -1,6 +1,6 @@
 extends Node
 
-const GameScene: PackedScene = preload("res://features/tutorial_intro/full_flow_preview.tscn")
+const GameScene: PackedScene = preload("res://scenes/game.tscn")
 const Game = preload("res://features/tutorial_intro/story_game.gd")
 const Flow = preload("res://features/tutorial_intro/story_flow.gd")
 const Dialogue = preload("res://scripts/ui/mascot_dialogue.gd")
@@ -22,8 +22,13 @@ func _run() -> void:
 	get_tree().root.add_child(_game)
 	get_tree().current_scene = _game
 	_flow = _game.story
+	_check(not _game.has_node("PreviewNavigation"), "formal gameplay has no preview shortcuts")
+	_check(
+		GameAudio.has_events(_flow.talk_events), "all three mascot voice events exist in the Bank"
+	)
 	_flow.story_started.connect(func(kind: int) -> void: _started.append(kind))
 	await _wait_talk(Flow.Kind.OPENING)
+	_check(_flow._voice != null, "opening typing starts the cloak voice")
 	_check(
 		_flow.narrative.lines.size() == 3, "opening contains only the three approved story lines"
 	)
@@ -64,14 +69,16 @@ func _run() -> void:
 		_game.run.candy == candy and is_equal_approx(_game.run.nests[0].spawn_clock, clock),
 		"reading dialogue does not advance economy or spawn clocks"
 	)
-	_game._layout._toggle_pause()
+	await _key(KEY_ESCAPE)
+	_check(get_tree().paused, "Escape pauses formal gameplay during dialogue")
 	speaker_clock = _flow.active_dialogue.presenter.elapsed
 	await get_tree().create_timer(0.15, true, false, true).timeout
 	_check(
 		is_equal_approx(_flow.active_dialogue.presenter.elapsed, speaker_clock),
 		"manual pause still freezes the NPC"
 	)
-	_game._layout._toggle_pause()
+	await _key(KEY_ESCAPE)
+	_check(not get_tree().paused, "Escape resumes the paused dialogue")
 	await _click()
 	_check(
 		(
@@ -83,6 +90,13 @@ func _run() -> void:
 	await _capture("opening")
 	await _finish_dialogue()
 	await _wait_idle()
+	_check(_flow._voice == null, "finishing the opening releases its voice")
+	var before_shortcut: int = _game.run.candy
+	await _key(KEY_N)
+	_check(
+		_game.run.candy == before_shortcut and _game.run.get_technology_level("cultivation") == 0,
+		"preview next-beat key cannot grant money or technology in formal gameplay"
+	)
 	_check(
 		is_equal_approx(Engine.time_scale, 1.0) and _game.is_processing(),
 		"opening restores normal speed and free play"
@@ -98,7 +112,7 @@ func _run() -> void:
 	await _capture("cultivation")
 	await _finish_dialogue()
 	await _wait_idle()
-	await _key(KEY_N)
+	_advance_game_progress()
 	await _wait_talk(Flow.Kind.AUTOMATION)
 	await _finish_dialogue()
 	await _wait_idle()
@@ -106,7 +120,7 @@ func _run() -> void:
 	await get_tree().process_frame
 	_check(_flow.kind == Flow.Kind.NONE, "purchased technologies teach only once")
 	for stage: int in range(3):
-		await _key(KEY_N)
+		_advance_game_progress()
 		await _wait_talk((Flow.Kind.COLOR_ONE + stage) as Flow.Kind)
 		await get_tree().create_timer(0.5, true, false, true).timeout
 		_check(
@@ -157,13 +171,13 @@ func _run() -> void:
 		not _game.run.is_complete,
 		"all nests automated still requires collecting the remaining monsters"
 	)
-	# Wait for the final background restoration before using the next-beat shortcut.
+	# Collect only after the final background restoration releases the controls.
 	await get_tree().process_frame
 	await get_tree().process_frame
 	while _game._view.presentation_locked:
 		await get_tree().process_frame
-	await _key(KEY_N)
-	_check(_game.run.is_complete, "next-beat shortcut collects the final monsters")
+	_advance_game_progress()
+	_check(_game.run.is_complete, "collecting the final monsters completes the run")
 	await _wait_talk(Flow.Kind.RESCUE, 45000)
 	_check(
 		(
@@ -178,13 +192,14 @@ func _run() -> void:
 	await _wait_idle()
 	_check(_game._completion.visible, "credits begin after rescue is confirmed")
 	_check(_started == [1, 2, 3, 4, 5, 6, 7], "all seven story beats occur exactly once in order")
-	await _key(KEY_R)
+	_game._layout.restart_requested.emit()
 	await _wait_talk(Flow.Kind.OPENING)
 	_check(
 		_flow.seen == [Flow.Kind.OPENING] and _flow.current_form == 0,
 		"restart resets the story and cloak"
 	)
 	_game.story.cancel()
+	_check(_flow._voice == null, "cancelling dialogue releases its voice")
 	_game.queue_free()
 	get_tree().current_scene = null
 	await get_tree().process_frame
@@ -199,6 +214,36 @@ func _run() -> void:
 	else:
 		print("FAIL: ", _failures)
 	get_tree().quit(0 if _failures.is_empty() else 1)
+
+
+# Prepare progression through gameplay APIs; the shipped scene has no skip controls.
+func _advance_game_progress() -> void:
+	_game.run.candy = maxi(_game.run.candy, 100000)
+	if _game.run.get_technology_level("automation") == 0:
+		_check(_game.run.purchase_technology("automation"), "automation purchase succeeds")
+		return
+	for species: int in range(3):
+		if species in _game._restoration.unlocked_species:
+			continue
+		var target: NestState
+		for nest: NestState in _game.run.nests:
+			if nest.species == species:
+				target = nest
+				break
+		if target == null:
+			_game.run._add_nest(
+				species as NestState.Species,
+				_game._planet.get_nest_position(2.0 if species == 1 else -2.0)
+			)
+			target = _game.run.nests.back()
+		while not target.is_tamed:
+			if not _game.run.upgrade_nest(target.nest_id):
+				_check(false, "nest upgrade succeeds")
+				return
+		return
+	var slimes: Array[PrototypeSlime] = _game._slimes.duplicate()
+	for slime: PrototypeSlime in slimes:
+		_game._finish_capture(slime)
 
 
 func _wait_talk(expected: Flow.Kind, timeout_ms: int = 20000) -> void:

@@ -3,8 +3,8 @@
 [ext_resource type="Script" path="res://scripts/combo_burst.gd" id="1"]
 
 [sub_resource type="LabelSettings" id="AmountStyle"]
-font_size = 25
-font_color = Color(1, 0.83, 0.56, 1)
+font_size = 32
+font_color = Color(1, 0.52, 0.73, 1)
 outline_size = 5
 outline_color = Color(0.27, 0.22, 0.30, 1)
 
@@ -26,11 +26,6 @@ antialiased = true
 [node name="Candies" type="Node2D" parent="."]
 
 [node name="Amount" type="Label" parent="."]
-offset_left = -45.0
-offset_top = -100.0
-offset_right = 45.0
-offset_bottom = -64.0
 mouse_filter = 2
 label_settings = SubResource("AmountStyle")
 horizontal_alignment = 1
-pivot_offset = Vector2(45, 18)

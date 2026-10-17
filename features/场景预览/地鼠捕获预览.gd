@@ -23,10 +23,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	var pointer: Vector2 = get_viewport().get_mouse_position()
 	var holding: bool = update_pointer_release_state()
-	_drive_drill_capture(delta, pointer, holding)
-	_slime_root.set_focus(_hovered_drill)
 	_drive_tool(delta, _world.to_local(get_global_mouse_position()), holding)
 	_net.hide()
 	if is_instance_valid(_preview_actor) and not _preview_actor.consumed:
@@ -53,7 +50,7 @@ func _restart_preview_actor() -> void:
 
 
 func _remove_preview_actor() -> void:
-	_clear_drill_hover()
+	_capture_at(0.0, _tool_pointer, false)
 	if is_instance_valid(_preview_actor):
 		_slimes.erase(_preview_actor)
 		_preview_actor.hide()

@@ -68,16 +68,10 @@ func _sync_frame() -> void:
 		if not _texture_bounds.has(_last_texture):
 			_texture_bounds[_last_texture] = Rect2(_last_texture.get_image().get_used_rect())
 		var used: Rect2 = _texture_bounds[_last_texture]
-		_material.set_shader_parameter(
-			"vertical_bounds", Vector2(used.position.y, used.end.y) / _source.texture.get_height()
-		)
+		_material.set_shader_parameter("center_uv", used.get_center() / _source.texture.get_size())
 		_bounds = Rect2(used.position + _source.get_rect().position, used.size)
 	_sparks.transform = frame_transform
-	_sparks.position = (
-		frame_transform
-		* Vector2(_bounds.get_center().x, lerpf(_bounds.end.y, _bounds.position.y, _progress))
-	)
-	_sparks.emission_rect_extents = Vector2(_bounds.size.x * lerpf(0.18, 0.48, _progress), 2.0)
+	_sparks.position = frame_transform * _bounds.get_center()
 
 
 func _set_progress(value: float) -> void:

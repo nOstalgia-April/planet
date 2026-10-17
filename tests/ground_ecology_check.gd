@@ -1,4 +1,4 @@
-extends SceneTree
+extends Node
 
 const DemoScript = preload("res://scripts/disk_demo.gd")
 const MucusField = preload("res://scripts/mucus_field.gd")
@@ -9,17 +9,17 @@ var _failures: Array[String] = []
 var _capture: bool = false
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	_capture = "--capture" in OS.get_cmdline_user_args()
 	_run_checks.call_deferred()
 
 
 func _run_checks() -> void:
-	root.mode = Window.MODE_WINDOWED
-	root.size = Vector2i(1920, 1080)
+	get_tree().root.mode = Window.MODE_WINDOWED
+	get_tree().root.size = Vector2i(1920, 1080)
 	var demo: DemoScript = DemoScene.instantiate() as DemoScript
-	root.add_child(demo)
-	current_scene = demo
+	get_tree().root.add_child(demo)
+	get_tree().current_scene = demo
 	demo.set_process(false)
 	demo._view.set_process(false)
 	demo._layout.set_process(false)
@@ -37,7 +37,7 @@ func _run_checks() -> void:
 	if _capture:
 		await _capture_scenes(demo)
 	demo.restart_run()
-	await process_frame
+	await get_tree().process_frame
 	_check(
 		(
 			demo._mucus_trails.is_empty()
@@ -54,9 +54,9 @@ func _run_checks() -> void:
 	for audio: Node in demo.get_node("Audio").get_children():
 		if audio is AudioStreamPlayer:
 			audio.stop()
-	current_scene = null
+	get_tree().current_scene = null
 	demo.queue_free()
-	await process_frame
+	await get_tree().process_frame
 	if _failures.is_empty():
 		print(
 			"PASS: pure-species nests, persistent nest mucus, moving ribbons, ground contact, crust clipping, lifetime/cap, automation and reset"
@@ -64,7 +64,7 @@ func _run_checks() -> void:
 	else:
 		for failure: String in _failures:
 			push_error("FAIL: " + failure)
-	quit(0 if _failures.is_empty() else 1)
+	get_tree().quit(0 if _failures.is_empty() else 1)
 
 
 func _check_outer_nest_sites(demo: DemoScript) -> void:
@@ -434,17 +434,22 @@ func _check_trail_lifetime_and_limit(demo: DemoScript) -> void:
 	for actor: PrototypeSlime in demo._slimes:
 		actor.detached_remaining = 1000.0
 	var first_trail: MucusField = null
+	var first_points: PackedVector2Array = PackedVector2Array()
 	for index: int in range(demo.run.settings.mucus_trail_limit + 5):
 		mucus.position = _ground_point(demo, -PI / 2.0 + float(index) * 0.075, 0.5)
 		var trail: MucusField = demo._start_mucus_trail(mucus)
 		trail.append_ground_point(_ground_point(demo, mucus.position.angle() + 0.05, 0.5))
 		if index == 0:
 			first_trail = trail
+			first_points = trail.get_ground_points().duplicate()
 	_check(
 		(
 			demo._mucus_trails.size() == demo.run.settings.mucus_trail_limit
-			and not demo._mucus_trails.has(first_trail)
-			and first_trail.is_queued_for_deletion()
+			and demo._mucus_pool.size() <= demo.mucus_pool_capacity
+			and (
+				first_trail.is_queued_for_deletion()
+				or first_trail.get_ground_points() != first_points
+			)
 		),
 		"the global trail cap retires the oldest histories without unbounded growth"
 	)
@@ -478,7 +483,7 @@ func _check_trail_lifetime_and_limit(demo: DemoScript) -> void:
 		),
 		"expired ribbons leave the visual history, active registry, and ground contact map"
 	)
-	await process_frame
+	await get_tree().process_frame
 	_check(
 		demo._mucus_root.get_child_count() == demo._nest_mucus_areas.size(),
 		"expired ribbon scene nodes are released while nest coverage persists"
@@ -513,7 +518,7 @@ func _check_partial_mucus_automation(demo: DemoScript) -> void:
 
 func _capture_scenes(demo: DemoScript) -> void:
 	for resolution: Vector2i in [Vector2i(1920, 1080), Vector2i(1280, 800)]:
-		root.size = resolution
+		get_tree().root.size = resolution
 		await _settle_layout()
 		demo.restart_run()
 		_prepare_mucus_nest(demo)
@@ -615,7 +620,7 @@ func _check_actor_species(demo: DemoScript) -> void:
 
 
 func _check_overview_counts(demo: DemoScript) -> void:
-	await process_frame
+	await get_tree().process_frame
 	var actual: Vector2i = Vector2i.ZERO
 	for actor: PrototypeSlime in demo._slimes:
 		if actor.species == PrototypeSlime.Species.SLIME:
@@ -648,12 +653,14 @@ func _look_at_nest(demo: DemoScript, nest_id: int) -> void:
 
 func _settle_layout() -> void:
 	for _frame: int in range(4):
-		await process_frame
+		await get_tree().process_frame
 
 
 func _save_frame(filename: String) -> void:
 	await RenderingServer.frame_post_draw
-	var result: Error = root.get_texture().get_image().save_png("res://artifacts/" + filename)
+	var result: Error = get_tree().root.get_texture().get_image().save_png(
+		"res://artifacts/" + filename
+	)
 	_check(result == OK, "saved " + filename)
 
 
