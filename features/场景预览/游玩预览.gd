@@ -33,6 +33,7 @@ func _ready() -> void:
 	_nest_discovery.presentation_started.connect(_on_restoration_started)
 	_nest_discovery.presentation_started.connect(_monster_audio.new_nest_discovered)
 	_nest_discovery.emergence_progressed.connect(_on_emergence_progressed)
+	_nest_discovery.rotation_guide_changed.connect(_layout.set_rotation_guide_visible)
 	_view.view_changed.connect(_sync_art)
 	_view.projection_changed.connect(_sync_art)
 	RenderingServer.set_default_clear_color(Color.BLACK)

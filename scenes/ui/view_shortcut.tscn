@@ -1,7 +1,12 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Texture2D" path="res://assets/ui/game_menu/view_switch.tres" id="icon"]
-[ext_resource type="PackedScene" path="res://scenes/ui/rotate_hint.tscn" id="rotate_hint"]
+[ext_resource type="FontVariation" path="res://fonts/game_font.tres" id="guide_font"]
+[ext_resource type="FontFile" path="res://fonts/站酷小薇LOGO体/站酷小薇LOGO体.otf" id="guide_chinese"]
+
+[sub_resource type="FontVariation" id="guide_bold"]
+base_font = ExtResource("guide_chinese")
+variation_embolden = 1.2
 
 [node name="ViewShortcut" type="Control"]
 layout_mode = 0
@@ -36,4 +41,21 @@ text = "Tab"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="RotateHint" parent="." instance=ExtResource("rotate_hint")]
+[node name="RotationGuide" type="RichTextLabel" parent="."]
+visible = false
+layout_mode = 0
+offset_right = 620.0
+offset_bottom = 130.0
+mouse_filter = 2
+theme_override_colors/default_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0.08, 0.015, 0.04, 0.8)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 3
+theme_override_constants/shadow_outline_size = 3
+theme_override_fonts/normal_font = ExtResource("guide_font")
+theme_override_fonts/bold_font = SubResource("guide_bold")
+theme_override_font_sizes/normal_font_size = 42
+theme_override_font_sizes/bold_font_size = 42
+bbcode_enabled = true
+text = "[center]在地表按住[b]右键[/b]拖动\n可以查看整个星球[/center]"
+scroll_active = false

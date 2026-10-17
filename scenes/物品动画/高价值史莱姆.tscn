@@ -1,7 +1,10 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=14 format=3]
 
 
 [ext_resource type="Script" path="res://scripts/物品动画/动画物件.gd" id="script"]
+
+[ext_resource type="PackedScene" path="res://scenes/effects/jewelry_shine.tscn" id="shine"]
+[ext_resource type="Resource" path="res://resources/jewelry_shine/slime.tres" id="shine_frames"]
 
 [ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/史莱姆/待机/001.png" id="tex0"]
 
@@ -157,3 +160,8 @@ centered = false
 libraries = {
 &"": SubResource("library")
 }
+
+[node name="JewelryShine" parent="." node_paths=PackedStringArray("target", "animation_player") instance=ExtResource("shine")]
+target = NodePath("../画面/贴图")
+animation_player = NodePath("../动画播放器")
+frames = ExtResource("shine_frames")

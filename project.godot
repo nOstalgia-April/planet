@@ -18,7 +18,9 @@ General/should_load_by_name=true
 config/name="Planet"
 run/main_scene="res://scenes/主菜单/主菜单.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
-config/icon="res://icon.svg"
+config/icon="res://assets/branding/icon.png"
+config/windows_native_icon="res://assets/branding/icon.ico"
+config/macos_native_icon="res://assets/branding/icon.icns"
 
 [autoload]
 

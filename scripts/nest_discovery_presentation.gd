@@ -4,6 +4,7 @@ signal presentation_started
 signal emergence_progressed(nest_id: int, progress: float)
 signal nest_revealed(nest_id: int, species: int)
 signal presentation_finished
+signal rotation_guide_changed(visible: bool)
 
 const PlanetView = preload("res://scripts/planet_view_controller.gd")
 const PopulationPalette = preload("res://scripts/population_palette.gd")
@@ -24,6 +25,7 @@ enum Phase { IDLE, WAITING, ANTICIPATE, TURN, LAND, ZOOM, HOLD, RISE, RECOVER }
 @export_range(0.0, 2.0, 0.05) var emergence_seconds: float = 0.85
 @export_range(0.0, 2.0, 0.05) var recovery_seconds: float = 0.55
 @export_range(0.0, 30.0, 0.5) var accent_seconds: float = 10.0
+@export_range(1.0, 30.0, 0.5) var rotation_guide_seconds: float = 8.0
 @export_group("Presentation")
 @export_range(0.05, 1.0, 0.05) var anticipation_time_scale: float = 0.18
 @export_range(1.0, 1.6, 0.05) var closeup_magnification: float = 1.25
@@ -43,6 +45,8 @@ var _saved_time_scale: float = 1.0
 var _owns_time_scale: bool = false
 var _queued_species: int = -1
 var _queued_position: Vector2 = Vector2.ZERO
+var _first_guide_pending: bool = false
+var _guide_remaining: float = 0.0
 
 
 func _ready() -> void:
@@ -64,6 +68,8 @@ func reset() -> void:
 
 
 func cancel() -> void:
+	_hide_rotation_guide()
+	_first_guide_pending = false
 	_restore_time_scale()
 	if _nest_id > 0:
 		emergence_progressed.emit(_nest_id, 1.0)
@@ -99,6 +105,7 @@ func request_discovery(species: NestState.Species, position: Vector2) -> void:
 func _try_start() -> void:
 	if phase != Phase.WAITING or view.presentation_locked:
 		return
+	_hide_rotation_guide()
 	view.presentation_locked = true
 	view.end_drag()
 	view.clear_discovery_camera()
@@ -118,9 +125,13 @@ func _try_start() -> void:
 
 func _process(delta: float) -> void:
 	if run.is_complete:
-		if phase != Phase.IDLE:
+		if phase != Phase.IDLE or _guide_remaining > 0.0:
 			cancel()
 		return
+	if _guide_remaining > 0.0:
+		_guide_remaining = maxf(0.0, _guide_remaining - delta / maxf(Engine.time_scale, 0.001))
+		if _guide_remaining <= 0.0 or view.is_dragging():
+			_hide_rotation_guide()
 	_try_start()
 	if phase < Phase.ANTICIPATE:
 		return
@@ -180,6 +191,7 @@ func _reveal() -> void:
 		return
 	_nest_id = run.nests.back().nest_id
 	emergence_progressed.emit(_nest_id, 0.0)
+	_first_guide_pending = not first_discovery_shown
 	first_discovery_shown = true
 	if not discovered_species.has(_species):
 		discovered_species.append(_species)
@@ -191,10 +203,19 @@ func _reveal() -> void:
 func _finish() -> void:
 	var next_species: int = _queued_species
 	var next_position: Vector2 = _queued_position
+	var show_guide: bool = _first_guide_pending
 	cancel()
+	if show_guide:
+		_guide_remaining = rotation_guide_seconds
+		rotation_guide_changed.emit(true)
 	presentation_finished.emit()
 	if next_species >= 0:
 		request_discovery(next_species as NestState.Species, next_position)
+
+
+func _hide_rotation_guide() -> void:
+	_guide_remaining = 0.0
+	rotation_guide_changed.emit(false)
 
 
 func _restore_time_scale() -> void:

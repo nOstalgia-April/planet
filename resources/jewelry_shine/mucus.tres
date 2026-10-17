@@ -1,0 +1,26 @@
+[gd_resource type="Resource" load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/effects/jewelry_shine_frames.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/黏液怪/吸入/001.png" id="s0"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mucus/吸入/001.png" id="m0"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/黏液怪/待机/001.png" id="s1"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mucus/待机/001.png" id="m1"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/黏液怪/待机/002.png" id="s2"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mucus/待机/002.png" id="m2"]
+[ext_resource type="Texture2D" path="res://assets/物品动画/高价值怪物/黏液怪/待机/003.png" id="s3"]
+[ext_resource type="Texture2D" path="res://assets/effects/jewelry_shine/mucus/待机/003.png" id="m3"]
+
+[resource]
+script = ExtResource("1")
+masks = Dictionary[Texture2D, Texture2D]({
+ExtResource("s0"): ExtResource("m0"),
+ExtResource("s1"): ExtResource("m1"),
+ExtResource("s2"): ExtResource("m2"),
+ExtResource("s3"): ExtResource("m3")
+})
+regions = Dictionary[Texture2D, Rect2]({
+ExtResource("s0"): Rect2(194, 45, 110, 104),
+ExtResource("s1"): Rect2(187, 27, 110, 104),
+ExtResource("s2"): Rect2(187, 17, 110, 104),
+ExtResource("s3"): Rect2(187, 43, 110, 104)
+})

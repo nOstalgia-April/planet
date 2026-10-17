@@ -244,6 +244,9 @@ func _drive_tool(delta: float, pointer: Vector2, holding: bool) -> void:
 	var just_pressed: bool = holding and not _was_holding
 	_tool_pointer = pointer
 	_pipe.visible = (_active_tool == ToolMode.PIPE and _can_collect(pointer, run.get_pipe_radius()))
+	_layout.update_rotation_hint_hover(
+		_world.get_global_transform_with_canvas() * pointer, _pipe.visible
+	)
 	if _active_tool == ToolMode.PIPE:
 		var tool_radius: float = run.get_pipe_radius()
 		var capturing: bool = _can_collect(pointer, tool_radius)

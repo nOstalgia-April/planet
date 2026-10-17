@@ -1,0 +1,9 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://features/物品动画预览/物品动画总览.tscn" id="preview"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/高价值史莱姆.tscn" id="slime"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/高价值黏液怪.tscn" id="mucus"]
+[ext_resource type="PackedScene" path="res://scenes/物品动画/高价值地鼠.tscn" id="mole"]
+
+[node name="高价值饰品掠光预览" instance=ExtResource("preview")]
+object_scenes = Array[PackedScene]([ExtResource("slime"), ExtResource("mucus"), ExtResource("mole")])

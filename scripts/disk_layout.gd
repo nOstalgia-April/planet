@@ -19,6 +19,8 @@ const VIEW_ZOOM_IN: Texture2D = preload("res://assets/ui/game_menu/zoom_in.tres"
 
 var save_before_menu: Callable
 
+@export var rotation_hint: Control
+
 var dock_intro_progress: float = 1.0:
 	set(value):
 		dock_intro_progress = clampf(value, 0.0, 1.2)
@@ -27,6 +29,7 @@ var dock_intro_progress: float = 1.0:
 
 var _manual_pause: bool = false
 var _presentation_paused: bool = false
+var _rotation_hint_hovered: bool = false
 
 var _shop_layout_queued: bool = false
 var _nest_anchor: PackedVector2Array = PackedVector2Array()
@@ -77,6 +80,10 @@ func _sync_completion_presentation() -> void:
 
 func _process(_delta: float) -> void:
 	_view_shortcut.visible = not is_view_switch_blocked()
+	rotation_hint.visible = _view_shortcut.is_visible_in_tree()
+	rotation_hint.modulate = _view_shortcut.modulate
+	if _rotation_hint_hovered:
+		rotation_hint.modulate.a *= 0.4
 	_tool_dock.suppress(
 		get_tree().paused or is_technology_open() or _completion.is_visible_in_tree()
 	)
@@ -101,6 +108,15 @@ func set_view_switch_enabled(value: bool) -> void:
 	_view_shortcut.modulate.a = 1.0 if value else 0.4
 
 
+func set_rotation_guide_visible(value: bool) -> void:
+	$ViewShortcut/RotationGuide.visible = value
+
+
+func update_rotation_hint_hover(pointer: Vector2, vacuum_visible: bool) -> void:
+	var bounds: Rect2 = rotation_hint.get_global_rect().grow(12.0 * rotation_hint.scale.x)
+	_rotation_hint_hovered = vacuum_visible and bounds.has_point(pointer)
+
+
 func apply_layout(viewport_size: Vector2) -> Rect2:
 	var interface_scale: float = minf(
 		viewport_size.x / DESIGN_SIZE.x, viewport_size.y / DESIGN_SIZE.y
@@ -110,13 +126,19 @@ func apply_layout(viewport_size: Vector2) -> Rect2:
 	size = viewport_size / interface_scale
 	_place($Economy, Rect2(28.0, 24.0, 210.0, 34.0))
 	_place(_view_shortcut, Rect2(24.0, size.y * 0.5 - 44.0, 64.0, 88.0))
+	rotation_hint.scale = Vector2.ONE * interface_scale
 	_place(
-		$ViewShortcut/RotateHint,
-		Rect2(
-			Vector2(size.x - 104.0, size.y - 142.0) - _view_shortcut.position, Vector2(80.0, 118.0)
-		)
+		rotation_hint,
+		Rect2(Vector2(size.x - 104.0, size.y - 142.0) * interface_scale, Vector2(80.0, 118.0))
 	)
 	_place($StatusLabel, Rect2(270.0, size.y - 160.0, size.x - 540.0, 30.0))
+	_place(
+		$ViewShortcut/RotationGuide,
+		Rect2(
+			Vector2(size.x * 0.5 - 310.0, size.y * 0.14) - _view_shortcut.position,
+			Vector2(620.0, 130.0)
+		)
+	)
 	_place_tool_dock()
 	_place_shops()
 	return Rect2(
