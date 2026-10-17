@@ -3,6 +3,9 @@ extends Control
 const MainMenu = preload("res://scenes/主菜单/主菜单.gd")
 const Notice = preload("res://scripts/ui/mission_notice.gd")
 const OPENING_SOUND: String = "event:/Mx/OpeningAnimation"
+const GAMEPLAY_MUSIC: String = "event:/Mx/Mx_GamePlay"
+# The game opens on the far view, so its music starts in the far-view mix.
+const DISTANT_VIEW_PARAMETER: String = "IsDistantView"
 # FMOD needs ~0.2 s to start a sound; never hold the first frame longer than this.
 const SOUND_START_TIMEOUT: float = 0.5
 # Keep the opening sound's fade protected if the notice timing is shortened.
@@ -107,6 +110,11 @@ func _on_animation_finished(animation_name: StringName) -> void:
 	if animation_name != &"开头":
 		return
 	_briefing.play()
+	# Gameplay music starts with the briefing, still after the opening sound
+	# has faded (MUSIC_AFTER_SOUND_LEAD before its end).
+	GameAudio.hold_music_for(_sound, OPENING_SOUND, MUSIC_AFTER_SOUND_LEAD)
+	GameAudio.set_music_parameter(GAMEPLAY_MUSIC, DISTANT_VIEW_PARAMETER, 1.0)
+	GameAudio.play_music(GAMEPLAY_MUSIC)
 
 
 func _on_briefing_finished() -> void:
@@ -121,10 +129,8 @@ func _try_enter_game() -> void:
 	_enter_game.call_deferred()
 
 
-# The start sound already played on the menu's click. Gameplay requests its
-# music on entry after the briefing; any remaining opening tail finishes first.
+# The start sound played on the menu's click and the music with the briefing.
 func _enter_game() -> void:
-	GameAudio.hold_music_for(_sound, OPENING_SOUND, MUSIC_AFTER_SOUND_LEAD)
 	var result: Error = get_tree().change_scene_to_packed(_prepared_scene)
 	if result != OK:
 		_loading_failed()

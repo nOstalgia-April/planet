@@ -3,6 +3,7 @@ extends Node
 const Intro = preload("res://scenes/开头动画/开头动画.gd")
 const Menu = preload("res://scenes/主菜单/主菜单.gd")
 const Audio = preload("res://scripts/fmod_audio.gd")
+const StoryFlow = preload("res://features/tutorial_intro/story_flow.gd")
 const MENU_PATH: String = "res://scenes/主菜单/主菜单.tscn"
 const INTRO_PATH: String = "res://scenes/开头动画/开头动画.tscn"
 const FRAME_COUNTS: Array[int] = [4, 4, 3, 3, 7, 11, 9]
@@ -49,13 +50,19 @@ func _run() -> void:
 			+ intro._briefing.section_hold_seconds * 2.0
 			+ intro._briefing.final_hold_seconds
 		)
-		await _tree.scene_changed
-		assert(_tree.current_scene.scene_file_path == Menu.DEFAULT_START_SCENE)
-		_assert_gameplay_music(audio)
-		var duration: float = float(Time.get_ticks_msec() - started_at) / 1000.0
+		while not intro._briefing.playing:
+			await _tree.process_frame
+		_assert_briefing_music(audio)
 		while audio.is_transition_playing():
 			await _tree.process_frame
-		assert(audio._music_path == "event:/Mx/Mx_GamePlay", "片头音效淡出后游戏音乐开始。")
+		assert(
+			audio._music_path == "event:/Mx/Mx_GamePlay" and _tree.current_scene == intro,
+			"片头音效淡出后、委托书期间游戏音乐开始。"
+		)
+		await _tree.scene_changed
+		assert(_tree.current_scene.scene_file_path == Menu.DEFAULT_START_SCENE)
+		var duration: float = float(Time.get_ticks_msec() - started_at) / 1000.0
+		await _check_opening_zoom(_tree.current_scene.get_node("StoryFlow") as StoryFlow)
 		assert(absf(duration - clip.length - notice_seconds) < 1.5, "开头动画和委托书均按实际时长播放。")
 		print(
 			(
@@ -91,6 +98,7 @@ func _run() -> void:
 	assert(picture.texture.resource_path.ends_with("p7/009.png"))
 	player.advance(0.02)
 	assert(intro._briefing.playing, "开头动画结束后先显示不可跳过的委托书。")
+	_assert_briefing_music(audio)
 	await _tree.scene_changed
 	assert(_tree.current_scene.scene_file_path == Menu.DEFAULT_START_SCENE, "片头播放结束必须自动进入正式游戏。")
 	assert(_tree.current_scene.has_node("StoryFlow"), "正式游戏挂载七段看板娘剧情。")
@@ -111,6 +119,31 @@ func _run() -> void:
 		"PASS: menu startup, Start, all 41 frames/rates, final-frame hold, gameplay music and return."
 	)
 	_tree.quit()
+
+
+# The briefing requests gameplay music in its far-view mix.
+func _assert_briefing_music(audio: Audio) -> void:
+	_assert_gameplay_music(audio)
+	assert(
+		is_equal_approx(FmodServer.get_global_parameter_by_name("IsDistantView"), 1.0),
+		"委托书出现时游戏音乐以远景混音（IsDistantView = 1）开始。"
+	)
+
+
+# The game opens on the far view, then zooms in with ZoomIn while the music
+# follows to its near-view mix.
+func _check_opening_zoom(story: StoryFlow) -> void:
+	var distant: Callable = func() -> float:
+		return FmodServer.get_global_parameter_by_name("IsDistantView")
+	assert(story.phase == StoryFlow.Phase.OVERVIEW and is_equal_approx(distant.call(), 1.0))
+	var zoom_in: FmodEventDescription = FmodServer.get_event("event:/UI/ZoomIn")
+	var zooms: int = zoom_in.get_instance_count()
+	while story.phase == StoryFlow.Phase.OVERVIEW:
+		await _tree.process_frame
+	assert(zoom_in.get_instance_count() > zooms, "远景切到近景时播放 ZoomIn。")
+	while story.phase == StoryFlow.Phase.ZOOMING:
+		await _tree.process_frame
+	assert(is_zero_approx(distant.call()), "切到近景后 IsDistantView 回到 0。")
 
 
 func _assert_gameplay_music(audio: Audio) -> void:

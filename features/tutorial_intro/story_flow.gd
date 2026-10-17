@@ -100,12 +100,15 @@ func _process(delta: float) -> void:
 		GameAudio.set_music_ducked(true)
 		game._planet_audio.zoom_sounds_muted = true
 		GameAudio.set_near_view_gain(game._view.near_blend)
+		game.sync_music_view()
 	match phase:
 		Phase.IDLE:
 			_try_teaching()
 		Phase.OVERVIEW:
 			if _elapsed >= overview_seconds:
 				game._view.zoom_discovery(1.0, zoom_seconds)
+				# The game starts here; the music's far view follows the camera in.
+				game._planet_audio.zoomed_in()
 				_set_phase(Phase.ZOOMING)
 		Phase.ZOOMING:
 			if not game._view.is_transitioning():

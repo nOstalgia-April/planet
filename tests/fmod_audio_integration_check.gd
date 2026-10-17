@@ -76,6 +76,10 @@ func _run_checks() -> void:
 	_check(demo._monster_audio._golden_ready, "Golden_Mon is available.")
 	await _check_candy_bursts(demo._monster_audio)
 	_check_combo_audio(demo)
+	_check_presentation_quiet(demo._monster_audio)
+	_check_drill_audio(demo._monster_audio)
+	_check_upgrade_hints(demo)
+	await _check_terrain_pops(demo._planet_audio)
 	_check_path_resolution()
 	demo._play_collection_reward(2, Vector2.ZERO)
 	var reward_effect: CollectionEffect = (
@@ -170,9 +174,19 @@ func _check_audio_pause() -> void:
 	# Menus (settings, technology page) pause the game: gameplay sounds hold
 	# their place, while music (under Music_Menu) and UI sounds keep playing.
 	tree.paused = true
+	# The game turns the vacuum off as it pauses; Vacuum_Off must still run
+	# to stop Vacuum_Loop, which FMOD started and the freeze cannot reach.
+	GameAudio.play("event:/Vacuum/Vacuum_Off")
 	await tree.process_frame
 	await tree.process_frame
 	await tree.create_timer(0.4, true).timeout
+	var gameplay_bus: FmodBus = FmodServer.get_bus(GameAudio.GAMEPLAY_BUS)
+	_check(gameplay_bus.get_mute(), "Pausing mutes the gameplay bus, Vacuum_Loop included.")
+	var vacuum_off: Array = FmodServer.get_event("event:/Vacuum/Vacuum_Off").get_instance_list()
+	_check(
+		vacuum_off.size() > 0 and vacuum_off.all(func(e: FmodEvent) -> bool: return not e.get_paused()),
+		"Vacuum_Off keeps running through the pause to stop Vacuum_Loop."
+	)
 	_check(
 		(
 			not GameAudio._master_bus.get_paused()
@@ -215,6 +229,7 @@ func _check_audio_pause() -> void:
 		"Gameplay sounds continue after the pause."
 	)
 	_check(is_zero_approx(GameAudio._music_menu), "Resuming releases Music_Menu.")
+	_check(not gameplay_bus.get_mute(), "Resuming unmutes the gameplay bus.")
 	_check(
 		is_zero_approx(FmodServer.get_global_parameter_by_name("Music_Menu")),
 		"FMOD receives Music_Menu = 0 after resuming."
@@ -363,22 +378,6 @@ func _check_loading_audio(audio: Node) -> void:
 	audio.update_peel(second, 0.5)
 	audio.stop_now()
 	_check(audio._peel == null, "Stopping the vacuum stops the peel loop.")
-	audio.update_drill_loading(first)
-	var drill_loading: FmodEvent = audio._drill_loading
-	_check(
-		drill_loading != null and drill_loading.is_valid(),
-		"Holding a drill monster starts Loading_DrillMon."
-	)
-	audio.update_drill_loading(first)
-	_check(audio._drill_loading == drill_loading, "A continued hold keeps the same sound.")
-	audio.update_drill_loading(null)
-	_check(audio._drill_loading == null, "Letting go stops Loading_DrillMon.")
-	audio.update_drill_loading(second)
-	audio.finish_drill_loading()
-	_check(audio._drill_loading == null, "A completed hold lets Loading_DrillMon play out.")
-	audio.update_drill_loading(first)
-	audio.stop_now()
-	_check(audio._drill_loading == null, "Stopping the vacuum stops Loading_DrillMon.")
 	first.free()
 	second.free()
 
@@ -467,6 +466,108 @@ func _check_combo_audio(demo: Node) -> void:
 		run.combo_interrupted.is_connected(demo._monster_audio.combo_broken),
 		"Combo_Break follows a combo timeout."
 	)
+
+
+# A new nest's presentation silences spawn bursts and chatter, queued ones
+# included, while the new nest's own appearance still sounds.
+func _check_presentation_quiet(audio: Node) -> void:
+	audio.monster_spawned(NestState.Species.SLIME)
+	audio.monster_sounds_muted = true
+	_check(
+		audio._pending_spawns.is_empty() and audio._scheduled_triggers.is_empty(),
+		"Muting drops spawn sounds that were still queued."
+	)
+	audio.monster_spawned(NestState.Species.SLIME)
+	_check(audio._pending_spawns.is_empty(), "No spawn sound queues while muted.")
+	var chatter: FmodEventDescription = FmodServer.get_event("event:/Monsters/SlimeMon_Rand")
+	var before: int = chatter.get_instance_count()
+	for _frame: int in range(120):
+		audio.update_chatter(1.0, {NestState.Species.SLIME: 100})
+	_check(chatter.get_instance_count() == before, "No chatter plays while muted.")
+	var appear: FmodEventDescription = FmodServer.get_event("event:/Nest/Slime_NestAppear")
+	var appeared: int = appear.get_instance_count()
+	audio.nest_appeared(NestState.Species.SLIME)
+	_check(appear.get_instance_count() == appeared + 1, "The new nest still plays its appearance.")
+	audio.monster_sounds_muted = false
+	audio.monster_spawned(NestState.Species.SLIME)
+	_check(not audio._pending_spawns.is_empty(), "Spawn sounds return after the presentation.")
+	audio._pending_spawns.clear()
+
+
+# Drill_Crawl loops only while a drill crawls; Drill_OutofDirt plays as it
+# jumps out. Both stay quiet during a new nest's presentation.
+func _check_drill_audio(audio: Node) -> void:
+	const Drill = preload("res://scripts/drill_monster.gd")
+	var out: FmodEventDescription = FmodServer.get_event(audio.DRILL_OUT_EVENT)
+	audio._on_drill_phase(Drill.Phase.TRAVEL, 101)
+	var crawl: FmodEvent = audio._crawling.get(101)
+	_check(crawl != null and crawl.is_valid(), "A crawling drill starts Drill_Crawl.")
+	audio._on_drill_phase(Drill.Phase.PAUSE, 101)
+	_check(not audio._crawling.has(101), "A pausing drill stops Drill_Crawl.")
+	audio._on_drill_phase(Drill.Phase.TRAVEL, 101)
+	audio.monster_sounds_muted = true
+	_check(audio._crawling.get(101) == null, "A presentation silences the crawl.")
+	var outs: int = out.get_instance_count()
+	audio._on_drill_phase(Drill.Phase.EMERGE, 102)
+	_check(out.get_instance_count() == outs, "No Drill_OutofDirt during a presentation.")
+	audio.monster_sounds_muted = false
+	_check(audio._crawling.get(101) != null, "The crawl resumes after the presentation.")
+	outs = out.get_instance_count()
+	audio._on_drill_phase(Drill.Phase.EMERGE, 101)
+	_check(out.get_instance_count() == outs + 1, "A drill jumping out plays Drill_OutofDirt.")
+	_check(not audio._crawling.has(101), "Jumping out ends Drill_Crawl.")
+	audio._on_drill_phase(Drill.Phase.TRAVEL, 103)
+	audio._stop_crawl(103)
+	_check(audio._crawling.is_empty(), "A drill leaving the scene stops its crawl.")
+
+
+# The tool dock's quick-upgrade tab plays its tool's hint as it slides up.
+func _check_upgrade_hints(demo: DemoScript) -> void:
+	var dock: Node = demo._layout._tool_dock
+	for tool: int in range(2):
+		var hint: FmodEventDescription = FmodServer.get_event(UiAudio.UPGRADE_HINT_EVENTS[tool])
+		var hints: int = hint.get_instance_count()
+		dock.upgrade_revealed.emit(tool)
+		_check(hint.get_instance_count() == hints + 1, "Revealed tab %d plays its hint." % tool)
+	var vacuum_hint: FmodEventDescription = FmodServer.get_event(UiAudio.UPGRADE_HINT_EVENTS[0])
+	var was_expanded: bool = dock._expanded[0]
+	dock._set_expanded(0, false)
+	var before: int = vacuum_hint.get_instance_count()
+	dock._set_expanded(0, true)
+	_check(
+		vacuum_hint.get_instance_count() == before + (1 if dock.is_visible_in_tree() else 0),
+		"The vacuum tab sliding up plays Hint_VaccumButton when the dock is shown."
+	)
+	dock._set_expanded(0, was_expanded)
+
+
+# Rocks pop at the start of "appear", trees a moment later; a replay hidden
+# behind the overview stays silent.
+func _check_terrain_pops(audio: Node) -> void:
+	const TerrainScene: PackedScene = preload("res://scenes/场景动画/山丘树木.tscn")
+	var terrain: Node2D = TerrainScene.instantiate() as Node2D
+	terrain.set_process(false)
+	add_child(terrain)
+	var pops: Array[bool] = []
+	terrain.popped.connect(func(trees: bool) -> void: pops.append(trees))
+	terrain.replay()
+	terrain._process(0.0)
+	_check(pops == [false], "The rocks pop as the terrain appears.")
+	terrain._process(terrain.tree_pop_seconds)
+	_check(pops == [false, true], "The trees pop once, a moment later.")
+	terrain._process(1.0)
+	_check(pops.size() == 2, "Each group pops only once per appearance.")
+	terrain.set_near_blend(0.0)
+	terrain.replay()
+	terrain._process(1.0)
+	_check(pops.size() == 2, "A hidden terrain stays silent.")
+	terrain.queue_free()
+	var tree_pop: FmodEventDescription = FmodServer.get_event(audio.TERRAIN_POP_EVENT)
+	var played: int = tree_pop.get_instance_count()
+	audio.terrain_popped(false)
+	audio.terrain_popped(true)
+	_check(tree_pop.get_instance_count() == played + 2, "Rocks and trees each play TreePopUp.")
+	await get_tree().process_frame
 
 
 # A path whose FMOD folder moved still reaches its event by name.

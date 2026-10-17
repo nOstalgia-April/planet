@@ -36,6 +36,11 @@ const GOLDEN_EVENT: String = "event:/Candy/Golden_Mon"
 # Plays with the new-nest presentation (slow-down, planet turn, close-up).
 const NEW_NEST_EVENT: String = "event:/Nest/New_Nest"
 const NET_CAPTURE_EVENT: String = "event:/Net/Net_Capture"
+const DrillMonster = preload("res://scripts/drill_monster.gd")
+# Loops while a drill monster crawls underground (not while it pauses).
+const DRILL_CRAWL_EVENT: String = "event:/Monsters/Drill_Crawl"
+# Once as a drill monster jumps out of the dirt.
+const DRILL_OUT_EVENT: String = "event:/Drill_OutofDirt"
 # Indexed by the nest's new level - 1; the last one is the upgrade that tames it.
 const NEST_LEVEL_UP_EVENTS: PackedStringArray = [
 	"event:/Nest/Nest_Lvlup_Stage01",
@@ -96,6 +101,11 @@ var _combo_break_ready: bool = false
 var _combo_clear_count: int = 0
 var _new_nest_ready: bool = false
 var _new_nest: FmodEvent
+var _drill_crawl_ready: bool = false
+var _drill_out_ready: bool = false
+# Drill monster instance id -> its Drill_Crawl loop while it crawls; null while
+# monster sounds are muted, so the loop resumes if it is still crawling.
+var _crawling: Dictionary = {}
 var _chatter_cooldowns: Dictionary = {}
 var _clock: float = 0.0
 # species -> monsters spawned since the last frame.
@@ -113,6 +123,15 @@ var _has_candy_value: bool = false
 # Candy_Value may be authored as a global parameter; then it is set globally
 # right before each candy voice instead of on the instance.
 var _candy_value_global: bool = false
+# While the camera turns to a new nest, the area left behind stays quiet: spawn
+# bursts and chatter are dropped (queued ones too). nest_appear still plays.
+var monster_sounds_muted: bool = false:
+	set(value):
+		monster_sounds_muted = value
+		if value:
+			_pending_spawns.clear()
+			_scheduled_triggers.clear()
+		_sync_crawl()
 
 
 func _ready() -> void:
@@ -131,6 +150,8 @@ func _ready() -> void:
 	)
 	_combo_break_ready = GameAudio.has_events([COMBO_BREAK_EVENT])
 	_new_nest_ready = GameAudio.has_events([NEW_NEST_EVENT])
+	_drill_crawl_ready = GameAudio.has_events([DRILL_CRAWL_EVENT])
+	_drill_out_ready = GameAudio.has_events([DRILL_OUT_EVENT])
 	if _ready_to_play:
 		_find_candy_value_parameter()
 	_rng.randomize()
@@ -146,7 +167,7 @@ func nest_appeared(species: int) -> void:
 
 # A monster leaves its nest hole. Spawns are collected and played as bursts.
 func monster_spawned(species: int) -> void:
-	if _ready_to_play and SPECIES_EVENTS.has(species):
+	if _ready_to_play and not monster_sounds_muted and SPECIES_EVENTS.has(species):
 		_pending_spawns[species] = int(_pending_spawns.get(species, 0)) + 1
 
 
@@ -315,6 +336,42 @@ func stop_new_nest() -> void:
 
 func _exit_tree() -> void:
 	stop_new_nest()
+	for id: int in _crawling.keys():
+		_stop_crawl(id)
+
+
+# Follows a spawned drill monster's phases until it leaves the scene.
+func track_drill(drill: DrillMonster) -> void:
+	drill.phase_entered.connect(_on_drill_phase.bind(drill.get_instance_id()))
+	drill.tree_exiting.connect(_stop_crawl.bind(drill.get_instance_id()))
+
+
+func _on_drill_phase(phase: DrillMonster.Phase, id: int) -> void:
+	if phase == DrillMonster.Phase.TRAVEL:
+		if not _crawling.has(id):
+			_crawling[id] = null
+	else:
+		_stop_crawl(id)
+	if phase == DrillMonster.Phase.EMERGE and _drill_out_ready and not monster_sounds_muted:
+		GameAudio.play(DRILL_OUT_EVENT)
+	_sync_crawl()
+
+
+func _stop_crawl(id: int) -> void:
+	if _crawling.has(id):
+		GameAudio.stop_loop(_crawling[id])
+		_crawling.erase(id)
+
+
+# Every crawling drill has its loop unless monster sounds are muted.
+func _sync_crawl() -> void:
+	for id: int in _crawling.keys():
+		var sound: FmodEvent = _crawling[id]
+		if monster_sounds_muted and sound != null:
+			GameAudio.stop_loop(sound)
+			_crawling[id] = null
+		elif not monster_sounds_muted and sound == null and _drill_crawl_ready:
+			_crawling[id] = GameAudio.start_loop(DRILL_CRAWL_EVENT)
 
 
 # A golden (high-value) monster was collected; once per pipe capture or net.
@@ -344,7 +401,7 @@ func nest_leveled_up(level: int) -> bool:
 
 # population: species -> number of monsters currently roaming the surface.
 func update_chatter(delta: float, population: Dictionary) -> void:
-	if not _ready_to_play or delta <= 0.0:
+	if not _ready_to_play or monster_sounds_muted or delta <= 0.0:
 		return
 	for species: int in SPECIES_EVENTS:
 		var cooldown: float = maxf(0.0, float(_chatter_cooldowns.get(species, 0.0)) - delta)

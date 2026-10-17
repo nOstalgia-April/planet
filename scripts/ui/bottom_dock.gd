@@ -1,6 +1,8 @@
 extends Control
 
 signal upgrade_requested(tool: int)
+# A tool's quick-upgrade tab slides up into view (0 = vacuum, 1 = net).
+signal upgrade_revealed(tool: int)
 
 const Selection = preload("res://scripts/ui/dock_selection.gd")
 const Cooldown = preload("res://scripts/ui/dock_cooldown.gd")
@@ -338,6 +340,8 @@ func _set_expanded(index: int, expanded: bool) -> void:
 	_tweens[index].tween_property(purchase, "position:y", target_y, reveal_seconds)
 	if not expanded:
 		_tweens[index].tween_callback(purchase.hide)
+	elif is_visible_in_tree():
+		upgrade_revealed.emit(index)
 
 
 func contains_pointer(pointer: Vector2) -> bool:

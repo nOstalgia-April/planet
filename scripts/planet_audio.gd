@@ -20,6 +20,8 @@ const COLOR_CHANGE_EVENTS: PackedStringArray = [
 	"event:/AnimationSystem/ColorChange_Mucus",
 	"event:/AnimationSystem/ColorChange_Drill",
 ]
+# Background rocks and trees popping up as the near view appears.
+const TERRAIN_POP_EVENT: String = "event:/TreePopUp"
 # The victory panel after every monster is cleared.
 const CLEAR_MONSTER_EVENT: String = "event:/UI/Clear_Monster"
 
@@ -40,6 +42,7 @@ var _zoom_ready: bool = false
 var _color_recover_ready: bool = false
 var _color_change_ready: bool = false
 var _clear_monster_ready: bool = false
+var _terrain_pop_ready: bool = false
 # Presentations move the camera themselves and play their own sounds.
 var zoom_sounds_muted: bool = false
 # Last camera target (1 = near view, 0 = overview); NAN until the first frame.
@@ -54,6 +57,7 @@ func _ready() -> void:
 	)
 	_color_change_ready = GameAudio.has_events(COLOR_CHANGE_EVENTS)
 	_clear_monster_ready = GameAudio.has_events([CLEAR_MONSTER_EVENT])
+	_terrain_pop_ready = GameAudio.has_events([TERRAIN_POP_EVENT])
 
 
 # stage: 1 for the first species color restored this run, then 2 and 3.
@@ -70,6 +74,18 @@ func planet_turned_white() -> void:
 func palette_changed_to(species: int) -> void:
 	if _color_change_ready and species >= 0 and species < COLOR_CHANGE_EVENTS.size():
 		GameAudio.play(COLOR_CHANGE_EVENTS[species])
+
+
+# Called once for the rocks and once for the trees as they pop up.
+func terrain_popped(_trees: bool) -> void:
+	if _terrain_pop_ready:
+		GameAudio.play(TERRAIN_POP_EVENT)
+
+
+# A presentation moving the camera into the near view itself.
+func zoomed_in() -> void:
+	if _zoom_ready:
+		GameAudio.play(ZOOM_IN_EVENT)
 
 
 # Returns false when the event is unavailable, so the caller can fall back.

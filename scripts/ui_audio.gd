@@ -12,6 +12,11 @@ const INSUFFICIENT_EVENT: String = "event:/UI/Button_InsufPoint"
 const LEVEL_UP_EVENT: String = "event:/UI/Button_Levelup"
 const SWITCH_VACUUM_EVENT: String = "event:/UI/Switch-Vacuum"
 const SWITCH_NET_EVENT: String = "event:/UI/Switch-Net"
+# The tool dock's quick-upgrade tab sliding up, indexed by tool (vacuum, net).
+const UPGRADE_HINT_EVENTS: PackedStringArray = [
+	"event:/Hint_VaccumButton",
+	"event:/Hint_NetButton",
+]
 const HOOKED_META: StringName = &"ui_audio_hooked"
 const PURCHASE_META: StringName = &"ui_audio_purchase"
 # Buttons whose press sound comes from game code rather than Click.
@@ -19,6 +24,7 @@ const OWN_SOUND_META: StringName = &"ui_audio_own_sound"
 
 var _ready_to_play: bool = false
 var _switch_ready: bool = false
+var _hint_ready: bool = false
 
 
 func _ready() -> void:
@@ -26,6 +32,7 @@ func _ready() -> void:
 		[CLICK_EVENT, HOVER_EVENT, INSUFFICIENT_EVENT, LEVEL_UP_EVENT]
 	)
 	_switch_ready = GameAudio.has_events([SWITCH_VACUUM_EVENT, SWITCH_NET_EVENT])
+	_hint_ready = GameAudio.has_events(UPGRADE_HINT_EVENTS)
 	if not _ready_to_play:
 		return
 	get_tree().node_added.connect(_on_node_added)
@@ -55,6 +62,12 @@ func click() -> void:
 func tool_switched(net: bool) -> void:
 	if _switch_ready:
 		GameAudio.play_now(SWITCH_NET_EVENT if net else SWITCH_VACUUM_EVENT)
+
+
+# tool: 0 for the vacuum's quick-upgrade tab, 1 for the net's.
+func upgrade_hint(tool: int) -> void:
+	if _hint_ready and tool >= 0 and tool < UPGRADE_HINT_EVENTS.size():
+		GameAudio.play(UPGRADE_HINT_EVENTS[tool])
 
 
 # The button keeps its hover sound but no longer plays Click on press.
