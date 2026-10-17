@@ -10,8 +10,16 @@ const Dialogue = preload("res://scripts/ui/mascot_dialogue.gd")
 			stop_dialogue_audio()
 			_talk_audio_ready = (not value.is_empty() and GameAudio.has_events([value]))
 
+# A clause can be a single character before punctuation (about 0.07 s of
+# typing); its voice still sounds at least this long before stopping.
+@export_range(0.0, 1.0, 0.05) var min_voice_seconds: float = 0.3
+
 var _dialogue_audio: FmodEvent
 var _talk_audio_ready: bool = false
+var _voice_started_msec: int = 0
+# Bumped by every start or stop, so a postponed stop that is no longer
+# current does nothing.
+var _stop_version: int = 0
 
 @onready var game: Play = $Game
 @onready var dialogue: Dialogue = $DialogueLayer/MascotDialogue
@@ -74,19 +82,45 @@ func return_to_menu() -> void:
 # Each clause between punctuation plays the talk sound once from its start.
 func bind_dialogue_audio(speaker: Dialogue) -> void:
 	speaker.voice_started.connect(_on_voice_started)
-	speaker.voice_stopped.connect(stop_dialogue_audio)
+	speaker.voice_stopped.connect(_on_voice_stopped)
 
 
+# Stops at once (replay, leaving); clause ends go through _on_voice_stopped.
 func stop_dialogue_audio() -> void:
+	_stop_version += 1
 	if _dialogue_audio != null:
 		GameAudio.stop_loop(_dialogue_audio)
 		_dialogue_audio = null
 
 
 func _on_voice_started(_index: int) -> void:
-	stop_dialogue_audio()
+	if _dialogue_audio != null:
+		# Still within a short clause's minimum: keep that sound going.
+		_stop_version += 1
+		return
 	if _talk_audio_ready:
 		_dialogue_audio = GameAudio.start_loop(talk_event_path)
+		_voice_started_msec = Time.get_ticks_msec()
+
+
+func _on_voice_stopped() -> void:
+	if _dialogue_audio == null:
+		return
+	var remaining: float = (
+		min_voice_seconds - float(Time.get_ticks_msec() - _voice_started_msec) / 1000.0
+	)
+	if remaining <= 0.0:
+		stop_dialogue_audio()
+		return
+	_stop_version += 1
+	get_tree().create_timer(remaining, true, false, true).timeout.connect(
+		_finish_postponed_stop.bind(_stop_version)
+	)
+
+
+func _finish_postponed_stop(version: int) -> void:
+	if version == _stop_version:
+		stop_dialogue_audio()
 
 
 func _exit_tree() -> void:

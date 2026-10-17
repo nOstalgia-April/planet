@@ -4,6 +4,10 @@ const MainMenu = preload("res://scenes/主菜单/主菜单.gd")
 const OPENING_SOUND: String = "event:/Mx/OpeningAnimation"
 # FMOD needs ~0.2 s to start a sound; never hold the first frame longer than this.
 const SOUND_START_TIMEOUT: float = 0.5
+# Gameplay music waits for the opening sound: its last hit lands as the
+# animation ends (~9.6 s) and the tail falls below -40 dB about 2.5 s before
+# the sound's 14.96 s end, where the music starts.
+const MUSIC_AFTER_SOUND_LEAD: float = 2.5
 # Loading the frames can stall the game for half a second while the sound keeps
 # playing; beyond this drift the animation jumps to the sound's position.
 const MAX_DRIFT_SECONDS: float = 0.05
@@ -111,8 +115,10 @@ func _try_enter_game() -> void:
 	_enter_game.call_deferred()
 
 
+# The start sound already played on the menu's click. Gameplay requests its
+# music on entry; it is held until the opening sound has faded.
 func _enter_game() -> void:
-	GameAudio.play_transition("event:/GameStart_Transition", "event:/Mx/Mx_GamePlay")
+	GameAudio.hold_music_for(_sound, OPENING_SOUND, MUSIC_AFTER_SOUND_LEAD)
 	var result: Error = get_tree().change_scene_to_packed(_prepared_scene)
 	if result != OK:
 		_loading_failed()

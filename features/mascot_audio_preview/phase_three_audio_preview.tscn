@@ -3,7 +3,7 @@
 [ext_resource type="PackedScene" path="res://features/mascot_audio_preview/phase_two_audio_preview.tscn" id="preview"]
 
 [node name="PhaseThreeAudioPreview" instance=ExtResource("preview")]
-talk_event_path = ""
+talk_event_path = "event:/Gibberish/Gibberish_Stage3"
 
 [node name="MascotDialogue" parent="DialogueLayer"]
 form_index = 2

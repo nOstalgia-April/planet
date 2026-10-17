@@ -3,22 +3,29 @@ extends Node
 # Autoload "UiAudio": gives every button in every scene hover and click sounds.
 # Purchase buttons are registered separately: a successful purchase plays
 # Level Up from game code, and clicking one that is disabled for lack of candy
-# plays Insufficient Point.
+# plays Insufficient Point. The tool dock's buttons and keys 1/2 play their own
+# switch sounds instead of Click.
 
 const CLICK_EVENT: String = "event:/UI/Button_Click"
 const HOVER_EVENT: String = "event:/UI/Button_Hover"
 const INSUFFICIENT_EVENT: String = "event:/UI/Button_InsufPoint"
 const LEVEL_UP_EVENT: String = "event:/UI/Button_Levelup"
+const SWITCH_VACUUM_EVENT: String = "event:/UI/Switch-Vacuum"
+const SWITCH_NET_EVENT: String = "event:/UI/Switch-Net"
 const HOOKED_META: StringName = &"ui_audio_hooked"
 const PURCHASE_META: StringName = &"ui_audio_purchase"
+# Buttons whose press sound comes from game code rather than Click.
+const OWN_SOUND_META: StringName = &"ui_audio_own_sound"
 
 var _ready_to_play: bool = false
+var _switch_ready: bool = false
 
 
 func _ready() -> void:
 	_ready_to_play = GameAudio.has_events(
 		[CLICK_EVENT, HOVER_EVENT, INSUFFICIENT_EVENT, LEVEL_UP_EVENT]
 	)
+	_switch_ready = GameAudio.has_events([SWITCH_VACUUM_EVENT, SWITCH_NET_EVENT])
 	if not _ready_to_play:
 		return
 	get_tree().node_added.connect(_on_node_added)
@@ -37,6 +44,22 @@ func level_up() -> void:
 func insufficient_points() -> void:
 	if _ready_to_play:
 		GameAudio.play(INSUFFICIENT_EVENT)
+
+
+func click() -> void:
+	if _ready_to_play:
+		GameAudio.play_now(CLICK_EVENT)
+
+
+# net: switched to the net, otherwise to the vacuum.
+func tool_switched(net: bool) -> void:
+	if _switch_ready:
+		GameAudio.play_now(SWITCH_NET_EVENT if net else SWITCH_VACUUM_EVENT)
+
+
+# The button keeps its hover sound but no longer plays Click on press.
+func register_own_sound(button: BaseButton) -> void:
+	button.set_meta(OWN_SOUND_META, true)
 
 
 # is_unaffordable: returns true when the button is disabled only for lack of candy.
@@ -68,7 +91,7 @@ func _on_hover(button: BaseButton) -> void:
 
 
 func _on_button_down(button: BaseButton) -> void:
-	if not button.has_meta(PURCHASE_META):
+	if not button.has_meta(PURCHASE_META) and not button.has_meta(OWN_SOUND_META):
 		GameAudio.play_now(CLICK_EVENT)
 
 

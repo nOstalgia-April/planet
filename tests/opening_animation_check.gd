@@ -27,7 +27,10 @@ func _run() -> void:
 	assert(menu != null)
 	assert(audio._music_path == "event:/Mx/Mx_MainMenu", "启动先显示主菜单并播放菜单音乐。")
 	(menu.get_node("画布/开始") as Button).pressed.emit()
+	assert(audio.is_transition_playing(), "点击开始游戏时立即播放开始音效。")
+	assert(_tree.current_scene == menu, "开始音效到交接点之前停留在主菜单。")
 	await _tree.scene_changed
+	assert(not audio.is_transition_playing(), "开始音效到交接点后才进入片头。")
 	assert(_tree.current_scene.scene_file_path == INTRO_PATH)
 	var intro: Intro = _tree.current_scene as Intro
 	assert(intro != null)
@@ -44,6 +47,13 @@ func _run() -> void:
 		assert(_tree.current_scene.scene_file_path == Menu.DEFAULT_START_SCENE)
 		_assert_gameplay_music(audio)
 		var duration: float = float(Time.get_ticks_msec() - started_at) / 1000.0
+		assert(audio._music == null, "片头音效淡出前游戏音乐不能开始。")
+		while audio.is_transition_playing():
+			await _tree.process_frame
+		assert(audio._music_path == "event:/Mx/Mx_GamePlay", "片头音效淡出后游戏音乐开始。")
+		var opening: FmodEvent = FmodServer.get_event(Intro.OPENING_SOUND).get_instance_list()[0]
+		var handoff: float = 14.96 - Intro.MUSIC_AFTER_SOUND_LEAD
+		assert(opening.get_timeline_position() / 1000.0 >= handoff - 0.1, "游戏音乐在片头音效的淡出点开始。")
 		assert(absf(duration - clip.length) < 1.0, "正常播放必须按实际时长结束。")
 		print(
 			(
@@ -104,7 +114,7 @@ func _assert_gameplay_music(audio: Audio) -> void:
 			audio._music_path == "event:/Mx/Mx_GamePlay"
 			or audio._pending_music_path == "event:/Mx/Mx_GamePlay"
 		),
-		"游戏音乐应紧接片头结束后的转场音效。"
+		"片头结束后应直接进入游戏音乐。"
 	)
 
 

@@ -59,8 +59,8 @@ var _effect_is_near_view: Array[bool] = []
 var _near_view_gain: float = 1.0
 var _master_bus: FmodBus
 var _editor_muted: bool = false
-# A paused game (settings, technology page) freezes gameplay sounds in place
-# along with music, while UI sounds keep playing.
+# A paused game (settings, technology page, pause button) freezes gameplay
+# sounds in place; music keeps playing under Music_Menu, and UI sounds too.
 var _game_paused: bool = false
 # Parallel to _effect_descriptions: UI sounds keep playing while gameplay freezes.
 var _effect_is_ui: Array[bool] = []
@@ -76,6 +76,10 @@ var _music_volume: float = 0.0
 var _transition: FmodEvent
 var _transition_elapsed: float = 0.0
 var _transition_length: float = 0.0
+# Seconds before the transition's end at which held music starts.
+var _transition_lead: float = 0.0
+# False for a sound adopted with hold_music_for, which its caller already released.
+var _transition_owned: bool = false
 var _pending_music: FmodEvent
 var _pending_music_path: String = ""
 # Previous tracks still fading out: FmodEvent -> current volume.
@@ -283,7 +287,6 @@ func play_music(event_path: String) -> void:
 	if _music == null:
 		return
 	_music.set_volume(0.0)
-	_music.set_paused(get_tree().paused)
 	_music.start()
 	_music_path = event_path
 	_music_volume = 0.0
@@ -318,11 +321,34 @@ func play_transition(event_path: String, next_music_path: String = "") -> void:
 		return
 	_transition.set_volume(_effects_gain(false))
 	_transition.start()
+	_transition_owned = true
 	_transition_elapsed = 0.0
 	_transition_length = FmodServer.get_event(event_path).get_length() / 1000.0
+	_transition_lead = transition_music_lead_seconds
 	if not next_music_path.is_empty():
 		_prepare_pending_music(next_music_path)
 	FmodServer.update()
+
+
+# Treats a sound already playing (an instance of event_path) as a transition:
+# music requested from now on waits until it is lead_seconds from its end.
+func hold_music_for(instance: FmodEvent, event_path: String, lead_seconds: float) -> void:
+	event_path = resolve_event_path(event_path)
+	if instance == null or not instance.is_valid() or not has_events([event_path]):
+		return
+	_discard_pending_music()
+	_end_transition()
+	_transition = instance
+	_transition_owned = false
+	_transition_elapsed = 0.0
+	_transition_length = FmodServer.get_event(event_path).get_length() / 1000.0
+	_transition_lead = lead_seconds
+
+
+# True until the current transition sound reaches the point where the next
+# music would start (see transition_music_lead_seconds).
+func is_transition_playing() -> bool:
+	return _transition != null
 
 
 ## Returns -1 when this track is unavailable. FMOD owns looping, pausing and seeking.
@@ -339,7 +365,9 @@ func _process(delta: float) -> void:
 		_game_paused = paused
 		_set_gameplay_frozen(paused)
 	_advance_music_menu(delta)
-	# Freeze transitions and fades along with the gameplay timelines.
+	# Music keeps playing through a pause, so its fades do too.
+	_advance_music_fades(delta)
+	# Transitions are gameplay sounds: they hold with the pause.
 	if paused:
 		return
 	_advance_music_duck(delta)
@@ -352,6 +380,9 @@ func _process(delta: float) -> void:
 	if _effects_elapsed >= 0.1:
 		_effects_elapsed = 0.0
 		_apply_effects_volume()
+
+
+func _advance_music_fades(delta: float) -> void:
 	# A blocking scene load arrives as one huge delta; cap it so fades stay audible.
 	var step: float = minf(delta, MAX_FADE_STEP)
 	if _music != null and _music_volume < 1.0:
@@ -378,10 +409,7 @@ func _is_transition_ending() -> bool:
 		return true
 	return (
 		_transition_length > 0.0
-		and (
-			_transition.get_timeline_position() / 1000.0
-			>= _transition_length - transition_music_lead_seconds
-		)
+		and (_transition.get_timeline_position() / 1000.0 >= _transition_length - _transition_lead)
 	)
 
 
@@ -424,7 +452,7 @@ func _discard_pending_music() -> void:
 
 
 func _end_transition() -> void:
-	if _transition != null and _transition.is_valid():
+	if _transition_owned and _transition != null and _transition.is_valid():
 		_transition.release()
 	_transition = null
 
@@ -473,14 +501,9 @@ func _capture_editor_message(message: String, data: Array) -> bool:
 	return true
 
 
-# Holds music and gameplay sounds in place, keeping UI sounds responsive.
-# Pending music stays paused until its transition ends.
+# Holds gameplay sounds in place; music (low-passed through Music_Menu) and
+# UI sounds keep playing. Pending music stays paused until its transition ends.
 func _set_gameplay_frozen(frozen: bool) -> void:
-	if _music != null and _music.is_valid():
-		_music.set_paused(frozen)
-	for instance: FmodEvent in _fading_out:
-		if instance.is_valid():
-			instance.set_paused(frozen)
 	for index: int in range(_effect_descriptions.size()):
 		var description: FmodEventDescription = _effect_descriptions[index]
 		if _effect_is_ui[index] or description.get_instance_count() == 0:

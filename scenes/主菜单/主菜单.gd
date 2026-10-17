@@ -4,6 +4,8 @@ const SharedCache = preload("res://scripts/art_resource_cache.gd")
 
 const DEFAULT_START_SCENE: String = "res://features/场景预览/近景游玩预览.tscn"
 const OPENING_SCENE: String = "res://scenes/开头动画/开头动画.tscn"
+const START_TRANSITION: String = "event:/AnimationSystem/GameStart_Transition"
+const GAMEPLAY_MUSIC: String = "event:/Mx/Mx_GamePlay"
 
 # A custom entry is a direct preview/check target; the normal game always plays its opening.
 @export_file("*.tscn") var start_scene: String = DEFAULT_START_SCENE
@@ -42,6 +44,11 @@ func _start() -> void:
 	_start_button.text = "准备中…"
 	_preview_button.disabled = true
 	_preview_panel.hide()
+	# The start sound answers the click. A direct entry skips the opening, so
+	# its music follows the transition; the opening brings its own sound.
+	GameAudio.play_transition(
+		START_TRANSITION, "" if start_scene == DEFAULT_START_SCENE else GAMEPLAY_MUSIC
+	)
 	if _prepared_scene != null:
 		_enter_game.call_deferred()
 		return
@@ -124,10 +131,12 @@ func _process(_delta: float) -> void:
 
 
 func _enter_game() -> void:
-	if start_scene != DEFAULT_START_SCENE:
-		GameAudio.play_transition(
-			"event:/AnimationSystem/GameStart_Transition", "event:/Mx/Mx_GamePlay"
-		)
+	# The opening starts where music would follow the start sound.
+	if start_scene == DEFAULT_START_SCENE:
+		while GameAudio.is_transition_playing():
+			await get_tree().process_frame
+		if not is_inside_tree():
+			return
 	var result: Error = get_tree().change_scene_to_packed(_prepared_scene)
 	if result != OK:
 		_loading_failed()

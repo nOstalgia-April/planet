@@ -6,7 +6,7 @@
 
 [node name="OpeningAudioPreview" instance=ExtResource("base")]
 script = ExtResource("script")
-talk_event_path = ""
+talk_event_path = "event:/Gibberish/Gibberish_Stage1"
 intro_lines = PackedStringArray("喂——小心脚下！你差点踩到我们家刚冒出来的小家伙的巢穴！", "你是……清扫员？来帮我们治理巢穴和生态的？", "太好了！这里吃得好、住得好，就是大家生得有点太好了。", "我刚数完这一窝，那边又冒出来三窝。喊都喊不回来！", "这些小家伙吃糖，也会产糖。糖能给飞船和工具供能。", "尤其是这里的糖！吃完以后，连我都比以前有精神了。", "你帮我把外面乱跑的家伙收拢一下，再整理整理巢穴就行。", "动作轻一点啊。它们只是比较活泼……还有比较多。")
 vacuum_lines = PackedStringArray("你手上那个就是吸尘器？先试着把这几只乱跑的收进去吧。")
 reaction_lines = PackedStringArray("……哦，原来里面装得下！那我就放心了。")

@@ -64,15 +64,16 @@ func _run() -> void:
 	var paused_position: float = GameAudio.get_music_position_seconds("event:/Mx/Mx_GamePlay")
 	await _wait_music_frame(live_core, int(floor(paused_position * live_core.frames_per_second)))
 	var tree_held_frame: int = live_core.current_frame
-	await get_tree().create_timer(0.15, true).timeout
+	# FMOD applies resume asynchronously; allow its audio buffer to advance.
+	await get_tree().create_timer(0.5, true).timeout
 	assert(
-		live_core.current_frame == tree_held_frame,
-		"Tree pause freezes the master bus and the music-driven effect."
+		live_core.current_frame > tree_held_frame,
+		"Tree pause keeps the music-driven effect following the BGM clock."
 	)
 	_check_motion_clock(live_core)
 	get_tree().paused = false
 	await get_tree().create_timer(0.25).timeout
-	assert(live_core.current_frame > tree_held_frame, "Resuming the tree resumes the BGM clock.")
+	assert(live_core.current_frame > tree_held_frame, "The BGM clock keeps advancing after resume.")
 	_check_motion_clock(live_core)
 	music.set_paused(true)
 	# Let the real FMOD loop cross its end, rather than simulating only a seek.

@@ -55,8 +55,8 @@ func _run() -> void:
 		await _capture("play", resolution)
 		await _click(menu.get_node("Toolbar/Pause"))
 		_check(get_tree().paused, "pause button stops scene tree")
-		# Music freezes with gameplay; UI sounds remain available.
-		await _check_audio_paused(true, "pause button pauses music")
+		# Gameplay freezes; music keeps playing under Music_Menu, UI sounds too.
+		await _check_audio_paused(true, "pause button keeps music under Music_Menu")
 		var spawn_clock: float = _game.run.nests[0].spawn_clock
 		var position: Vector2 = _game._slimes[0].position
 		await get_tree().create_timer(0.25, true).timeout
@@ -76,7 +76,7 @@ func _run() -> void:
 		await _check_audio_paused(false, "escape resumes audio")
 		await _click(menu.get_node("Toolbar/Settings"))
 		_check(get_tree().paused, "settings pauses running game")
-		await _check_audio_paused(true, "settings pauses music")
+		await _check_audio_paused(true, "settings keeps music under Music_Menu")
 		menu.get_node("%MusicVolume").value = 37.0
 		menu.get_node("%EffectsVolume").value = 24.0
 		await _settle()
@@ -173,7 +173,7 @@ func _run() -> void:
 			)
 			await _capture("technology_failed", resolution)
 		_check(layout.is_technology_open() and get_tree().paused, "technology still pauses")
-		await _check_audio_paused(true, "technology pauses music")
+		await _check_audio_paused(true, "technology keeps music under Music_Menu")
 		await _key(KEY_ESCAPE)
 		_check(
 			not layout.is_technology_open() and not get_tree().paused,
@@ -225,6 +225,9 @@ func _run() -> void:
 		"confirmed menu action changes scene"
 	)
 	_check(GameAudio._music_path == "event:/Mx/Mx_MainMenu", "main menu music starts")
+	# Let the menu finish its background preload before tearing the scene down.
+	while not get_tree().current_scene._loading_scene.is_empty():
+		await get_tree().process_frame
 	get_tree().current_scene.queue_free()
 	get_tree().current_scene = null
 	await _settle()
@@ -309,7 +312,7 @@ func _check_audio_paused(paused: bool, description: String) -> void:
 	# FMOD applies bus commands asynchronously on its audio thread.
 	await get_tree().create_timer(0.1).timeout
 	_check(not GameAudio._master_bus.get_paused(), "UI audio remains available")
-	_check(GameAudio._music.get_paused() == paused, description)
+	_check(not GameAudio._music.get_paused() and GameAudio._game_paused == paused, description)
 
 
 func _check(condition: bool, description: String) -> void:

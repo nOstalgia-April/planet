@@ -62,7 +62,9 @@ func _run() -> void:
 func _check_preview(index: int) -> void:
 	var packed: PackedScene = load(PATHS[index]) as PackedScene
 	var preview: Preview = packed.instantiate() as Preview
-	preview.talk_event_path = "event:/Vacuum/Vacuum_Loading"
+	var talk_event: String = "event:/Gibberish/Gibberish_Stage%d" % (index + 1)
+	_check(preview.talk_event_path == talk_event, "Stage %d uses %s." % [index + 1, talk_event])
+	_check(GameAudio.has_events([talk_event]), "The Bank contains " + talk_event)
 	packed = null
 	var speakers: Array[Dialogue] = [preview.get_node("DialogueLayer/MascotDialogue") as Dialogue]
 	if preview is Opening:
@@ -138,24 +140,31 @@ func _check_preview(index: int) -> void:
 
 
 func _check_audio_lifecycle(preview: Preview) -> void:
-	# Use an existing Bank event only to verify real instance start/stop ownership.
-	# This is a plumbing check, not a claim that mascot voice assets exist.
-	preview.talk_event_path = "event:/Vacuum/Vacuum_Loading"
+	# Verifies real instance start/stop ownership with the stage's own event;
+	# how it sounds still needs listening.
 	preview.dialogue.characters_per_second = 15.0
 	preview.dialogue.punctuation_pause = 0.22
 	preview.replay()
 	await _wait_for_typing(preview.dialogue)
 	await _wait_for_audio(preview, true)
 	_check(preview._dialogue_audio != null, "A configured Bank event starts on a clause.")
-	# Every first line has punctuation before its end, so the clause stops mid-line.
-	await _wait_for_audio(preview, false)
-	_check(
-		preview._dialogue_audio == null and preview.dialogue.phase == Dialogue.Phase.TYPING,
-		"Punctuation inside a line releases the clause sound."
-	)
+	# Hold the typing so only these calls drive the voice.
+	preview.dialogue.set_process(false)
+	var started: FmodEvent = preview._dialogue_audio
+	preview._on_voice_stopped()
+	_check(preview._dialogue_audio == started, "A short clause keeps sounding for the minimum.")
+	preview._on_voice_started(0)
+	_check(preview._dialogue_audio == started, "A clause within the minimum continues the sound.")
+	preview._on_voice_stopped()
+	await get_tree().create_timer(preview.min_voice_seconds * 0.5).timeout
+	_check(preview._dialogue_audio == started, "The postponed stop waits for the minimum.")
+	await get_tree().create_timer(preview.min_voice_seconds).timeout
+	_check(preview._dialogue_audio == null, "The sound stops once the minimum has passed.")
+	preview.dialogue.set_process(true)
 	await _wait_for_audio(preview, true)
 	_check(preview._dialogue_audio != null, "The next clause starts the sound again.")
 	preview.advance()
+	await _wait_for_audio(preview, false)
 	_check(preview._dialogue_audio == null, "Finishing a line releases its loop.")
 	preview.replay()
 	_check(preview._dialogue_audio == null, "Replay clears the previous sound.")
@@ -164,7 +173,6 @@ func _check_audio_lifecycle(preview: Preview) -> void:
 	_check(preview._dialogue_audio != null, "Replay can start the configured event again.")
 	preview.stop_dialogue_audio()
 	_check(preview._dialogue_audio == null, "Leaving can stop the current sound.")
-	preview.talk_event_path = ""
 
 
 func _wait_for_audio(preview: Preview, playing: bool) -> void:
