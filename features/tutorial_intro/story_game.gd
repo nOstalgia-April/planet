@@ -11,6 +11,7 @@ func _ready() -> void:
 	super._ready()
 	_story_ready = true
 	story.rescue_finished.connect(_finish_rescue)
+	_victory.overview_reached.connect(story.play_receipt)
 	story.begin()
 
 
@@ -22,9 +23,5 @@ func restart_run() -> void:
 		story.begin()
 
 
-func _on_victory_finished() -> void:
-	story.play_rescue()
-
-
 func _finish_rescue() -> void:
-	super._on_victory_finished()
+	_victory.play_meteors()

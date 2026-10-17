@@ -3,10 +3,8 @@ extends Control
 signal menu_requested
 signal finished
 
-const Notice = preload("res://scripts/ui/mission_notice.gd")
-
 @export_range(10.0, 120.0, 1.0) var scroll_speed: float = 42.0
-@export_range(0.0, 5.0, 0.1) var opening_hold_seconds: float = 1.0
+@export_range(0.0, 5.0, 0.1) var opening_hold_seconds: float = 0.0
 
 var playing: bool = false
 
@@ -17,14 +15,12 @@ var _returning_to_menu: bool = false
 
 @onready var _roll: VBoxContainer = $Roll
 @onready var _skip: Button = $Skip
-@onready var _receipt: Notice = $MissionReceipt
 
 
 func _ready() -> void:
 	resized.connect(_layout_content)
 	visibility_changed.connect(_on_visibility_changed)
 	_skip.pressed.connect(skip_credits)
-	_receipt.finished.connect(menu_requested.emit)
 	reset()
 	_layout_content.call_deferred()
 
@@ -45,7 +41,6 @@ func play() -> void:
 
 
 func reset() -> void:
-	_receipt.reset()
 	playing = false
 	_completed = false
 	_returning_to_menu = false
@@ -76,7 +71,7 @@ func skip_credits() -> void:
 	set_process(false)
 	_skip.hide()
 	_skip.release_focus()
-	_receipt.play()
+	menu_requested.emit()
 
 
 func _process(delta: float) -> void:

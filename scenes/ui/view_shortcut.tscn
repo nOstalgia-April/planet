@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Texture2D" path="res://assets/ui/game_menu/view_switch.tres" id="icon"]
+[ext_resource type="PackedScene" path="res://scenes/ui/rotate_hint.tscn" id="rotate_hint"]
 
 [node name="ViewShortcut" type="Control"]
 layout_mode = 0
@@ -34,3 +35,5 @@ theme_override_font_sizes/font_size = 20
 text = "Tab"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="RotateHint" parent="." instance=ExtResource("rotate_hint")]

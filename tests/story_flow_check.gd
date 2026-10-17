@@ -4,6 +4,7 @@ const GameScene: PackedScene = preload("res://scenes/game.tscn")
 const Game = preload("res://features/tutorial_intro/story_game.gd")
 const Flow = preload("res://features/tutorial_intro/story_flow.gd")
 const Dialogue = preload("res://scripts/ui/mascot_dialogue.gd")
+const Drill = preload("res://scripts/drill_monster.gd")
 
 var _game: Game
 var _flow: Flow
@@ -27,6 +28,7 @@ func _run() -> void:
 		GameAudio.has_events(_flow.talk_events), "all three mascot voice events exist in the Bank"
 	)
 	_flow.story_started.connect(func(kind: int) -> void: _started.append(kind))
+	await _close_note(_flow.briefing)
 	await _wait_talk(Flow.Kind.OPENING)
 	_check(_flow._voice != null, "opening typing starts the cloak voice")
 	_check(
@@ -34,7 +36,7 @@ func _run() -> void:
 	)
 	_check(
 		not get_tree().paused and is_equal_approx(Engine.time_scale, 0.5),
-		"dialogue leaves the animated world running at half speed"
+		"dialogue leaves the background running at half speed"
 	)
 	var candy: int = _game.run.candy
 	var clock: float = _game.run.nests[0].spawn_clock
@@ -44,9 +46,58 @@ func _run() -> void:
 	)
 	var background_clock: float = background.current_animation_position
 	var background_length: float = background.current_animation_length
+	var monster: PrototypeSlime = _game._slimes[0]
+	var monster_clock: float = monster._elapsed
+	var monster_animation: AnimationPlayer = monster.slime_art._active.animation_player
+	var monster_animation_clock: float = monster_animation.current_animation_position
+	var monster_animation_length: float = monster_animation.current_animation_length
+	var drill: Drill = _game.drill_scene.instantiate() as Drill
+	_game.add_child(drill)
+	drill.setup(monster.nest_id, monster.position, monster.surface)
+	drill.launch(Vector2.UP)
+	drill.set_simulation_speed(monster.simulation_speed)
+	var drill_clock: float = drill.phase_remaining
+	var drill_animation_clock: float = drill.art.animation_player.current_animation_position
 	var before: int = Time.get_ticks_msec()
-	await get_tree().create_timer(0.3, true, false, true).timeout
+	await get_tree().create_timer(0.8, true, false, true).timeout
 	var real_seconds: float = float(Time.get_ticks_msec() - before) / 1000.0
+	_check(
+		absf(monster._elapsed - monster_clock - real_seconds * 0.1) < 0.025,
+		"monster movement clock advances at ten percent real time"
+	)
+	_check(
+		(
+			absf(
+				(
+					fposmod(
+						monster_animation.current_animation_position - monster_animation_clock,
+						monster_animation_length
+					)
+					- real_seconds * 0.1
+				)
+			)
+			< 0.025
+		),
+		"monster animation advances at ten percent real time"
+	)
+	_check(
+		absf(drill_clock - drill.phase_remaining - real_seconds * 0.1) < 0.025,
+		"drill movement clock advances at ten percent real time"
+	)
+	_check(
+		(
+			absf(
+				(
+					drill.art.animation_player.current_animation_position
+					- drill_animation_clock
+					- real_seconds * 0.1
+				)
+			)
+			< 0.025
+		),
+		"drill animation advances at ten percent real time"
+	)
+	drill.queue_free()
 	_check(
 		(
 			absf(
@@ -120,22 +171,33 @@ func _run() -> void:
 	await get_tree().process_frame
 	_check(_flow.kind == Flow.Kind.NONE, "purchased technologies teach only once")
 	for stage: int in range(3):
-		_advance_game_progress()
+		if stage != 2 or "--queued-third" not in OS.get_cmdline_user_args():
+			_advance_game_progress()
+		if stage == 0:
+			await _check_first_color_entrance()
+		elif stage == 2:
+			await _check_passive_third_color()
+			continue
 		await _wait_talk((Flow.Kind.COLOR_ONE + stage) as Flow.Kind)
+		if stage == 1 and "--queued-third" in OS.get_cmdline_user_args():
+			_advance_game_progress()
 		await get_tree().create_timer(0.5, true, false, true).timeout
 		_check(
 			_flow.current_form == (2 if stage == 2 else 1),
 			"visible transformation matches restoration stage"
 		)
-		if stage == 2 and "--early-confirm" in OS.get_cmdline_user_args():
+		if stage == 1 and "--early-confirm" in OS.get_cmdline_user_args():
 			await _finish_dialogue()
 			_check(_flow.phase == Flow.Phase.WAIT_COLOR, "early confirmation waits for restoration")
 			await _wait_idle()
 			_check(
-				_game._restoration.completed_species.size() == 3 and not _game._view.is_overview(),
+				_game._restoration.completed_species.size() == 2 and not _game._view.is_overview(),
 				"early confirmation still completes color and returns near"
 			)
 			continue
+		if _flow.active_dialogue.phase == Dialogue.Phase.TYPING:
+			await _click()
+		await _capture("color_%d" % (stage + 1))
 		var deadline: int = Time.get_ticks_msec() + 18000
 		while (
 			_game._restoration.completed_species.size() < stage + 1
@@ -144,16 +206,8 @@ func _run() -> void:
 			await get_tree().process_frame
 		_check(
 			_game._restoration.completed_species.size() == stage + 1,
-			"restoration continues while dialogue waits for a click"
+			"restoration continues alongside automatic dialogue playback"
 		)
-		await get_tree().create_timer(1.5, true, false, true).timeout
-		_check(
-			_game._view.is_overview() and _game._view.presentation_locked,
-			"completed color waits in overview for the final dialogue confirmation"
-		)
-		if _flow.active_dialogue.phase == Dialogue.Phase.TYPING:
-			await _click()
-		await _capture("color_%d" % (stage + 1))
 		await _finish_dialogue()
 		await _wait_idle()
 		_check(
@@ -171,28 +225,54 @@ func _run() -> void:
 		not _game.run.is_complete,
 		"all nests automated still requires collecting the remaining monsters"
 	)
-	# Collect only after the final background restoration releases the controls.
+	# Final background restoration also stays passive once all three colors are restored.
 	await get_tree().process_frame
 	await get_tree().process_frame
-	while _game._view.presentation_locked:
+	var background_deadline: int = Time.get_ticks_msec() + 10000
+	while (
+		_game._restoration.phase != Flow.Restoration.Phase.IDLE
+		and Time.get_ticks_msec() < background_deadline
+	):
+		_check(
+			(
+				not _game._view.presentation_locked
+				and not _game._view.is_overview()
+				and _game.is_processing()
+				and is_equal_approx(Engine.time_scale, 1.0)
+			),
+			"final background restoration does not interrupt free play"
+		)
 		await get_tree().process_frame
+	_check(_game._restoration._background_complete, "background restoration still completes")
 	_advance_game_progress()
 	_check(_game.run.is_complete, "collecting the final monsters completes the run")
+	var note_deadline: int = Time.get_ticks_msec() + 45000
+	while not _flow.receipt.playing and Time.get_ticks_msec() < note_deadline:
+		await get_tree().process_frame
+	_check(_flow.receipt.playing, "White receipt precedes the rescue.")
+	_check(not _game._restoration.core.is_processing(), "White core stops for receipt.")
+	_check(not _game._victory.meteors.visible, "Meteors wait for receipt and rescue.")
+	await _capture("receipt_typing")
+	await _close_note(_flow.receipt)
 	await _wait_talk(Flow.Kind.RESCUE, 45000)
 	_check(
 		(
-			_game._victory.phase == _game.VictoryMeteors.Phase.COMPLETE
+			_game._victory.phase == _game.VictoryMeteors.Phase.WAITING
 			and not _game._completion.visible
 		),
-		"rescue follows meteors and precedes credits"
+		"rescue follows receipt and precedes meteors and credits"
 	)
 	await _click()
 	await _capture("rescue")
 	await _finish_dialogue()
 	await _wait_idle()
 	_check(_game._completion.visible, "credits begin after rescue is confirmed")
-	_check(_started == [1, 2, 3, 4, 5, 6, 7], "all seven story beats occur exactly once in order")
+	_check(
+		_started == [1, 2, 3, 4, 5, 7],
+		"third color skips dialogue; other story beats stay in order"
+	)
 	_game._layout.restart_requested.emit()
+	await _close_note(_flow.briefing)
 	await _wait_talk(Flow.Kind.OPENING)
 	_check(
 		_flow.seen == [Flow.Kind.OPENING] and _flow.current_form == 0,
@@ -200,6 +280,15 @@ func _run() -> void:
 	)
 	_game.story.cancel()
 	_check(_flow._voice == null, "cancelling dialogue releases its voice")
+	for slime: PrototypeSlime in _game._slimes:
+		_check(is_equal_approx(slime.simulation_speed, 1.0), "cancel restores monster speed")
+	_flow.restore_save({"seen": [], "form": 0, "resume": int(Flow.Kind.OPENING)})
+	_check(is_equal_approx(Engine.time_scale, 0.5), "loaded dialogue restores background slowdown")
+	for slime: PrototypeSlime in _game._slimes:
+		_check(
+			is_equal_approx(slime.simulation_speed * Engine.time_scale, 0.1),
+			"loaded dialogue restores monster slowdown"
+		)
 	_game.queue_free()
 	get_tree().current_scene = null
 	await get_tree().process_frame
@@ -209,7 +298,7 @@ func _run() -> void:
 	)
 	if _failures.is_empty():
 		print(
-			"PASS: seven story beats, real purchases/flowers/victory, click gating, half-speed background, pause, restart, camera return and cleanup."
+			"PASS: story flow, first color completion and entrance delay, passive third color, purchases/flowers/victory, pause, restart and cleanup."
 		)
 	else:
 		print("FAIL: ", _failures)
@@ -246,6 +335,110 @@ func _advance_game_progress() -> void:
 		_game._finish_capture(slime)
 
 
+func _check_first_color_entrance() -> void:
+	var deadline: int = Time.get_ticks_msec() + 20000
+	while _flow.phase != Flow.Phase.COLOR_CAMERA and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	_check(_flow.phase == Flow.Phase.COLOR_CAMERA, "first color waits for the overview camera")
+	while _flow.phase == Flow.Phase.COLOR_CAMERA and Time.get_ticks_msec() < deadline:
+		_check(
+			not _flow.color_dialogue.visible, "mascot stays hidden through camera travel and fill"
+		)
+		_check(_game._view.presentation_locked, "camera travel and fill remain locked")
+		await get_tree().process_frame
+	_check(
+		(
+			_flow.phase == Flow.Phase.COLOR_DELAY
+			and not _game._view.is_transitioning()
+			and _game._restoration.completed_species.size() == 1
+		),
+		"entrance delay starts only after camera and color fill both finish"
+	)
+	_check(is_equal_approx(_flow.first_color_entrance_delay, 0.4), "entrance delay is 0.4 seconds")
+	await _key(KEY_ESCAPE)
+	var elapsed: float = _flow._elapsed
+	await get_tree().create_timer(0.15, true, false, true).timeout
+	_check(
+		get_tree().paused and is_equal_approx(_flow._elapsed, elapsed),
+		"pause freezes entrance delay"
+	)
+	await _key(KEY_ESCAPE)
+	await _key(KEY_TAB)
+	await _click()
+	_check(_game._view.is_overview(), "input cannot leave overview during entrance delay")
+	var remaining: float = _flow.first_color_entrance_delay - _flow._elapsed
+	var before: int = Time.get_ticks_msec()
+	while _flow.phase == Flow.Phase.COLOR_DELAY and Time.get_ticks_msec() < deadline:
+		_check(not _flow.color_dialogue.visible, "mascot stays hidden during the delay")
+		_check(
+			_game._view.presentation_locked and not _game.is_processing(),
+			"waiting keeps camera and gameplay locked"
+		)
+		await get_tree().process_frame
+	var waited: float = float(Time.get_ticks_msec() - before) / 1000.0
+	_check(absf(waited - remaining) < 0.10, "entrance delay uses real seconds at half world speed")
+	_check(
+		(
+			_flow.color_dialogue.phase == Dialogue.Phase.ENTERING
+			and _flow.color_dialogue.presenter.selected_form == 1
+			and _flow.current_form == 1
+		),
+		"first visible entrance starts in muscle form before any dialogue line"
+	)
+	await get_tree().create_timer(0.25, true, false, true).timeout
+	await _capture("first_color_entrance")
+	_check(_flow._form_tween == null, "first color does not schedule a mid-dialogue disguise swap")
+
+
+func _check_passive_third_color() -> void:
+	var deadline: int = Time.get_ticks_msec() + 20000
+	var starting_zoom: float = _game._view.target_zoom
+	var starting_candy: int = _game.run.candy
+	while Time.get_ticks_msec() < deadline:
+		_check(
+			(
+				not _game._view.presentation_locked
+				and _game.is_processing()
+				and _game.is_processing_input()
+				and is_equal_approx(Engine.time_scale, 1.0)
+			),
+			"third color leaves gameplay and inputs running at normal speed"
+		)
+		_check(
+			(
+				is_equal_approx(_game._view.target_zoom, starting_zoom)
+				and not _game._view.is_transitioning()
+			),
+			"third color does not force a camera transition"
+		)
+		_check(
+			_flow.phase == Flow.Phase.IDLE and not _flow.color_dialogue.visible,
+			"third color does not interrupt play with a dialogue"
+		)
+		if (
+			_game._restoration.completed_species.size() == 3
+			and _game._restoration.phase == Flow.Restoration.Phase.IDLE
+		):
+			break
+		await get_tree().process_frame
+	_check(
+		_game._restoration.completed_species.size() == 3,
+		"third color completes without confirmation"
+	)
+	_check(_flow.current_form == 2, "later story uses the small form after the third color")
+	_check(
+		_game.run.candy > starting_candy, "automated nests keep producing throughout third color"
+	)
+	# Real keyboard input still controls the camera after the passive restoration.
+	await _key(KEY_TAB)
+	_check(_game._view.is_overview(), "player can still switch views")
+	while _game._view.is_transitioning():
+		await get_tree().process_frame
+	await _key(KEY_TAB)
+	while _game._view.is_transitioning():
+		await get_tree().process_frame
+
+
 func _wait_talk(expected: Flow.Kind, timeout_ms: int = 20000) -> void:
 	var deadline: int = Time.get_ticks_msec() + timeout_ms
 	while Time.get_ticks_msec() < deadline:
@@ -254,6 +447,11 @@ func _wait_talk(expected: Flow.Kind, timeout_ms: int = 20000) -> void:
 			and _flow.phase == Flow.Phase.TALKING
 			and _flow.active_dialogue.phase == Dialogue.Phase.TYPING
 		):
+			for slime: PrototypeSlime in _game._slimes:
+				_check(
+					is_equal_approx(slime.simulation_speed * Engine.time_scale, 0.1),
+					"every dialogue slows monsters to ten percent"
+				)
 			return
 		await get_tree().process_frame
 	_check(
@@ -267,6 +465,8 @@ func _wait_idle() -> void:
 	while _flow.phase != Flow.Phase.IDLE and Time.get_ticks_msec() < deadline:
 		await get_tree().process_frame
 	_check(_flow.phase == Flow.Phase.IDLE, "story releases its controls")
+	for slime: PrototypeSlime in _game._slimes:
+		_check(is_equal_approx(slime.simulation_speed, 1.0), "story restores monster speed")
 
 
 func _finish_dialogue() -> void:
@@ -311,6 +511,11 @@ func _key(code: Key) -> void:
 func _capture(label: String) -> void:
 	if "--capture" not in OS.get_cmdline_user_args():
 		return
+	if (
+		"--note-capture" in OS.get_cmdline_user_args()
+		and label not in ["briefing", "briefing_typing", "receipt", "receipt_typing", "rescue"]
+	):
+		return
 	DirAccess.make_dir_recursive_absolute(_output)
 	for dimensions: Vector2i in [Vector2i(1920, 1080), Vector2i(1280, 800)]:
 		get_window().size = dimensions
@@ -338,3 +543,15 @@ func _check(passed: bool, message: String) -> void:
 func _timeout() -> void:
 	push_error("Story flow check timed out.")
 	get_tree().quit(1)
+
+
+func _close_note(notice: Flow.Notice) -> void:
+	_check(notice.playing, "Note is waiting for the player.")
+	await get_tree().create_timer(0.8).timeout
+	if not notice.white_paper:
+		await _capture("briefing_typing")
+	await _click()
+	_check(notice.phase == Flow.Notice.Phase.READING, "First click reveals the note.")
+	await _capture("receipt" if notice.white_paper else "briefing")
+	notice.close()
+	await notice.finished

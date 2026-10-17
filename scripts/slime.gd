@@ -60,6 +60,7 @@ signal launch_landed(slime: PrototypeSlime)
 var nest_id: int = -1
 var capture_progress: float = 0.0
 var consumed: bool = false
+var simulation_speed: float = 1.0
 var surface: PlanetSurface
 
 var _home: Vector2 = Vector2(0.0, -225.0)
@@ -460,7 +461,14 @@ func clear_attraction() -> void:
 	queue_redraw()
 
 
+func set_simulation_speed(value: float) -> void:
+	simulation_speed = value
+	if slime_art != null:
+		slime_art.set_simulation_speed(value)
+
+
 func _process(delta: float) -> void:
+	delta *= simulation_speed
 	if Engine.is_editor_hint():
 		return
 	if _flying:
@@ -719,3 +727,39 @@ func _draw() -> void:
 			1.5,
 			true
 		)
+
+
+const SAVE_FIELDS: PackedStringArray = [
+	"nest_id",
+	"species",
+	"high_value",
+	"population_units",
+	"fused_value_units",
+	"reward",
+	"position",
+	"_wander_target",
+	"_wander_wait",
+	"_phase",
+	"_speed_variation",
+	"detached_remaining",
+	"_elapsed",
+]
+const SaveFields = preload("res://scripts/save_fields.gd")
+
+
+func capture_save() -> Dictionary:
+	var data: Dictionary = SaveFields.capture(self, SAVE_FIELDS)
+	data["random_state"] = _rng.state
+	# An airborne/held monster resumes safely on the ground without being paid twice.
+	data.position = surface.project_to_surface(position)
+	return data
+
+
+func restore_save(data: Dictionary) -> void:
+	configure_species(data.species as Species, data.high_value, data.reward)
+	if data.population_units > 1:
+		configure_fusion(data.population_units, data.fused_value_units, data.reward)
+	restore_to_surface(data.position)
+	SaveFields.restore(self, data, SAVE_FIELDS)
+	_rng.state = data.random_state
+	_update_surface_rotation()

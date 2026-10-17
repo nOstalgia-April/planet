@@ -2,6 +2,7 @@ extends Node
 
 signal presentation_started
 signal presentation_finished
+signal progress_committed
 signal palette_changed(progress: float)
 # The planet starts filling with a species' color: stage 1 for the first species
 # restored this run, 2 and 3 for the next ones, whatever the species order.
@@ -92,6 +93,7 @@ func reset() -> void:
 	terrain.reset_colors()
 	bright_background.modulate.a = 0.0
 	core.modulate.a = 1.0
+	core.set_static(false)
 	core.set_white_mix(0.0)
 	palette_changed.emit(0.0)
 
@@ -139,6 +141,7 @@ func _process(delta: float) -> void:
 			art.set_color_progress(_species, progress)
 			if progress >= 1.0:
 				completed_species.append(_species)
+				progress_committed.emit()
 				_set_phase(Phase.FINISH if completed_species.size() == 3 else Phase.HOLD)
 		Phase.FINISH:
 			var progress: float = smoothstep(0.0, 1.0, _progress(background_seconds))
@@ -153,6 +156,7 @@ func _process(delta: float) -> void:
 			palette_changed.emit(progress)
 			if progress >= 1.0:
 				_background_complete = true
+				progress_committed.emit()
 				_set_phase(Phase.HOLD)
 		Phase.HOLD:
 			if _elapsed < hold_seconds:
@@ -170,3 +174,32 @@ func _process(delta: float) -> void:
 func _start_overview() -> void:
 	view.show_restoration_overview()
 	_set_phase(Phase.CAMERA)
+
+
+func capture_save() -> Dictionary:
+	return {"completed": completed_species.duplicate(), "background": _background_complete}
+
+
+func restore_save(data: Dictionary) -> void:
+	reset()
+	completed_species.assign(data.completed)
+	# Paid automation can precede its flower animation. Restore the earned result.
+	unlocked_species.assign(run.unlocked_colors)
+	for nest: NestState in run.nests:
+		if nest.is_tamed and nest.species not in unlocked_species:
+			unlocked_species.append(nest.species)
+	run.unlocked_colors.assign(unlocked_species)
+	for species: int in completed_species:
+		art.set_color_progress(species, 1.0)
+		terrain.set_color_progress(species, 1.0)
+	for species: int in unlocked_species:
+		if species not in completed_species:
+			_queue.append(species)
+	if completed_species.size() == 3:
+		art.set_restored_mix(1.0)
+	_background_complete = data.background
+	var white: float = 1.0 if _background_complete else 0.0
+	bright_background.modulate.a = white
+	art.set_white_mix(white)
+	core.set_white_mix(white)
+	palette_changed.emit(white)

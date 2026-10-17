@@ -1,5 +1,7 @@
 extends Node2D
 
+signal run_restarted
+
 signal flower_appeared(nest_id: int, species: int)
 signal vacuum_capture_completed(nest_id: int, candy_gained: int, feedback: CollectionEffect)
 
@@ -30,7 +32,7 @@ const GAMEPLAY_MUSIC: String = "event:/Mx/Mx_GamePlay"
 const MUSIC_DISTANT_VIEW_PARAMETER: String = "IsDistantView"
 # Stage 2 starts with the third base value breakthrough (900 candy, 5 -> 10).
 const MUSIC_MID_BASE_VALUE_LEVEL: int = 3
-# Stage 3 starts once full automation is researched (4500 candy).
+# Stage 3 starts once full automation is researched (3000 candy).
 const MUSIC_LATE_GOVERNANCE_LEVEL: int = 3
 
 enum ToolMode { PIPE, NET }
@@ -53,6 +55,7 @@ enum NetPhase { IDLE, CASTING, CLOSING, RESULT }
 @export_range(0.1, 1.0, 0.05) var net_result_seconds: float = 0.30
 @export_range(0.2, 2.0, 0.05) var nest_hold_seconds: float = 0.8
 
+var _run_initialized: bool = false
 var selected_nest_id: int = -1
 var _active_tool: ToolMode = ToolMode.PIPE
 var _net_phase: NetPhase = NetPhase.IDLE
@@ -89,6 +92,7 @@ var _monster_audio: MonsterAudio
 var _capture_combo_bonus: int = 0
 var _planet_audio: PlanetAudio
 var _opening_nests: bool = false
+var _restoring_save: bool = false
 var _population_by_species: Dictionary = {}
 var _music_stage: int = 0
 var _view_gestures: ViewGestureFilter = ViewGestureFilter.new()
@@ -189,7 +193,7 @@ func _process(delta: float) -> void:
 	_layout.set_view_switch_enabled(_can_toggle_view())
 	var pointer: Vector2 = get_viewport().get_mouse_position()
 	var holding: bool = update_pointer_release_state()
-	_update_nest_prompts()
+	_update_nest_prompts(delta)
 	_update_nest_hover(pointer)
 	_advance_nest_hold(delta, pointer)
 	_update_overview_hover(pointer)
@@ -646,7 +650,7 @@ func _sync_view_projection() -> void:
 	_overview.set_view_opacity(1.0 - blend)
 
 
-func restart_run() -> void:
+func _clear_run_world() -> void:
 	for trail: MucusField in _mucus_pool:
 		trail.queue_free()
 	_mucus_pool.clear()
@@ -693,6 +697,10 @@ func restart_run() -> void:
 	_completion.reset()
 	_status_label.text = ""
 	_status_label.modulate.a = 1.0
+
+
+func restart_run() -> void:
+	_clear_run_world()
 	_prepare_nest_sites()
 	var spawn_positions: Array[Vector2] = []
 	for index: int in range(run.settings.initial_nests):
@@ -710,6 +718,10 @@ func restart_run() -> void:
 	_tool_pointer = _world.to_local(get_global_mouse_position())
 	_pipe.position = _tool_pointer
 	_refresh_hud()
+
+	if _run_initialized:
+		run_restarted.emit.call_deferred()
+	_run_initialized = true
 
 
 # Stages only move forward within a run; restart_run resets them.
@@ -1193,6 +1205,8 @@ func _on_nest_added(nest: NestState) -> void:
 
 
 func _on_flower_appeared(nest_id: int, species: int) -> void:
+	if _restoring_save:
+		return
 	run.record_flower(nest_id)
 	flower_appeared.emit(nest_id, species)
 
@@ -1340,7 +1354,7 @@ func _select_nest(nest_id: int) -> void:
 func _suspend_nest_prompts() -> void:
 	_cancel_nest_hold()
 	for prompt: NestUpgradeButton in _nest_prompts.values():
-		prompt.hide()
+		prompt.reset_prompt()
 
 
 func _can_hold_nest(nest_id: int, pointer: Vector2) -> bool:
@@ -1378,7 +1392,17 @@ func _begin_nest_hold(pointer: Vector2) -> bool:
 		_nest_hold_elapsed = 0.0
 		_view_blocks_tool_until_release = true
 		_capture_at(0.0, _tool_pointer, false)
-		_nest_prompts[_held_nest_id].set_hold_progress(0.0)
+		var prompt: NestUpgradeButton = _nest_prompts[_held_nest_id]
+		if not prompt.visible:
+			prompt.begin_entrance()
+		prompt.refresh(
+			run.get_nest(_held_nest_id),
+			run.get_nest_upgrade_cost(_held_nest_id),
+			"",
+			run.candy,
+			run.settings.nest_upgrade_costs.size()
+		)
+		prompt.set_hold_progress(0.0)
 		return true
 	return false
 
@@ -1408,7 +1432,7 @@ func _cancel_nest_hold() -> void:
 	_nest_hold_elapsed = 0.0
 
 
-func _update_nest_prompts() -> void:
+func _update_nest_prompts(delta: float = 0.0) -> void:
 	if (
 		get_tree().paused
 		or _view.presentation_locked
@@ -1429,7 +1453,7 @@ func _update_nest_prompts() -> void:
 		)
 		if not eligible:
 			if _nest_prompts.has(view.nest_id):
-				_nest_prompts[view.nest_id].hide()
+				_nest_prompts[view.nest_id].reset_prompt()
 			continue
 		if not _nest_prompts.has(view.nest_id):
 			var prompt: NestUpgradeButton = NEST_UPGRADE_SCENE.instantiate() as NestUpgradeButton
@@ -1442,9 +1466,19 @@ func _update_nest_prompts() -> void:
 			_nest_prompts[view.nest_id] = prompt
 			_layout.nest_prompts.append(prompt)
 		var button: NestUpgradeButton = _nest_prompts[view.nest_id]
-		var entering: bool = not button.visible
-		button.refresh(nest, run.get_nest_upgrade_cost(view.nest_id), "", run.candy)
 		button.set_nest_anchor(view.get_hover_polygon())
+		if button.prompt_expired:
+			continue
+		var entering: bool = not button.visible
+		if entering and not button.advance_prompt_wait(delta):
+			continue
+		button.refresh(
+			nest,
+			run.get_nest_upgrade_cost(view.nest_id),
+			"",
+			run.candy,
+			run.settings.nest_upgrade_costs.size()
+		)
 		if entering:
 			button.begin_entrance()
 
@@ -1520,7 +1554,8 @@ func _refresh_hud() -> void:
 		nest,
 		run.get_nest_upgrade_cost(selected_nest_id),
 		run.get_nest_upgrade_requirement(selected_nest_id),
-		run.candy
+		run.candy,
+		run.settings.nest_upgrade_costs.size()
 	)
 	if not _nest_button.visible:
 		_layout.hide_nest_details()
@@ -1531,7 +1566,8 @@ func _refresh_hud() -> void:
 				run.get_nest(nest_id),
 				run.get_nest_upgrade_cost(nest_id),
 				run.get_nest_upgrade_requirement(nest_id),
-				run.candy
+				run.candy,
+				run.settings.nest_upgrade_costs.size()
 			)
 
 
@@ -1642,3 +1678,126 @@ func _show_completion() -> void:
 
 func _close_victory() -> void:
 	_completion.reset()
+
+
+func capture_gameplay_save() -> Dictionary:
+	var actors: Array[Dictionary] = []
+	var actor_indices: Dictionary = {}
+	for slime: PrototypeSlime in _slimes:
+		actor_indices[slime.get_instance_id()] = actors.size()
+		actors.append(slime.capture_save())
+	var trails: Array[Dictionary] = []
+	for trail: MucusField in _mucus_trails:
+		var data: Dictionary = trail.capture_save()
+		data["actor_index"] = (
+			actor_indices.get(trail.source_actor_id, -1)
+			if _active_mucus_trails.get(trail.source_actor_id) == trail
+			else -1
+		)
+		trails.append(data)
+	var pools: Dictionary = {}
+	for area: NestMucusArea in _nest_mucus_areas:
+		pools[area.source_nest_id] = area.variant_index
+	return {
+		"run": run.capture_save(),
+		"actors": actors,
+		"trails": trails,
+		"pools": pools,
+		"spawn_directions": _spawn_directions.duplicate(),
+		"random_state": _site_random.state,
+		"rotation": _world.rotation,
+		"zoom": _view.target_zoom,
+		"tool": int(_active_tool),
+	}
+
+
+func accepts_gameplay_save(data: Dictionary) -> bool:
+	if not data.get("run") is Dictionary or not run.accepts_save(data.run):
+		return false
+	if not data.get("actors") is Array or not data.get("trails") is Array:
+		return false
+	if not data.get("pools") is Dictionary or not data.get("spawn_directions") is Dictionary:
+		return false
+	if not data.get("random_state") is int or not data.get("tool") in [0, 1]:
+		return false
+	if not data.get("rotation") is float or not data.get("zoom") is float:
+		return false
+	var populations: Array[int] = []
+	populations.resize(data.run.nests.size())
+	populations.fill(0)
+	for actor: Variant in data.actors:
+		if not actor is Dictionary:
+			return false
+		if (
+			not actor.get("nest_id") is int
+			or actor.nest_id < 1
+			or actor.nest_id > populations.size()
+		):
+			return false
+		if not actor.get("population_units") is int or actor.population_units < 1:
+			return false
+		if not actor.get("position") is Vector2 or not actor.position.is_finite():
+			return false
+		if actor.get("species") != data.run.nests[actor.nest_id - 1].species:
+			return false
+		for field: String in PrototypeSlime.SAVE_FIELDS:
+			if not actor.has(field):
+				return false
+		if not actor.get("random_state") is int:
+			return false
+		if actor.population_units > 1 and actor.fused_value_units < actor.population_units:
+			return false
+		if actor.species == NestState.Species.DRILL and not actor.get("drill") is Dictionary:
+			return false
+		populations[actor.nest_id - 1] += actor.population_units
+	for index: int in range(populations.size()):
+		if populations[index] != data.run.nests[index].alive_slimes:
+			return false
+	return true
+
+
+func restore_gameplay_save(data: Dictionary) -> void:
+	assert(accepts_gameplay_save(data))
+	_restoring_save = true
+	_clear_run_world()
+	run.restore_save(data.run)
+	_opening_nests = true
+	for nest: NestState in run.nests:
+		_on_nest_added(nest)
+		_regions[nest.nest_id - 1].stage = nest.level
+	_opening_nests = false
+	for area: NestMucusArea in _nest_mucus_areas:
+		area.variant_index = data.pools[area.source_nest_id]
+		area._process(10.0)
+	for saved: Dictionary in data.actors:
+		var actor_scene: PackedScene = slime_scene
+		if saved.species == NestState.Species.DRILL:
+			actor_scene = drill_scene
+		elif saved.population_units > 1:
+			actor_scene = giant_slime_scene
+		var slime: PrototypeSlime = actor_scene.instantiate() as PrototypeSlime
+		_slime_root.add_child(slime)
+		var nest: NestState = run.get_nest(saved.nest_id)
+		slime.setup(nest.nest_id, nest.position, _planet, _get_roaming_screen_half_angle())
+		slime.presentation_scale = _view.near_slime_scale
+		slime.restore_save(saved)
+		_slimes.append(slime)
+	for saved: Dictionary in data.trails:
+		var trail: MucusField = mucus_scene.instantiate() as MucusField
+		_mucus_root.add_child(trail)
+		trail.restore_save(saved, _planet)
+		_mucus_trails.append(trail)
+		var actor_index: int = saved.actor_index
+		if actor_index >= 0 and actor_index < _slimes.size():
+			trail.source_actor_id = _slimes[actor_index].get_instance_id()
+			_active_mucus_trails[trail.source_actor_id] = trail
+	_spawn_directions = data.spawn_directions.duplicate()
+	_site_random.state = data.random_state
+	_view.restore_save(data.rotation, data.zoom)
+	_select_tool(data.tool as ToolMode)
+	_view_blocks_tool_until_release = true
+	_music_stage = 0
+	_update_music_stage()
+	_refresh_hud()
+	_refresh_overview()
+	_restoring_save = false

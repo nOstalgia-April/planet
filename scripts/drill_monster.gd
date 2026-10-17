@@ -138,7 +138,14 @@ func get_capture_hit_rect() -> Rect2:
 	return get_global_transform_with_canvas() * _get_base_art_transform() * _exposed_art_rect
 
 
+func set_simulation_speed(value: float) -> void:
+	super.set_simulation_speed(value)
+	for view: ItemArt in [ordinary_art, valuable_art]:
+		view.animation_player.speed_scale = value
+
+
 func _process(delta: float) -> void:
+	delta *= simulation_speed
 	if consumed or surface == null:
 		return
 	_update_surface_rotation()
@@ -285,4 +292,48 @@ func get_source_texture() -> Texture2D:
 
 
 func _draw() -> void:
-	pass
+	if not _capture_active or consumed or capture_progress <= 0.02:
+		return
+	# The mole keeps its full-size art during suction, so its ring must not shrink.
+	# Use the stable exposed bounds to keep it outside both facial animations.
+	var ring_radius: float = _exposed_art_rect.size.length() * 0.5 + 4.0
+	draw_set_transform_matrix(_get_base_art_transform())
+	draw_arc(
+		_exposed_art_rect.get_center(),
+		ring_radius,
+		-PI / 2.0,
+		-PI / 2.0 + TAU * capture_progress,
+		64,
+		Color("809c69"),
+		1.5 / get_presentation_scale(),
+		true
+	)
+
+
+const DRILL_SAVE_FIELDS: PackedStringArray = [
+	"phase",
+	"phase_remaining",
+	"_turns_remaining",
+	"_travel_direction",
+	"_travel_target",
+	"_launch_progress",
+]
+
+
+func capture_save() -> Dictionary:
+	var data: Dictionary = super.capture_save()
+	data["drill"] = SaveFields.capture(self, DRILL_SAVE_FIELDS)
+	data["clip"] = art.animation_player.assigned_animation
+	data["clip_time"] = art.animation_player.current_animation_position
+	return data
+
+
+func restore_save(data: Dictionary) -> void:
+	super.restore_save(data)
+	SaveFields.restore(self, data.drill, DRILL_SAVE_FIELDS)
+	_capture_active = false
+	art.play_clip(data.clip)
+	art.animation_player.seek(data.clip_time, true)
+	if phase == Phase.EXPOSED:
+		_cache_exposed_art_rect()
+	_sync_art()

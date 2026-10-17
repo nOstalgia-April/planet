@@ -1,5 +1,6 @@
 extends Node
 
+const Store = preload("res://scripts/game_save.gd")
 const Intro = preload("res://scenes/开头动画/开头动画.gd")
 const Menu = preload("res://scenes/主菜单/主菜单.gd")
 const Audio = preload("res://scripts/fmod_audio.gd")
@@ -19,6 +20,8 @@ func _ready() -> void:
 
 
 func _run() -> void:
+	DirAccess.make_dir_recursive_absolute("res://artifacts/mission_note_20261017")
+	Store.save_path = "res://artifacts/mission_note_20261017/opening.save"
 	assert(ProjectSettings.get_setting("application/run/main_scene") == MENU_PATH)
 	assert(_tree.change_scene_to_file(MENU_PATH) == OK)
 	await _tree.scene_changed
@@ -43,12 +46,7 @@ func _run() -> void:
 	assert(audio._music_path.is_empty(), "进入片头后菜单音乐应淡出。")
 	if "--natural" in OS.get_cmdline_user_args():
 		var started_at: int = Time.get_ticks_msec()
-		var notice_seconds: float = (
-			intro._briefing.transition_seconds * 2.0
-			+ intro._briefing.reveal_seconds * 3.0
-			+ intro._briefing.section_hold_seconds * 2.0
-			+ intro._briefing.final_hold_seconds
-		)
+
 		await _tree.scene_changed
 		assert(_tree.current_scene.scene_file_path == Menu.DEFAULT_START_SCENE)
 		_assert_gameplay_music(audio)
@@ -56,7 +54,7 @@ func _run() -> void:
 		while audio.is_transition_playing():
 			await _tree.process_frame
 		assert(audio._music_path == "event:/Mx/Mx_GamePlay", "片头音效淡出后游戏音乐开始。")
-		assert(absf(duration - clip.length - notice_seconds) < 1.5, "开头动画和委托书均按实际时长播放。")
+		assert(absf(duration - clip.length) < 1.5, "片头按实际时长播放并交接游戏内字条。")
 		print(
 			(
 				"PASS: menu Start played the opening and entered gameplay after %.2f seconds."
@@ -90,9 +88,10 @@ func _run() -> void:
 	assert(_tree.current_scene == intro, "最后一帧播放结束前必须留在开头动画。")
 	assert(picture.texture.resource_path.ends_with("p7/009.png"))
 	player.advance(0.02)
-	assert(intro._briefing.playing, "开头动画结束后先显示不可跳过的委托书。")
+
 	await _tree.scene_changed
 	assert(_tree.current_scene.scene_file_path == Menu.DEFAULT_START_SCENE, "片头播放结束必须自动进入正式游戏。")
+	assert(_tree.current_scene.get_node("StoryFlow").briefing.playing, "正式星球上显示字条。")
 	assert(_tree.current_scene.has_node("StoryFlow"), "正式游戏挂载七段看板娘剧情。")
 	assert(not _tree.current_scene.has_node("PreviewNavigation"), "正式游戏不能带入预览快捷跳段。")
 	assert(not _tree.paused and is_equal_approx(Engine.time_scale, 1.0))

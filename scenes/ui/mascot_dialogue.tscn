@@ -61,6 +61,21 @@ scroll_active = false
 autowrap_mode = 3
 visible_characters_behavior = 1
 
+[node name="ContinueHint" type="Label" parent="SpeechBubble"]
+visible = false
+layout_mode = 1
+anchor_left = 0.22
+anchor_top = 0.75
+anchor_right = 0.63
+anchor_bottom = 0.84
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.32, 0.24, 0.31, 1)
+theme_override_fonts/font = ExtResource("font")
+theme_override_font_sizes/font_size = 17
+text = "（鼠标左键点击继续）"
+horizontal_alignment = 2
+vertical_alignment = 1
+
 [node name="MascotPresenter" parent="." instance=ExtResource("presenter")]
 layout_mode = 1
 display_heights = PackedFloat32Array(320, 280, 150)

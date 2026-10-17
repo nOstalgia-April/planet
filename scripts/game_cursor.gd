@@ -13,7 +13,8 @@ var _cursor_size: Vector2i
 var _accent: Color
 var _applied_accent: Color = Color.TRANSPARENT
 var _accent_update_remaining: float = 0.0
-var _cursor_texture: ImageTexture
+var _cursor_image: Image
+var _shape_images: Array[Image] = []
 
 
 func _ready() -> void:
@@ -21,8 +22,12 @@ func _ready() -> void:
 	# Read scripted resource defaults at runtime, after editor documentation parsing.
 	var palette_colors: PackedColorArray = DEFAULT_PALETTE.colors_for(NestState.Species.SLIME)
 	_accent = palette_colors[1]
+	_shape_images.resize(Input.CURSOR_HELP + 1)
 	_prepare_outline()
 	_apply_accent()
+	# Initialize every shape once so entering a control never shows a stock cursor.
+	for shape: int in range(Input.CURSOR_ARROW, Input.CURSOR_HELP + 1):
+		_apply_cursor_shape(shape)
 
 
 func set_accent(color: Color) -> void:
@@ -60,14 +65,23 @@ func _apply_accent() -> void:
 		Rect2i(Vector2i.ZERO, _pointer_image.get_size()),
 		Vector2i.ONE * OUTLINE_PADDING
 	)
-	_cursor_texture = ImageTexture.create_from_image(image)
-	# Padding must move the hotspot too, keeping the original arrow tip under the mouse.
-	for shape: int in range(Input.CURSOR_ARROW, Input.CURSOR_HELP + 1):
-		Input.set_custom_mouse_cursor(
-			_cursor_texture, shape, HOTSPOT + Vector2.ONE * OUTLINE_PADDING
-		)
+	# Pass CPU pixels directly: Texture2D makes each native cursor installation
+	# read the texture back from the GPU, stalling rendering during palette fades.
+	# Keep a fresh Image per update because display servers cache by resource identity.
+	_cursor_image = image
+	_apply_cursor_shape(Input.get_current_cursor_shape())
 	_applied_accent = _accent
 	_accent_update_remaining = ACCENT_UPDATE_SECONDS
+
+
+func _apply_cursor_shape(shape: int) -> void:
+	if _shape_images[shape] == _cursor_image:
+		return
+	# Only refresh the visible shape; native handle creation for all 17 shapes
+	# in one frame causes spikes. Other shapes catch up when the pointer uses them.
+	# Padding moves the hotspot too, keeping the arrow tip under the mouse.
+	Input.set_custom_mouse_cursor(_cursor_image, shape, HOTSPOT + Vector2.ONE * OUTLINE_PADDING)
+	_shape_images[shape] = _cursor_image
 
 
 func register_vacuum(vacuum: Node2D) -> void:
@@ -75,8 +89,7 @@ func register_vacuum(vacuum: Node2D) -> void:
 
 
 func _exit_tree() -> void:
-	# Windows retains cursor textures until explicitly reset; its display server
-	# otherwise drops them after RenderingServer has already been destroyed.
+	# Release the native cursor handles and their cached images on shutdown.
 	for shape: int in range(Input.CURSOR_ARROW, Input.CURSOR_HELP + 1):
 		Input.set_custom_mouse_cursor(null, shape)
 	_vacuum = null
@@ -86,6 +99,7 @@ func _process(delta: float) -> void:
 	_accent_update_remaining = maxf(0.0, _accent_update_remaining - delta)
 	if _accent != _applied_accent and _accent_update_remaining <= 0.0:
 		_apply_accent()
+	_apply_cursor_shape(Input.get_current_cursor_shape())
 	var using_vacuum: bool = (
 		is_instance_valid(_vacuum)
 		and _vacuum.is_visible_in_tree()

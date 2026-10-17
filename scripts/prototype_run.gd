@@ -13,6 +13,50 @@ signal combo_stage_completed(stage: int, bonus: int)
 signal combo_progressed(capture_color: Color)
 signal combo_interrupted
 signal goal_completed
+signal progress_committed
+
+const SaveFields = preload("res://scripts/save_fields.gd")
+const SAVE_FIELDS: PackedStringArray = [
+	"candy",
+	"base_value_level",
+	"pipe_level",
+	"net_level",
+	"net_size_level",
+	"net_unlocked",
+	"governance_level",
+	"valuable_level",
+	"giant_unlocked",
+	"combo_level",
+	"combo_stage",
+	"combo_stage_candy",
+	"combo_count",
+	"combo_remaining",
+	"net_cooldown_remaining",
+	"generated_nests",
+	"completed_nests",
+	"unlocked_colors",
+	"is_complete",
+	"generation_stage",
+	"_nest_roll_clock",
+	"_combo_reward_remainder",
+	"_nest_spawn_cooldown_remaining",
+	"_nest_initial_delay_remaining",
+	"_pending_nest_species",
+	"_nest_site_capacity",
+]
+const NEST_SAVE_FIELDS: PackedStringArray = [
+	"nest_id",
+	"species",
+	"level",
+	"position",
+	"alive_slimes",
+	"spawn_clock",
+	"spawn_interval_offset",
+	"income_remainder",
+	"income_clock",
+	"is_tamed",
+	"is_discovering",
+]
 
 @export var settings: PrototypeSettings
 
@@ -276,6 +320,7 @@ func purchase_technology(id: String) -> bool:
 		"combo_unlock":
 			combo_level += 1
 	economy_changed.emit()
+	progress_committed.emit()
 	return true
 
 
@@ -308,6 +353,7 @@ func upgrade_nest(nest_id: int) -> bool:
 	nest_changed.emit(nest)
 	economy_changed.emit()
 	_check_completion()
+	progress_committed.emit()
 	return true
 
 
@@ -369,7 +415,11 @@ func get_technology_cost(id: String) -> int:
 		"automation":
 			return -1 if governance_level >= 3 else settings.governance_upgrade_costs[1]
 		"combo_unlock":
-			return -1 if combo_level >= settings.combo_upgrade_costs.size() else settings.combo_upgrade_costs[combo_level]
+			return (
+				-1
+				if combo_level >= settings.combo_upgrade_costs.size()
+				else settings.combo_upgrade_costs[combo_level]
+			)
 	var costs: PackedInt32Array = _get_technology_costs(id)
 	var level: int = get_technology_level(id)
 	if level < 0 or level >= costs.size():
@@ -442,7 +492,7 @@ func get_technology_description(id: String) -> String:
 		"cultivation":
 			return "解锁巢穴培育升级，让巢穴能容纳更多怪物。"
 		"automation":
-			return "恢复巢穴为小花，自动产糖，最终恢复整个星球！"
+			return "恢复巢穴为小花，自动产糖，最终帮助星球自愈！"
 		"combo_unlock":
 			return "每完成一段连击要求，就结算一次额外糖果！"
 		"valuable":
@@ -493,9 +543,14 @@ func get_technology_gain(id: String) -> String:
 			)
 		"combo_unlock":
 			var stage: int = mini(combo_level, settings.combo_stage_targets.size() - 1)
-			return "第 %d 段 · %d 只 → 额外 +%d%%" % [
-				stage + 1, settings.combo_stage_targets[stage], settings.combo_reward_percentages[stage]
-			]
+			return (
+				"第 %d 段 · %d 只 → 额外 +%d%%"
+				% [
+					stage + 1,
+					settings.combo_stage_targets[stage],
+					settings.combo_reward_percentages[stage]
+				]
+			)
 		"valuable":
 			return "高价值个体收益 ×%d" % settings.valuable_reward_multiplier
 	return ""
@@ -964,3 +1019,73 @@ func _add_nest(
 	nests.append(nest)
 	generated_nests += 1
 	nest_added.emit(nest)
+
+
+func capture_save() -> Dictionary:
+	var data: Dictionary = SaveFields.capture(self, SAVE_FIELDS)
+	data["random_state"] = _random.state
+	var saved_nests: Array[Dictionary] = []
+	for nest: NestState in nests:
+		saved_nests.append(SaveFields.capture(nest, NEST_SAVE_FIELDS))
+	data["nests"] = saved_nests
+	return data
+
+
+func accepts_save(data: Dictionary) -> bool:
+	if not SaveFields.matches(self, data, SAVE_FIELDS) or not data.get("nests") is Array:
+		return false
+	var limits: Dictionary = {
+		"base_value_level": settings.base_value_upgrade_costs.size(),
+		"pipe_level": settings.pipe_upgrade_costs.size(),
+		"net_level": settings.net_upgrade_costs.size(),
+		"net_size_level": settings.net_size_upgrade_costs.size(),
+		"valuable_level": settings.valuable_upgrade_costs.size(),
+		"combo_level": settings.combo_upgrade_costs.size(),
+		"governance_level": 3,
+	}
+	for field: String in limits:
+		if data[field] < 0 or data[field] > limits[field]:
+			return false
+	if (
+		data.candy < 0
+		or data.combo_stage < 0
+		or data.combo_stage >= settings.combo_stage_targets.size()
+	):
+		return false
+	if data.nests.size() < settings.initial_nests or data.nests.size() > _nest_site_capacity:
+		return false
+	if data.generated_nests != data.nests.size() or not data.get("random_state") is int:
+		return false
+	var template: NestState = NestState.new()
+	for index: int in range(data.nests.size()):
+		var nest: Variant = data.nests[index]
+		if not nest is Dictionary or not SaveFields.matches(template, nest, NEST_SAVE_FIELDS):
+			return false
+		if nest.nest_id != index + 1 or nest.species < 0 or nest.species > 2:
+			return false
+		if (
+			nest.level < 0
+			or nest.level > settings.nest_upgrade_costs.size()
+			or nest.alive_slimes < 0
+		):
+			return false
+		if (
+			not nest.position.is_finite()
+			or nest.income_clock < 0.0
+			or nest.income_clock >= settings.automatic_income_interval
+		):
+			return false
+	return true
+
+
+func restore_save(data: Dictionary) -> void:
+	assert(accepts_save(data))
+	SaveFields.restore(self, data, SAVE_FIELDS)
+	_random.state = data.random_state
+	nests.clear()
+	for saved: Dictionary in data.nests:
+		var nest: NestState = NestState.new()
+		SaveFields.restore(nest, saved, NEST_SAVE_FIELDS)
+		# Appearance can settle on reload; population must no longer wait on its old animation.
+		nest.is_discovering = false
+		nests.append(nest)

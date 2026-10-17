@@ -21,7 +21,8 @@ void fragment() {
 	vec3 milk = vec3(1.0, 0.94, 0.79);
 	vec3 ink = mix(mix(tint.rgb, milk, 0.28), milk, smoothstep(0.15, 0.95, wave));
 	ink = mix(ink, vec3(1.0, 0.99, 0.94), sheen * (0.7 + hover_amount * 0.25));
-	ink = mix(vec3(0.72, 0.65, 0.69), ink, availability);
+	vec3 resting_ink = mix(vec3(0.72, 0.65, 0.69), vec3(1.0), availability);
+	ink = mix(resting_ink, ink, availability * hover_amount);
 	// Keep the dark outline and Godot's font alpha intact.
 	COLOR.rgb *= mix(vec3(1.0), ink, is_fill);
 }

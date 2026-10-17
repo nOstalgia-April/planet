@@ -327,3 +327,13 @@ func _apply_view() -> void:
 	world.scale = Vector2.ONE * display_scale
 	world.rotation = _view_rotation
 	projection_changed.emit()
+
+
+func restore_save(rotation_value: float, zoom_value: float) -> void:
+	reset_view()
+	_view_rotation = rotation_value
+	zoom_amount = clampf(zoom_value, 0.0, 1.0)
+	target_zoom = zoom_amount
+	near_blend = zoom_amount
+	_apply_view()
+	view_changed.emit()

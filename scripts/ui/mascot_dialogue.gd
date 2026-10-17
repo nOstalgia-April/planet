@@ -23,6 +23,7 @@ enum Phase { HIDDEN, ENTERING, OPENING, TYPING, HOLDING, FINISHED, IDLE }
 @export_range(1.0, 40.0, 1.0) var characters_per_second: float = 15.0
 @export_range(0.0, 1.0, 0.01) var punctuation_pause: float = 0.22
 @export_range(0.05, 1.0, 0.01) var bubble_open_seconds: float = 0.24
+@export_range(0.1, 10.0, 0.1) var continue_delay_seconds: float = 2.0
 
 var phase: Phase = Phase.HIDDEN
 var line_index: int = -1
@@ -37,6 +38,7 @@ var _voicing: bool = false
 @onready var presenter: Presenter = $MascotPresenter
 @onready var bubble: Control = $SpeechBubble
 @onready var text_label: RichTextLabel = $SpeechBubble/Text
+@onready var continue_hint: Label = $SpeechBubble/ContinueHint
 
 
 func _ready() -> void:
@@ -64,6 +66,9 @@ func _process(delta: float) -> void:
 				_start_line(0)
 		Phase.TYPING:
 			_reveal_characters()
+		Phase.HOLDING:
+			if _phase_elapsed >= continue_delay_seconds:
+				advance()
 
 
 func _input(event: InputEvent) -> void:
@@ -103,6 +108,7 @@ func play(dialogue_lines: PackedStringArray, replay_entrance: bool = true) -> vo
 	_glyph_pop.revealed_at.clear()
 	text_label.clear()
 	text_label.visible_characters = 0
+	continue_hint.hide()
 	bubble.hide()
 	bubble.modulate.a = 0.0
 	phase = Phase.ENTERING
@@ -128,6 +134,7 @@ func advance() -> void:
 			_start_line(line_index + 1)
 		else:
 			phase = Phase.FINISHED
+			continue_hint.hide()
 			dialogue_finished.emit()
 
 
@@ -135,6 +142,7 @@ func stop() -> void:
 	_playback_version += 1
 	_set_voicing(false)
 	phase = Phase.HIDDEN
+	continue_hint.hide()
 	presenter.set_speaking(false)
 	presenter.paused = true
 	bubble.hide()
@@ -145,6 +153,7 @@ func dismiss_bubble() -> void:
 	_playback_version += 1
 	_set_voicing(false)
 	phase = Phase.IDLE
+	continue_hint.hide()
 	_phase_elapsed = 0.0
 	presenter.set_speaking(false)
 	presenter.seek(maxf(presenter.elapsed, presenter.entrance_duration()))
@@ -169,6 +178,7 @@ func _open_bubble() -> void:
 
 
 func _start_line(index: int) -> void:
+	continue_hint.hide()
 	line_index = index
 	phase = Phase.TYPING
 	_phase_elapsed = 0.0
@@ -209,6 +219,7 @@ func _finish_line() -> void:
 	_set_voicing(false)
 	phase = Phase.HOLDING
 	_phase_elapsed = 0.0
+	continue_hint.show()
 	line_finished.emit(line_index)
 
 

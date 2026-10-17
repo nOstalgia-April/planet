@@ -226,3 +226,22 @@ func _update_bubble() -> void:
 	if phase == Phase.RISE:
 		bubble.modulate.a = 1.0 - smoothstep(0.0, 0.4, _progress(emergence_seconds))
 	bubble.show_at(center, anchor, radius)
+
+
+func capture_save() -> Dictionary:
+	return {
+		"shown": first_discovery_shown,
+		"species": discovered_species.duplicate(),
+		"pending_position": _queued_position if _queued_species >= 0 else _position,
+	}
+
+
+func restore_save(data: Dictionary) -> void:
+	reset()
+	first_discovery_shown = data.shown
+	discovered_species.assign(data.species)
+	for nest: NestState in run.nests:
+		if nest.species not in discovered_species:
+			discovered_species.append(nest.species)
+	if run._pending_nest_species >= 0:
+		request_discovery(run._pending_nest_species as NestState.Species, data.pending_position)

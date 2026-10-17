@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=28 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/game_menu.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/ui/menu_icon_button.gd" id="2"]
@@ -9,6 +9,100 @@
 [ext_resource type="Font" path="res://fonts/game_font.tres" id="font"]
 [ext_resource type="PackedScene" path="res://scenes/ui/menu_brush.tscn" id="brush"]
 [ext_resource type="Shader" path="res://shaders/menu_panel.gdshader" id="panel_shader"]
+[ext_resource type="Texture2D" path="res://assets/ui/game_menu/icons.png" id="icons"]
+
+[sub_resource type="AtlasTexture" id="controls_icon"]
+atlas = ExtResource("icons")
+region = Rect2(56, 1132, 164, 60)
+
+[sub_resource type="FontVariation" id="bold_font"]
+base_font = ExtResource("font")
+variation_embolden = 0.7
+
+[sub_resource type="StyleBoxFlat" id="display_row"]
+bg_color = Color(0.19, 0.19, 0.19, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+content_margin_left = 16.0
+content_margin_right = 4.0
+content_margin_top = 0.0
+content_margin_bottom = 0.0
+
+[sub_resource type="StyleBoxEmpty" id="arrow"]
+
+[sub_resource type="StyleBoxFlat" id="help_hover"]
+bg_color = Color(0.065, 0.06, 0.065, 1)
+border_width_left = 2
+border_width_top = 3
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.035, 0.025, 0.03, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+content_margin_left = 16.0
+content_margin_right = 16.0
+content_margin_top = 10.0
+content_margin_bottom = 10.0
+shadow_color = Color(0.5, 0.44, 0.46, 0.4)
+shadow_size = 1
+shadow_offset = Vector2(0, 1)
+
+[sub_resource type="StyleBoxFlat" id="arrow_hover"]
+bg_color = Color(0.36, 0.36, 0.36, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_left = 10
+corner_radius_bottom_right = 10
+content_margin_top = 0.0
+content_margin_bottom = 0.0
+
+[sub_resource type="StyleBoxFlat" id="danger_focus"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.92, 0.24, 0.32, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+
+[sub_resource type="StyleBoxFlat" id="danger"]
+bg_color = Color(0.19, 0.19, 0.19, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.65, 0.16, 0.23, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+content_margin_left = 16.0
+content_margin_right = 16.0
+content_margin_top = 10.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="danger_hover"]
+bg_color = Color(0.68, 0.1, 0.19, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.92, 0.24, 0.32, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_left = 12
+corner_radius_bottom_right = 12
+content_margin_left = 16.0
+content_margin_right = 16.0
+content_margin_top = 10.0
+content_margin_bottom = 10.0
 
 [sub_resource type="ShaderMaterial" id="panel_material"]
 resource_local_to_scene = true
@@ -193,12 +287,31 @@ theme_override_constants/separation = 18
 
 [node name="Header" type="HBoxContainer" parent="Modal/Center/Panel/Content"]
 layout_mode = 2
+theme_override_constants/separation = 16
 
 [node name="Title" type="Label" parent="Modal/Center/Panel/Content/Header"]
 layout_mode = 2
-size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 30
 text = "设置"
+
+[node name="Controls" type="Button" parent="Modal/Center/Panel/Content/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_default_cursor_shape = 2
+theme_override_constants/h_separation = 9
+theme_override_constants/icon_max_width = 22
+theme_override_font_sizes/font_size = 16
+text = "操作说明"
+icon = SubResource("controls_icon")
+theme_override_styles/hover = SubResource("help_hover")
+theme_override_styles/pressed = SubResource("help_hover")
+theme_override_styles/focus = SubResource("help_hover")
+
+[node name="Spacer" type="Control" parent="Modal/Center/Panel/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
 
 [node name="CloseSettings" type="Button" parent="Modal/Center/Panel/Content/Header"]
 unique_name_in_owner = true
@@ -211,21 +324,25 @@ glyph_size = 22.0
 
 [node name="Brush" parent="Modal/Center/Panel/Content/Header/CloseSettings" instance=ExtResource("brush")]
 
-[node name="SettingsBody" type="VBoxContainer" parent="Modal/Center/Panel/Content"]
+[node name="Pages" type="MarginContainer" parent="Modal/Center/Panel/Content"]
+custom_minimum_size = Vector2(0, 350)
+layout_mode = 2
+
+[node name="SettingsBody" type="VBoxContainer" parent="Modal/Center/Panel/Content/Pages"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 18
 
-[node name="MusicRow" type="HBoxContainer" parent="Modal/Center/Panel/Content/SettingsBody"]
+[node name="MusicRow" type="HBoxContainer" parent="Modal/Center/Panel/Content/Pages/SettingsBody"]
 layout_mode = 2
 theme_override_constants/separation = 18
 
-[node name="Label" type="Label" parent="Modal/Center/Panel/Content/SettingsBody/MusicRow"]
+[node name="Label" type="Label" parent="Modal/Center/Panel/Content/Pages/SettingsBody/MusicRow"]
 custom_minimum_size = Vector2(56, 0)
 layout_mode = 2
 text = "音乐"
 
-[node name="MusicVolume" type="HSlider" parent="Modal/Center/Panel/Content/SettingsBody/MusicRow"]
+[node name="MusicVolume" type="HSlider" parent="Modal/Center/Panel/Content/Pages/SettingsBody/MusicRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(230, 36)
 layout_mode = 2
@@ -233,23 +350,23 @@ size_flags_horizontal = 3
 value = 80.0
 step = 1.0
 
-[node name="MusicValue" type="Label" parent="Modal/Center/Panel/Content/SettingsBody/MusicRow"]
+[node name="MusicValue" type="Label" parent="Modal/Center/Panel/Content/Pages/SettingsBody/MusicRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(66, 0)
 layout_mode = 2
 text = "80%"
 horizontal_alignment = 2
 
-[node name="EffectsRow" type="HBoxContainer" parent="Modal/Center/Panel/Content/SettingsBody"]
+[node name="EffectsRow" type="HBoxContainer" parent="Modal/Center/Panel/Content/Pages/SettingsBody"]
 layout_mode = 2
 theme_override_constants/separation = 18
 
-[node name="Label" type="Label" parent="Modal/Center/Panel/Content/SettingsBody/EffectsRow"]
+[node name="Label" type="Label" parent="Modal/Center/Panel/Content/Pages/SettingsBody/EffectsRow"]
 custom_minimum_size = Vector2(56, 0)
 layout_mode = 2
 text = "音效"
 
-[node name="EffectsVolume" type="HSlider" parent="Modal/Center/Panel/Content/SettingsBody/EffectsRow"]
+[node name="EffectsVolume" type="HSlider" parent="Modal/Center/Panel/Content/Pages/SettingsBody/EffectsRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(230, 36)
 layout_mode = 2
@@ -257,90 +374,140 @@ size_flags_horizontal = 3
 value = 80.0
 step = 1.0
 
-[node name="EffectsValue" type="Label" parent="Modal/Center/Panel/Content/SettingsBody/EffectsRow"]
+[node name="EffectsValue" type="Label" parent="Modal/Center/Panel/Content/Pages/SettingsBody/EffectsRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(66, 0)
 layout_mode = 2
 text = "80%"
 horizontal_alignment = 2
 
-[node name="Fullscreen" type="CheckButton" parent="Modal/Center/Panel/Content/SettingsBody"]
-unique_name_in_owner = true
+[node name="DisplayRow" type="PanelContainer" parent="Modal/Center/Panel/Content/Pages/SettingsBody"]
+custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
-text = "全屏显示"
+theme_override_styles/panel = SubResource("display_row")
 
-[node name="ControlsText" type="Label" parent="Modal/Center/Panel/Content/SettingsBody"]
-unique_name_in_owner = true
-visible = false
+[node name="Options" type="HBoxContainer" parent="Modal/Center/Panel/Content/Pages/SettingsBody/DisplayRow"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
-theme_override_constants/line_spacing = 0
-theme_override_constants/paragraph_spacing = 0
-text = "悬停吸取 · 左键投网 · 1 / 2 切换工具
-近景：右键拖星球 · 滚轮拉远
-全景：右键拖空白 · 点击气泡靠近
-悬停巢穴升级 · 空格 暂停 / 继续 · Esc 返回"
+theme_override_constants/separation = 8
 
-[node name="Extras" type="HBoxContainer" parent="Modal/Center/Panel/Content/SettingsBody"]
+[node name="Label" type="Label" parent="Modal/Center/Panel/Content/Pages/SettingsBody/DisplayRow/Options"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "显示模式"
+
+[node name="DisplayPrevious" type="Button" parent="Modal/Center/Panel/Content/Pages/SettingsBody/DisplayRow/Options"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "‹"
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("arrow")
+theme_override_styles/hover = SubResource("arrow_hover")
+theme_override_styles/pressed = SubResource("arrow_hover")
+theme_override_styles/focus = SubResource("arrow_hover")
+
+[node name="DisplayMode" type="Label" parent="Modal/Center/Panel/Content/Pages/SettingsBody/DisplayRow/Options"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "窗口"
+horizontal_alignment = 1
+
+[node name="DisplayNext" type="Button" parent="Modal/Center/Panel/Content/Pages/SettingsBody/DisplayRow/Options"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "›"
+theme_override_font_sizes/font_size = 28
+theme_override_styles/normal = SubResource("arrow")
+theme_override_styles/hover = SubResource("arrow_hover")
+theme_override_styles/pressed = SubResource("arrow_hover")
+theme_override_styles/focus = SubResource("arrow_hover")
+
+[node name="Spacer" type="Control" parent="Modal/Center/Panel/Content/Pages/SettingsBody"]
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="Actions" type="HBoxContainer" parent="Modal/Center/Panel/Content/Pages/SettingsBody"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Controls" type="Button" parent="Modal/Center/Panel/Content/SettingsBody/Extras"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "操作说明"
-
-[node name="Defaults" type="Button" parent="Modal/Center/Panel/Content/SettingsBody/Extras"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "恢复默认"
-
-[node name="Actions" type="HBoxContainer" parent="Modal/Center/Panel/Content/SettingsBody"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="Restart" type="Button" parent="Modal/Center/Panel/Content/SettingsBody/Actions"]
+[node name="Restart" type="Button" parent="Modal/Center/Panel/Content/Pages/SettingsBody/Actions"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "重新开始"
+theme_override_styles/normal = SubResource("danger")
+theme_override_styles/hover = SubResource("danger_hover")
+theme_override_styles/pressed = SubResource("danger_hover")
+theme_override_styles/focus = SubResource("danger_focus")
 
-[node name="MainMenu" type="Button" parent="Modal/Center/Panel/Content/SettingsBody/Actions"]
+[node name="MainMenu" type="Button" parent="Modal/Center/Panel/Content/Pages/SettingsBody/Actions"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "返回主菜单"
 
-[node name="ResumeGame" type="Button" parent="Modal/Center/Panel/Content/SettingsBody"]
+[node name="ResumeGame" type="Button" parent="Modal/Center/Panel/Content/Pages/SettingsBody"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "返回游戏"
 theme_override_styles/normal = SubResource("hover")
 
-[node name="Confirmation" type="VBoxContainer" parent="Modal/Center/Panel/Content"]
+[node name="ControlsText" type="RichTextLabel" parent="Modal/Center/Panel/Content/Pages"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+mouse_filter = 2
+theme_override_fonts/normal_font = ExtResource("font")
+theme_override_fonts/bold_font = SubResource("bold_font")
+theme_override_font_sizes/normal_font_size = 18
+theme_override_font_sizes/bold_font_size = 18
+theme_override_constants/line_separation = 2
+theme_override_constants/paragraph_separation = 0
+bbcode_enabled = true
+text = "[b][u]捕捉与成长[/u][/b]
+[b]悬停[/b]吸取生物　[b]左键[/b]投网
+[b]1 / 2[/b] 切换工具　[b]悬停巢穴[/b]升级
+
+[b][u]视角[/u][/b]
+近景　[b]右键拖动[/b]星球　[b]滚轮[/b]拉远
+全景　[b]右键拖动[/b]空白　[b]点击气泡[/b]靠近
+
+[b][u]暂停与返回[/u][/b]
+[b]空格[/b] 暂停 / 继续　[b]Esc[/b] 返回
+
+[b][u]胜利条件[/u][/b]
+利用[b]完全治理[/b]科技，清理所有怪物，
+辅助星球完成自愈。"
+fit_content = true
+scroll_active = false
+
+[node name="Confirmation" type="VBoxContainer" parent="Modal/Center/Panel/Content/Pages"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 22
 
-[node name="ConfirmText" type="Label" parent="Modal/Center/Panel/Content/Confirmation"]
+[node name="ConfirmText" type="Label" parent="Modal/Center/Panel/Content/Pages/Confirmation"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "重新开始？"
 
-[node name="Actions" type="HBoxContainer" parent="Modal/Center/Panel/Content/Confirmation"]
+[node name="Actions" type="HBoxContainer" parent="Modal/Center/Panel/Content/Pages/Confirmation"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="CancelAction" type="Button" parent="Modal/Center/Panel/Content/Confirmation/Actions"]
+[node name="CancelAction" type="Button" parent="Modal/Center/Panel/Content/Pages/Confirmation/Actions"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "取消"
 
-[node name="ConfirmAction" type="Button" parent="Modal/Center/Panel/Content/Confirmation/Actions"]
+[node name="ConfirmAction" type="Button" parent="Modal/Center/Panel/Content/Pages/Confirmation/Actions"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3

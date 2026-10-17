@@ -62,6 +62,7 @@ func _run() -> void:
 		await _check_mouse_input()
 		await _check_line_started_advance()
 		await _check_clause_voice()
+		await _check_auto_continue()
 	_dialogue.stop()
 	fixture.queue_free()
 	_dialogue = null
@@ -185,11 +186,12 @@ func _check_manual_sequence() -> void:
 					if _capture_enabled:
 						await get_tree().create_timer(0.25).timeout
 					await _capture_stage("%02d_line_%d_complete" % [3 + index * 2, index + 1], true)
-					await get_tree().create_timer(2.5).timeout
+					await get_tree().create_timer(0.35).timeout
 					_check(
 						_dialogue.phase == Dialogue.Phase.HOLDING and _dialogue.line_index == index,
-						"A complete line waits beyond the former automatic delay for confirmation."
+						"A complete line allows confirmation before the automatic delay."
 					)
+					_check(_dialogue.continue_hint.visible, "Completed text shows the click hint.")
 					_click(Vector2(80.0, 180.0))
 	_check(_dialogue.phase == Dialogue.Phase.FINISHED, "The click-confirmed sequence completes.")
 	_check(
@@ -214,6 +216,35 @@ func _check_manual_sequence() -> void:
 	_dialogue.advance()
 	_dialogue.advance()
 	_check(_completion_count == 1, "Completion emits once, including repeated advance calls.")
+
+
+func _check_auto_continue() -> void:
+	_dialogue.play(PackedStringArray(EXPECTED_LINES))
+	_reset_observations()
+	if not await _wait_for_first_line():
+		return
+	_dialogue.set_process(false)
+	_dialogue.advance()
+	_dialogue._process(1.99)
+	_check(_dialogue.line_index == 0, "Auto continue waits the full two seconds.")
+	_dialogue._process(0.02)
+	_check(_dialogue.line_index == 1, "Two seconds automatically starts the next line.")
+	_check(not _dialogue.continue_hint.visible, "Typing hides the click hint.")
+	_dialogue.advance()
+	_dialogue._process(1.0)
+	_dialogue.advance()
+	_dialogue._process(2.0)
+	_check(_completion_count == 1, "Clicking before expiry cannot double-complete dialogue.")
+	_dialogue.play(PackedStringArray(["结束"]))
+	_dialogue._start_line(0)
+	_dialogue.advance()
+	_dialogue._process(2.0)
+	_check(_dialogue.phase == Dialogue.Phase.FINISHED, "The final line also auto completes.")
+	_check(not _dialogue.continue_hint.visible, "Completed dialogue clears its hint.")
+	_dialogue.stop()
+	_dialogue._process(3.0)
+	_check(_dialogue.phase == Dialogue.Phase.HIDDEN, "Stopped dialogue cannot auto restart.")
+	_dialogue.set_process(true)
 
 
 func _check_mouse_input() -> void:

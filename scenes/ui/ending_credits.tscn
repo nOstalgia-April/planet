@@ -1,9 +1,8 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/ending_credits.gd" id="script"]
 [ext_resource type="FontFile" path="res://fonts/NotoSansSC-Regular.otf" id="font"]
 [ext_resource type="Texture2D" path="res://assets/ui/ending/alien_and_planet.png" id="ending_art"]
-[ext_resource type="PackedScene" path="res://scenes/ui/mission_receipt.tscn" id="receipt"]
 
 [sub_resource type="AtlasTexture" id="ending_art_region"]
 atlas = ExtResource("ending_art")
@@ -180,6 +179,3 @@ theme_override_styles/normal = SubResource("skip_normal")
 theme_override_styles/hover = SubResource("skip_normal")
 theme_override_styles/pressed = SubResource("skip_normal")
 text = "跳过"
-
-[node name="MissionReceipt" parent="." instance=ExtResource("receipt")]
-layout_mode = 1

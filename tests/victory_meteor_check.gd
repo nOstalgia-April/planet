@@ -145,11 +145,8 @@ func _check_camera_and_playback() -> void:
 	_game._victory._process(0.0)
 	_check(_game._victory.phase == Victory.Phase.PLAYING, "Camera arrival starts the meteors.")
 	_check(_game._victory.meteors.visible, "Meteor artwork appears at camera arrival.")
-	_check(not _game._completion.visible, "The panel does not cover the meteor animation.")
-	_check(
-		_game._restoration.core.modulate.a == 1.0,
-		"Core stays visible through the ending animation."
-	)
+	_check(_game._completion.playing, "Credits and meteors start together.")
+	_check(_game._restoration.core.modulate.a == 0.0, "Credits use the restored planet artwork.")
 	_player().advance(0.375)
 	var position: float = _player().current_animation_position
 	_game._victory.play()
@@ -214,7 +211,7 @@ func _check_paused_animation() -> void:
 		is_equal_approx(_player().current_animation_position, position),
 		"Pause freezes the actual meteor AnimationPlayer."
 	)
-	_check(_finished == 0 and not _game._completion.visible, "Pause cannot finish the sequence.")
+	_check(_finished == 0 and _game._completion.playing, "Pause cannot finish the sequence.")
 	get_tree().paused = false
 	_game._victory.set_process(false)
 	_player().callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL

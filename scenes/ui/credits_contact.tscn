@@ -1,0 +1,54 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/credits_contact.gd" id="script"]
+[ext_resource type="Texture2D" path="res://assets/ui/technology/tooltip.tres" id="tooltip"]
+[ext_resource type="Shader" path="res://shaders/credits_contact_ink.gdshader" id="ink"]
+
+[sub_resource type="StyleBoxEmpty" id="NameStyle"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 24.0
+content_margin_bottom = 0.0
+
+[sub_resource type="StyleBoxTexture" id="TooltipStyle"]
+texture = ExtResource("tooltip")
+content_margin_left = 24.0
+content_margin_top = 18.0
+content_margin_right = 24.0
+content_margin_bottom = 18.0
+
+[sub_resource type="ShaderMaterial" id="Monochrome"]
+shader = ExtResource("ink")
+
+[node name="CreditsContact" type="Button"]
+offset_right = 100.0
+offset_bottom = 42.0
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 27
+theme_override_styles/normal = SubResource("NameStyle")
+theme_override_styles/hover = SubResource("NameStyle")
+theme_override_styles/pressed = SubResource("NameStyle")
+theme_override_styles/focus = SubResource("NameStyle")
+alignment = 0
+script = ExtResource("script")
+
+[node name="Reveal" type="Control" parent="."]
+visible = false
+clip_contents = true
+mouse_filter = 2
+z_index = 20
+
+[node name="Contact" type="PanelContainer" parent="Reveal"]
+mouse_filter = 2
+material = SubResource("Monochrome")
+theme_override_styles/panel = SubResource("TooltipStyle")
+
+[node name="Address" type="Label" parent="Reveal/Contact"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 25

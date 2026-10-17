@@ -2,7 +2,7 @@ extends Node
 
 const PLAY: PackedScene = preload("res://features/场景预览/近景游玩预览.tscn")
 const Play = preload("res://features/场景预览/游玩预览.gd")
-const OUTPUT: String = "res://artifacts/ui_affordability_20261013/menu"
+const OUTPUT: String = "res://artifacts/settings_revision_20261017"
 
 var _game: Play
 var _failures: Array[String] = []
@@ -91,6 +91,20 @@ func _run() -> void:
 			"space preserves pause inside settings"
 		)
 		await _capture("settings", resolution)
+		await _click(menu.get_node("%DisplayNext"))
+		_check(
+			DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN,
+			"right display arrow applies fullscreen"
+		)
+		_check(menu.get_node("%DisplayMode").text == "全屏", "display label follows fullscreen")
+		await _click(menu.get_node("%DisplayPrevious"))
+		_check(
+			DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_WINDOWED,
+			"left display arrow restores windowed mode"
+		)
+		_check(menu.get_node("%DisplayMode").text == "窗口", "display label follows windowed mode")
+		get_tree().root.size = resolution
+		await _settle()
 		await _click(menu.get_node("%ResumeGame"))
 		_check(get_tree().paused, "closing settings preserves manual pause")
 		await _key(KEY_ESCAPE)
@@ -121,8 +135,24 @@ func _run() -> void:
 		GameAudio.stop_loop(effect)
 		GamePreferences.set_effects_volume(0.24)
 		effect = GameAudio.start_loop("event:/AnimationSystem/Earth_Rotate")
-		await _click(menu.get_node("%Controls"))
+		var panel: Control = menu.get_node("Modal/Center/Panel")
+		var settings_rect: Rect2 = panel.get_global_rect()
+		var controls: Button = menu.get_node("%Controls")
+		var hover: InputEventMouseMotion = InputEventMouseMotion.new()
+		hover.position = controls.get_global_rect().get_center()
+		get_tree().root.push_input(hover, true)
+		await _settle()
+		_check(menu.get_node("%ControlsText").visible, "hover opens controls without clicking")
+		_check(not menu.get_node("%SettingsBody").visible, "controls replaces settings body")
+		_check(panel.get_global_rect() == settings_rect, "help keeps panel and header stationary")
 		await _capture("controls", resolution)
+		hover.position = panel.get_global_rect().get_center()
+		get_tree().root.push_input(hover, true)
+		await _settle()
+		_check(menu.get_node("%SettingsBody").visible, "leaving help restores settings")
+		controls.grab_focus()
+		await _settle()
+		_check(menu.get_node("%ControlsText").visible, "keyboard focus opens help")
 		await _key(KEY_ESCAPE)
 		_check(
 			menu.is_open() and not menu.get_node("%ControlsText").visible,
@@ -207,6 +237,11 @@ func _run() -> void:
 			"technology closes and resumes"
 		)
 		await _click(menu.get_node("Toolbar/Settings"))
+		var restart_hover: InputEventMouseMotion = InputEventMouseMotion.new()
+		restart_hover.position = menu.get_node("%Restart").get_global_rect().get_center()
+		get_tree().root.push_input(restart_hover, true)
+		await _settle()
+		await _capture("restart_hover", resolution)
 		await _click(menu.get_node("%Restart"))
 		await _capture("confirm", resolution)
 		await _key(KEY_ESCAPE)

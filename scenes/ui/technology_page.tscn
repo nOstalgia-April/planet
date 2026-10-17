@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3]
+[gd_scene load_steps=28 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/technology_page.gd" id="1_page"]
 [ext_resource type="Script" path="res://scripts/ui/technology_graph.gd" id="2_graph"]
@@ -17,6 +17,12 @@
 [ext_resource type="Texture2D" path="res://assets/ui/candy_coin.png" id="15_coin"]
 [ext_resource type="Material" path="res://resources/candy_grain_outline.tres" id="16_coin_outline"]
 [ext_resource type="FontVariation" path="res://fonts/game_font.tres" id="17_wallet_font"]
+[ext_resource type="FontFile" path="res://fonts/站酷小薇LOGO体/站酷小薇LOGO体.otf" id="18_bold_base"]
+
+[sub_resource type="FontVariation" id="DescriptionBold"]
+base_font = ExtResource("18_bold_base")
+variation_embolden = 0.8
+spacing_bottom = 3
 
 [sub_resource type="ShaderMaterial" id="ExitBrushPalette"]
 resource_local_to_scene = true
@@ -220,11 +226,17 @@ mouse_filter = 2
 theme_override_colors/font_color = Color(0.74, 0.66, 0.71, 1)
 theme_override_font_sizes/font_size = 14
 
-[node name="DetailEffect" type="Label" parent="Margin/Content/Body/Detail/Content"]
+[node name="DetailEffect" type="RichTextLabel" parent="Margin/Content/Body/Detail/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
-theme_override_font_sizes/font_size = 16
+theme_override_fonts/normal_font = ExtResource("5_font")
+theme_override_fonts/bold_font = SubResource("DescriptionBold")
+theme_override_font_sizes/normal_font_size = 16
+theme_override_font_sizes/bold_font_size = 16
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
 autowrap_mode = 3
 
 [node name="DetailGain" type="RichTextLabel" parent="Margin/Content/Body/Detail/Content"]

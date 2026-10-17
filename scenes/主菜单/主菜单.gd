@@ -1,5 +1,7 @@
 extends Control
 
+const SaveStore = preload("res://scripts/game_save.gd")
+
 const SharedCache = preload("res://scripts/art_resource_cache.gd")
 
 const DEFAULT_START_SCENE: String = "res://scenes/game.tscn"
@@ -11,6 +13,7 @@ const GAMEPLAY_MUSIC: String = "event:/Mx/Mx_GamePlay"
 @export_file("*.tscn") var start_scene: String = DEFAULT_START_SCENE
 
 # Each scene owns one request reference; ResourceLoader shares the actual IO.
+var _continue_game: bool = false
 var _loading_scene: String = ""
 var _start_requested: bool = false
 var _prepared_scene: PackedScene
@@ -28,6 +31,8 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_fit_canvas)
 	_fit_canvas()
 	GameAudio.play_music("event:/Mx/Mx_MainMenu")
+	_continue_game = start_scene == DEFAULT_START_SCENE and not SaveStore.load_latest().is_empty()
+	_start_button.text = "继续游戏" if _continue_game else "开始游戏"
 	_prepare_game()
 
 
@@ -40,6 +45,9 @@ func _fit_canvas() -> void:
 func _start() -> void:
 	if _start_requested:
 		return
+	if start_scene == DEFAULT_START_SCENE:
+		SaveStore.session_requested = true
+		SaveStore.pending_snapshot = SaveStore.load_latest() if _continue_game else {}
 	_start_requested = true
 	_start_button.disabled = true
 	_start_button.text = "准备中…"
@@ -48,7 +56,7 @@ func _start() -> void:
 	# The start sound answers the click. A direct entry skips the opening, so
 	# its music follows the transition; the opening brings its own sound.
 	GameAudio.play_transition(
-		START_TRANSITION, "" if start_scene == DEFAULT_START_SCENE else GAMEPLAY_MUSIC
+		START_TRANSITION, "" if _entry_scene_path() == OPENING_SCENE else GAMEPLAY_MUSIC
 	)
 	if _prepared_scene != null:
 		_enter_game.call_deferred()
@@ -67,7 +75,9 @@ func _prepare_game() -> void:
 
 
 func _entry_scene_path() -> String:
-	return OPENING_SCENE if start_scene == DEFAULT_START_SCENE else start_scene
+	return (
+		OPENING_SCENE if start_scene == DEFAULT_START_SCENE and not _continue_game else start_scene
+	)
 
 
 static func prepare_scene(path: String = DEFAULT_START_SCENE) -> Error:
@@ -144,6 +154,8 @@ func _enter_game() -> void:
 
 
 func _loading_failed() -> void:
+	SaveStore.session_requested = false
+	SaveStore.pending_snapshot = {}
 	_loading_scene = ""
 	_start_requested = false
 	_prepared_scene = null

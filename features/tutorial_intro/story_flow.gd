@@ -7,19 +7,35 @@ signal rescue_finished
 const Play = preload("res://features/场景预览/游玩预览.gd")
 const Dialogue = preload("res://scripts/ui/mascot_dialogue.gd")
 const Restoration = preload("res://features/tutorial_intro/story_restoration.gd")
+const Notice = preload("res://scripts/ui/mission_notice.gd")
 
 enum Kind { NONE, OPENING, CULTIVATION, AUTOMATION, COLOR_ONE, COLOR_TWO, COLOR_THREE, RESCUE }
-enum Phase { IDLE, OVERVIEW, ZOOMING, EMERGING, LANDING, SLOWING, TALKING, WAIT_COLOR, RESUMING }
+enum Phase {
+	IDLE,
+	OVERVIEW,
+	ZOOMING,
+	EMERGING,
+	LANDING,
+	SLOWING,
+	TALKING,
+	WAIT_COLOR,
+	RESUMING,
+	COLOR_CAMERA,
+	COLOR_DELAY,
+	NOTE
+}
 
 @export var game: Play
 @export var restoration: Restoration
 @export_group("Timing")
 @export_range(0.1, 1.0, 0.05) var background_speed: float = 0.5
+@export_range(0.01, 1.0, 0.01) var monster_speed: float = 0.1
 @export var slow_seconds: float = 0.65
 @export var resume_seconds: float = 0.4
 @export var overview_seconds: float = 1.0
 @export var zoom_seconds: float = 0.9
 @export var emergence_seconds: float = 0.85
+@export_range(0.0, 2.0, 0.05) var first_color_entrance_delay: float = 0.4
 @export_group("Dialogue")
 @export var opening_lines: PackedStringArray
 @export var cultivation_lines: PackedStringArray
@@ -44,6 +60,7 @@ var current_form: int = 0
 var seen: Array[Kind] = []
 var active_dialogue: Dialogue
 
+var _resumed_color_only: bool = false
 var _elapsed: float = 0.0
 var _saved_time_scale: float = 1.0
 var _owns_controls: bool = false
@@ -51,6 +68,8 @@ var _pending_teaching: Array[Kind] = []
 var _airborne: Array[PrototypeSlime] = []
 var _form_tween: Tween
 var _resume_from_speed: float = 1.0
+var _resume_from_monster_speed: float = 1.0
+var _monster_speed: float = 1.0
 var _voice: FmodEvent
 var _voice_requested: bool = false
 var _voice_remaining: float = 0.0
@@ -58,11 +77,15 @@ var _voice_remaining: float = 0.0
 @onready var narrative: Dialogue = $StoryLayer/Narrative
 @onready var teaching: Dialogue = $StoryLayer/Teaching
 @onready var color_dialogue: Dialogue = $StoryLayer/ColorDialogue
+@onready var briefing: Notice = $StoryLayer/MissionBriefing
+@onready var receipt: Notice = $StoryLayer/MissionReceipt
 
 
 func _ready() -> void:
 	assert(game != null and restoration != null)
 	assert(talk_events.size() == 3)
+	briefing.finished.connect(_on_briefing_finished)
+	receipt.finished.connect(_on_receipt_finished)
 	for panel: Dialogue in [narrative, teaching, color_dialogue]:
 		panel.dialogue_finished.connect(_on_dialogue_finished)
 		panel.line_started.connect(_on_line_started)
@@ -87,7 +110,28 @@ func begin() -> void:
 	game._layout.dock_intro_progress = 0.0
 	for nest: NestView in game._nest_views:
 		nest.set_emergence_progress(0.0)
+	game.set_opening_note_backdrop(true)
+	_set_phase(Phase.NOTE)
+	briefing.play()
+
+
+func _on_briefing_finished() -> void:
+	game.set_opening_note_backdrop(false)
 	_set_phase(Phase.OVERVIEW)
+
+
+func play_receipt() -> void:
+	kind = Kind.RESCUE
+	current_form = 2
+	active_dialogue = narrative
+	_acquire_controls()
+	game._restoration.core.set_static(true)
+	_set_phase(Phase.NOTE)
+	receipt.play()
+
+
+func _on_receipt_finished() -> void:
+	play_rescue()
 
 
 func _process(delta: float) -> void:
@@ -126,12 +170,22 @@ func _process(delta: float) -> void:
 			Engine.time_scale = (
 				_saved_time_scale * lerpf(1.0, background_speed, smoothstep(0.0, 1.0, progress))
 			)
+			_set_monster_speed(lerpf(1.0, monster_speed, smoothstep(0.0, 1.0, progress)))
 			if progress >= 1.0:
+				_play_lines()
+		Phase.COLOR_CAMERA:
+			if not game._view.is_transitioning() and not restoration.completed_species.is_empty():
+				_set_phase(Phase.COLOR_DELAY)
+		Phase.COLOR_DELAY:
+			if _elapsed >= first_color_entrance_delay:
 				_play_lines()
 		Phase.RESUMING:
 			var progress: float = minf(_elapsed / maxf(resume_seconds, 0.001), 1.0)
 			Engine.time_scale = lerpf(
 				_resume_from_speed, _saved_time_scale, smoothstep(0.0, 1.0, progress)
+			)
+			_set_monster_speed(
+				lerpf(_resume_from_monster_speed, 1.0, smoothstep(0.0, 1.0, progress))
 			)
 			if progress >= 1.0:
 				_finish_story()
@@ -139,6 +193,8 @@ func _process(delta: float) -> void:
 
 func _input(event: InputEvent) -> void:
 	if not _owns_controls:
+		return
+	if phase == Phase.NOTE:
 		return
 	if event is InputEventMouse:
 		if game._layout.game_menu.contains_pointer((event as InputEventMouse).position):
@@ -178,6 +234,7 @@ func _release_controls() -> void:
 	if not _owns_controls:
 		return
 	Engine.time_scale = _saved_time_scale
+	_set_monster_speed(1.0)
 	_owns_controls = false
 	game._view.presentation_locked = false
 	game._layout.dock_intro_progress = 1.0
@@ -234,10 +291,24 @@ func _try_teaching() -> void:
 
 func _on_color_started(stage: int) -> void:
 	assert(stage >= 1 and stage <= 3)
-	kind = (Kind.COLOR_ONE + stage - 1) as Kind
+	if stage == 3:
+		# The final color restores during free play; the rescue uses this form later.
+		current_form = 2
+		seen.append(Kind.COLOR_THREE)
+		return
+	var next_kind: Kind = (Kind.COLOR_ONE + stage - 1) as Kind
+	if next_kind in seen:
+		restoration.confirm_dialogue()
+		return
+	kind = next_kind
 	active_dialogue = color_dialogue
 	_acquire_controls()
 	Engine.time_scale = _saved_time_scale * background_speed
+	_set_monster_speed(monster_speed)
+	if kind == Kind.COLOR_ONE:
+		current_form = 1
+		_set_phase(Phase.COLOR_CAMERA)
+		return
 	_play_lines()
 
 
@@ -255,6 +326,8 @@ func play_rescue() -> void:
 
 
 func _play_lines() -> void:
+	Engine.time_scale = _saved_time_scale * background_speed
+	_set_monster_speed(monster_speed)
 	active_dialogue.form_index = current_form
 	active_dialogue.presenter.modulate.a = 1.0
 	active_dialogue.play(_lines_for(kind))
@@ -286,9 +359,7 @@ func _lines_for(value: Kind) -> PackedStringArray:
 func _on_line_started(index: int, _text: String) -> void:
 	if index != 0:
 		return
-	if kind == Kind.COLOR_ONE:
-		_transform_to(1)
-	elif kind == Kind.COLOR_THREE:
+	if kind == Kind.COLOR_THREE:
 		_transform_to(2)
 
 
@@ -334,6 +405,10 @@ func _stop_voice() -> void:
 
 func _on_dialogue_finished() -> void:
 	active_dialogue.dismiss_bubble()
+	if _resumed_color_only:
+		_resumed_color_only = false
+		_begin_resuming()
+		return
 	if kind in [Kind.COLOR_ONE, Kind.COLOR_TWO, Kind.COLOR_THREE]:
 		restoration.confirm_dialogue()
 		_set_phase(Phase.WAIT_COLOR)
@@ -347,6 +422,7 @@ func _begin_resuming() -> void:
 	active_dialogue.stop()
 	_stop_voice()
 	_resume_from_speed = Engine.time_scale
+	_resume_from_monster_speed = _monster_speed
 	game._view.presentation_locked = true
 	_set_phase(Phase.RESUMING)
 
@@ -362,6 +438,10 @@ func _finish_story() -> void:
 
 
 func cancel() -> void:
+	_resumed_color_only = false
+	briefing.reset()
+	receipt.reset()
+	game.set_opening_note_backdrop(false)
 	if _form_tween != null:
 		_form_tween.kill()
 	for slime: PrototypeSlime in _airborne:
@@ -382,7 +462,17 @@ func _exit_tree() -> void:
 	_stop_voice()
 	if _owns_controls:
 		Engine.time_scale = _saved_time_scale
+		_set_monster_speed(1.0)
 	GameAudio.set_music_ducked(false)
+
+
+func _set_monster_speed(value: float) -> void:
+	_monster_speed = value
+	# Engine time already slows the background; compensate to reach the actor's total speed.
+	var local_speed: float = value * _saved_time_scale / Engine.time_scale
+	for slime: PrototypeSlime in game._slimes:
+		if is_instance_valid(slime):
+			slime.set_simulation_speed(local_speed)
 
 
 func _set_phase(value: Phase) -> void:
@@ -396,3 +486,63 @@ func _layout_dialogues() -> void:
 	for panel: Dialogue in [narrative, teaching, color_dialogue]:
 		panel.scale = Vector2.ONE * factor
 		panel.size = viewport_size / factor
+
+
+func capture_save() -> Dictionary:
+	var finished: Array[Kind] = seen.duplicate()
+	var resume_kind: Kind = Kind.NONE
+	if kind != Kind.NONE and phase not in [Phase.RESUMING, Phase.WAIT_COLOR]:
+		finished.erase(kind)
+		resume_kind = kind
+	return {
+		"seen": finished,
+		"form": current_form,
+		"resume": int(resume_kind),
+		"note_pending": phase == Phase.NOTE,
+	}
+
+
+func restore_save(data: Dictionary) -> void:
+	cancel()
+	seen.assign(data.seen)
+	current_form = data.form
+	if not game.run.economy_changed.is_connected(_on_economy_changed):
+		game.run.economy_changed.connect(_on_economy_changed)
+		restoration.story_started.connect(_on_color_started)
+		restoration.presentation_finished.connect(_on_color_finished)
+	game._layout.dock_intro_progress = 1.0
+	game._layout._tool_dock.show()
+	game._layout.set_process(true)
+	game.set_process(true)
+	game.set_process_input(true)
+	game.set_process_unhandled_input(true)
+	game.set_process_unhandled_key_input(true)
+	var resume_kind: Kind = data.resume as Kind
+	if data.get("note_pending", false):
+		if resume_kind == Kind.OPENING:
+			begin()
+			return
+		if resume_kind == Kind.RESCUE:
+			game._view.zoom_steps(-1.0, false)
+			play_receipt()
+			return
+	if resume_kind in [Kind.COLOR_ONE, Kind.COLOR_TWO]:
+		var color_index: int = int(resume_kind) - int(Kind.COLOR_ONE)
+		# Unfinished color fills restart their own presentation and dialogue together.
+		if restoration.completed_species.size() <= color_index:
+			resume_kind = Kind.NONE
+		else:
+			_resumed_color_only = true
+	if resume_kind != Kind.NONE:
+		kind = resume_kind
+		if kind == Kind.RESCUE:
+			game._view.zoom_steps(-1.0, false)
+			game._restoration.core.set_static(true)
+		active_dialogue = narrative
+		if kind in [Kind.CULTIVATION, Kind.AUTOMATION]:
+			active_dialogue = teaching
+		elif kind in [Kind.COLOR_ONE, Kind.COLOR_TWO]:
+			active_dialogue = color_dialogue
+		_acquire_controls()
+		_play_lines()
+	_on_economy_changed()
