@@ -32,6 +32,7 @@ func _ready() -> void:
 	_restoration.presentation_started.connect(_on_restoration_started)
 	_nest_discovery.presentation_started.connect(_on_restoration_started)
 	_nest_discovery.presentation_started.connect(_monster_audio.new_nest_discovered)
+	_horizon_terrain.popped.connect(_planet_audio.terrain_popped)
 	_nest_discovery.emergence_progressed.connect(_on_emergence_progressed)
 	_nest_discovery.rotation_guide_changed.connect(_layout.set_rotation_guide_visible)
 	_view.view_changed.connect(_sync_art)
@@ -54,6 +55,7 @@ func _sync_presentation_audio() -> void:
 	var discovering: bool = _nest_discovery.phase >= NestDiscovery.Phase.ANTICIPATE
 	GameAudio.set_music_ducked(restoring or discovering)
 	_planet_audio.zoom_sounds_muted = restoring
+	_monster_audio.monster_sounds_muted = discovering
 
 
 func _exit_tree() -> void:

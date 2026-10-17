@@ -1,9 +1,23 @@
 extends Node2D
 
+# The rocks (hills and peak) and the trees pop up; each plays its sound once.
+signal popped(trees: bool)
+
+# Trees are the last piece. Pop moments are seconds into "appear": the hills
+# grow from the first frame, the trees start rising at their third frame (8 fps).
+const TREE_PIECE: int = 3
+
+@export var rock_pop_seconds: float = 0.0
+@export var tree_pop_seconds: float = 0.25
 @export var reference_radius: float = 1320.0
 @export var surface_radius: float = 256.8
 @export var pieces: Array[AnimatedSprite2D] = []
 @export var color_progress: Vector3 = Vector3.ZERO
+
+# Seconds since the last replay while visible; negative when no pop is pending.
+var _pop_clock: float = -1.0
+var _rocks_popped: bool = true
+var _trees_popped: bool = true
 
 
 func _ready() -> void:
@@ -13,6 +27,20 @@ func _ready() -> void:
 		piece.material = piece.material.duplicate()
 	_sync_colors()
 	replay()
+
+
+func _process(delta: float) -> void:
+	if _pop_clock < 0.0 or not is_visible_in_tree():
+		return
+	_pop_clock += delta
+	if not _rocks_popped and _pop_clock >= rock_pop_seconds:
+		_rocks_popped = true
+		popped.emit(false)
+	if not _trees_popped and _pop_clock >= tree_pop_seconds:
+		_trees_popped = true
+		popped.emit(true)
+	if _rocks_popped and _trees_popped:
+		_pop_clock = -1.0
 
 
 func set_color_progress(species: int, progress: float) -> void:
@@ -72,9 +100,14 @@ func set_near_blend(value: float) -> void:
 	elif not visible and was_visible:
 		for piece: AnimatedSprite2D in pieces:
 			piece.stop()
+		_pop_clock = -1.0
 
 
 func replay() -> void:
 	for piece: AnimatedSprite2D in pieces:
 		piece.stop()
 		piece.play(&"appear")
+	# Counted only while visible, so a replay hidden behind the overview stays silent.
+	_pop_clock = 0.0
+	_rocks_popped = false
+	_trees_popped = false

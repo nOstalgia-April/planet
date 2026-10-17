@@ -4,6 +4,7 @@ const Store = preload("res://scripts/game_save.gd")
 const Intro = preload("res://scenes/开头动画/开头动画.gd")
 const Menu = preload("res://scenes/主菜单/主菜单.gd")
 const Audio = preload("res://scripts/fmod_audio.gd")
+const StoryFlow = preload("res://features/tutorial_intro/story_flow.gd")
 const MENU_PATH: String = "res://scenes/主菜单/主菜单.tscn"
 const INTRO_PATH: String = "res://scenes/开头动画/开头动画.tscn"
 const FRAME_COUNTS: Array[int] = [4, 4, 3, 3, 7, 11, 9]
@@ -20,8 +21,8 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	DirAccess.make_dir_recursive_absolute("res://artifacts/mission_note_20261017")
-	Store.save_path = "res://artifacts/mission_note_20261017/opening.save"
+	DirAccess.make_dir_recursive_absolute("res://artifacts/opening_audio_check")
+	Store.save_path = "res://artifacts/opening_audio_check/opening.save"
 	assert(ProjectSettings.get_setting("application/run/main_scene") == MENU_PATH)
 	assert(_tree.change_scene_to_file(MENU_PATH) == OK)
 	await _tree.scene_changed
@@ -49,12 +50,13 @@ func _run() -> void:
 
 		await _tree.scene_changed
 		assert(_tree.current_scene.scene_file_path == Menu.DEFAULT_START_SCENE)
-		_assert_gameplay_music(audio)
+		_assert_briefing_music(audio)
 		var duration: float = float(Time.get_ticks_msec() - started_at) / 1000.0
 		while audio.is_transition_playing():
 			await _tree.process_frame
 		assert(audio._music_path == "event:/Mx/Mx_GamePlay", "片头音效淡出后游戏音乐开始。")
 		assert(absf(duration - clip.length) < 1.5, "片头按实际时长播放并交接游戏内字条。")
+		await _check_opening_zoom(_tree.current_scene.get_node("StoryFlow") as StoryFlow)
 		print(
 			(
 				"PASS: menu Start played the opening and entered gameplay after %.2f seconds."
@@ -96,7 +98,7 @@ func _run() -> void:
 	assert(not _tree.current_scene.has_node("PreviewNavigation"), "正式游戏不能带入预览快捷跳段。")
 	assert(not _tree.paused and is_equal_approx(Engine.time_scale, 1.0))
 	assert(not _tree.current_scene.is_processing(), "开场演出期间暂停玩法推进。")
-	_assert_gameplay_music(audio)
+	_assert_briefing_music(audio)
 	if "--capture" in OS.get_cmdline_user_args():
 		await _capture("gameplay")
 	var game_menu: Control = _tree.current_scene.get_node("HUD/Interface/GameMenu")
@@ -110,6 +112,36 @@ func _run() -> void:
 		"PASS: menu startup, Start, all 41 frames/rates, final-frame hold, gameplay music and return."
 	)
 	_tree.quit()
+
+
+# The briefing requests gameplay music in its far-view mix.
+func _assert_briefing_music(audio: Audio) -> void:
+	_assert_gameplay_music(audio)
+	assert(
+		is_equal_approx(FmodServer.get_global_parameter_by_name("IsDistantView"), 1.0),
+		"委托书出现时游戏音乐以远景混音（IsDistantView = 1）开始。"
+	)
+
+
+# The game opens on the far view, then zooms in with ZoomIn while the music
+# follows to its near-view mix.
+func _check_opening_zoom(story: StoryFlow) -> void:
+	assert(story.briefing.playing, "游戏内字条保持新版点击关闭流程。")
+	story.briefing.reveal_all()
+	story.briefing.close()
+	while story.briefing.playing:
+		await _tree.process_frame
+	var distant: Callable = func() -> float:
+		return FmodServer.get_global_parameter_by_name("IsDistantView")
+	assert(story.phase == StoryFlow.Phase.OVERVIEW and is_equal_approx(distant.call(), 1.0))
+	var zoom_in: FmodEventDescription = FmodServer.get_event("event:/UI/ZoomIn")
+	var zooms: int = zoom_in.get_instance_count()
+	while story.phase == StoryFlow.Phase.OVERVIEW:
+		await _tree.process_frame
+	assert(zoom_in.get_instance_count() > zooms, "远景切到近景时播放 ZoomIn。")
+	while story.phase == StoryFlow.Phase.ZOOMING:
+		await _tree.process_frame
+	assert(is_zero_approx(distant.call()), "切到近景后 IsDistantView 回到 0。")
 
 
 func _assert_gameplay_music(audio: Audio) -> void:

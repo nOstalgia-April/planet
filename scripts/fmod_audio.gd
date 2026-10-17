@@ -17,6 +17,13 @@ const MUSIC_MENU_PARAMETER: String = "Music_Menu"
 const TRANSITION_TIMEOUT_SECONDS: float = 15.0
 # Near-view gameplay sounds. They keep running in the planet overview but are
 # silenced there; music, UI and Earth_Rotate stay audible in both views.
+# Vacuum_Loop is started inside FMOD by Vacuum_On's command instrument, so it
+# is not listed among its event's instances and cannot be paused one by one.
+# A pause mutes this bus instead, silencing it with the other gameplay sounds.
+const GAMEPLAY_BUS: String = "bus:/SFX/Gameplay"
+# Command-only events that keep running through a pause: Vacuum_Off, played as
+# the pause turns the vacuum off, stops Vacuum_Loop under the muted bus.
+const PAUSE_EXEMPT_EVENTS: PackedStringArray = ["Vacuum_Off"]
 const NEAR_VIEW_PREFIXES: PackedStringArray = [
 	"event:/Monsters/",
 	"event:/Vacuum/",
@@ -26,6 +33,7 @@ const NEAR_VIEW_PREFIXES: PackedStringArray = [
 	"event:/Nest/Drill_NestAppear",
 	"event:/Net/",
 	"event:/Drill_Crawl",
+	"event:/Drill_OutofDirt",
 ]
 
 @export_range(0.0, 10.0, 0.05) var music_fade_in_seconds: float = 0.3
@@ -62,8 +70,10 @@ var _editor_muted: bool = false
 # A paused game (settings, technology page, pause button) freezes gameplay
 # sounds in place; music keeps playing under Music_Menu, and UI sounds too.
 var _game_paused: bool = false
-# Parallel to _effect_descriptions: UI sounds keep playing while gameplay freezes.
+# Parallel to _effect_descriptions: UI sounds (and PAUSE_EXEMPT_EVENTS) keep
+# playing while gameplay freezes.
 var _effect_is_ui: Array[bool] = []
+var _gameplay_bus: FmodBus
 
 # Holding the references keeps the banks loaded; dropping them unloads.
 var _banks: Array[FmodBank] = []
@@ -109,6 +119,10 @@ func _ready() -> void:
 		)
 	banks_loaded = true
 	_master_bus = FmodServer.get_bus("bus:/")
+	if FmodServer.check_bus_path(GAMEPLAY_BUS):
+		_gameplay_bus = FmodServer.get_bus(GAMEPLAY_BUS)
+	else:
+		push_warning("FMOD bus missing, pauses cannot silence Vacuum_Loop: " + GAMEPLAY_BUS)
 	for description: Dictionary in FmodServer.get_global_parameter_desc_list():
 		_global_parameters[description["name"]] = true
 	for bank: FmodBank in _banks:
@@ -120,7 +134,9 @@ func _ready() -> void:
 			if not path.get_file().begins_with("Mx_"):
 				_effect_descriptions.append(description)
 				_effect_is_near_view.append(_is_near_view(path))
-				_effect_is_ui.append(path.begins_with("event:/UI/"))
+				_effect_is_ui.append(
+					path.begins_with("event:/UI/") or path.get_file() in PAUSE_EXEMPT_EVENTS
+				)
 	_apply_preferences()
 
 
@@ -141,6 +157,7 @@ func _exit_tree() -> void:
 	_effect_is_near_view.clear()
 	_effect_is_ui.clear()
 	_master_bus = null
+	_gameplay_bus = null
 	_banks.clear()
 	banks_loaded = false
 
@@ -501,9 +518,12 @@ func _capture_editor_message(message: String, data: Array) -> bool:
 	return true
 
 
-# Holds gameplay sounds in place; music (low-passed through Music_Menu) and
-# UI sounds keep playing. Pending music stays paused until its transition ends.
+# Holds gameplay sounds in place and mutes the gameplay bus; music (low-passed
+# through Music_Menu) and UI sounds keep playing. Pending music stays paused
+# until its transition ends.
 func _set_gameplay_frozen(frozen: bool) -> void:
+	if _gameplay_bus != null:
+		_gameplay_bus.set_mute(frozen)
 	for index: int in range(_effect_descriptions.size()):
 		var description: FmodEventDescription = _effect_descriptions[index]
 		if _effect_is_ui[index] or description.get_instance_count() == 0:

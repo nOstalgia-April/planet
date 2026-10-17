@@ -8,6 +8,8 @@ var _visible_texture_bounds: Dictionary[Texture2D, Rect2] = SharedCache.texture_
 )
 enum Phase { LAUNCH, DIVE, TRAVEL, PAUSE, EMERGE, EXPOSED }
 
+signal phase_entered(phase: Phase)
+
 @export var ordinary_art: ItemArt
 @export var valuable_art: ItemArt
 @export_group("Drill movement")
@@ -225,6 +227,7 @@ func _enter_phase(next: Phase, seconds: float, clip: StringName) -> void:
 	if phase == Phase.EXPOSED:
 		_cache_exposed_art_rect()
 	_sync_art()
+	phase_entered.emit(phase)
 
 
 func _reset_capture_feedback() -> void:

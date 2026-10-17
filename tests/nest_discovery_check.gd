@@ -227,6 +227,10 @@ func _check_sequence_and_triggers() -> void:
 	)
 	_game._sync_presentation_audio()
 	_check(GameAudio._music_ducked, "Music ducks during the discovery presentation.")
+	_check(
+		_game._monster_audio.monster_sounds_muted,
+		"The area left behind stops its spawn and chatter sounds during discovery."
+	)
 	_check(_game._view.presentation_locked, "Discovery locks camera and capture input.")
 	_game._view.zoom_steps(-1.0)
 	_game._view.begin_drag(Vector2(600, 300))

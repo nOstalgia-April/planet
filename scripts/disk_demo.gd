@@ -170,6 +170,7 @@ func _ready() -> void:
 	# The switch sound answers the press itself, as Click does on other buttons.
 	for button: BaseButton in [_quick_pipe_button, _quick_net_button]:
 		UiAudio.register_own_sound(button)
+	_layout._tool_dock.upgrade_revealed.connect(UiAudio.upgrade_hint)
 	_quick_pipe_button.button_down.connect(_play_tool_sound.bind(ToolMode.PIPE))
 	_quick_net_button.button_down.connect(_play_tool_sound.bind(ToolMode.NET))
 	_nest_button.pressed.connect(_on_nest_upgrade)
@@ -207,14 +208,20 @@ func _process(delta: float) -> void:
 	_advance_ground_mucus(delta)
 	_advance_monster_chatter(delta)
 	GameAudio.set_near_view_gain(_view.near_blend)
-	GameAudio.set_music_parameter(
-		GAMEPLAY_MUSIC, MUSIC_DISTANT_VIEW_PARAMETER, 1.0 - _view.near_blend
-	)
+	sync_music_view()
 	_planet_audio.update_zoom(_view.target_zoom, _view.is_transitioning())
 	_planet_audio.update_rotation(delta, _view.is_dragging(), _world.rotation)
 	var world_position: Vector2 = _world.to_local(get_global_mouse_position())
 	holding = holding and not _view.is_dragging() and not _view_blocks_tool_until_release
 	_drive_tool(delta, world_position, holding)
+
+
+# IsDistantView follows the camera; presentations that stop this scene's
+# processing (the story) keep calling it.
+func sync_music_view() -> void:
+	GameAudio.set_music_parameter(
+		GAMEPLAY_MUSIC, MUSIC_DISTANT_VIEW_PARAMETER, 1.0 - _view.near_blend
+	)
 
 
 func update_pointer_release_state() -> bool:
@@ -1230,6 +1237,8 @@ func _on_slime_requested(nest_id: int) -> void:
 		drill_scene if nest.species == NestState.Species.DRILL else slime_scene
 	)
 	var slime: PrototypeSlime = actor_scene.instantiate() as PrototypeSlime
+	if slime is DrillMonster:
+		_monster_audio.track_drill(slime)
 	_slime_root.add_child(slime)
 	slime.setup(nest_id, nest.position, _planet, _get_roaming_screen_half_angle())
 	slime.presentation_scale = _view.near_slime_scale
