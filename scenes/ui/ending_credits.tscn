@@ -161,6 +161,12 @@ texture = SubResource("ending_art_region")
 expand_mode = 1
 stretch_mode = 5
 
+[node name="QQGroup" type="Label" parent="Roll/Thanks"]
+layout_mode = 2
+mouse_filter = 2
+text = "游戏 QQ 群：101094454"
+horizontal_alignment = 1
+
 [node name="ReturnToMenu" type="Button" parent="."]
 visible = false
 layout_mode = 1

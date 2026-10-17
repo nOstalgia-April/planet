@@ -428,11 +428,21 @@ email = "murphylyr@gmail.com"
 
 [node name="致谢" type="Label" parent="画布/制作信息弹窗/底板"]
 offset_left = 68.0
-offset_top = 724.0
+offset_top = 694.0
 offset_right = 1212.0
-offset_bottom = 770.0
+offset_bottom = 740.0
 theme_override_font_sizes/font_size = 28
 text = "最后，十分感谢游玩星球清扫计划Project Vacuumer！"
+horizontal_alignment = 1
+mouse_filter = 2
+
+[node name="游戏QQ群" type="Label" parent="画布/制作信息弹窗/底板"]
+offset_left = 68.0
+offset_top = 754.0
+offset_right = 1212.0
+offset_bottom = 794.0
+theme_override_font_sizes/font_size = 27
+text = "游戏 QQ 群：101094454"
 horizontal_alignment = 1
 mouse_filter = 2
 
