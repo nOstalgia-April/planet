@@ -201,6 +201,7 @@ func _check_story_opening_core() -> void:
 	game.story.restore_save(game.story.capture_save())
 	assert(core.is_processing(), "Loading the pending view hint keeps the core moving.")
 	assert(game.story.phase == StoryFlow.Phase.WAIT_VIEW)
+	game._window_has_focus = true
 	var event: InputEventKey = InputEventKey.new()
 	event.keycode = KEY_TAB
 	event.pressed = true
@@ -210,6 +211,7 @@ func _check_story_opening_core() -> void:
 	event.pressed = false
 	Input.parse_input_event(event)
 	Input.flush_buffered_events()
+	await get_tree().process_frame
 	assert(game.story.phase == StoryFlow.Phase.ZOOMING)
 	deadline = Time.get_ticks_msec() + 10000
 	while game.story.phase != StoryFlow.Phase.IDLE:
