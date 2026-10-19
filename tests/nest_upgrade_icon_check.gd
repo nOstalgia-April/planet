@@ -403,6 +403,11 @@ func _check_hold_upgrade() -> void:
 	var candy: int = _game.run.candy
 	await _hold_input(point, true)
 	_check(_game._held_nest_id == 1, "press on nest starts hold")
+	var audio: Node = _game._monster_audio
+	var hold_sound: FmodEventDescription = FmodServer.get_event(audio.NEST_HOLD_EVENT)
+	_check(
+		audio._nest_hold != null and audio._nest_hold.is_valid(), "hold starts Nest_Lvlup sound"
+	)
 	_check(button.scale.x < 0.5 and button.modulate.a < 0.6, "hold starts small and translucent")
 	await _capture_hold("start")
 	_game._advance_nest_hold(_game.nest_hold_seconds * 0.5, point)
@@ -411,10 +416,15 @@ func _check_hold_upgrade() -> void:
 	await _capture_hold("half")
 	await _hold_input(point, false)
 	_check(_game._held_nest_id == -1, "release cancels immediately")
+	_check(audio._nest_hold == null, "release fades the hold sound out")
 	_check(button.scale == Vector2.ONE and button.modulate.a == 1.0, "cancel restores button")
 	await _hold_input(point, true)
 	_game._advance_nest_hold(_game.nest_hold_seconds, point)
 	_check(nest.level == 1 and _game.run.candy == candy - 50, "full hold purchases once")
+	_check(
+		audio._nest_hold == null and hold_sound.get_instance_count() > 0,
+		"full hold lets Nest_Lvlup play out into the upgrade"
+	)
 	_check(button.scale == Vector2.ONE and button.modulate.a == 1.0, "success restores full size")
 	await _capture_hold("success")
 	_game._advance_nest_hold(_game.nest_hold_seconds * 2.0, point)
@@ -427,11 +437,13 @@ func _check_hold_upgrade() -> void:
 	get_tree().root.push_input(motion, true)
 	await get_tree().process_frame
 	_check(_game._held_nest_id == -1, "leaving nest cancels immediately")
+	_check(audio._nest_hold == null, "leaving nest stops the hold sound")
 	await _hold_input(point, false)
 	await _hold_input(point, true)
 	_check(_game._held_nest_id == 1, "hold is active before pausing")
 	_game._layout._toggle_pause()
 	_check(_game._held_nest_id == -1, "pause cancels hold")
+	_check(audio._nest_hold == null, "pause stops the hold sound")
 	_game._layout._toggle_pause()
 	await _hold_input(point, false)
 	_game._update_nest_prompts()

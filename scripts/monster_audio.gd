@@ -40,8 +40,11 @@ const DrillMonster = preload("res://scripts/drill_monster.gd")
 # Loops while a drill monster crawls underground (not while it pauses).
 const DRILL_CRAWL_EVENT: String = "event:/Monsters/Drill_Crawl"
 # Once as a drill monster jumps out of the dirt.
-const DRILL_OUT_EVENT: String = "event:/Drill_OutofDirt"
+const DRILL_OUT_EVENT: String = "event:/Monsters/Drill_OutofDirt"
 # Indexed by the nest's new level - 1; the last one is the upgrade that tames it.
+# Plays while a nest upgrade is held (0.8 s, nest_hold_seconds): fades out
+# through FMOD if let go, plays out into Nest_Lvlup_StageXX when it completes.
+const NEST_HOLD_EVENT: String = "event:/Nest/Nest_Lvlup"
 const NEST_LEVEL_UP_EVENTS: PackedStringArray = [
 	"event:/Nest/Nest_Lvlup_Stage01",
 	"event:/Nest/Nest_Lvlup_Stage02",
@@ -92,6 +95,8 @@ var _ready_to_play: bool = false
 # the older monster sounds working.
 var _net_events_ready: bool = false
 var _nest_level_up_ready: bool = false
+var _nest_hold_ready: bool = false
+var _nest_hold: FmodEvent
 var _golden_ready: bool = false
 var _drill_suck_ready: bool = false
 var _combo_clear_ready: bool = false
@@ -142,6 +147,7 @@ func _ready() -> void:
 	_ready_to_play = GameAudio.has_events(event_paths)
 	_net_events_ready = GameAudio.has_events([NET_CAST_EVENT, NET_CAPTURE_EVENT])
 	_nest_level_up_ready = GameAudio.has_events(NEST_LEVEL_UP_EVENTS)
+	_nest_hold_ready = GameAudio.has_events([NEST_HOLD_EVENT])
 	_golden_ready = GameAudio.has_events([GOLDEN_EVENT])
 	_drill_suck_ready = GameAudio.has_events([DRILL_SUCK_UP_EVENT])
 	_combo_clear_ready = GameAudio.has_events([COMBO_CLEAR_EVENT])
@@ -336,6 +342,7 @@ func stop_new_nest() -> void:
 
 func _exit_tree() -> void:
 	stop_new_nest()
+	nest_hold_cancelled()
 	for id: int in _crawling.keys():
 		_stop_crawl(id)
 
@@ -389,6 +396,24 @@ func net_cast() -> void:
 func net_captured() -> void:
 	if _net_events_ready:
 		GameAudio.play(NET_CAPTURE_EVENT)
+
+
+func nest_hold_started() -> void:
+	nest_hold_cancelled()
+	if _nest_hold_ready:
+		_nest_hold = GameAudio.start_loop(NEST_HOLD_EVENT)
+
+
+func nest_hold_cancelled() -> void:
+	GameAudio.stop_loop(_nest_hold)
+	_nest_hold = null
+
+
+# The hold completed and the nest upgrades: let the sound play out.
+func nest_hold_completed() -> void:
+	if _nest_hold != null and _nest_hold.is_valid():
+		_nest_hold.release()
+	_nest_hold = null
 
 
 # Returns false when the event is unavailable, so the caller can fall back.

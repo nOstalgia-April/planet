@@ -173,7 +173,7 @@ func _ready() -> void:
 	# The switch sound answers the press itself, as Click does on other buttons.
 	for button: BaseButton in [_quick_pipe_button, _quick_net_button]:
 		UiAudio.register_own_sound(button)
-	_layout._tool_dock.upgrade_revealed.connect(UiAudio.upgrade_hint)
+	_layout._tool_dock.upgrade_offered.connect(UiAudio.upgrade_hint)
 	_quick_pipe_button.button_down.connect(_play_tool_sound.bind(ToolMode.PIPE))
 	_quick_net_button.button_down.connect(_play_tool_sound.bind(ToolMode.NET))
 	_nest_button.pressed.connect(_on_nest_upgrade)
@@ -1508,6 +1508,7 @@ func _begin_nest_hold(pointer: Vector2) -> bool:
 			run.settings.nest_upgrade_costs.size()
 		)
 		prompt.set_hold_progress(0.0)
+		_monster_audio.nest_hold_started()
 		return true
 	return false
 
@@ -1525,6 +1526,7 @@ func _advance_nest_hold(delta: float, pointer: Vector2) -> void:
 	_nest_prompts[_held_nest_id].set_hold_progress(_nest_hold_elapsed / nest_hold_seconds)
 	if _nest_hold_elapsed >= nest_hold_seconds:
 		var nest_id: int = _held_nest_id
+		_monster_audio.nest_hold_completed()
 		_cancel_nest_hold()
 		_upgrade_nest(nest_id)
 
@@ -1532,6 +1534,7 @@ func _advance_nest_hold(delta: float, pointer: Vector2) -> void:
 func _cancel_nest_hold() -> void:
 	if _held_nest_id < 0:
 		return
+	_monster_audio.nest_hold_cancelled()
 	_nest_prompts[_held_nest_id].set_hold_progress(-1.0)
 	_held_nest_id = -1
 	_nest_hold_elapsed = 0.0

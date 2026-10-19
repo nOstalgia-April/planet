@@ -524,24 +524,50 @@ func _check_drill_audio(audio: Node) -> void:
 	_check(audio._crawling.is_empty(), "A drill leaving the scene stops its crawl.")
 
 
-# The tool dock's quick-upgrade tab plays its tool's hint as it slides up.
+# A tool's hint plays once when its upgrade becomes affordable and the tab
+# comes up on its own; hovers, menus and view switches do not repeat it.
 func _check_upgrade_hints(demo: DemoScript) -> void:
-	var dock: Node = demo._layout._tool_dock
+	const Dock = preload("res://scripts/ui/bottom_dock.gd")
+	var dock: Dock = demo._layout._tool_dock as Dock
 	for tool: int in range(2):
-		var hint: FmodEventDescription = FmodServer.get_event(UiAudio.UPGRADE_HINT_EVENTS[tool])
+		var hint: FmodEventDescription = FmodServer.get_event(
+			GameAudio.resolve_event_path(UiAudio.UPGRADE_HINT_EVENTS[tool])
+		)
 		var hints: int = hint.get_instance_count()
-		dock.upgrade_revealed.emit(tool)
-		_check(hint.get_instance_count() == hints + 1, "Revealed tab %d plays its hint." % tool)
-	var vacuum_hint: FmodEventDescription = FmodServer.get_event(UiAudio.UPGRADE_HINT_EVENTS[0])
-	var was_expanded: bool = dock._expanded[0]
-	dock._set_expanded(0, false)
-	var before: int = vacuum_hint.get_instance_count()
-	dock._set_expanded(0, true)
-	_check(
-		vacuum_hint.get_instance_count() == before + (1 if dock.is_visible_in_tree() else 0),
-		"The vacuum tab sliding up plays Hint_VaccumButton when the dock is shown."
-	)
-	dock._set_expanded(0, was_expanded)
+		dock.upgrade_offered.emit(tool)
+		_check(hint.get_instance_count() == hints + 1, "An offered tab %d plays its hint." % tool)
+	var offers: Array[int] = []
+	var record: Callable = func(tool: int) -> void: offers.append(tool)
+	dock.upgrade_offered.connect(record)
+	var saved: Array[int] = dock.states.duplicate()
+	dock.suppress(false)
+	dock.set_near_view(true)
+	_check(dock.is_visible_in_tree() and not dock._view_transitioning, "The dock is shown.")
+	dock.states[0] = Dock.ToolState.SHORT
+	dock._refresh_visibility()
+	dock._hovered[0] = true
+	dock._refresh_visibility()
+	_check(offers.is_empty(), "Hovering an unaffordable upgrade plays no hint.")
+	dock._hovered[0] = false
+	dock.states[0] = Dock.ToolState.READY
+	dock._refresh_visibility()
+	_check(offers == [0], "An upgrade becoming affordable hints once.")
+	dock.suppress(true)
+	dock.suppress(false)
+	dock.set_near_view(false)
+	dock.set_near_view(true)
+	dock._hovered[0] = true
+	dock._refresh_visibility()
+	_check(offers == [0], "Menus, view switches and hovers do not repeat the hint.")
+	dock._hovered[0] = false
+	dock.states[0] = Dock.ToolState.SHORT
+	dock._refresh_visibility()
+	dock.states[0] = Dock.ToolState.READY
+	dock._refresh_visibility()
+	_check(offers == [0, 0], "The next affordable upgrade hints again.")
+	dock.upgrade_offered.disconnect(record)
+	dock.states = saved
+	dock._refresh_visibility()
 
 
 # Rocks pop at the start of "appear", trees a moment later; a replay hidden

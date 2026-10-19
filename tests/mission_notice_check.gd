@@ -29,8 +29,21 @@ func _run() -> void:
 		notice._process(0.1)
 		assert(notice._text.visible_characters == 4, "45 characters per second.")
 		assert(not notice._close.visible)
+		assert(notice._typing_sound != null, "Typing the first clause plays Text_Typing.")
+		# The fifth character of both notes is punctuation: the clause ends, but
+		# the sound holds its minimum before stopping.
+		notice._process(1.0 / notice.characters_per_second)
+		assert(
+			notice._typing_sound != null and not notice._typing_voiced,
+			"A clause ending early keeps Text_Typing for its minimum."
+		)
+		await get_tree().create_timer(notice.min_typing_seconds + 0.1, true, false, true).timeout
+		assert(notice._typing_sound == null, "Text_Typing stops once its minimum has passed.")
+		notice._process(2.0 / notice.characters_per_second)
+		assert(notice._typing_sound != null, "The next clause starts Text_Typing again.")
 		await _click(Vector2(20, 20))
 		assert(notice.phase == Notice.Phase.READING and notice._close.visible)
+		assert(notice._typing_sound == null, "Revealing the whole note stops Text_Typing.")
 		assert(_completed == 0, "A reveal click must not also dismiss.")
 		await _click(Vector2(20, 20))
 		assert(_completed == 0 and notice.playing, "Only the close action dismisses a read note.")

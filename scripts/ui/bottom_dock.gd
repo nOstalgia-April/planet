@@ -1,8 +1,10 @@
 extends Control
 
 signal upgrade_requested(tool: int)
-# A tool's quick-upgrade tab slides up into view (0 = vacuum, 1 = net).
-signal upgrade_revealed(tool: int)
+# A tool's upgrade became affordable and its quick-upgrade tab came up on its
+# own (0 = vacuum, 1 = net). Once per offer: hovers and the tab returning
+# after menus or view switches do not repeat it.
+signal upgrade_offered(tool: int)
 
 const Selection = preload("res://scripts/ui/dock_selection.gd")
 const Cooldown = preload("res://scripts/ui/dock_cooldown.gd")
@@ -25,6 +27,9 @@ var _accent: Color = Color("881e35")
 var _hovered: Array[bool] = [false, false]
 var _hover_remaining: Array[float] = [0.0, 0.0]
 var _expanded: Array[bool] = [false, false]
+# Whether the current affordable upgrade has been offered; cleared once it is
+# bought or no longer affordable.
+var _offered: Array[bool] = [false, false]
 var _tweens: Array[Tween] = [null, null]
 var _text_tweens: Array[Tween] = [null, null]
 var _two_lines: Array[bool] = [false, false]
@@ -417,6 +422,8 @@ func _refresh_visibility() -> void:
 	for index: int in range(2):
 		var available: bool = states[index] in [ToolState.READY, ToolState.LOCKED_READY]
 		var has_next: bool = not states[index] in [ToolState.HIDDEN, ToolState.MAXED]
+		if not available:
+			_offered[index] = false
 		_set_expanded(
 			index,
 			(
@@ -427,6 +434,9 @@ func _refresh_visibility() -> void:
 				and (available or _hovered[index])
 			)
 		)
+		if available and _expanded[index] and not _offered[index] and is_visible_in_tree():
+			_offered[index] = true
+			upgrade_offered.emit(index)
 
 
 func _set_expanded(index: int, expanded: bool) -> void:
@@ -443,8 +453,6 @@ func _set_expanded(index: int, expanded: bool) -> void:
 	_tweens[index].tween_property(purchase, "position:y", target_y, reveal_seconds)
 	if not expanded:
 		_tweens[index].tween_callback(purchase.hide)
-	elif is_visible_in_tree():
-		upgrade_revealed.emit(index)
 
 
 func contains_pointer(pointer: Vector2) -> bool:

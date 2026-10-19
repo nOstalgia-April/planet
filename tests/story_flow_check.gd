@@ -34,8 +34,13 @@ func _run() -> void:
 		GameAudio.has_events(_flow.talk_events), "all three mascot voice events exist in the Bank"
 	)
 	_flow.story_started.connect(func(kind: int) -> void: _started.append(kind))
+	var whooshes: Array[int] = [0]
+	_flow.narrative.entered.connect(func() -> void: whooshes[0] += 1)
+	_flow.narrative.exited.connect(func() -> void: whooshes[0] += 1)
 	await _close_note(_flow.briefing)
 	await _wait_talk(Flow.Kind.OPENING)
+	_check(whooshes[0] == 1, "the mascot's entrance whooshes once")
+	_check(GameAudio._music_menu_held, "the mascot on screen holds Music_Menu at 1")
 	_check(_flow._voice != null, "opening typing starts the cloak voice")
 	_check(
 		_flow.narrative.lines.size() == 3, "opening contains only the three approved story lines"
@@ -56,6 +61,10 @@ func _run() -> void:
 	)
 	await _key(KEY_ESCAPE)
 	_check(not get_tree().paused, "Escape resumes the paused dialogue")
+	var click_sound: FmodEventDescription = FmodServer.get_event(
+		GameAudio.resolve_event_path(_flow.click_event)
+	)
+	var clicks: int = click_sound.get_instance_count()
 	await _click()
 	_check(
 		(
@@ -64,10 +73,13 @@ func _run() -> void:
 		),
 		"first actual click reveals the line without advancing"
 	)
+	_check(click_sound.get_instance_count() > clicks, "clicking the dialogue plays Gibber_Click")
 	await _capture("opening")
 	await _finish_dialogue()
 	await _wait_idle()
 	_check(_flow._voice == null, "finishing the opening releases its voice")
+	_check(whooshes[0] == 2, "the mascot leaving whooshes once")
+	_check(not GameAudio._music_menu_held, "the mascot leaving releases Music_Menu")
 	var before_shortcut: int = _game.run.candy
 	await _key(KEY_N)
 	_check(

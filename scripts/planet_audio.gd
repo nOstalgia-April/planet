@@ -21,7 +21,7 @@ const COLOR_CHANGE_EVENTS: PackedStringArray = [
 	"event:/AnimationSystem/ColorChange_Drill",
 ]
 # Background rocks and trees popping up as the near view appears.
-const TERRAIN_POP_EVENT: String = "event:/TreePopUp"
+const TERRAIN_POP_EVENT: String = "event:/AnimationSystem/TreePopUp"
 # The victory panel after every monster is cleared.
 const CLEAR_MONSTER_EVENT: String = "event:/UI/Clear_Monster"
 

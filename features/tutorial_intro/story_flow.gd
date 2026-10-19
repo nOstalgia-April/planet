@@ -56,6 +56,9 @@ enum Phase {
 	]
 )
 @export_range(0.0, 1.0, 0.05) var min_voice_seconds: float = 0.3
+# The mascot sweeping on and off screen, and a click on its dialogue.
+@export var whoosh_event: String = "event:/Gibberish/Gibber_Whoosh"
+@export var click_event: String = "event:/UI/Gibber_Click"
 
 var kind: Kind = Kind.NONE
 var phase: Phase = Phase.IDLE
@@ -98,6 +101,9 @@ func _ready() -> void:
 		panel.line_started.connect(_on_line_started)
 		panel.voice_started.connect(_on_voice_started)
 		panel.voice_stopped.connect(_on_voice_stopped)
+		panel.entered.connect(_on_mascot_shown)
+		panel.exited.connect(_on_mascot_shown)
+		panel.clicked.connect(GameAudio.play.bind(click_event))
 	get_viewport().size_changed.connect(_layout_dialogues)
 	restoration.view.view_changed.connect(_on_core_view_changed)
 	_layout_dialogues()
@@ -468,6 +474,13 @@ func _reveal_form(form: int) -> void:
 		_on_voice_started(active_dialogue.line_index)
 
 
+# The mascot entering or leaving whooshes; while any mascot is on screen the
+# gameplay music sits under Music_Menu's low-pass.
+func _on_mascot_shown() -> void:
+	GameAudio.play(whoosh_event)
+	GameAudio.hold_music_menu(narrative.visible or teaching.visible or color_dialogue.visible)
+
+
 func _on_voice_started(_index: int) -> void:
 	_voice_requested = true
 	if _voice == null:
@@ -556,6 +569,7 @@ func cancel() -> void:
 
 func _exit_tree() -> void:
 	_stop_voice()
+	GameAudio.hold_music_menu(false)
 	if _owns_controls:
 		Engine.time_scale = _saved_time_scale
 		_set_monster_speed(1.0)
