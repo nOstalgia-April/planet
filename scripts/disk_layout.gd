@@ -148,6 +148,13 @@ func show_final_cleanup_guide() -> void:
 
 
 func _refresh_center_guide() -> void:
+	_tool_dock.set_upgrade_guide_active(
+		(
+			_tool_upgrade_guide_remaining > 0.0
+			and _nest_upgrade_guide_remaining <= 0.0
+			and not _rotation_guide_visible
+		)
+	)
 	_center_guide.visible = (
 		_rotation_guide_visible
 		or _tool_upgrade_guide_remaining > 0.0

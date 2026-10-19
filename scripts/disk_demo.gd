@@ -1626,10 +1626,12 @@ func _update_nest_hover(viewport_position: Vector2) -> void:
 
 
 func _is_over_selected_nest(viewport_position: Vector2) -> bool:
-	return (
-		selected_nest_id >= 0
-		and _nest_views[selected_nest_id - 1].contains_viewport_point(viewport_position)
-	)
+	if selected_nest_id < 0:
+		return false
+	var view: NestView = _nest_views[selected_nest_id - 1]
+	if _active_tool == ToolMode.PIPE:
+		return view.blocks_vacuum_at(viewport_position)
+	return view.contains_viewport_point(viewport_position)
 
 
 func _clear_nest_selection() -> void:

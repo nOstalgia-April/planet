@@ -49,91 +49,11 @@ func _run() -> void:
 		not get_tree().paused and is_equal_approx(Engine.time_scale, 0.5),
 		"dialogue leaves the background running at half speed"
 	)
-	var candy: int = _game.run.candy
-	var clock: float = _game.run.nests[0].spawn_clock
-	var speaker_clock: float = _flow.active_dialogue.presenter.elapsed
-	var background: AnimationPlayer = (
-		_game.get_node("美术背景/地壳裁剪/画布/近景背景/星星/动画播放器") as AnimationPlayer
-	)
-	var background_clock: float = background.current_animation_position
-	var background_length: float = background.current_animation_length
-	var monster: PrototypeSlime = _game._slimes[0]
-	var monster_clock: float = monster._elapsed
-	var monster_animation: AnimationPlayer = monster.slime_art._active.animation_player
-	var monster_animation_clock: float = monster_animation.current_animation_position
-	var monster_animation_length: float = monster_animation.current_animation_length
-	var drill: Drill = _game.drill_scene.instantiate() as Drill
-	_game.add_child(drill)
-	drill.setup(monster.nest_id, monster.position, monster.surface)
-	drill.launch(Vector2.UP)
-	drill.set_simulation_speed(monster.simulation_speed)
-	var drill_clock: float = drill.phase_remaining
-	var drill_animation_clock: float = drill.art.animation_player.current_animation_position
-	var before: int = Time.get_ticks_msec()
-	await get_tree().create_timer(0.8, true, false, true).timeout
-	var real_seconds: float = float(Time.get_ticks_msec() - before) / 1000.0
-	_check(
-		absf(monster._elapsed - monster_clock - real_seconds * 0.1) < 0.025,
-		"monster movement clock advances at ten percent real time"
-	)
-	_check(
-		(
-			absf(
-				(
-					fposmod(
-						monster_animation.current_animation_position - monster_animation_clock,
-						monster_animation_length
-					)
-					- real_seconds * 0.1
-				)
-			)
-			< 0.025
-		),
-		"monster animation advances at ten percent real time"
-	)
-	_check(
-		absf(drill_clock - drill.phase_remaining - real_seconds * 0.1) < 0.025,
-		"drill movement clock advances at ten percent real time"
-	)
-	_check(
-		(
-			absf(
-				(
-					drill.art.animation_player.current_animation_position
-					- drill_animation_clock
-					- real_seconds * 0.1
-				)
-			)
-			< 0.025
-		),
-		"drill animation advances at ten percent real time"
-	)
-	drill.queue_free()
-	_check(
-		(
-			absf(
-				(
-					fposmod(
-						background.current_animation_position - background_clock, background_length
-					)
-					- real_seconds * 0.5
-				)
-			)
-			< 0.08
-		),
-		"background animation advances at half real time"
-	)
-	_check(
-		absf(_flow.active_dialogue.presenter.elapsed - speaker_clock - real_seconds) < 0.12,
-		"NPC animation uses real time while the world is slowed"
-	)
-	_check(
-		_game.run.candy == candy and is_equal_approx(_game.run.nests[0].spawn_clock, clock),
-		"reading dialogue does not advance economy or spawn clocks"
-	)
+	_check(_game._view.is_overview(), "opening dialogue stays in overview")
+	_check(_game._slimes.is_empty(), "opening monsters wait for the view tutorial")
 	await _key(KEY_ESCAPE)
 	_check(get_tree().paused, "Escape pauses formal gameplay during dialogue")
-	speaker_clock = _flow.active_dialogue.presenter.elapsed
+	var speaker_clock: float = _flow.active_dialogue.presenter.elapsed
 	await get_tree().create_timer(0.15, true, false, true).timeout
 	_check(
 		is_equal_approx(_flow.active_dialogue.presenter.elapsed, speaker_clock),
@@ -177,6 +97,7 @@ func _run() -> void:
 	_check(_flow.kind == Flow.Kind.NONE, "teaching waits until the technology tree closes")
 	_game._layout.close_panels()
 	await _wait_talk(Flow.Kind.CULTIVATION)
+	await _check_dialogue_clocks()
 	await _click()
 	await _capture("cultivation")
 	await _finish_dialogue()
@@ -537,7 +458,94 @@ func _wait_talk(expected: Flow.Kind, timeout_ms: int = 20000) -> void:
 	)
 
 
+func _check_dialogue_clocks() -> void:
+	var candy: int = _game.run.candy
+	var clock: float = _game.run.nests[0].spawn_clock
+	var speaker_clock: float = _flow.active_dialogue.presenter.elapsed
+	var background: AnimationPlayer = (
+		_game.get_node("美术背景/地壳裁剪/画布/近景背景/星星/动画播放器") as AnimationPlayer
+	)
+	var background_clock: float = background.current_animation_position
+	var background_length: float = background.current_animation_length
+	var monster: PrototypeSlime = _game._slimes[0]
+	var monster_clock: float = monster._elapsed
+	var monster_animation: AnimationPlayer = monster.slime_art._active.animation_player
+	var monster_animation_clock: float = monster_animation.current_animation_position
+	var monster_animation_length: float = monster_animation.current_animation_length
+	var drill: Drill = _game.drill_scene.instantiate() as Drill
+	_game.add_child(drill)
+	drill.setup(monster.nest_id, monster.position, monster.surface)
+	drill.launch(Vector2.UP)
+	drill.set_simulation_speed(monster.simulation_speed)
+	var drill_clock: float = drill.phase_remaining
+	var drill_animation_clock: float = drill.art.animation_player.current_animation_position
+	var before: int = Time.get_ticks_msec()
+	await get_tree().create_timer(0.8, true, false, true).timeout
+	var real_seconds: float = float(Time.get_ticks_msec() - before) / 1000.0
+	_check(
+		absf(monster._elapsed - monster_clock - real_seconds * 0.1) < 0.025,
+		"monster movement clock advances at ten percent real time"
+	)
+	_check(
+		(
+			absf(
+				(
+					fposmod(
+						monster_animation.current_animation_position - monster_animation_clock,
+						monster_animation_length
+					)
+					- real_seconds * 0.1
+				)
+			)
+			< 0.025
+		),
+		"monster animation advances at ten percent real time"
+	)
+	_check(
+		absf(drill_clock - drill.phase_remaining - real_seconds * 0.1) < 0.025,
+		"drill movement clock advances at ten percent real time"
+	)
+	_check(
+		(
+			absf(
+				(
+					drill.art.animation_player.current_animation_position
+					- drill_animation_clock
+					- real_seconds * 0.1
+				)
+			)
+			< 0.025
+		),
+		"drill animation advances at ten percent real time"
+	)
+	drill.queue_free()
+	_check(
+		(
+			absf(
+				(
+					fposmod(
+						background.current_animation_position - background_clock, background_length
+					)
+					- real_seconds * 0.5
+				)
+			)
+			< 0.08
+		),
+		"background animation advances at half real time"
+	)
+	_check(
+		absf(_flow.active_dialogue.presenter.elapsed - speaker_clock - real_seconds) < 0.12,
+		"NPC animation uses real time while the world is slowed"
+	)
+	_check(
+		_game.run.candy == candy and is_equal_approx(_game.run.nests[0].spawn_clock, clock),
+		"reading dialogue does not advance economy or spawn clocks"
+	)
+
+
 func _wait_idle() -> void:
+	if _flow.phase == Flow.Phase.WAIT_VIEW:
+		await _key(KEY_TAB)
 	var deadline: int = Time.get_ticks_msec() + 20000
 	while _flow.phase != Flow.Phase.IDLE and Time.get_ticks_msec() < deadline:
 		if _flow.kind in [Flow.Kind.COLOR_ONE, Flow.Kind.COLOR_TWO, Flow.Kind.COLOR_THREE]:

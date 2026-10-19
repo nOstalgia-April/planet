@@ -8,6 +8,7 @@ const TutorialGame = preload("res://features/tutorial_intro/tutorial_game.gd")
 const Tutorial = preload("res://features/tutorial_intro/tutorial_intro.gd")
 const TutorialScene: PackedScene = preload("res://features/tutorial_intro/tutorial_game.tscn")
 const StoryGame = preload("res://features/tutorial_intro/story_game.gd")
+const StoryFlow = preload("res://features/tutorial_intro/story_flow.gd")
 const StoryScene: PackedScene = preload("res://scenes/game.tscn")
 
 
@@ -187,48 +188,51 @@ func _check_story_opening_core() -> void:
 	game.story.briefing.close()
 	await game.story.briefing.finished
 	await _capture_opening("opening_overview")
-	var deadline: int = Time.get_ticks_msec() + 10000
-	while not game.story._core_reached_near:
+	var deadline: int = Time.get_ticks_msec() + 20000
+	while game.story.phase != StoryFlow.Phase.WAIT_VIEW:
 		_assert_static(core)
-		assert(Time.get_ticks_msec() < deadline, "Formal opening must reach near view.")
+		assert(game._view.is_overview(), "Opening dialogue stays in overview.")
+		assert(Time.get_ticks_msec() < deadline, "Opening dialogue must finish.")
+		if game.story.phase == StoryFlow.Phase.TALKING:
+			game.story.active_dialogue.advance()
 		await get_tree().process_frame
-	await get_tree().create_timer(0.2).timeout
-	_assert_static(core)
-	game.story.cancel()
-	var saved: Dictionary = game.story.capture_save()
-	game.story.restore_save(saved)
-	_assert_static(core)
-	game._view.zoom_steps(-1.0)
-	while game._view.is_transitioning():
-		_assert_static(core)
+	assert(core.is_processing(), "Finishing the NPC dialogue starts the core.")
+	await _capture_opening("view_hint")
+	game.story.restore_save(game.story.capture_save())
+	assert(core.is_processing(), "Loading the pending view hint keeps the core moving.")
+	assert(game.story.phase == StoryFlow.Phase.WAIT_VIEW)
+	game._window_has_focus = true
+	var event: InputEventKey = InputEventKey.new()
+	event.keycode = KEY_TAB
+	event.pressed = true
+	Input.parse_input_event(event)
+	Input.flush_buffered_events()
+	event = event.duplicate() as InputEventKey
+	event.pressed = false
+	Input.parse_input_event(event)
+	Input.flush_buffered_events()
+	await get_tree().process_frame
+	assert(game.story.phase == StoryFlow.Phase.ZOOMING)
+	deadline = Time.get_ticks_msec() + 10000
+	while game.story.phase != StoryFlow.Phase.IDLE:
+		assert(core.is_processing(), "Core keeps playing throughout the entrance.")
+		assert(Time.get_ticks_msec() < deadline, "Opening entrance must finish.")
 		await get_tree().process_frame
-	assert(core.is_processing(), "First completed near-to-far switch starts the core.")
-	await get_tree().create_timer(0.25).timeout
-	var frame: int = core.current_frame
-	await _capture_opening("first_return_a")
-	await get_tree().create_timer(0.35).timeout
-	assert(core.current_frame > frame, "The music-driven core advances after the first return.")
-	await _capture_opening("first_return_b")
 	game.story.restore_save(game.story.capture_save())
 	assert(core.is_processing(), "Loading an unlocked run keeps animation enabled.")
-	for zoom: float in [1.0, -1.0]:
+	for zoom: float in [-1.0, 1.0]:
 		game._view.zoom_steps(zoom, false)
 		assert(core.is_processing(), "Later view changes must not reset the unlock.")
 	game.restart_run()
 	_assert_static(core)
-	assert(not game.story._core_reached_near)
+	assert(not game.story.view_hint.visible)
+	assert(game.story.phase == StoryFlow.Phase.NOTE)
 	game.story.cancel()
-	game._view.configure(game._view._play_rect, game._view._planet_radius)
-	_assert_static(core)
-	game._view.zoom_steps(1.0, false)
-	_assert_static(core)
-	game._view.zoom_steps(-1.0, false)
-	assert(core.is_processing(), "Restart requires a new near-to-far switch.")
 	get_tree().current_scene = null
 	game.queue_free()
 	await get_tree().process_frame
 	print(
-		"PASS: formal opening, first near-to-far completion, later switches, save/load and restart."
+		"PASS: formal overview dialogue, core release before view input, entrance, save/load and restart."
 	)
 
 

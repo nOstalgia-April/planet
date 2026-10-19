@@ -20,6 +20,19 @@ rescue_lines = PackedStringArray("都收齐了？让我数数……嗯，一个�
 [node name="StoryLayer" type="CanvasLayer" parent="."]
 layer = 30
 
+[node name="ViewHint" type="Label" parent="StoryLayer"]
+visible = false
+offset_right = 840.0
+offset_bottom = 56.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.96, 0.94, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.04, 0.12, 0.85)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 28
+text = "滚动滚轮 或 按 TAB 切换视角"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="MissionBriefing" parent="StoryLayer" instance=ExtResource("briefing")]
 
 [node name="MissionReceipt" parent="StoryLayer" instance=ExtResource("receipt")]

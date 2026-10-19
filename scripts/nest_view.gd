@@ -218,6 +218,20 @@ func get_hover_rect() -> Rect2:
 	)
 
 
+func blocks_vacuum_at(viewport_position: Vector2) -> bool:
+	var local_point: Vector2 = (
+		_selection_shape.get_global_transform_with_canvas().affine_inverse() * viewport_position
+	)
+	# The ground-facing half stays available for collecting nearby monsters.
+	return (
+		Rect2(
+			-_selection_rect.size * 0.5,
+			Vector2(_selection_rect.size.x, _selection_rect.size.y * 0.5)
+		)
+		. has_point(local_point)
+	)
+
+
 func get_hover_polygon() -> PackedVector2Array:
 	var half_size: Vector2 = _selection_rect.size * 0.5
 	return (

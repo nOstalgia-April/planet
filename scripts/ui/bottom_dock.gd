@@ -18,6 +18,7 @@ enum ToolState { HIDDEN, LOCKED_READY, LOCKED_SHORT, READY, SHORT, MAXED }
 @export_range(0.01, 1.0, 0.01) var view_fade_out_seconds: float = 0.14
 @export_range(0.01, 1.0, 0.01) var view_fade_in_seconds: float = 0.20
 @export var unlock_color: Color = Color("c86b22")
+@export_range(0.0, 15.0, 0.5) var technology_notice_delay: float = 5.0
 
 var states: Array[int] = [ToolState.SHORT, ToolState.HIDDEN]
 var net_discovered: bool = false
@@ -37,6 +38,12 @@ var _near_view: bool = true
 var _pointer_position: Vector2 = Vector2.ZERO
 var _view_transitioning: bool = false
 var _view_fade: Tween
+var _technology_available: bool = false
+var _final_goal_available: bool = false
+var _technology_wait: float = 0.0
+var _notice_tween: Tween
+var _guide_tween: Tween
+var _upgrade_guide_active: bool = false
 
 @onready var pipe_button: Button = $Pipe/Button
 @onready var net_button: Button = $Net/Button
@@ -55,6 +62,7 @@ func _ready() -> void:
 	var notice_material: ShaderMaterial = ShaderMaterial.new()
 	notice_material.shader = TECHNOLOGY_NOTICE
 	badge.material = notice_material
+	notice_material.set_shader_parameter("notice_size", badge.size)
 	badge.pivot_offset = badge.size * 0.5
 	_pointer_position = get_viewport().get_mouse_position()
 	for button: Button in surfaces:
@@ -71,6 +79,12 @@ func _ready() -> void:
 
 
 func reset_notifications() -> void:
+	_technology_available = false
+	_final_goal_available = false
+	_technology_wait = 0.0
+	_stop_notice_loop()
+	set_upgrade_guide_active(false)
+	badge.hide()
 	net_cooldown.reset()
 	if _view_fade != null:
 		_view_fade.kill()
@@ -99,9 +113,76 @@ func refresh(run: PrototypeRun) -> void:
 
 
 func set_technology_notification(available: bool, final_goal_available: bool) -> void:
+	_technology_available = available
 	badge.visible = available
-	badge.scale = Vector2.ONE * (1.65 if final_goal_available else 1.0)
+	if not available:
+		_technology_wait = 0.0
+		_stop_notice_loop()
+	elif _final_goal_available != final_goal_available:
+		_stop_notice_loop()
+	_final_goal_available = final_goal_available
+	if _notice_tween == null:
+		badge.scale = Vector2.ONE * _notice_base_scale()
 	(badge.material as ShaderMaterial).set_shader_parameter("emphasized", final_goal_available)
+
+
+func _notice_base_scale() -> float:
+	return 1.65 if _final_goal_available else 1.0
+
+
+func _advance_technology_notice(delta: float) -> void:
+	if not _technology_available or _suppressed or _view_transitioning or not is_visible_in_tree():
+		return
+	_technology_wait += delta
+	if _technology_wait >= technology_notice_delay and _notice_tween == null:
+		_start_notice_loop()
+
+
+func _start_notice_loop() -> void:
+	var base: Vector2 = Vector2.ONE * _notice_base_scale()
+	_notice_tween = create_tween().set_loops()
+	_notice_tween.tween_method(_set_notice_outline, 0.0, 1.0, 0.45)
+	for pulse: int in range(2):
+		_notice_tween.tween_property(badge, "scale", base * 1.24, 0.22).set_trans(Tween.TRANS_SINE)
+		_notice_tween.tween_property(badge, "scale", base, 0.26).set_trans(Tween.TRANS_SINE)
+	_notice_tween.tween_interval(0.65)
+	_notice_tween.tween_method(_set_notice_outline, 1.0, 0.0, 0.20)
+	_notice_tween.tween_interval(0.55)
+
+
+func _set_notice_outline(progress: float) -> void:
+	(badge.material as ShaderMaterial).set_shader_parameter("outline_progress", progress)
+
+
+func _stop_notice_loop() -> void:
+	if _notice_tween != null:
+		_notice_tween.kill()
+		_notice_tween = null
+	_set_notice_outline(0.0)
+	badge.scale = Vector2.ONE * _notice_base_scale()
+
+
+func set_upgrade_guide_active(active: bool) -> void:
+	if _upgrade_guide_active == active:
+		return
+	_upgrade_guide_active = active
+	if _guide_tween != null:
+		_guide_tween.kill()
+		_guide_tween = null
+	_set_guide_edge(0.0)
+	if active:
+		_guide_tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE)
+		_guide_tween.tween_method(_set_guide_edge, 0.0, 1.0, 0.35)
+		_guide_tween.tween_method(_set_guide_edge, 1.0, 0.0, 0.45)
+		if _suppressed:
+			_guide_tween.pause()
+
+
+func _set_guide_edge(amount: float) -> void:
+	for button: Button in [technology_button, upgrades[0]]:
+		(button.get_node("Backing").material as ShaderMaterial).set_shader_parameter(
+			"guide_amount", amount
+		)
 
 
 func _refresh_tool(index: int) -> void:
@@ -262,6 +343,16 @@ func suppress(value: bool) -> void:
 	if _suppressed == value:
 		return
 	_suppressed = value
+	if _guide_tween != null:
+		if value:
+			_guide_tween.pause()
+		else:
+			_guide_tween.play()
+	if _notice_tween != null:
+		if value:
+			_notice_tween.pause()
+		else:
+			_notice_tween.play()
 	if value:
 		for button: Button in surfaces:
 			(button.get_node("Backing").material as ShaderMaterial).set_shader_parameter(
@@ -283,6 +374,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	_advance_technology_notice(delta / maxf(Engine.time_scale, 0.001))
 	update_hover(delta, _pointer_position)
 	_update_surface_hover(delta)
 

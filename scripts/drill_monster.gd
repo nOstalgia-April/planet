@@ -145,6 +145,16 @@ func get_capture_hit_rect() -> Rect2:
 	return get_global_transform_with_canvas() * _get_base_art_transform() * _exposed_art_rect
 
 
+func get_capture_distance_squared(target: Vector2) -> float:
+	var body_transform: Transform2D = (
+		transform * (art.transform if phase == Phase.LAUNCH else _get_base_art_transform())
+	)
+	var bounds: Rect2 = _get_art_rect() if phase == Phase.LAUNCH else _exposed_art_rect
+	var local_target: Vector2 = body_transform.affine_inverse() * target
+	var closest: Vector2 = local_target.clamp(bounds.position, bounds.end)
+	return target.distance_squared_to(body_transform * closest)
+
+
 func set_simulation_speed(value: float) -> void:
 	super.set_simulation_speed(value)
 	for view: ItemArt in [ordinary_art, valuable_art]:

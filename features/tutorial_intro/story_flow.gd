@@ -22,7 +22,8 @@ enum Phase {
 	RESUMING,
 	COLOR_CAMERA,
 	COLOR_DELAY,
-	NOTE
+	NOTE,
+	WAIT_VIEW
 }
 
 @export var game: Play
@@ -35,6 +36,8 @@ enum Phase {
 @export var overview_seconds: float = 1.0
 @export var zoom_seconds: float = 0.9
 @export var emergence_seconds: float = 0.85
+@export_range(0.1, 15.0, 0.1) var view_hint_hold_seconds: float = 5.0
+@export_range(0.1, 10.0, 0.1) var view_hint_fade_seconds: float = 3.0
 @export_range(0.0, 2.0, 0.05) var first_color_entrance_delay: float = 0.4
 @export_group("Dialogue")
 @export var opening_lines: PackedStringArray
@@ -78,12 +81,14 @@ var _voice_requested: bool = false
 var _voice_remaining: float = 0.0
 var _core_waiting_for_overview: bool = false
 var _core_reached_near: bool = false
+var _opening_view_entered: bool = false
 
 @onready var narrative: Dialogue = $StoryLayer/Narrative
 @onready var teaching: Dialogue = $StoryLayer/Teaching
 @onready var color_dialogue: Dialogue = $StoryLayer/ColorDialogue
 @onready var briefing: Notice = $StoryLayer/MissionBriefing
 @onready var receipt: Notice = $StoryLayer/MissionReceipt
+@onready var view_hint: Label = $StoryLayer/ViewHint
 
 
 func _ready() -> void:
@@ -108,6 +113,8 @@ func begin() -> void:
 	seen.clear()
 	_pending_teaching.clear()
 	current_form = 0
+	_opening_view_entered = false
+	view_hint.hide()
 	if not game.run.economy_changed.is_connected(_on_economy_changed):
 		game.run.economy_changed.connect(_on_economy_changed)
 		restoration.story_started.connect(_on_color_started)
@@ -172,10 +179,11 @@ func _process(delta: float) -> void:
 			_try_teaching()
 		Phase.OVERVIEW:
 			if _elapsed >= overview_seconds:
-				game._view.zoom_discovery(1.0, zoom_seconds)
-				# The game starts here; the music's far view follows the camera in.
-				game._planet_audio.zoomed_in()
-				_set_phase(Phase.ZOOMING)
+				_set_phase(Phase.SLOWING)
+		Phase.WAIT_VIEW:
+			_update_view_hint()
+			if _elapsed >= view_hint_hold_seconds + view_hint_fade_seconds:
+				_enter_planet()
 		Phase.ZOOMING:
 			if not game._view.is_transitioning():
 				for nest: NestView in game._nest_views:
@@ -189,7 +197,7 @@ func _process(delta: float) -> void:
 				_launch_opening_slimes()
 		Phase.LANDING:
 			if _airborne.is_empty():
-				_set_phase(Phase.SLOWING)
+				_begin_resuming()
 		Phase.SLOWING:
 			var progress: float = minf(_elapsed / maxf(slow_seconds, 0.001), 1.0)
 			Engine.time_scale = (
@@ -232,6 +240,8 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouse:
 		if game._layout.game_menu.contains_pointer((event as InputEventMouse).position):
 			return
+	if phase == Phase.WAIT_VIEW and _is_view_request(event):
+		_enter_planet()
 	if event is InputEventKey:
 		var key: InputEventKey = event as InputEventKey
 		if key.keycode == KEY_ESCAPE:
@@ -240,6 +250,58 @@ func _input(event: InputEvent) -> void:
 			if phase == Phase.TALKING:
 				active_dialogue.advance()
 	get_viewport().set_input_as_handled()
+
+
+func _is_view_request(event: InputEvent) -> bool:
+	if not game._window_has_focus or game._layout.is_view_switch_blocked():
+		return false
+	if event is InputEventKey:
+		var key: InputEventKey = event as InputEventKey
+		return (
+			key.pressed and not key.echo and key.keycode == KEY_TAB and not key.get_modifiers_mask()
+		)
+	if event is InputEventMouseButton:
+		var button: InputEventMouseButton = event as InputEventMouseButton
+		return (
+			button.pressed
+			and button.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]
+			and not is_zero_approx(button.factor)
+			and get_viewport().get_visible_rect().has_point(button.position)
+		)
+	if event is InputEventGesture:
+		var gesture: InputEventGesture = event as InputEventGesture
+		var allowed: bool = get_viewport().get_visible_rect().has_point(gesture.position)
+		return not is_zero_approx(game._view_gestures.feed(gesture, allowed))
+	return false
+
+
+func _wait_for_view(elapsed_seconds: float = 0.0) -> void:
+	active_dialogue.stop()
+	_stop_voice()
+	Engine.time_scale = _saved_time_scale
+	_set_monster_speed(1.0)
+	_core_waiting_for_overview = false
+	game._restoration.core.set_static(false)
+	game._view_gestures.reset()
+	view_hint.show()
+	_set_phase(Phase.WAIT_VIEW)
+	_elapsed = elapsed_seconds
+	_update_view_hint()
+
+
+func _update_view_hint() -> void:
+	view_hint.modulate.a = (
+		1.0 - clampf((_elapsed - view_hint_hold_seconds) / view_hint_fade_seconds, 0.0, 1.0)
+	)
+
+
+func _enter_planet() -> void:
+	_opening_view_entered = true
+	view_hint.hide()
+	game._view_gestures.suppress()
+	game._view.zoom_discovery(1.0, zoom_seconds)
+	game._planet_audio.zoomed_in()
+	_set_phase(Phase.ZOOMING)
 
 
 func _acquire_controls() -> void:
@@ -260,6 +322,7 @@ func _acquire_controls() -> void:
 	game._layout.set_process(false)
 	game._layout._tool_dock.hide()
 	game._layout._view_shortcut.hide()
+	game._layout.rotation_hint.hide()
 	game._view.presentation_locked = true
 
 
@@ -441,6 +504,9 @@ func _stop_voice() -> void:
 
 func _on_dialogue_finished() -> void:
 	active_dialogue.dismiss_bubble()
+	if kind == Kind.OPENING and not _opening_view_entered:
+		_wait_for_view()
+		return
 	if _resumed_color_only:
 		active_dialogue.stop()
 		game._view.zoom_discovery(1.0, restoration.return_seconds)
@@ -481,6 +547,7 @@ func _finish_story() -> void:
 
 func cancel() -> void:
 	_resumed_color_only = false
+	view_hint.hide()
 	briefing.reset()
 	receipt.reset()
 	game.set_opening_note_backdrop(false)
@@ -529,6 +596,10 @@ func _layout_dialogues() -> void:
 	for panel: Dialogue in [narrative, teaching, color_dialogue]:
 		panel.scale = Vector2.ONE * factor
 		panel.size = viewport_size / factor
+	view_hint.scale = Vector2.ONE * factor
+	view_hint.position = Vector2(
+		(viewport_size.x - view_hint.size.x * factor) * 0.5, viewport_size.y * 0.22
+	)
 
 
 func capture_save() -> Dictionary:
@@ -544,6 +615,9 @@ func capture_save() -> Dictionary:
 		"note_pending": phase == Phase.NOTE,
 		"core_waiting_for_overview": _core_waiting_for_overview,
 		"core_reached_near": _core_reached_near,
+		"opening_phase": int(phase) if kind == Kind.OPENING else -1,
+		"opening_view_entered": _opening_view_entered,
+		"view_hint_elapsed": _elapsed if phase == Phase.WAIT_VIEW else 0.0,
 	}
 
 
@@ -566,6 +640,8 @@ func restore_save(data: Dictionary) -> void:
 	game.set_process_unhandled_input(true)
 	game.set_process_unhandled_key_input(true)
 	var resume_kind: Kind = data.resume as Kind
+	# Older saves already showed the opening after the automatic camera entrance.
+	_opening_view_entered = data.get("opening_view_entered", true)
 	if data.get("note_pending", false):
 		if resume_kind == Kind.OPENING:
 			begin()
@@ -574,6 +650,9 @@ func restore_save(data: Dictionary) -> void:
 			game._view.zoom_steps(-1.0, false)
 			play_receipt()
 			return
+	if resume_kind == Kind.OPENING and data.get("opening_phase", -1) >= 0:
+		_restore_opening(data.opening_phase as Phase, data.get("view_hint_elapsed", 0.0))
+		return
 	if resume_kind in [Kind.COLOR_ONE, Kind.COLOR_TWO, Kind.COLOR_THREE]:
 		var color_index: int = int(resume_kind) - int(Kind.COLOR_ONE)
 		# Unfinished color fills restart their own presentation and dialogue together.
@@ -598,3 +677,27 @@ func restore_save(data: Dictionary) -> void:
 		else:
 			_play_lines()
 	_on_economy_changed()
+
+
+func _restore_opening(saved_phase: Phase, hint_elapsed: float) -> void:
+	kind = Kind.OPENING
+	active_dialogue = narrative
+	_acquire_controls()
+	game._layout.dock_intro_progress = 0.0
+	if saved_phase in [Phase.WAIT_VIEW, Phase.ZOOMING, Phase.EMERGING, Phase.LANDING]:
+		seen.append(Kind.OPENING)
+	if saved_phase == Phase.LANDING:
+		# Saved actors already exist; do not produce the opening group a second time.
+		_begin_resuming()
+		return
+	for nest: NestView in game._nest_views:
+		nest.set_emergence_progress(0.0)
+	if saved_phase in [Phase.ZOOMING, Phase.EMERGING]:
+		_enter_planet()
+		return
+	game._view.show_restoration_overview()
+	if saved_phase == Phase.WAIT_VIEW:
+		_wait_for_view(hint_elapsed)
+	else:
+		game._restoration.core.set_static(true)
+		_play_lines()

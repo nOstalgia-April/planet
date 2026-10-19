@@ -137,8 +137,7 @@ func _assert_briefing_music(audio: Audio) -> void:
 	)
 
 
-# The game opens on the far view, then zooms in with ZoomIn while the music
-# follows to its near-view mix.
+# After the far-view dialogue, player input starts ZoomIn and the near-view music mix.
 func _check_opening_zoom(story: StoryFlow) -> void:
 	assert(story.briefing.playing, "游戏内字条保持新版点击关闭流程。")
 	story.briefing.reveal_all()
@@ -152,8 +151,20 @@ func _check_opening_zoom(story: StoryFlow) -> void:
 	assert(story.phase == StoryFlow.Phase.OVERVIEW and is_equal_approx(distant.call(), 1.0))
 	var zoom_in: FmodEventDescription = FmodServer.get_event("event:/UI/ZoomIn")
 	var zooms: int = zoom_in.get_instance_count()
-	while story.phase == StoryFlow.Phase.OVERVIEW:
+	while story.phase != StoryFlow.Phase.WAIT_VIEW:
+		if story.phase == StoryFlow.Phase.TALKING:
+			story.active_dialogue.advance()
 		await _tree.process_frame
+	assert(story.game._view.is_overview(), "对白结束后等待玩家切换视角。")
+	var key: InputEventKey = InputEventKey.new()
+	key.keycode = KEY_TAB
+	key.pressed = true
+	Input.parse_input_event(key)
+	Input.flush_buffered_events()
+	key = key.duplicate() as InputEventKey
+	key.pressed = false
+	Input.parse_input_event(key)
+	Input.flush_buffered_events()
 	assert(zoom_in.get_instance_count() > zooms, "远景切到近景时播放 ZoomIn。")
 	while story.phase == StoryFlow.Phase.ZOOMING:
 		await _tree.process_frame
