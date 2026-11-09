@@ -1747,7 +1747,7 @@ func _on_technology_upgrade(technology_id: String) -> void:
 		_refresh_hud()
 		_play_level_up()
 		if unlocking_net:
-			_show_status("捕网已解锁")
+			_show_status("按下1/2快捷切换工具，捕网适合清洁密集的怪物")
 		elif technology_id == "pipe":
 			_show_status("吸取 %d 级" % (run.pipe_level + 1))
 		elif technology_id in ["net", "net_capacity"]:

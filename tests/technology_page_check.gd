@@ -151,7 +151,7 @@ func _check_page() -> void:
 	demo._layout._technology.select_node("net_unlock")
 	demo._layout._technology._nodes[demo._layout._technology.selected_key].pressed.emit()
 	_check(
-		demo.run.net_unlocked and demo._status_label.text.contains("捕网已解锁"),
+		demo.run.net_unlocked and demo._status_label.text == "按下1/2快捷切换工具，捕网适合清洁密集的怪物",
 		"the separate unlock item retains the main-game discovery feedback"
 	)
 	demo._layout._technology.select_node("combo_unlock")
