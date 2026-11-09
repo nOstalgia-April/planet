@@ -6,7 +6,7 @@
 
 在工程根目录运行 `tools/build_web.ps1`。首次构建通过 `-SdkZip` 指向 FMOD HTML5 SDK 压缩包；脚本只提取 Studio WASM 运行所需的 JS、WASM 与原始许可说明到 `web/fmod/`。默认输出为 `output/planet-web/`。
 
-构建使用当前项目的 Godot 4.7.2 和匹配的 `web_nothreads_release.zip` 导出模板。`-GodotPath` 可指定引擎程序，`-OutputPath` 可指定交付目录。
+构建使用当前项目的 Godot 4.7.2 和匹配的 `web_nothreads_release.zip` 导出模板。`-GodotPath` 可指定引擎程序，`-OutputPath` 可指定交付目录。Windows 模板目录是 `%APPDATA%\Godot\export_templates\4.7.2.stable`。Linux 是 `$XDG_DATA_HOME/godot/export_templates/4.7.2.stable`（未设置时为 `~/.local/share/godot/export_templates/4.7.2.stable`），可直接运行 `python3 tools/build_web.py`。
 
 `web/` 由 `.gdignore` 隔离，因为其中的 HTML5 适配器只应进入网页导出。构建时在 `artifacts/` 下创建独立暂存工程，素材使用硬链接，文本文件独立复制；不共享主工程导入缓存。PowerShell 入口在成功或失败后都会清理本次暂存工程及日志。
 
@@ -19,7 +19,10 @@
 - Bank 在网页运行库和 Godot 资源包中各保留一份，后者供现有文件存在性检查使用。
 - 渲染采用 Compatibility；导出使用单线程，不依赖网页 GDExtension 或跨域隔离响应头。
 - 导出集合从主场景、自动加载、主题开始，追踪资源、脚本类型及字符串形式的动态加载路径。它包含核心动画的全部分页贴图，避免只按场景显式依赖打包而漏图。
-- 当前包使用桌面 GPU 压缩纹理，保留正式素材分辨率；不包含重复的移动端纹理。手机与触控适配属于另一项工作。
+- 网页暂存工程只改复制出来的 `.import`：桌面 VRAM 贴图，以及开头动画和流星的无损全屏序列，改为 Lossy WebP（质量 0.85）。角色帧、界面和已经是 Lossy 的星球核心图集不动。仓库里的 `.import` 不改，桌面版仍用原来的 VRAM 或无损压缩。
+- `近景星球` 的仓库导入写了 `size_limit=4096`。网页暂存把这个限制清掉，按 PNG 原尺寸打包，避免再缩小。桌面导入文件保持 4096。
+- 不生成移动端 ETC2/ASTC。手机与触控适配属于另一项工作。
+- `shaders/planet_art_blend.gdshader` 按源画布 8119×7866 和 5949×5701 对齐近景图层。这些边长超过 WebGL 规定的 4096 下限。按像素切块会拆开着色器里的单张采样器，所以保持原尺寸，需要桌面 GPU 的 `MAX_TEXTURE_SIZE` 至少为 8192。
 
 ## 启动与发布
 
